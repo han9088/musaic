@@ -1,0 +1,12 @@
+# Project tools. Credentials come from the environment.
+[mcp_servers.codegraph]
+command = "codegraph"
+args = ["serve", "--mcp", "--path", "."]
+
+[mcp_servers.dart]
+command = "mise"
+args = ["exec", "--", "dart", "mcp-server", "--disable", "analyze_files"]
+
+
+[mcp_servers.deepwiki]
+url = "https://mcp.deepwiki.com/mcp"

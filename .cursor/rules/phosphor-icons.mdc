@@ -1,0 +1,22 @@
+---
+description: Prefer Phosphor Icons over Material / Cupertino Icons
+globs: "lib/**/*.dart"
+alwaysApply: false
+---
+
+# Phosphor Icons first
+
+UI icons in `lib/` default to **Phosphor Icons** (`phosphoricons_flutter`).
+
+## Do
+
+- Import `package:phosphoricons_flutter/phosphoricons_flutter.dart`
+- Prefer **Bold** weight for list trailing / tab / action icons, matching existing usage:
+  `PhosphorIcons.mapTrifoldBold`, `PhosphorIcons.gearBold`, …
+- Use `Icon(PhosphorIcons.xxxBold)` (or `PhosphorIcon`) for new UI chrome
+
+## Do not
+
+- Reach for `Icons.*` (Material) or `CupertinoIcons.*` for new UI unless:
+  - Phosphor has no reasonable equivalent, or
+  - The surface is a third-party widget that hard-requires Material icons (e.g. some dialog defaults)

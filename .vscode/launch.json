@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Musaic",
+      "request": "launch",
+      "type": "dart",
+      "program": "${workspaceFolder}/lib/main.dart",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Musaic (profile)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "profile",
+      "program": "${workspaceFolder}/lib/main.dart",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Musaic (release)",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "release",
+      "program": "${workspaceFolder}/lib/main.dart",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+name: musaic
+description: Where Music Becomes Mosaic.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+  flutter: '>=3.47.6'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  material_ui: ^1.5.0
+  signals_flutter: ^7.1.0
+  go_router: ^18.0.2
+  flex_color_scheme: ^9.0.0
+  talker_flutter: ^5.1.20
+  talker_dio_logger: ^5.1.20
+  google_fonts: ^9.0.0
+  phosphoricons_flutter: ^1.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  generate: true
+  uses-material-design: true
+  assets:
+    - assets/albums/
+    - assets/google_fonts/
+    - assets/textures/dialog_noise.png

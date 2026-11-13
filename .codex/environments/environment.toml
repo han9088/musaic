@@ -1,0 +1,15 @@
+version = 1
+name = "Musaic"
+
+[setup]
+script = ""
+
+[[actions]]
+name = "Run"
+icon = "run"
+command = 'mkdir -p .dart_tool && flutter run --pid-file="$PWD/.dart_tool/codex-flutter.pid"'
+
+[[actions]]
+name = "Hot Reload"
+icon = "debug"
+command = "bash scripts/flutter_hot_reload.sh"

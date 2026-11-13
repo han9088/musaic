@@ -1,0 +1,38 @@
+---
+description: Prefer IDE ReadLints; never use Dart MCP analyze_files
+alwaysApply: true
+---
+
+# Dart / Flutter analysis
+
+Do **not** use Dart MCP `analyze_files` in this project. Prefer IDE diagnostics.
+
+## Prefer (default)
+
+- `ReadLints` on the files / directories you changed
+
+## Avoid
+
+- Dart MCP: `analyze_files` — can hang / contend with the IDE analysis server
+- Running Shell `dart analyze` **and** any other analyzer in the same turn
+
+## If CLI analyze is truly needed
+
+Use **only** Shell:
+
+```text
+dart analyze <paths…>
+```
+
+Never pair it with MCP `analyze_files` or a second parallel `dart analyze`.
+
+```text
+# ❌ BAD
+MCP:  analyze_files
+# or dual:
+Shell: dart analyze lib/...
+MCP:  analyze_files on the same roots
+
+# ✅ GOOD
+ReadLints on edited paths
+```

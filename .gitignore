@@ -1,0 +1,28 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+build/
+coverage/
+dist/
+*.iml
+.idea/
+.DS_Store
+.codegraph/
+.gradle/
+local.properties
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+**/Flutter/ephemeral/
+
+# Local configuration and signing
+.env
+.env.*
+!.env.example
+lib/config/env.g.dart
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+android/key.properties
