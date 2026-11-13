@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import '../../services/album_haptics.dart';
+
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
@@ -5,7 +9,9 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 class AlbumCoverFlow extends StatefulWidget {
-  const AlbumCoverFlow({super.key, required this.albums});
+  const AlbumCoverFlow({super.key, required this.albums, this.haptics});
+
+  final AlbumHaptics? haptics;
 
   final List<Map<String, dynamic>> albums;
 
@@ -14,7 +20,7 @@ class AlbumCoverFlow extends StatefulWidget {
 }
 
 class _AlbumCoverFlowState extends State<AlbumCoverFlow>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const _friction = 1.8;
   static const _dragSensitivity = 1.12;
   static const _settlingRate = 10.0;
@@ -22,7 +28,10 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   static const _tiltDeadZone = 200.0;
 
   late final Ticker _ticker;
+  late final AlbumHaptics _haptics;
   double _position = 0;
+  int _hapticIndex = 0;
+  Duration? _lastHapticTime;
   double _velocity = 0;
   double _tilt = 0;
   double _dragDistance = 0;
@@ -36,6 +45,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   void initState() {
     super.initState();
     _ticker = createTicker(_tick);
+    _haptics = widget.haptics ?? AlbumHaptics();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_haptics.prepare());
   }
 
   void _wake() {
@@ -86,6 +98,26 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         _ticker.stop();
       }
     });
+    _notifyAlbumChange();
+  }
+
+  void _notifyAlbumChange() {
+    final index = _position.round();
+    if (index == _hapticIndex) return;
+    final movingLeft = index > _hapticIndex;
+    _hapticIndex = index;
+    final time = SchedulerBinding.instance.currentFrameTimeStamp;
+    if (_lastHapticTime != null &&
+        time - _lastHapticTime! < const Duration(milliseconds: 40)) {
+      return;
+    }
+    _lastHapticTime = time;
+    unawaited(
+      _haptics.tick(
+        movingLeft: movingLeft,
+        strength: (_velocity.abs() / 8).clamp(0.15, 1.0),
+      ),
+    );
   }
 
   void _settle(double target) {
@@ -98,13 +130,21 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         _gestureTilt = 0;
       });
       _ticker.stop();
+      _notifyAlbumChange();
     } else {
       _wake();
     }
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    unawaited(_haptics.setActive(state == AppLifecycleState.resumed));
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_haptics.dispose());
     _ticker.dispose();
     super.dispose();
   }

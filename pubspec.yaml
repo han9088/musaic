@@ -20,16 +20,18 @@ dependencies:
   talker_dio_logger: ^5.1.20
   google_fonts: ^9.0.0
   phosphoricons_flutter: ^1.0.0
+  pulsar_haptics: ^0.1.1
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-
 flutter:
   generate: true
   uses-material-design: true
   assets:
+    - assets/sounds/
     - assets/albums/
     - assets/google_fonts/
     - assets/textures/dialog_noise.png
