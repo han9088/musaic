@@ -64,6 +64,54 @@ void main() {
   });
 
   for (final direction in [-1.0, 1.0]) {
+    testWidgets(
+      'short then long swipe restores full tilt from residual angle $direction',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: AlbumCoverFlow(
+              initialTilt: 0.02 * direction,
+              albums: const [
+                {
+                  'asset': 'assets/albums/0.jpg',
+                  'artist': 'Artist',
+                  'title': 'Album',
+                },
+              ],
+            ),
+          ),
+        );
+        final drag = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .firstWhere((widget) => widget.onHorizontalDragUpdate != null);
+        var time = Duration.zero;
+        for (final steps in [4, 50]) {
+          drag.onHorizontalDragStart!(DragStartDetails(sourceTimeStamp: time));
+          for (var i = 0; i < steps; i++) {
+            time += const Duration(milliseconds: 16);
+            drag.onHorizontalDragUpdate!(
+              DragUpdateDetails(
+                delta: Offset(12 * direction, 0),
+                primaryDelta: 12 * direction,
+                globalPosition: const Offset(400, 200),
+                sourceTimeStamp: time,
+              ),
+            );
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          if (steps == 50) {
+            final plane = tester.widget<Transform>(
+              find.byKey(const ValueKey('cover-flow-plane')),
+            );
+            expect(plane.transform.entry(0, 2) * direction, greaterThan(0.54));
+          }
+          drag.onHorizontalDragEnd!(DragEndDetails(primaryVelocity: 0));
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
     testWidgets('one slow long swipe tilts the plane $direction', (
       tester,
     ) async {

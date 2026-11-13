@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'album_play_button.dart';
+
 import '../../services/album_haptics.dart';
 
 import 'dart:math' as math;
@@ -13,6 +15,7 @@ class AlbumCoverFlow extends StatefulWidget {
     super.key,
     required this.albums,
     this.haptics,
+    this.playback,
     this.initialPosition = 0,
     this.initialTilt = 0,
     this.onMotionChanged,
@@ -24,6 +27,7 @@ class AlbumCoverFlow extends StatefulWidget {
 
   /// When provided, the caller owns preparation and disposal.
   final AlbumHaptics? haptics;
+  final AlbumPlayback? playback;
 
   final List<Map<String, dynamic>> albums;
 
@@ -244,7 +248,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                       _position += delta;
                       _dragDistance += details.delta.dx;
                       if (_gestureTilt != 0) {
-                        if (details.delta.dx * _gestureTilt < 0) {
+                        if (details.delta.dx != 0 &&
+                            (details.delta.dx * _gestureTilt < 0 ||
+                                _dragDistance.abs() > _tiltDeadZone)) {
                           _gestureTilt = details.delta.dx.sign * _maxTilt;
                         }
                       } else if (_dragDistance.abs() > _tiltDeadZone) {
@@ -354,36 +360,55 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       top: constraints.maxHeight * 0.52 - size / 2,
       width: size,
       height: size * 1.36,
-      child: GestureDetector(
-        onTap: () => _settle(index.toDouble()),
-        child: RepaintBoundary(
-          child: Column(
-            children: [
-              _image(album, size),
-              SizedBox(
-                height: size * 0.36,
-                child: ClipRect(
-                  child: ShaderMask(
-                    blendMode: BlendMode.dstIn,
-                    shaderCallback: (rect) => const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0x70ffffff), Color(0x00ffffff)],
-                    ).createShader(rect),
-                    child: OverflowBox(
-                      alignment: Alignment.topCenter,
-                      maxHeight: size,
-                      child: Transform.flip(
-                        flipY: true,
-                        child: _image(album, size),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => _settle(index.toDouble()),
+              child: RepaintBoundary(
+                child: Column(
+                  children: [
+                    _image(album, size),
+                    SizedBox(
+                      height: size * 0.36,
+                      child: ClipRect(
+                        child: ShaderMask(
+                          blendMode: BlendMode.dstIn,
+                          shaderCallback: (rect) => const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0x70ffffff), Color(0x00ffffff)],
+                          ).createShader(rect),
+                          child: OverflowBox(
+                            alignment: Alignment.topCenter,
+                            maxHeight: size,
+                            child: Transform.flip(
+                              flipY: true,
+                              child: _image(album, size),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          if (index == _position.round() && widget.playback != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              width: size,
+              height: size,
+              child: AlbumPlayButton(
+                diameter: 48,
+                asset: album['asset'] as String,
+                title: album['title'] as String,
+                playback: widget.playback!,
+              ),
+            ),
+        ],
       ),
     );
   }

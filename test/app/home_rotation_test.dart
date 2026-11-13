@@ -1,4 +1,6 @@
 import 'package:flutter/services.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:musaic/pages/home/album_play_button.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/pages/home/album_cover_flow.dart';
@@ -60,6 +62,12 @@ void main() {
         );
         await tester.pump();
         expect(handle, 10);
+        await tester.tapAt(const Offset(150, 250));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.tap(find.byType(AlbumPlayButton));
+        await tester.pump();
+        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
         tester.view.physicalSize = const Size(800, 400);
         await tester.pump();
         if (!reduced) {
@@ -83,6 +91,15 @@ void main() {
         expect(find.byType(AlbumCoverFlow), findsOneWidget);
         expect(calls.where((c) => c == 'PatternComposer_play'), isEmpty);
         final flow = tester.widget<AlbumCoverFlow>(find.byType(AlbumCoverFlow));
+        expect(flow.playback!.playing, isTrue);
+        final button = tester.widget<AlbumPlayButton>(
+          find.byType(AlbumPlayButton),
+        );
+        if (flow.playback!.isPlaying(button.asset, button.title)) {
+          await tester.tap(find.byType(AlbumPlayButton));
+          await tester.pump();
+        }
+        expect(find.byIcon(PhosphorIcons.playFill), findsOneWidget);
         final next = flow.initialPosition.round() + 1;
         final title = flow.albums[next % flow.albums.length]['title'] as String;
         if (!reduced) {
@@ -90,10 +107,14 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.text(title), findsOneWidget);
         }
+        await tester.tap(find.byType(AlbumPlayButton));
+        await tester.pump();
+        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
         tester.view.physicalSize = const Size(400, 800);
         await tester.pump();
         if (!reduced) await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(InteractiveViewer), findsOneWidget);
+        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
         expect(handle, 10);
         expect(calls.where((c) => c == 'PatternComposer_release'), isEmpty);
         await tester.pumpWidget(const SizedBox());

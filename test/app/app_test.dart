@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
 import 'package:musaic/pages/home/album_cover_flow.dart';
 import 'package:musaic/pages/home/portrait_tilt.dart';
+import 'package:musaic/pages/home/selected_album.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
@@ -43,6 +45,25 @@ void main() {
       reason: 'Holding a drag must not keep moving the canvas',
     );
     await hold.up();
+    await tester.tapAt(const Offset(150, 250));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(SelectedAlbum), findsOneWidget);
+    final selectedPosition = controller.value.clone();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(controller.value, selectedPosition);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(SelectedAlbum),
+        matching: find.byType(GestureDetector),
+      ),
+    );
+    await tester.pump();
+    expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+    await tester.drag(find.byType(InteractiveViewer), const Offset(80, 0));
+    await tester.pump();
+    expect(find.byType(SelectedAlbum), findsOneWidget);
+    expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
     final initial = controller.value.clone();
     await tester.pump(const Duration(milliseconds: 100));
     expect(controller.value, isNot(initial));
@@ -55,6 +76,35 @@ void main() {
     expect(controller.value.entry(0, 3), greaterThan(position));
     expect(tester.takeException(), isNull);
     final viewer = find.byType(InteractiveViewer);
+    for (final offset in [
+      const Offset(2400, 1800),
+      const Offset(-2400, -1800),
+    ]) {
+      controller.value = Matrix4.identity()
+        ..translateByDouble(offset.dx, offset.dy, 0, 1);
+      await tester.pump();
+      const tap = Offset(150, 250);
+      final scene = controller.toScene(tap);
+      await tester.tapAt(tap);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(
+        find.byKey(
+          ValueKey((
+            'selected',
+            ((scene.dy / 100).floor(), (scene.dx / 100).floor()),
+          )),
+        ),
+        findsOneWidget,
+      );
+      final button = find.descendant(
+        of: find.byType(SelectedAlbum),
+        matching: find.byType(GestureDetector),
+      );
+      await tester.tap(button);
+      await tester.pump();
+      expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+    }
     for (final scale in [0.4, 1.0, 2.5]) {
       controller.value = Matrix4.diagonal3Values(scale, scale, 1);
       await tester.pump();
