@@ -58,14 +58,14 @@ void main() {
     expect(active.right, lessThan(next.left));
     expect(next.right, lessThan(further.left));
     expect(find.byType(Image), findsWidgets);
-    await tester.fling(find.byType(Scaffold), const Offset(-300, 0), 1600);
+    await tester.fling(find.byType(Scaffold), const Offset(-500, 0), 1600);
     await tester.pump(const Duration(milliseconds: 80));
     final plane = find.byKey(const ValueKey('cover-flow-plane'));
     expect(
       tester.widget<Transform>(plane).transform.entry(2, 0),
       greaterThan(0),
     );
-    await tester.fling(find.byType(Scaffold), const Offset(300, 0), 1600);
+    await tester.fling(find.byType(Scaffold), const Offset(500, 0), 1600);
     for (var i = 0; i < 12; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -80,6 +80,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(tester.takeException(), isNull);
+    expect(tester.binding.hasScheduledFrame, isFalse);
     tester.view.physicalSize = const Size(400, 800);
     await tester.pump();
     expect(find.byType(InteractiveViewer), findsOneWidget);

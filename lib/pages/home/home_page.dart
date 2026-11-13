@@ -1,15 +1,18 @@
-import 'dart:convert';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'album_cover_flow.dart';
 
 import 'package:flutter/scheduler.dart';
 
-import 'package:flutter/services.dart';
+import '../../services/mock_album_cache.dart';
+
 import 'package:material_ui/material_ui.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, required this.albumCache});
+
+  final MockAlbumCache albumCache;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -32,7 +35,21 @@ class _HomePageState extends State<HomePage>
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(_advance)..start();
+    _ticker = createTicker(_advance);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(
+        widget.albumCache
+            .warmImages((image) async {
+              if (mounted) await precacheImage(image, context);
+            })
+            .catchError((Object error, StackTrace stack) {
+              FlutterError.reportError(
+                FlutterErrorDetails(exception: error, stack: stack),
+              );
+            }),
+      );
+    });
   }
 
   @override
@@ -40,6 +57,13 @@ class _HomePageState extends State<HomePage>
     super.didChangeDependencies();
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
     _landscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    if (_landscape || _reduceMotion) {
+      _ticker.stop();
+      _lastTick = null;
+    } else if (!_ticker.isActive) {
+      _lastTick = null;
+      _ticker.start();
+    }
   }
 
   void _advance(Duration elapsed) {
@@ -63,12 +87,8 @@ class _HomePageState extends State<HomePage>
     super.dispose();
   }
 
-  late final Future<List<Map<String, dynamic>>> _albums = rootBundle
-      .loadString('assets/albums/catalog.json')
-      .then(
-        (value) =>
-            (jsonDecode(value) as List<dynamic>).cast<Map<String, dynamic>>(),
-      );
+  late final Future<List<Map<String, dynamic>>> _albums = widget.albumCache
+      .load();
 
   @override
   Widget build(BuildContext context) {
@@ -146,7 +166,6 @@ class _HomePageState extends State<HomePage>
                                       albums.length]['asset']
                                   as String,
                               fit: BoxFit.cover,
-                              cacheWidth: 300,
                               semanticLabel:
                                   albums[((row * 73856093) ^ (col * 19349663)) %
                                           albums.length]['title']

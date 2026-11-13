@@ -15,10 +15,18 @@ class AlbumCoverFlow extends StatefulWidget {
 
 class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     with SingleTickerProviderStateMixin {
+  static const _friction = 1.8;
+  static const _dragSensitivity = 1.12;
+  static const _settlingRate = 10.0;
+  static const _maxTilt = 0.66;
+  static const _tiltDeadZone = 200.0;
+
   late final Ticker _ticker;
   double _position = 0;
   double _velocity = 0;
   double _tilt = 0;
+  double _dragDistance = 0;
+  double _gestureTilt = 0;
   double? _target;
   bool _dragging = false;
   Duration? _lastFrame;
@@ -50,22 +58,22 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         }
         final target = _target;
         if (target == null) {
-          final decay = math.exp(-3.2 * dt);
-          _position += _velocity * (1 - decay) / 3.2;
+          final decay = math.exp(-_friction * dt);
+          _position += _velocity * (1 - decay) / _friction;
           _velocity *= decay;
         } else {
           // Critically damped settling preserves velocity when entering a slot.
           final error = _position - target;
-          final c = _velocity + 14 * error;
-          final decay = math.exp(-14 * dt);
+          final c = _velocity + _settlingRate * error;
+          final decay = math.exp(-_settlingRate * dt);
           _position = target + (error + c * dt) * decay;
-          _velocity = (_velocity - 14 * c * dt) * decay;
+          _velocity = (_velocity - _settlingRate * c * dt) * decay;
         }
       }
-      final desiredTilt = reduced
-          ? 0.0
-          : (-_velocity * 0.075).clamp(-0.55, 0.55);
-      _tilt += (desiredTilt - _tilt) * (1 - math.exp(-14 * dt));
+      final desiredTilt = reduced || _target != null ? 0.0 : _gestureTilt;
+      // Hold perspective while coasting; ease back only when settling.
+      final tiltResponse = _dragging ? 10.0 : 6.0;
+      _tilt += (desiredTilt - _tilt) * (1 - math.exp(-tiltResponse * dt));
       if (!_dragging &&
           _target != null &&
           (_position - _target!).abs() < 0.001 &&
@@ -74,6 +82,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         _position = _target!;
         _velocity = 0;
         _tilt = 0;
+        _gestureTilt = 0;
         _ticker.stop();
       }
     });
@@ -86,6 +95,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         _position = target;
         _velocity = 0;
         _tilt = 0;
+        _gestureTilt = 0;
       });
       _ticker.stop();
     } else {
@@ -148,7 +158,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   centers[lower]! * (1 - fraction) +
                   centers[lower + 1]! * fraction;
               final plane = Matrix4.identity()
-                ..setEntry(3, 2, 0.8 / constraints.maxWidth)
+                ..setEntry(3, 2, 0.88 / constraints.maxWidth)
                 ..rotateY(_tilt);
               return Semantics(
                 label: '${selected['artist']}, ${selected['title']}',
@@ -158,29 +168,48 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   behavior: HitTestBehavior.opaque,
                   onHorizontalDragStart: (details) {
                     _dragging = true;
-                    _velocity = 0;
+                    _dragDistance = 0;
+                    _gestureTilt = _tilt;
+                    if (_target != null) _velocity = 0;
                     _target = null;
                     _lastDrag = details.sourceTimeStamp;
                     _wake();
                   },
                   onHorizontalDragUpdate: (details) {
-                    final delta = -details.delta.dx / stride;
+                    final delta = -details.delta.dx * _dragSensitivity / stride;
                     final time = details.sourceTimeStamp;
                     final previous = _lastDrag;
                     setState(() {
                       _position += delta;
+                      _dragDistance += details.delta.dx;
+                      if (_dragDistance.abs() > _tiltDeadZone) {
+                        _gestureTilt = _dragDistance.sign * _maxTilt;
+                      }
                       if (time != null && previous != null && time > previous) {
                         final dt = (time - previous).inMicroseconds / 1000000;
-                        _velocity = (_velocity * 0.35 + delta / dt * 0.65)
-                            .clamp(-12.0, 12.0);
+                        final dragVelocity = delta / dt;
+                        _velocity =
+                            (_velocity * dragVelocity < 0
+                                    ? dragVelocity
+                                    : _velocity * 0.35 + dragVelocity * 0.65)
+                                .clamp(-12.0, 12.0);
                       }
                     });
                     _lastDrag = time;
                   },
                   onHorizontalDragEnd: (details) {
                     _dragging = false;
-                    _velocity = (-details.velocity.pixelsPerSecond.dx / stride)
-                        .clamp(-12.0, 12.0);
+                    final releaseVelocity =
+                        (-details.velocity.pixelsPerSecond.dx *
+                                _dragSensitivity /
+                                stride)
+                            .clamp(-12.0, 12.0);
+                    // Keep recent motion when the release estimate points backwards.
+                    if (_velocity * releaseVelocity >= 0) {
+                      _velocity = releaseVelocity == 0
+                          ? 0
+                          : _velocity * 0.65 + releaseVelocity * 0.35;
+                    }
                     if (_velocity.abs() < 0.35) {
                       _settle(_position.roundToDouble());
                     }
@@ -262,31 +291,33 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       height: size * 1.36,
       child: GestureDetector(
         onTap: () => _settle(index.toDouble()),
-        child: Column(
-          children: [
-            _image(album, size),
-            SizedBox(
-              height: size * 0.36,
-              child: ClipRect(
-                child: ShaderMask(
-                  blendMode: BlendMode.dstIn,
-                  shaderCallback: (rect) => const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0x70ffffff), Color(0x00ffffff)],
-                  ).createShader(rect),
-                  child: OverflowBox(
-                    alignment: Alignment.topCenter,
-                    maxHeight: size,
-                    child: Transform.flip(
-                      flipY: true,
-                      child: _image(album, size),
+        child: RepaintBoundary(
+          child: Column(
+            children: [
+              _image(album, size),
+              SizedBox(
+                height: size * 0.36,
+                child: ClipRect(
+                  child: ShaderMask(
+                    blendMode: BlendMode.dstIn,
+                    shaderCallback: (rect) => const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0x70ffffff), Color(0x00ffffff)],
+                    ).createShader(rect),
+                    child: OverflowBox(
+                      alignment: Alignment.topCenter,
+                      maxHeight: size,
+                      child: Transform.flip(
+                        flipY: true,
+                        child: _image(album, size),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
