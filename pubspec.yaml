@@ -22,6 +22,7 @@ dependencies:
   phosphoricons_flutter: ^1.0.0
   pulsar_haptics: ^0.1.1
   audioplayers: ^6.8.1
+  sensors_plus: ^7.1.1
 
 dev_dependencies:
   flutter_test:

@@ -9,8 +9,20 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 class AlbumCoverFlow extends StatefulWidget {
-  const AlbumCoverFlow({super.key, required this.albums, this.haptics});
+  const AlbumCoverFlow({
+    super.key,
+    required this.albums,
+    this.haptics,
+    this.initialPosition = 0,
+    this.initialTilt = 0,
+    this.onMotionChanged,
+  });
 
+  final double initialPosition;
+  final double initialTilt;
+  final void Function(double position, double tilt)? onMotionChanged;
+
+  /// When provided, the caller owns preparation and disposal.
   final AlbumHaptics? haptics;
 
   final List<Map<String, dynamic>> albums;
@@ -44,10 +56,18 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   @override
   void initState() {
     super.initState();
+    _position = widget.initialPosition;
+    _hapticIndex = _position.round();
+    _tilt = widget.initialTilt;
+    _gestureTilt = _tilt;
     _ticker = createTicker(_tick);
     _haptics = widget.haptics ?? AlbumHaptics();
     WidgetsBinding.instance.addObserver(this);
-    unawaited(_haptics.prepare());
+    if (widget.haptics == null) unawaited(_haptics.prepare());
+    if (_tilt != 0 || _position != _position.roundToDouble()) {
+      _target = _position.roundToDouble();
+      _wake();
+    }
   }
 
   void _wake() {
@@ -102,6 +122,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   }
 
   void _notifyAlbumChange() {
+    widget.onMotionChanged?.call(_position, _tilt);
     final index = _position.round();
     if (index == _hapticIndex) return;
     final movingLeft = index > _hapticIndex;
@@ -144,7 +165,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    unawaited(_haptics.dispose());
+    if (widget.haptics == null) unawaited(_haptics.dispose());
     _ticker.dispose();
     super.dispose();
   }
@@ -222,7 +243,11 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     setState(() {
                       _position += delta;
                       _dragDistance += details.delta.dx;
-                      if (_dragDistance.abs() > _tiltDeadZone) {
+                      if (_gestureTilt != 0) {
+                        if (details.delta.dx * _gestureTilt < 0) {
+                          _gestureTilt = details.delta.dx.sign * _maxTilt;
+                        }
+                      } else if (_dragDistance.abs() > _tiltDeadZone) {
                         _gestureTilt = _dragDistance.sign * _maxTilt;
                       }
                       if (time != null && previous != null && time > previous) {

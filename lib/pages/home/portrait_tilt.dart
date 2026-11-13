@@ -1,0 +1,182 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:sensors_plus/sensors_plus.dart';
+
+class PortraitTiltMotion {
+  static const maxAngle = 10 * math.pi / 180;
+  Offset? _neutral;
+  Offset _filtered = Offset.zero;
+
+  Offset update(double x, double y, double z) {
+    if (!x.isFinite || !y.isFinite || !z.isFinite) return _filtered;
+    final gravity = math.sqrt(x * x + y * y + z * z);
+    if (gravity < 7 || gravity > 13) return _filtered;
+    final angles = Offset(
+      math.atan2(y, z),
+      math.atan2(x, math.sqrt(y * y + z * z)),
+    );
+    final neutral = _neutral;
+    if (neutral == null) {
+      _neutral = angles;
+      return Offset.zero;
+    }
+    final pitch = angles.dx - neutral.dx;
+    var target =
+        Offset(
+          math.atan2(math.sin(pitch), math.cos(pitch)),
+          -(angles.dy - neutral.dy),
+        ) *
+        0.32;
+    if (target.distance > maxAngle) target *= maxAngle / target.distance;
+    if (target.distance < 0.001) target = Offset.zero;
+    _filtered = Offset.lerp(_filtered, target, 0.25)!;
+    return _filtered;
+  }
+
+  void reset() {
+    _neutral = null;
+    _filtered = Offset.zero;
+  }
+}
+
+/// A small viewport transform, independent of the grid's pan and zoom state.
+class PortraitTilt extends StatefulWidget {
+  const PortraitTilt({super.key, required this.child, this.events});
+
+  // Paint extra albums before projecting; clip only at the screen boundary.
+  static double overscan(Size size) => size.longestSide * 0.15 + 16;
+
+  static Matrix4 projection(Offset angle, Size size) => Matrix4.identity()
+    ..setEntry(3, 2, math.min(0.0007, 0.6 / size.longestSide))
+    ..rotateX(angle.dx)
+    ..rotateY(angle.dy);
+
+  final Widget child;
+  final Stream<AccelerometerEvent>? events;
+
+  @override
+  State<PortraitTilt> createState() => _PortraitTiltState();
+}
+
+class _PortraitTiltState extends State<PortraitTilt>
+    with WidgetsBindingObserver {
+  final _motion = PortraitTiltMotion();
+  StreamSubscription<AccelerometerEvent>? _subscription;
+  Offset _target = Offset.zero;
+  bool _resumed = true;
+  bool _enabled = false;
+  bool _unavailable = false;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _resumed =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _enabled =
+        !MediaQuery.disableAnimationsOf(context) &&
+        MediaQuery.orientationOf(context) == Orientation.portrait;
+    _syncSensor();
+  }
+
+  @override
+  void didUpdateWidget(covariant PortraitTilt oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.events != widget.events) {
+      _stop();
+      _unavailable = false;
+      _syncSensor();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _resumed = state == AppLifecycleState.resumed;
+    _syncSensor();
+  }
+
+  void _syncSensor() {
+    final supported =
+        widget.events != null ||
+        (!kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.iOS ||
+                defaultTargetPlatform == TargetPlatform.android));
+    if (!_enabled || !_resumed || !supported) {
+      _stop();
+      return;
+    }
+    if (_subscription != null || _unavailable) return;
+    final generation = ++_generation;
+    final events =
+        widget.events ??
+        accelerometerEventStream(
+          samplingPeriod: const Duration(milliseconds: 32),
+        );
+    _subscription = events.listen(
+      (event) {
+        if (!mounted || generation != _generation) return;
+        final next = _motion.update(event.x, event.y, event.z);
+        if ((next - _target).distance < 0.0002) return;
+        setState(() => _target = next);
+      },
+      onError: (Object error) {
+        if (!mounted || generation != _generation) return;
+        _unavailable = true;
+        _stop();
+      },
+      cancelOnError: true,
+    );
+  }
+
+  void _stop() {
+    _generation++;
+    final subscription = _subscription;
+    _subscription = null;
+    if (subscription != null) unawaited(subscription.cancel());
+    _motion.reset();
+    if (_target != Offset.zero && mounted) {
+      setState(() => _target = Offset.zero);
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _generation++;
+    final subscription = _subscription;
+    if (subscription != null) unawaited(subscription.cancel());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRect(
+      child: LayoutBuilder(
+        builder: (context, constraints) => TweenAnimationBuilder<Offset>(
+          tween: Tween(begin: Offset.zero, end: _target),
+          duration: _enabled && _resumed
+              ? const Duration(milliseconds: 160)
+              : Duration.zero,
+          curve: Curves.easeOutCubic,
+          child: RepaintBoundary(child: widget.child),
+          builder: (context, angle, child) => Transform(
+            key: const ValueKey('portrait-sensor-plane'),
+            alignment: Alignment.center,
+            transform: PortraitTilt.projection(angle, constraints.biggest),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}

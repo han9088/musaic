@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
+import 'package:musaic/pages/home/album_cover_flow.dart';
+import 'package:musaic/pages/home/portrait_tilt.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
@@ -19,6 +21,28 @@ void main() {
     final controller = tester
         .widget<InteractiveViewer>(find.byType(InteractiveViewer))
         .transformationController!;
+    expect(controller.value.entry(0, 0), 1);
+    expect(controller.value.entry(1, 1), 1);
+    final hold = await tester.startGesture(
+      tester.getCenter(find.byType(InteractiveViewer)),
+    );
+    final heldPosition = controller.value.clone();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      controller.value,
+      heldPosition,
+      reason: 'Pointer down must pause automatic drift before drag recognition',
+    );
+    await hold.moveBy(const Offset(60, 20));
+    await tester.pump();
+    final draggedPosition = controller.value.clone();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      controller.value,
+      draggedPosition,
+      reason: 'Holding a drag must not keep moving the canvas',
+    );
+    await hold.up();
     final initial = controller.value.clone();
     await tester.pump(const Duration(milliseconds: 100));
     expect(controller.value, isNot(initial));
@@ -34,25 +58,72 @@ void main() {
     for (final scale in [0.4, 1.0, 2.5]) {
       controller.value = Matrix4.diagonal3Values(scale, scale, 1);
       await tester.pump();
+      expect(tester.widget<InteractiveViewer>(viewer).clipBehavior, Clip.none);
+      final covers = tester
+          .widgetList<Positioned>(
+            find.descendant(of: viewer, matching: find.byType(Positioned)),
+          )
+          .where((cell) => cell.width == 100)
+          .toList();
+      final margin = PortraitTilt.overscan(const Size(400, 800));
+      final translation = controller.value.getTranslation();
+      expect(
+        covers
+            .map((cell) => cell.left! * scale + translation.x)
+            .reduce((a, b) => a < b ? a : b),
+        lessThanOrEqualTo(-margin),
+      );
+      expect(
+        covers
+            .map((cell) => (cell.left! + 100) * scale + translation.x)
+            .reduce((a, b) => a > b ? a : b),
+        greaterThanOrEqualTo(400 + margin),
+      );
+      expect(
+        covers
+            .map((cell) => cell.top! * scale + translation.y)
+            .reduce((a, b) => a < b ? a : b),
+        lessThanOrEqualTo(-margin),
+      );
+      expect(
+        covers
+            .map((cell) => (cell.top! + 100) * scale + translation.y)
+            .reduce((a, b) => a > b ? a : b),
+        greaterThanOrEqualTo(800 + margin),
+      );
       await tester.fling(viewer, const Offset(30, 0), 1800);
       final start = controller.value.entry(0, 3);
+      var previousX = start;
       for (var frame = 0; frame < 60; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
+        final nextX = controller.value.entry(0, 3);
+        expect(
+          nextX,
+          greaterThanOrEqualTo(previousX - 0.001),
+          reason:
+              'Release must not pull the canvas backwards at frame $frame, scale $scale',
+        );
+        previousX = nextX;
       }
       final travel = controller.value.entry(0, 3) - start;
       expect(travel, greaterThanOrEqualTo(0));
-      expect(travel, lessThan(65));
+      expect(travel, greaterThan(150));
+      expect(travel, lessThan(1100));
       expect(tester.takeException(), isNull);
     }
     tester.view.physicalSize = const Size(850, 400);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 550));
     await tester.pump();
     expect(find.byType(InteractiveViewer), findsNothing);
     await tester.pump();
-    final active = tester.getRect(find.byKey(const ValueKey('cover-0')));
-    final next = tester.getRect(find.byKey(const ValueKey('cover-1')));
-    final further = tester.getRect(find.byKey(const ValueKey('cover-2')));
+    final center = tester
+        .widget<AlbumCoverFlow>(find.byType(AlbumCoverFlow))
+        .initialPosition
+        .round();
+    final active = tester.getRect(find.byKey(ValueKey('cover-$center')));
+    final next = tester.getRect(find.byKey(ValueKey('cover-${center + 1}')));
+    final further = tester.getRect(find.byKey(ValueKey('cover-${center + 2}')));
     expect(active.width, greaterThan(next.width));
     expect(next.width, closeTo(further.width, 0.01));
     expect(active.right, lessThan(next.left));
@@ -83,6 +154,7 @@ void main() {
     expect(tester.binding.hasScheduledFrame, isFalse);
     tester.view.physicalSize = const Size(400, 800);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 550));
     expect(find.byType(InteractiveViewer), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });

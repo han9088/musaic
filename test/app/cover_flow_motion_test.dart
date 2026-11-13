@@ -26,6 +26,17 @@ void main() {
       final plane = tester.widget<Transform>(
         find.byKey(const ValueKey('cover-flow-plane')),
       );
+      final perspective =
+          0.88 /
+          tester.getSize(find.byKey(const ValueKey('cover-flow-plane'))).width;
+      expect(
+        plane.transform.entry(3, 2),
+        closeTo(perspective * plane.transform.entry(2, 2), 1e-9),
+      );
+      expect(
+        plane.transform.entry(3, 0),
+        closeTo(perspective * plane.transform.entry(2, 0), 1e-9),
+      );
       expect(plane.transform.entry(0, 2), closeTo(0, 0.000001));
     }
 
@@ -88,6 +99,17 @@ void main() {
       }
       final plane = tester.widget<Transform>(
         find.byKey(const ValueKey('cover-flow-plane')),
+      );
+      final perspective =
+          0.88 /
+          tester.getSize(find.byKey(const ValueKey('cover-flow-plane'))).width;
+      expect(
+        plane.transform.entry(3, 2),
+        closeTo(perspective * plane.transform.entry(2, 2), 1e-9),
+      );
+      expect(
+        plane.transform.entry(3, 0),
+        closeTo(perspective * plane.transform.entry(2, 0), 1e-9),
       );
       expect(plane.transform.entry(0, 2) * direction, greaterThan(0.2));
       drag.onHorizontalDragEnd!(
@@ -218,10 +240,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         expect(tilt(), closeTo(beforeShortSwipe, 0.000001));
         drag.onHorizontalDragStart!(DragStartDetails(sourceTimeStamp: time));
-        for (var i = 0; i < 50; i++) {
-          await move(-12 * direction);
+        for (var i = 0; i < 8; i++) {
+          await move(-6 * direction);
         }
         expect(tilt() * direction, lessThan(-0.1));
+        // Reverse again without lifting; neither short movement reaches 200 px.
+        for (var i = 0; i < 8; i++) {
+          await move(6 * direction);
+        }
+        expect(tilt() * direction, greaterThan(0.1));
         drag.onHorizontalDragEnd!(DragEndDetails(primaryVelocity: 0));
         await tester.pumpAndSettle();
         expect(tilt(), closeTo(0, 0.000001));
