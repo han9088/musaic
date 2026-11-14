@@ -10,6 +10,25 @@ mise exec -- flutter pub get
 mise exec -- flutter run
 ```
 
+## Android variants
+
+Debug and Release can be installed side by side, following Loive's build-type setup:
+
+| Build | Launcher name | Application ID | Signing |
+| --- | --- | --- | --- |
+| Debug | Musaic Debug | `com.deskbtm.musaic.debug` | Android debug key |
+| Release | Musaic | `com.deskbtm.musaic` | Existing project keystore via `android/key.properties` |
+
+Use `mise exec -- flutter run` for Debug, or `mise exec -- flutter build apk --release`
+for the signed release APK. Icon aliases use `${applicationId}` and labels use
+`@string/app_name`, so switching either app's icon does not affect the other.
+Their app data is separate. The keystore and `android/key.properties` remain local
+and Git-ignored; retain backups of both for future release updates.
+
+An older Debug install used the release application ID. If installing Release
+over it reports a signing mismatch, preserve any needed data before uninstalling
+that old build; the new `.debug` app does not migrate its data automatically.
+
 ## macOS
 
 ```sh
