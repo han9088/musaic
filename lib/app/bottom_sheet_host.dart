@@ -27,7 +27,7 @@ class AppBottomSheetHost extends StatelessWidget {
 
   static const theme = BottomSheetTheme(
     sheetBackgroundColor: AppColors.sheetBackground,
-    letterboxColor: AppColors.background,
+    letterboxColor: AppColors.sheetHostBackground,
     hostBackgroundColor: AppColors.sheetHostBackground,
     handleColor: AppColors.secondary,
     modalBackdropColor: AppColors.sheetModalBackdrop,

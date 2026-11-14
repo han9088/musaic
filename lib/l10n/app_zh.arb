@@ -1,1 +1,11 @@
-{"@@locale": "zh", "appTitle": "Musaic"}
+{
+  "@@locale": "zh",
+  "appTitle": "Musaic",
+  "appIcon": "应用图标",
+  "appIconDefault": "默认",
+  "appIconMosaic": "拼贴",
+  "appIconLoadFailed": "无法加载应用图标。",
+  "appIconChangeFailed": "图标切换失败，请重试。",
+  "appIconUnsupported": "当前平台不支持切换应用图标。",
+  "retry": "重试"
+}

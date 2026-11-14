@@ -12,10 +12,10 @@ abstract final class AppColors {
   static const success = Color(0xFF237A3B);
 
   /// Bottom sheet panel fill.
-  static const sheetBackground = background;
+  static const sheetBackground = Color(0xFF000000);
 
-  /// Transparent host behind sheets (shows dashboard through).
-  static const sheetHostBackground = Color(0x00000000);
+  /// Slightly lighter black visible between the sheet and host.
+  static const sheetHostBackground = Color(0xFF181818);
 
   /// Modal sheet scrim (~45% black).
   static const sheetModalBackdrop = Color(0x73000000);

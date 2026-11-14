@@ -105,6 +105,48 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Musaic'**
   String get appTitle;
+
+  /// No description provided for @appIcon.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用图标'**
+  String get appIcon;
+
+  /// No description provided for @appIconDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get appIconDefault;
+
+  /// No description provided for @appIconMosaic.
+  ///
+  /// In zh, this message translates to:
+  /// **'拼贴'**
+  String get appIconMosaic;
+
+  /// No description provided for @appIconLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法加载应用图标。'**
+  String get appIconLoadFailed;
+
+  /// No description provided for @appIconChangeFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图标切换失败，请重试。'**
+  String get appIconChangeFailed;
+
+  /// No description provided for @appIconUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台不支持切换应用图标。'**
+  String get appIconUnsupported;
+
+  /// No description provided for @retry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get retry;
 }
 
 class _AppLocalizationsDelegate

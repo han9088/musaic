@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
-import 'package:musaic/pages/home/album_cover_flow.dart';
-import 'package:musaic/pages/home/portrait_tilt.dart';
-import 'package:musaic/pages/home/selected_album.dart';
+import 'package:musaic/pages/home/cover_flow/album_cover_flow.dart';
+import 'package:musaic/pages/home/canvas/portrait_tilt.dart';
+import 'package:musaic/pages/home/canvas/selected_album.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {

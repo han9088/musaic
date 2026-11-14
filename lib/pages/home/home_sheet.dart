@@ -1,11 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../services/app_icon_service.dart';
+import 'app_icon_picker.dart';
 
 class HomeSheet extends StatefulWidget {
-  const HomeSheet({super.key, required this.child});
+  const HomeSheet({
+    super.key,
+    required this.child,
+    this.icons = const AppIconService(),
+  });
 
   final Widget child;
+  final AppIconService icons;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -17,9 +25,10 @@ class _HomeSheetState extends State<HomeSheet> {
 
   void _present() {
     if (_open) return;
-    final landscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
     DeskBottomSheet.of(context).present(
-      const SizedBox.expand(),
+      BottomSheetScrollView(child: AppIconPicker(icons: widget.icons)),
       BottomSheetOptions(
         mode: BottomSheetMode.push,
         pushDirection: PushDirection.bottom,
@@ -55,7 +64,7 @@ class _HomeSheetState extends State<HomeSheet> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 0,
+            bottom: 23,
             child: Center(
               child: IgnorePointer(
                 ignoring: _open,
@@ -81,13 +90,21 @@ class _HomeSheetState extends State<HomeSheet> {
                         _dragUp = 0;
                       },
                       onVerticalDragCancel: () => _dragUp = 0,
-                      child: SizedBox(
-                        width: 140,
-                        height: 70,
+                      child: Container(
+                        width: 60,
+                        height: 39,
+                        foregroundDecoration: kDebugMode
+                            ? BoxDecoration(
+                                color: const Color(0x3300E5FF),
+                                border: Border.all(
+                                  color: const Color(0xFF00E5FF),
+                                ),
+                              )
+                            : null,
                         child: Align(
                           alignment: Alignment.bottomCenter,
                           child: Padding(
-                            padding: const EdgeInsets.only(bottom: 26),
+                            padding: const EdgeInsets.only(bottom: 3),
                             child: Container(
                               width: 44,
                               height: 6,
@@ -95,7 +112,10 @@ class _HomeSheetState extends State<HomeSheet> {
                                 color: const Color(0xB3FFFFFF),
                                 borderRadius: BorderRadius.circular(3),
                                 boxShadow: const [
-                                  BoxShadow(blurRadius: 4, color: Color(0x66000000)),
+                                  BoxShadow(
+                                    blurRadius: 4,
+                                    color: Color(0x66000000),
+                                  ),
                                 ],
                               ),
                             ),

@@ -13,4 +13,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appTitle => 'Musaic';
+
+  @override
+  String get appIcon => 'App icon';
+
+  @override
+  String get appIconDefault => 'Default';
+
+  @override
+  String get appIconMosaic => 'Mosaic';
+
+  @override
+  String get appIconLoadFailed => 'Could not load app icons.';
+
+  @override
+  String get appIconChangeFailed =>
+      'Could not change the app icon. Please try again.';
+
+  @override
+  String get appIconUnsupported => 'App icon switching is not supported.';
+
+  @override
+  String get retry => 'Retry';
 }

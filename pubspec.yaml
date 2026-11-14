@@ -23,6 +23,7 @@ dependencies:
   pulsar_haptics: ^0.1.1
   audioplayers: ^6.8.1
   sensors_plus: ^7.1.1
+  dynamic_app_icon_flutter_plus: ^2.2.1
 
 dev_dependencies:
   flutter_test:
@@ -32,6 +33,7 @@ flutter:
   generate: true
   uses-material-design: true
   assets:
+    - assets/branding/
     - assets/sounds/
     - assets/albums/
     - assets/google_fonts/

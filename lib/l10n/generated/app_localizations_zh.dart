@@ -13,4 +13,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appTitle => 'Musaic';
+
+  @override
+  String get appIcon => '应用图标';
+
+  @override
+  String get appIconDefault => '默认';
+
+  @override
+  String get appIconMosaic => '拼贴';
+
+  @override
+  String get appIconLoadFailed => '无法加载应用图标。';
+
+  @override
+  String get appIconChangeFailed => '图标切换失败，请重试。';
+
+  @override
+  String get appIconUnsupported => '当前平台不支持切换应用图标。';
+
+  @override
+  String get retry => '重试';
 }

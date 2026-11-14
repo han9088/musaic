@@ -1,24 +1,20 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-
 import 'dart:math' as math;
 
-import 'album_cover_flow.dart';
-import 'portrait_tilt.dart';
-import 'selected_album.dart';
-import 'album_canvas.dart';
-import 'layout_switch_overlay.dart';
-import 'album_play_button.dart';
-import 'album_grid_snapshot.dart';
-import 'album_layout_transition.dart';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
-
-import '../../services/mock_album_cache.dart';
-import '../../services/album_haptics.dart';
-
 import 'package:material_ui/material_ui.dart';
+
+import '../../services/album_haptics.dart';
+import '../../services/mock_album_cache.dart';
+import 'canvas/album_canvas.dart';
+import 'canvas/album_grid_snapshot.dart';
+import 'canvas/portrait_tilt.dart';
+import 'canvas/selected_album.dart';
+import 'cover_flow/album_cover_flow.dart';
+import 'layout/album_layout_transition.dart';
+import 'layout/layout_switch_overlay.dart';
+import 'playback/album_playback.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.albumCache});
