@@ -14,7 +14,9 @@ class AlbumTickSound {
         source: AssetSource('sounds/ios_wheel_tick.m4a'),
         minPlayers: 3,
         maxPlayers: 3,
-        playerMode: PlayerMode.lowLatency,
+        playerMode: defaultTargetPlatform == TargetPlatform.macOS
+            ? PlayerMode.mediaPlayer
+            : PlayerMode.lowLatency,
         audioContext: AudioContext(
           iOS: AudioContextIOS(category: AVAudioSessionCategory.ambient),
           android: const AudioContextAndroid(

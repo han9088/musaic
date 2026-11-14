@@ -25,6 +25,34 @@ class RotationAlbumCache extends MockAlbumCache {
 }
 
 void main() {
+  testWidgets('macOS opens the canvas even in a wide window', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1000, 700);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: HomePage(albumCache: RotationAlbumCache())),
+    );
+    await tester.pump();
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    expect(find.byType(AlbumCoverFlow), findsNothing);
+    tester.view.physicalSize = const Size(1400, 800);
+    await tester.pump();
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('layout-switch-wake')));
+    await tester.pump();
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('layout-switch')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 550));
+    expect(find.byType(AlbumCoverFlow), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('layout-switch')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 550));
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   for (final reduced in [false, true]) {
     testWidgets(
       'transition stays separate from original CoverFlow (reduced=$reduced)',

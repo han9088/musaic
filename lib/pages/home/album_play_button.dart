@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'glass_icon_button.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
@@ -19,7 +19,7 @@ class AlbumPlayback extends ChangeNotifier {
   }
 }
 
-class AlbumPlayButton extends StatefulWidget {
+class AlbumPlayButton extends StatelessWidget {
   const AlbumPlayButton({
     super.key,
     required this.asset,
@@ -27,68 +27,22 @@ class AlbumPlayButton extends StatefulWidget {
     required this.playback,
     this.diameter = 30,
   });
-  final double diameter;
   final String asset;
   final String title;
   final AlbumPlayback playback;
-  @override
-  State<AlbumPlayButton> createState() => _AlbumPlayButtonState();
-}
-
-class _AlbumPlayButtonState extends State<AlbumPlayButton> {
-  bool _pressed = false;
+  final double diameter;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.playback,
-    builder: (context, child) {
-      return Center(
-        child: Semantics(
-          button: true,
-          label:
-              '${widget.playback.isPlaying(widget.asset, widget.title) ? '暂停' : '播放'} ${widget.title}',
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (_) => setState(() => _pressed = true),
-            onTapCancel: () => setState(() => _pressed = false),
-            onTapUp: (_) => setState(() => _pressed = false),
-            onTap: () => widget.playback.toggle(widget.asset, widget.title),
-            child: SizedBox(
-              width: widget.diameter < 44 ? 44 : widget.diameter,
-              height: widget.diameter < 44 ? 44 : widget.diameter,
-              child: Center(
-                child: AnimatedScale(
-                  scale: _pressed ? 0.88 : 1,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 100),
-                  child: ClipOval(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                      child: ColoredBox(
-                        color: const Color(0x28FFFFFF),
-                        child: SizedBox(
-                          width: widget.diameter,
-                          height: widget.diameter,
-                          child: Icon(
-                            widget.playback.isPlaying(
-                                  widget.asset,
-                                  widget.title,
-                                )
-                                ? PhosphorIcons.pauseFill
-                                : PhosphorIcons.playFill,
-                            color: Colors.white,
-                            size: widget.diameter * 16 / 30,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    },
+    listenable: playback,
+    builder: (context, child) => Center(
+      child: GlassIconButton(
+        diameter: diameter,
+        label: '${playback.isPlaying(asset, title) ? '暂停' : '播放'} $title',
+        icon: playback.isPlaying(asset, title)
+            ? PhosphorIcons.pauseFill
+            : PhosphorIcons.playFill,
+        onPressed: () => playback.toggle(asset, title),
+      ),
+    ),
   );
 }

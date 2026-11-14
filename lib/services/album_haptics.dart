@@ -10,8 +10,15 @@ class AlbumHaptics {
   final bool _usesSystemSound =
       !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
   final AlbumTickSound _sound;
+  final bool _supportsHaptics =
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
   final _pulsar = Pulsar();
-  late final _players = List.generate(10, (_) => _pulsar.getPatternComposer());
+  late final _players = List.generate(
+    _supportsHaptics ? 10 : 0,
+    (_) => _pulsar.getPatternComposer(),
+  );
   Future<void>? _preparation;
   bool _ready = false;
   bool _active = true;
@@ -23,6 +30,7 @@ class AlbumHaptics {
   Future<void> _prepare() async {
     if (_disposed) return;
     if (!_usesSystemSound) await _sound.prepare();
+    if (!_supportsHaptics) return;
     try {
       if (_disposed || !await _pulsar.isHapticsSupported()) return;
       await _pulsar.enableSound(false);

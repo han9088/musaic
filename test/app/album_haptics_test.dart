@@ -33,6 +33,34 @@ class RecordingHaptics extends AlbumHaptics {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  test('macOS keeps sound without calling the mobile haptics plugin', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final calls = <MethodCall>[];
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(const MethodChannel('pulsar'), (
+      call,
+    ) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(
+        const MethodChannel('pulsar'),
+        null,
+      ),
+    );
+    final sound = SilentSound();
+    final haptics = AlbumHaptics(sound: sound);
+    await haptics.prepare();
+    await haptics.tick(movingLeft: true);
+    await haptics.dispose();
+    expect(sound.prepared, isTrue);
+    expect(sound.volumes, [1.0]);
+    expect(calls, isEmpty);
+  });
+
   test('iOS pairs Pulsar with system ticks without queuing feedback', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     final calls = <MethodCall>[];
