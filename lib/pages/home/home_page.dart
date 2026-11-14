@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../services/album_haptics.dart';
 import '../../services/mock_album_cache.dart';
+import 'home_sheet.dart';
 import 'canvas/album_canvas.dart';
 import 'canvas/album_grid_snapshot.dart';
 import 'canvas/portrait_tilt.dart';
@@ -230,27 +231,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xff171715),
-      body: Builder(
-        builder: (context) {
-          final content = _buildAlbums();
-          if (defaultTargetPlatform != TargetPlatform.iOS &&
-              defaultTargetPlatform != TargetPlatform.macOS) {
-            return content;
-          }
-          return LayoutSwitchOverlay(
-            coverFlow: _landscape,
-            onSwitch: () {
-              if (_catalog == null) return;
-              setState(() {
-                _manualLayout = !_landscape;
-                _updateLayout(_manualLayout!);
-              });
-            },
-            child: content,
-          );
-        },
+    return HomeSheet(
+      enabled: !_landscape,
+      child: Scaffold(
+        backgroundColor: const Color(0xff171715),
+        body: Builder(
+          builder: (context) {
+            final content = _buildAlbums();
+            if (defaultTargetPlatform != TargetPlatform.iOS &&
+                defaultTargetPlatform != TargetPlatform.macOS) {
+              return content;
+            }
+            return LayoutSwitchOverlay(
+              coverFlow: _landscape,
+              onSwitch: () {
+                if (_catalog == null) return;
+                setState(() {
+                  _manualLayout = !_landscape;
+                  _updateLayout(_manualLayout!);
+                });
+              },
+              child: content,
+            );
+          },
+        ),
       ),
     );
   }

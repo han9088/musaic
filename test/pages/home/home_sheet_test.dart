@@ -8,6 +8,42 @@ import 'package:musaic/services/app_icon_service.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 
 void main() {
+  testWidgets(
+    'handle fades after idle, wakes on touch, stays hidden in CoverFlow',
+    (tester) async {
+      Widget app(bool enabled) => MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(
+            enabled: enabled,
+            icons: const _Icons(),
+            child: const ColoredBox(color: Colors.black),
+          ),
+        ),
+      );
+      final opacity = find.descendant(
+        of: find.byType(HomeSheet),
+        matching: find.byType(AnimatedOpacity),
+      );
+      await tester.pumpWidget(app(true));
+      expect(tester.widget<AnimatedOpacity>(opacity).opacity, 1);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tester.widget<AnimatedOpacity>(opacity).opacity, 0);
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pump();
+      expect(tester.widget<AnimatedOpacity>(opacity).opacity, 1);
+      await tester.pumpWidget(app(false));
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pump();
+      expect(tester.widget<AnimatedOpacity>(opacity).opacity, 0);
+      await tester.pumpWidget(app(true));
+      expect(tester.widget<AnimatedOpacity>(opacity).opacity, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets('bottom handle opens once and dismisses on $platform', (
       tester,
@@ -38,6 +74,7 @@ void main() {
       sheet.dismiss();
       await tester.pumpAndSettle();
       expect(sheet.isPresented, isFalse);
+      await tester.pumpWidget(const SizedBox.shrink());
     });
   }
 }

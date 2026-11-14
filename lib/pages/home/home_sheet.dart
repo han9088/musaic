@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -10,10 +12,12 @@ class HomeSheet extends StatefulWidget {
     super.key,
     required this.child,
     this.icons = const AppIconService(),
+    this.enabled = true,
   });
 
   final Widget child;
   final AppIconService icons;
+  final bool enabled;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -22,9 +26,56 @@ class HomeSheet extends StatefulWidget {
 class _HomeSheetState extends State<HomeSheet> {
   bool _open = false;
   double _dragUp = 0;
+  Timer? _hideTimer;
+  bool _visible = true;
+
+  void _reveal() {
+    if (!widget.enabled || _open) return;
+    if (!_visible) setState(() => _visible = true);
+    _scheduleHide();
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    if (!widget.enabled || _open || MediaQuery.accessibleNavigationOf(context))
+      return;
+    _hideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _visible = false);
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.accessibleNavigationOf(context)) _visible = true;
+    _scheduleHide();
+  }
+
+  @override
+  void didUpdateWidget(HomeSheet oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.enabled == widget.enabled) return;
+    _visible = widget.enabled;
+    _dragUp = 0;
+    _scheduleHide();
+    if (!widget.enabled && _open) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !widget.enabled && _open) {
+          DeskBottomSheet.of(context).dismiss();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
 
   void _present() {
-    if (_open) return;
+    if (_open || !widget.enabled) return;
+    _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     DeskBottomSheet.of(context).present(
@@ -43,7 +94,10 @@ class _HomeSheetState extends State<HomeSheet> {
         enableContentPanningGesture: true,
         showHandle: true,
         onDismiss: () {
-          if (mounted) setState(() => _open = false);
+          if (mounted) {
+            setState(() => _open = false);
+            _reveal();
+          }
         },
       ),
     );
@@ -57,66 +111,79 @@ class _HomeSheetState extends State<HomeSheet> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _open) DeskBottomSheet.of(context).dismiss();
       },
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          widget.child,
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 23,
-            child: Center(
-              child: IgnorePointer(
-                ignoring: _open,
-                child: AnimatedOpacity(
-                  opacity: _open ? 0 : 1,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 120),
-                  child: Semantics(
-                    button: true,
-                    label: MaterialLocalizations.of(context).showMenuTooltip,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _present,
-                      onVerticalDragStart: (_) => _dragUp = 0,
-                      onVerticalDragUpdate: (details) {
-                        final dy = details.primaryDelta ?? 0;
-                        _dragUp = dy < 0 ? _dragUp - dy : 0;
-                        if (_dragUp >= 36) _present();
-                      },
-                      onVerticalDragEnd: (details) {
-                        if ((details.primaryVelocity ?? 0) <= -200) _present();
-                        _dragUp = 0;
-                      },
-                      onVerticalDragCancel: () => _dragUp = 0,
-                      child: Container(
-                        width: 60,
-                        height: 39,
-                        foregroundDecoration: kDebugMode
-                            ? BoxDecoration(
-                                color: const Color(0x3300E5FF),
-                                border: Border.all(
-                                  color: const Color(0xFF00E5FF),
-                                ),
-                              )
-                            : null,
-                        child: Align(
-                          alignment: Alignment.bottomCenter,
-                          child: Padding(
-                            padding: const EdgeInsets.only(bottom: 3),
-                            child: Container(
-                              width: 44,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: const Color(0xB3FFFFFF),
-                                borderRadius: BorderRadius.circular(3),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    blurRadius: 4,
-                                    color: Color(0x66000000),
+      child: MouseRegion(
+        onHover: (_) => _reveal(),
+        child: Listener(
+          onPointerDown: (_) {
+            _reveal();
+            _hideTimer?.cancel();
+          },
+          onPointerUp: (_) => _scheduleHide(),
+          onPointerCancel: (_) => _scheduleHide(),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              widget.child,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 23,
+                child: Center(
+                  child: IgnorePointer(
+                    ignoring: _open || !widget.enabled || !_visible,
+                    child: AnimatedOpacity(
+                      opacity: _open || !widget.enabled || !_visible ? 0 : 1,
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 200),
+                      child: Semantics(
+                        button: true,
+                        label: MaterialLocalizations.of(context)
+                            .showMenuTooltip,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: _present,
+                          onVerticalDragStart: (_) => _dragUp = 0,
+                          onVerticalDragUpdate: (details) {
+                            final dy = details.primaryDelta ?? 0;
+                            _dragUp = dy < 0 ? _dragUp - dy : 0;
+                            if (_dragUp >= 36) _present();
+                          },
+                          onVerticalDragEnd: (details) {
+                            if ((details.primaryVelocity ?? 0) <= -200)
+                              _present();
+                            _dragUp = 0;
+                          },
+                          onVerticalDragCancel: () => _dragUp = 0,
+                          child: Container(
+                            width: 60,
+                            height: 39,
+                            foregroundDecoration: kDebugMode
+                                ? BoxDecoration(
+                                    color: const Color(0x3300E5FF),
+                                    border: Border.all(
+                                      color: const Color(0xFF00E5FF),
+                                    ),
+                                  )
+                                : null,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 3),
+                                child: Container(
+                                  width: 44,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xB3FFFFFF),
+                                    borderRadius: BorderRadius.circular(3),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        blurRadius: 4,
+                                        color: Color(0x66000000),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
                           ),
@@ -126,9 +193,9 @@ class _HomeSheetState extends State<HomeSheet> {
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
