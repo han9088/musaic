@@ -412,17 +412,27 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
               ),
             ),
           ),
-          if (index == _position.round() && widget.playback != null)
+          if (widget.playback != null)
             Positioned(
               left: 0,
               top: 0,
               width: size,
               height: size,
-              child: AlbumPlayButton(
-                diameter: 48,
-                asset: album['asset'] as String,
-                title: album['title'] as String,
-                playback: widget.playback!,
+              child: IgnorePointer(
+                ignoring: index != _position.round(),
+                child: AnimatedOpacity(
+                  opacity: index == _position.round() ? 1 : 0,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  curve: Curves.easeInOut,
+                  child: AlbumPlayButton(
+                    diameter: 48,
+                    asset: album['asset'] as String,
+                    title: album['title'] as String,
+                    playback: widget.playback!,
+                  ),
+                ),
               ),
             ),
         ],

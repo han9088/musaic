@@ -4,7 +4,9 @@ import 'package:material_ui/material_ui.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../ui/theme/app_theme.dart';
 import '../pages/home/home_page.dart';
+import '../pages/home/home_sheet.dart';
 import '../services/mock_album_cache.dart';
+import 'bottom_sheet_host.dart';
 
 class MusaicApp extends StatefulWidget {
   const MusaicApp({super.key});
@@ -32,7 +34,9 @@ class _MusaicAppState extends State<MusaicApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
-      home: HomePage(albumCache: _albumCache),
+      home: AppBottomSheetHost(
+        child: HomeSheet(child: HomePage(albumCache: _albumCache)),
+      ),
     );
   }
 }
