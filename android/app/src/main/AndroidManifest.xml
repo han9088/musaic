@@ -21,12 +21,25 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <!-- Flutter resolves this entry before building; the icon plugin supports this layout. -->
+            <!-- Flutter launches this explicitly; requiring data excludes it from desktop launcher queries. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+                <data android:scheme="musaic-tooling"/>
+            </intent-filter>
+        </activity>
+        <activity-alias
+            android:name="${applicationId}.MainActivity.default"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Musaic">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-        </activity>
+        </activity-alias>
         <activity-alias
             android:name="${applicationId}.MainActivity.MusaicMosaic"
             android:targetActivity=".MainActivity"

@@ -73,12 +73,15 @@ base name in `ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES` for all three build
 configurations, and add its native name to `AppIconChoice`. Xcode generates the
 alternate icon metadata consumed by the plugin.
 
-Android retains the supplied adaptive/legacy launcher resources. The default
-MAIN/LAUNCHER entry remains on `MainActivity` in every build mode so Flutter can
-discover it before the first build. This uses the icon plugin's supported legacy
-default-activity path. Additional icons need matching disabled activity aliases
-and an `AppIconChoice` entry; switching away from the default may disable the real
-activity under that plugin path, so revisit it before introducing deep links.
+Android retains the supplied adaptive/legacy launcher resources. The default and
+mosaic icons use `.MainActivity.default` and `.MainActivity.MusaicMosaic` aliases;
+the plugin only toggles aliases, leaving the real activity enabled. Flutter reads
+the real activity's MAIN/LAUNCHER filter and launches it explicitly. That filter
+requires the `musaic-tooling` URI scheme, so ordinary launcher queries (without
+data) only match the icon aliases. This keeps Flutter launches independent of the
+currently selected icon, without adding a second desktop icon. Existing installs affected by the old layout
+need MainActivity re-enabled once with `adb shell pm enable
+com.deskbtm.musaic/.MainActivity`; app data does not need to be cleared.
 
 macOS uses `macos/Runner/musaic.icon` as its primary app icon. Since the mobile
 plugin has no macOS implementation, `AppIconPlugin.swift` implements its channel

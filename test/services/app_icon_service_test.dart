@@ -88,6 +88,7 @@ void main() {
             return null;
           case 'mSetAlternateIconName':
             expect((call.arguments as Map)['iconName'], isNull);
+            expect((call.arguments as Map)['deferUntilBackground'], isFalse);
             didSetIcon = true;
             throw PlatformException(code: 'callback_invalidated');
           default:
@@ -124,6 +125,7 @@ void main() {
             return null;
           case 'mSetAlternateIconName':
             expect((call.arguments as Map)['iconName'], isNull);
+            expect((call.arguments as Map)['deferUntilBackground'], isFalse);
             return null;
           default:
             throw MissingPluginException();
