@@ -56,6 +56,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   bool _dragging = false;
   Duration? _lastFrame;
   Duration? _lastDrag;
+  Duration? _lastReleaseTime;
+  double _lastReleaseDirection = 0;
+  double _coastGain = 1;
 
   @override
   void initState() {
@@ -94,8 +97,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         }
         final target = _target;
         if (target == null) {
-          final decay = math.exp(-_friction * dt);
-          _position += _velocity * (1 - decay) / _friction;
+          final friction = _friction / _coastGain;
+          final decay = math.exp(-friction * dt);
+          _position += _velocity * (1 - decay) / friction;
           _velocity *= decay;
         } else {
           // Critically damped settling preserves velocity when entering a slot.
@@ -281,6 +285,19 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                           ? 0
                           : _velocity * 0.65 + releaseVelocity * 0.35;
                     }
+                    final now = _lastDrag;
+                    final previousRelease = _lastReleaseTime;
+                    final interval = previousRelease == null || now == null
+                        ? 1.0
+                        : (now - previousRelease).inMicroseconds / 1000000;
+                    final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
+                    _coastGain =
+                        _velocity.abs() >= 0.35 &&
+                            _velocity.sign == _lastReleaseDirection
+                        ? 1 + (_coastGain * 0.35 + 0.3) * cadence
+                        : 1;
+                    _lastReleaseTime = now;
+                    _lastReleaseDirection = _velocity.sign;
                     if (_velocity.abs() < 0.35) {
                       _settle(_position.roundToDouble());
                     }

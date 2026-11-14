@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../l10n/generated/app_localizations.dart';
@@ -14,6 +15,12 @@ class MusaicApp extends StatefulWidget {
 
 class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
+
+  @override
+  void initState() {
+    super.initState();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,74 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/pages/home/album_cover_flow.dart';
 
 void main() {
+  testWidgets(
+    'higher swipe frequency increases coasting distance without short-swipe tilt',
+    (tester) async {
+      Future<double> coast(int pause) async {
+        var position = 0.0;
+        var tilt = 0.0;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: AlbumCoverFlow(
+              key: ValueKey(pause),
+              albums: const [
+                {
+                  'asset': 'assets/albums/0.jpg',
+                  'artist': 'Artist',
+                  'title': 'Album',
+                },
+              ],
+              onMotionChanged: (p, t) {
+                position = p;
+                tilt = t;
+              },
+            ),
+          ),
+        );
+        final drag = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .firstWhere((w) => w.onHorizontalDragUpdate != null);
+        var time = Duration.zero;
+        for (var swipe = 0; swipe < 3; swipe++) {
+          drag.onHorizontalDragStart!(DragStartDetails(sourceTimeStamp: time));
+          for (var frame = 0; frame < 8; frame++) {
+            time += const Duration(milliseconds: 16);
+            drag.onHorizontalDragUpdate!(
+              DragUpdateDetails(
+                delta: const Offset(-12, 0),
+                primaryDelta: -12,
+                globalPosition: const Offset(400, 200),
+                sourceTimeStamp: time,
+              ),
+            );
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          drag.onHorizontalDragEnd!(
+            DragEndDetails(
+              velocity: const Velocity(pixelsPerSecond: Offset(-750, 0)),
+              primaryVelocity: -750,
+            ),
+          );
+          if (swipe < 2) {
+            time += Duration(milliseconds: pause);
+            await tester.pump(Duration(milliseconds: pause));
+          }
+        }
+        final start = position;
+        for (var i = 0; i < 60; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tilt, closeTo(0, 0.000001));
+        }
+        return position - start;
+      }
+
+      final slow = await coast(800);
+      final fast = await coast(40);
+      expect(fast, greaterThan(slow * 1.1));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   testWidgets('gentle dragging and settling keep the plane level', (
     tester,
   ) async {

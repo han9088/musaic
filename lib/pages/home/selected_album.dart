@@ -21,7 +21,7 @@ class SelectedAlbum extends StatefulWidget {
 class _SelectedAlbumState extends State<SelectedAlbum> {
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 1, end: 1.24),
+    tween: Tween(begin: 1, end: 1.16),
     duration: MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 220),
