@@ -41,6 +41,8 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   static const _settlingRate = 10.0;
   static const _maxTilt = 0.66;
   static const _tiltDeadZone = 200.0;
+  static const _shortSwipeMinDistance = 20.0;
+  static const _rapidSwipeInterval = Duration(milliseconds: 350);
 
   late final Ticker _ticker;
   late final AlbumHaptics _haptics;
@@ -55,6 +57,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   bool _dragging = false;
   Duration? _lastFrame;
   Duration? _lastDrag;
+  Duration? _lastShortSwipe;
+  double _shortSwipeDirection = 0;
+  int _shortSwipeCount = 0;
   Duration? _lastReleaseTime;
   double _lastReleaseDirection = 0;
   double _coastGain = 1;
@@ -74,6 +79,16 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       _target = _position.roundToDouble();
       _wake();
     }
+  }
+
+  bool _continuesShortSwipes(Duration? time) {
+    final previous = _lastShortSwipe;
+    if (time == null ||
+        previous == null ||
+        _dragDistance.sign != _shortSwipeDirection)
+      return false;
+    final interval = time - previous;
+    return interval > Duration.zero && interval <= _rapidSwipeInterval;
   }
 
   void _wake() {
@@ -250,13 +265,19 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     setState(() {
                       _position += delta;
                       _dragDistance += details.delta.dx;
+                      final rapidSwipes =
+                          _shortSwipeCount >= 2 &&
+                          _dragDistance.abs() >= _shortSwipeMinDistance &&
+                          _continuesShortSwipes(time);
                       if (_gestureTilt != 0) {
                         if (details.delta.dx != 0 &&
                             (details.delta.dx * _gestureTilt < 0 ||
-                                _dragDistance.abs() > _tiltDeadZone)) {
+                                _dragDistance.abs() > _tiltDeadZone ||
+                                rapidSwipes)) {
                           _gestureTilt = details.delta.dx.sign * _maxTilt;
                         }
-                      } else if (_dragDistance.abs() > _tiltDeadZone) {
+                      } else if (_dragDistance.abs() > _tiltDeadZone ||
+                          rapidSwipes) {
                         _gestureTilt = _dragDistance.sign * _maxTilt;
                       }
                       if (time != null && previous != null && time > previous) {
@@ -273,6 +294,17 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   },
                   onHorizontalDragEnd: (details) {
                     _dragging = false;
+                    if (_dragDistance.abs() >= _shortSwipeMinDistance &&
+                        _dragDistance.abs() <= _tiltDeadZone) {
+                      _shortSwipeCount = _continuesShortSwipes(_lastDrag)
+                          ? (_shortSwipeCount + 1).clamp(1, 3)
+                          : 1;
+                      _lastShortSwipe = _lastDrag;
+                      _shortSwipeDirection = _dragDistance.sign;
+                    } else {
+                      _shortSwipeCount = 0;
+                      _lastShortSwipe = null;
+                    }
                     final releaseVelocity =
                         (-details.velocity.pixelsPerSecond.dx *
                                 _dragSensitivity /
@@ -303,6 +335,8 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     _wake();
                   },
                   onHorizontalDragCancel: () {
+                    _shortSwipeCount = 0;
+                    _lastShortSwipe = null;
                     _dragging = false;
                     _settle(_position.roundToDouble());
                   },

@@ -3,8 +3,64 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/pages/home/cover_flow/album_cover_flow.dart';
 
 void main() {
+  for (final direction in [-1.0, 1.0]) {
+    for (final sample in [
+      (20.0, 8, false),
+      (20.0, 32, false),
+      (5.0, 2, false),
+    ]) {
+      testWidgets('single short swipe never triggers tilt $direction $sample', (
+        tester,
+      ) async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: AlbumCoverFlow(
+              albums: [
+                {
+                  'asset': 'assets/albums/0.jpg',
+                  'artist': 'Artist',
+                  'title': 'Album',
+                },
+              ],
+            ),
+          ),
+        );
+        final drag = tester
+            .widgetList<GestureDetector>(find.byType(GestureDetector))
+            .firstWhere((widget) => widget.onHorizontalDragUpdate != null);
+        drag.onHorizontalDragStart!(
+          DragStartDetails(sourceTimeStamp: Duration.zero),
+        );
+        for (var i = 1; i <= 3; i++) {
+          drag.onHorizontalDragUpdate!(
+            DragUpdateDetails(
+              delta: Offset(sample.$1 * direction, 0),
+              primaryDelta: sample.$1 * direction,
+              globalPosition: const Offset(400, 200),
+              sourceTimeStamp: Duration(milliseconds: i * sample.$2),
+            ),
+          );
+          await tester.pump(Duration(milliseconds: sample.$2));
+        }
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        final tilt =
+            tester
+                .widget<Transform>(
+                  find.byKey(const ValueKey('cover-flow-plane')),
+                )
+                .transform
+                .entry(0, 2) *
+            direction;
+        expect(tilt, sample.$3 ? greaterThan(0.5) : closeTo(0, 0.000001));
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
+  }
+
   testWidgets(
-    'higher swipe frequency increases coasting distance without short-swipe tilt',
+    'higher swipe frequency triggers tilt and keeps the existing coasting gain',
     (tester) async {
       Future<double> coast(int pause) async {
         var position = 0.0;
@@ -56,10 +112,14 @@ void main() {
             await tester.pump(Duration(milliseconds: pause));
           }
         }
+        expect(
+          tilt.abs(),
+          pause == 40 ? greaterThan(0.1) : closeTo(0, 0.000001),
+        );
         final start = position;
         for (var i = 0; i < 60; i++) {
           await tester.pump(const Duration(milliseconds: 16));
-          expect(tilt, closeTo(0, 0.000001));
+          if (pause == 800) expect(tilt, closeTo(0, 0.000001));
         }
         return position - start;
       }
@@ -297,7 +357,7 @@ void main() {
           drag.onHorizontalDragStart!(DragStartDetails(sourceTimeStamp: time));
           for (var i = 0; i < 8; i++) {
             await move(12 * direction);
-            expect(tilt(), closeTo(0, 0.000001));
+            if (swipe < 2) expect(tilt(), closeTo(0, 0.000001));
           }
           drag.onHorizontalDragEnd!(
             DragEndDetails(
@@ -306,7 +366,7 @@ void main() {
             ),
           );
           await tester.pump(const Duration(milliseconds: 16));
-          expect(tilt(), closeTo(0, 0.000001));
+          if (swipe < 2) expect(tilt(), closeTo(0, 0.000001));
         }
 
         for (var swipe = 0; swipe < 3; swipe++) {
