@@ -38,4 +38,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appIconVinyl => 'Vinyl';
+
+  @override
+  String get appIconVinylWhite => 'White Label Vinyl';
 }

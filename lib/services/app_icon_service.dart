@@ -5,7 +5,8 @@ import 'package:flutter/services.dart';
 enum AppIconChoice {
   classic(null, 'assets/branding/classic.png'),
   mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
-  vinyl('MusaicVinyl', 'assets/branding/vinyl.png');
+  vinyl('MusaicVinyl', 'assets/branding/vinyl.png'),
+  vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png');
 
   const AppIconChoice(this.nativeName, this.previewAsset);
 
@@ -19,6 +20,14 @@ typedef AppIconSnapshot = ({bool supported, AppIconChoice current});
 class AppIconService {
   const AppIconService();
 
+  Iterable<AppIconChoice> get choices => AppIconChoice.values.where(
+    (choice) =>
+        choice != AppIconChoice.vinylWhite ||
+        (!kIsWeb &&
+            (defaultTargetPlatform == TargetPlatform.iOS ||
+                defaultTargetPlatform == TargetPlatform.android)),
+  );
+
   Future<AppIconSnapshot> read() async {
     if (kIsWeb ||
         !const [
@@ -30,7 +39,7 @@ class AppIconService {
       return (supported: false, current: AppIconChoice.classic);
     }
     final available = await DynamicAppIconFlutterPlus.getAvailableIcons();
-    for (final choice in AppIconChoice.values) {
+    for (final choice in choices) {
       if (choice.nativeName != null && !available.contains(choice.nativeName)) {
         throw StateError(
           'The ${choice.nativeName} alternate icon is not configured',

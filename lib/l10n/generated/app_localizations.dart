@@ -153,6 +153,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'黑胶'**
   String get appIconVinyl;
+
+  /// No description provided for @appIconVinylWhite.
+  ///
+  /// In zh, this message translates to:
+  /// **'白标黑胶'**
+  String get appIconVinylWhite;
 }
 
 class _AppLocalizationsDelegate

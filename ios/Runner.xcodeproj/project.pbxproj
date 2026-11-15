@@ -19,6 +19,7 @@
 		A11400010000000000000001 /* musaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400010000000000000002 /* musaic.icon */; };
 		A11400030000000000000001 /* MusaicMosaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400030000000000000002 /* MusaicMosaic.icon */; };
 		A11500030000000000000001 /* MusaicVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500030000000000000002 /* MusaicVinyl.icon */; };
+		A11500050000000000000001 /* MusaicVinylWhite.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500050000000000000002 /* MusaicVinylWhite.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +66,7 @@
 		A11400010000000000000002 /* musaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = musaic.icon; sourceTree = "<group>"; };
 		A11400030000000000000002 /* MusaicMosaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicMosaic.icon; sourceTree = "<group>"; };
 		A11500030000000000000002 /* MusaicVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinyl.icon; sourceTree = "<group>"; };
+		A11500050000000000000002 /* MusaicVinylWhite.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinylWhite.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +128,7 @@
 				A11400010000000000000002 /* musaic.icon */,
 				A11400030000000000000002 /* MusaicMosaic.icon */,
 				A11500030000000000000002 /* MusaicVinyl.icon */,
+				A11500050000000000000002 /* MusaicVinylWhite.icon */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
@@ -240,6 +243,7 @@
 				A11400010000000000000001 /* musaic.icon in Resources */,
 				A11400030000000000000001 /* MusaicMosaic.icon in Resources */,
 				A11500030000000000000001 /* MusaicVinyl.icon in Resources */,
+				A11500050000000000000001 /* MusaicVinylWhite.icon in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -387,7 +391,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite";
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
@@ -569,7 +573,7 @@
 			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite";
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;
@@ -592,7 +596,7 @@
 			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite";
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				ENABLE_BITCODE = NO;

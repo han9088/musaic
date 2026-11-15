@@ -37,4 +37,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appIconVinyl => '黑胶';
+
+  @override
+  String get appIconVinylWhite => '白标黑胶';
 }

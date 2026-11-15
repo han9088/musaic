@@ -8,5 +8,6 @@
   "appIconChangeFailed": "Could not change the app icon. Please try again.",
   "appIconUnsupported": "App icon switching is not supported.",
   "retry": "Retry",
-  "appIconVinyl": "Vinyl"
+  "appIconVinyl": "Vinyl",
+  "appIconVinylWhite": "White Label Vinyl"
 }

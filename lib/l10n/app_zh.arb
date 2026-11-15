@@ -8,5 +8,6 @@
   "appIconChangeFailed": "图标切换失败，请重试。",
   "appIconUnsupported": "当前平台不支持切换应用图标。",
   "retry": "重试",
-  "appIconVinyl": "黑胶"
+  "appIconVinyl": "黑胶",
+  "appIconVinylWhite": "白标黑胶"
 }

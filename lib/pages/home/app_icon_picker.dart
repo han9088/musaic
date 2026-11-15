@@ -98,7 +98,7 @@ class _AppIconPickerState extends State<AppIconPicker> {
               }
               return Column(
                 children: [
-                  for (final choice in AppIconChoice.values)
+                  for (final choice in widget.icons.choices)
                     Semantics(
                       selected: choice == state.current,
                       child: ListTile(
@@ -122,6 +122,7 @@ class _AppIconPickerState extends State<AppIconPicker> {
                           AppIconChoice.classic => l10n.appIconDefault,
                           AppIconChoice.mosaic => l10n.appIconMosaic,
                           AppIconChoice.vinyl => l10n.appIconVinyl,
+                          AppIconChoice.vinylWhite => l10n.appIconVinylWhite,
                         }, style: const TextStyle(color: Colors.white)),
                         trailing: choice == state.current
                             ? const Icon(

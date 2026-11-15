@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Match the existing vinyl foreground: 26px inset on its 432px canvas. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="6.0185185%" android:insetTop="6.0185185%"
+    android:insetRight="6.0185185%" android:insetBottom="6.0185185%">
+    <bitmap android:src="@drawable/musaic_vinyl_white" android:gravity="fill" />
+</inset>
