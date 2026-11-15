@@ -9,6 +9,41 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.3"
+  apple_music_kit:
+    dependency: "direct main"
+    description:
+      path: "../apple_music_kit/packages/apple_music_kit"
+      relative: true
+    source: path
+    version: "0.1.0"
+  apple_music_kit_android:
+    dependency: transitive
+    description:
+      path: "../apple_music_kit/packages/apple_music_kit_android"
+      relative: true
+    source: path
+    version: "0.1.0"
+  apple_music_kit_ios:
+    dependency: transitive
+    description:
+      path: "../apple_music_kit/packages/apple_music_kit_ios"
+      relative: true
+    source: path
+    version: "0.1.0"
+  apple_music_kit_platform_interface:
+    dependency: transitive
+    description:
+      path: "../apple_music_kit/packages/apple_music_kit_platform_interface"
+      relative: true
+    source: path
+    version: "0.1.0"
+  apple_music_kit_web:
+    dependency: transitive
+    description:
+      path: "../apple_music_kit/packages/apple_music_kit_web"
+      relative: true
+    source: path
+    version: "0.1.0"
   args:
     dependency: transitive
     description:

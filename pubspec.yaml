@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  apple_music_kit:
+    path: ../apple_music_kit/packages/apple_music_kit
   material_ui: ^1.5.0
   signals_flutter: ^7.1.0
   go_router: ^18.0.2
