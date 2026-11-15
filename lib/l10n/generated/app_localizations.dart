@@ -147,6 +147,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重试'**
   String get retry;
+
+  /// No description provided for @appIconVinyl.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑胶'**
+  String get appIconVinyl;
 }
 
 class _AppLocalizationsDelegate

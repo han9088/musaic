@@ -84,7 +84,7 @@ Loive. `change(AppIconChoice.classic)` restores the primary icon.
 Like Loive, reads first discover native icon names with `getAvailableIcons()` and
 check every non-primary `AppIconChoice` against that configuration. The snapshot
 contains only `supported` and `current`.
-The bottom sheet offers the default icon and the supplied album collage (`MusaicMosaic`).
+The bottom sheet offers the default icon, album collage (`MusaicMosaic`), and vinyl artwork (`MusaicVinyl`).
 Both Apple projects include `MusaicMosaic.icon`, preserving the primary Icon Composer
 settings. Android supplies a matching adaptive/legacy icon and disabled launcher alias.
 To add an iOS alternative, add its `.icon` file to Runner's resources and list its

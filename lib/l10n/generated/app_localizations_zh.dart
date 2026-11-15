@@ -34,4 +34,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get retry => '重试';
+
+  @override
+  String get appIconVinyl => '黑胶';
 }

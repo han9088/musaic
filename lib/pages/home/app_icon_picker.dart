@@ -118,12 +118,11 @@ class _AppIconPickerState extends State<AppIconPicker> {
                             excludeFromSemantics: true,
                           ),
                         ),
-                        title: Text(
-                          choice == AppIconChoice.classic
-                              ? l10n.appIconDefault
-                              : l10n.appIconMosaic,
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                        title: Text(switch (choice) {
+                          AppIconChoice.classic => l10n.appIconDefault,
+                          AppIconChoice.mosaic => l10n.appIconMosaic,
+                          AppIconChoice.vinyl => l10n.appIconVinyl,
+                        }, style: const TextStyle(color: Colors.white)),
                         trailing: choice == state.current
                             ? const Icon(
                                 PhosphorIcons.checkBold,

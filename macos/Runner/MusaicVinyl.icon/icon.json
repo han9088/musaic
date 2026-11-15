@@ -1,0 +1,59 @@
+{
+  "fill-specializations": [
+    {
+      "value": "automatic"
+    },
+    {
+      "appearance": "dark",
+      "value": "automatic"
+    }
+  ],
+  "groups": [
+    {
+      "blur-material": null,
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "vinyl.png",
+          "name": "Vinyl",
+          "position-specializations": [
+            {
+              "idiom": "square",
+              "value": {
+                "scale": 1,
+                "translation-in-points": [
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "idiom": "watchOS",
+              "value": {
+                "scale": 1,
+                "translation-in-points": [
+                  0,
+                  0
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}

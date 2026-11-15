@@ -20,7 +20,7 @@ void main() {
             case 'mSupportsAlternateIcons':
               return true;
             case 'mGetAvailableIcons':
-              return <String>['MusaicMosaic'];
+              return <String>['MusaicMosaic', 'MusaicVinyl'];
             case 'mGetAlternateIconName':
               throw PlatformException(code: code);
             default:
@@ -83,7 +83,7 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic'];
+            return <String>['MusaicMosaic', 'MusaicVinyl'];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
@@ -120,7 +120,7 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic'];
+            return <String>['MusaicMosaic', 'MusaicVinyl'];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':

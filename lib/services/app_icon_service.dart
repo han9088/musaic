@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 
 enum AppIconChoice {
   classic(null, 'assets/branding/classic.png'),
-  mosaic('MusaicMosaic', 'assets/branding/mosaic.png');
+  mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
+  vinyl('MusaicVinyl', 'assets/branding/vinyl.png');
 
   const AppIconChoice(this.nativeName, this.previewAsset);
 

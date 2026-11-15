@@ -6,6 +6,8 @@
 	<dict>
 		<key>MusaicMosaic</key>
 		<string>MusaicMosaicPreview</string>
+		<key>MusaicVinyl</key>
+		<string>MusaicVinylPreview</string>
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

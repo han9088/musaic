@@ -7,5 +7,6 @@
   "appIconLoadFailed": "Could not load app icons.",
   "appIconChangeFailed": "Could not change the app icon. Please try again.",
   "appIconUnsupported": "App icon switching is not supported.",
-  "retry": "Retry"
+  "retry": "Retry",
+  "appIconVinyl": "Vinyl"
 }
