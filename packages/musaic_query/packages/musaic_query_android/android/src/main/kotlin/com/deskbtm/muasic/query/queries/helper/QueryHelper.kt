@@ -1,0 +1,244 @@
+package com.deskbtm.muasic.query.queries.helper
+
+import android.content.ContentResolver
+import android.content.ContentUris
+import android.database.Cursor
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import java.io.File
+
+class QueryHelper {
+    // This method will load some extra information about audio/song
+    fun loadSongExtraInfo(uri: Uri, songData: MutableMap<String, Any?>): MutableMap<String, Any?> {
+        val file = File(songData["_data"].toString())
+        songData["_display_name_wo_ext"] = file.nameWithoutExtension
+        songData["file_extension"] = file.extension
+
+        // Prefer the actual audio id when available (playlist/genre members use "audio_id")
+        val idValue =
+            when {
+                songData.containsKey("_id") -> songData["_id"]
+                songData.containsKey("audio_id") -> songData["audio_id"]
+                else -> null
+            }
+
+        if (idValue != null) {
+            val idLong =
+                when (idValue) {
+                    is Number -> idValue.toLong()
+                    is String -> idValue.toLongOrNull() ?: 0L
+                    else -> 0L
+                }
+            val tempUri = ContentUris.withAppendedId(uri, idLong)
+            songData["_uri"] = tempUri.toString()
+        } else {
+            songData["_uri"] = null
+        }
+
+        return songData
+    }
+
+    // This method will separate [String] from [Int]
+    fun loadSongItem(itemProperty: String, cursor: Cursor): Any? {
+        return when (itemProperty) {
+            // Int/Long ids
+            "_id",
+            "album_id",
+            "artist_id",
+            // include audio_id for member queries
+            "audio_id" -> {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    cursor.getLong(cursor.getColumnIndex(itemProperty))
+                } else {
+                    cursor.getInt(cursor.getColumnIndex(itemProperty))
+                }
+            }
+            "_size",
+            "bookmark",
+            "date_added",
+            "date_modified",
+            "duration",
+            "track" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
+            // Boolean
+            "is_alarm",
+            "is_audiobook",
+            "is_music",
+            "is_notification",
+            "is_podcast",
+            "is_ringtone" -> {
+                val value = cursor.getString(cursor.getColumnIndex(itemProperty))
+                if (value == "0") return false
+                return true
+            }
+            // String
+            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+        }
+    }
+
+    // This method will separate [String] from [Int]
+    fun loadAlbumItem(itemProperty: String, cursor: Cursor): Any? {
+        return when (itemProperty) {
+            "_id",
+            "artist_id" -> {
+                // The [album] id from Android >= 30/R is a [Long] instead of [Int].
+                if (Build.VERSION.SDK_INT >= 30) {
+                    cursor.getLong(cursor.getColumnIndex(itemProperty))
+                } else {
+                    cursor.getInt(cursor.getColumnIndex(itemProperty))
+                }
+            }
+            "numsongs" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
+            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+        }
+    }
+
+    // This method will separate [String] from [Int]
+    fun loadPlaylistItem(itemProperty: String, cursor: Cursor): Any? {
+        return when (itemProperty) {
+            "_id",
+            "date_added",
+            "date_modified" -> cursor.getLong(cursor.getColumnIndex(itemProperty))
+            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+        }
+    }
+
+    // This method will separate [String] from [Int]
+    fun loadArtistItem(itemProperty: String, cursor: Cursor): Any? {
+        return when (itemProperty) {
+            "_id" -> {
+                // The [artist] id from Android >= 30/R is a [Long] instead of [Int].
+                if (Build.VERSION.SDK_INT >= 30) {
+                    cursor.getLong(cursor.getColumnIndex(itemProperty))
+                } else {
+                    cursor.getInt(cursor.getColumnIndex(itemProperty))
+                }
+            }
+            "number_of_albums",
+            "number_of_tracks" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
+            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+        }
+    }
+
+    // This method will separate [String] from [Int]
+    fun loadGenreItem(itemProperty: String, cursor: Cursor): Any? {
+        return when (itemProperty) {
+            "_id" -> {
+                // The [genre] id from Android >= 30/R is a [Long] instead of [Int].
+                if (Build.VERSION.SDK_INT >= 30) {
+                    cursor.getLong(cursor.getColumnIndex(itemProperty))
+                } else {
+                    cursor.getInt(cursor.getColumnIndex(itemProperty))
+                }
+            }
+            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+        }
+    }
+
+    fun getMediaCount(type: Int, arg: String, resolver: ContentResolver): Int {
+        val uri: Uri =
+            if (type == 0) {
+                MediaStore.Audio.Genres.Members.getContentUri("external", arg.toLong())
+            } else {
+                MediaStore.Audio.Playlists.Members.getContentUri("external", arg.toLong())
+            }
+        return resolver.query(uri, arrayOf("_id"), null, null, null)?.use { it.count } ?: 0
+    }
+
+    // Ignore the [Data] deprecation because this plugin support older versions.
+    @Suppress("DEPRECATION")
+    fun loadFirstItem(type: Int, id: Number, resolver: ContentResolver): String? {
+
+        // We use almost the same method to 'query' the first item from Song/Album/Artist and we
+        // need to use a different uri when 'querying' from playlist.
+        // If [type] is something different, return null.
+        val selection: String? =
+            when (type) {
+                0 -> MediaStore.Audio.Media._ID + "=?"
+                1 -> MediaStore.Audio.Media.ALBUM_ID + "=?"
+                2 -> null
+                3 -> MediaStore.Audio.Media.ARTIST_ID + "=?"
+                4 -> null
+                else -> return null
+            }
+
+        var dataOrId: String? = null
+        var cursor: Cursor? = null
+        try {
+            // Type 2 or 4 we use a different uri.
+            //
+            // Type 2 == Playlist
+            // Type 4 == Genre
+            //
+            // And the others we use the normal uri.
+            when (true) {
+                (type == 2 && selection == null) -> {
+                    cursor =
+                        resolver.query(
+                            MediaStore.Audio.Playlists.Members.getContentUri(
+                                "external",
+                                id.toLong(),
+                            ),
+                            arrayOf(
+                                MediaStore.Audio.Playlists.Members.DATA,
+                                MediaStore.Audio.Playlists.Members.AUDIO_ID,
+                            ),
+                            null,
+                            null,
+                            null,
+                        )
+                }
+                (type == 4 && selection == null) -> {
+                    cursor =
+                        resolver.query(
+                            MediaStore.Audio.Genres.Members.getContentUri("external", id.toLong()),
+                            arrayOf(
+                                MediaStore.Audio.Genres.Members.DATA,
+                                MediaStore.Audio.Genres.Members.AUDIO_ID,
+                            ),
+                            null,
+                            null,
+                            null,
+                        )
+                }
+                else -> {
+                    cursor =
+                        resolver.query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            arrayOf(MediaStore.Audio.Media.DATA, MediaStore.Audio.Media._ID),
+                            selection,
+                            arrayOf(id.toString()),
+                            null,
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            //            Log.i("on_audio_error", e.toString())
+        }
+
+        cursor?.use {
+            if (it.moveToFirst()) {
+                dataOrId =
+                    if (Build.VERSION.SDK_INT >= 29 && type in 2..4) {
+                        it.getString(1)
+                    } else {
+                        it.getString(0)
+                    }
+            }
+        }
+
+        return dataOrId
+    }
+
+    fun chooseWithFilterType(uri: Uri, itemProperty: String, cursor: Cursor): Any? {
+        return when (uri) {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI -> loadSongItem(itemProperty, cursor)
+            MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI -> loadAlbumItem(itemProperty, cursor)
+            MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI ->
+                loadPlaylistItem(itemProperty, cursor)
+            MediaStore.Audio.Artists.EXTERNAL_CONTENT_URI -> loadArtistItem(itemProperty, cursor)
+            MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI -> loadGenreItem(itemProperty, cursor)
+            else -> null
+        }
+    }
+}

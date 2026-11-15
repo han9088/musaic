@@ -2,7 +2,7 @@
 
 Where Music Becomes Mosaic.
 
-Flutter app for Android, iOS, and macOS with the application ID `com.deskbtm.musaic`.
+Flutter app for Android, iOS, macOS, and Web with the application ID `com.deskbtm.musaic`.
 
 ```sh
 mise install
@@ -39,6 +39,93 @@ mise exec -- flutter build macos --release
 The release app is `build/macos/Build/Products/Release/Musaic.app`. macOS opens the album canvas, including in wide windows. Playback controls
 currently simulate playback. macOS keeps album tick sounds but does not use the
 mobile haptics plugin or device-tilt sensors.
+
+## Web
+
+```sh
+mise exec -- flutter run -d chrome
+python3 scripts/build_pwa.py
+```
+
+Deploy `build/web/` to a static web host. For a subdirectory, build with
+`python3 scripts/build_pwa.py --base-href /your-path/`. Web uses the sample album catalog and simulated
+playback; system music and local directory sources are unavailable. Browser
+audio restrictions may require interaction before album tick sounds can play.
+
+PWA builds bundle the rendering engine locally and generate a versioned offline
+cache. A [custom Flutter bootstrap](https://docs.flutter.dev/platform-integration/web/initialization)
+leaves service-worker registration exclusively to Musaic, avoiding Flutter's legacy
+worker replacing the offline cache on later visits. Serve over HTTPS (localhost also works), then use the browser toolbar install action or the app's Install Musaic button
+(shown when the browser exposes its native install prompt). Safari/iOS uses Add to
+Home Screen instead. Installed standalone windows hide the install button. The first complete cache download requires a connection;
+subsequent launches can use the bundled sample catalog offline. New versions take
+over after all existing app tabs/windows close, avoiding mixed build assets.
+Serve `index.html`, `pwa.js`, and `service-worker.js` with revalidation/no-cache;
+deploy the complete output together. Every downloaded asset is checked against its
+build SHA-256 integrity; an incomplete/mixed deployment rolls back the new cache.
+Upgrades reuse unchanged cached assets instead of downloading the whole bundle.
+The worker does not claim already-loading pages; the first fully cached visit makes
+subsequent navigations available offline. Cache storage may be evicted by the browser.
+The worker caches only this build's files, never external music, API responses or
+user files. `flutter run -d chrome` remains a development build without offline setup.
+
+In Cover Flow, horizontal two-finger trackpad scrolling moves the albums; browser
+inertia is used directly without adding another fling. macOS native trackpad pans
+reuse the existing drag physics. Left/right arrow keys select the previous/next album
+while Cover Flow has focus; modified browser shortcuts and dialogs keep their keys.
+Click Cover Flow to restore focus after using another control. macOS retains its
+canvas default; switch to Cover Flow using the existing layout button.
+
+### Cloudflare deployment
+
+The assets-only Worker is configured in `cloudflare.config.ts` for
+`https://musaic.deskbtm.com` (deployed 2026-11-16). Authenticate with the Cloudflare account that owns
+`deskbtm.com`, then deploy:
+
+```sh
+npx --yes cf@1.0.0-beta.32 auth login
+python3 scripts/build_pwa.py
+npx --yes cf@1.0.0-beta.32 deploy build/web --dry-run
+npx --yes cf@1.0.0-beta.32 deploy build/web
+```
+
+`web/_headers` requires browser cache revalidation. HTML normalization is disabled
+so `/index.html` remains a direct response for the offline integrity check.
+Deployment configuration files are excluded from the PWA manifest; source maps,
+debug symbols and Flutter's legacy worker are excluded from uploads. No backend
+or business database is deployed. Account authorization and an active Cloudflare
+zone are required to bind the custom domain.
+
+Live verification on 2026-11-16 passed HTTPS, direct `/index.html` responses,
+revalidation headers, Chrome installability and the install button, keyboard and
+horizontal scroll, and Chrome offline reload. First-time cache population over the
+validation network exceeded 90 seconds; the full offline bundle is about 39.5 MiB.
+An actual OS installation and mobile hardware were not tested.
+
+### PWA and input validation
+
+```sh
+node --test test/web/pwa_install_test.mjs test/web/pwa_worker_test.mjs
+python3 -m unittest discover -s test/web -p 'test_*.py'
+# Set CHROME_EXECUTABLE to your Chrome executable first:
+node test/web/pwa_browser_smoke.mjs
+```
+
+The browser check runs against `build/web`, checks installability and the actual
+install button, sends keyboard/horizontal scroll events, rejects a mixed deployment,
+verifies an upgrade downloads only its changed asset and preserves the old tab,
+then disables the origin and reloads from the offline cache. It does not install an app on your machine.
+Bundled audio Range requests are served from the cache. Downloads have four workers;
+source maps and debug symbols are excluded (current offline bundle: about 39.5 MiB).
+
+2026-11-16: 176 Flutter tests, ten PWA unit tests, Web/macOS/Android/iOS simulator
+builds and Web hot restart passed. Real headless Chrome also passed installability,
+install-button, keyboard/scroll, mixed-deployment rejection, old-tab isolation,
+upgrade activation and offline-reload checks. With one asset changed, the upgrade
+requested only that asset (85 of 86 assets reused, excluding the worker update check).
+Native Android/iOS input
+is explicitly excluded and covered by touch regression tests. Physical trackpad,
+phone hardware and an installed standalone OS window were not verified.
 
 ## Code structure
 

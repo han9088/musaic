@@ -1,0 +1,35 @@
+PODS:
+  - apple_music_kit_ios (0.1.0):
+    - Flutter
+  - Flutter (1.0.0)
+  - musaic_query_ios (0.0.1):
+    - Flutter
+    - SwiftyBeaver
+  - SwiftyBeaver (2.1.1)
+
+DEPENDENCIES:
+  - apple_music_kit_ios (from `.symlinks/plugins/apple_music_kit_ios/ios`)
+  - Flutter (from `Flutter`)
+  - musaic_query_ios (from `.symlinks/plugins/musaic_query_ios/ios`)
+
+SPEC REPOS:
+  trunk:
+    - SwiftyBeaver
+
+EXTERNAL SOURCES:
+  apple_music_kit_ios:
+    :path: ".symlinks/plugins/apple_music_kit_ios/ios"
+  Flutter:
+    :path: Flutter
+  musaic_query_ios:
+    :path: ".symlinks/plugins/musaic_query_ios/ios"
+
+SPEC CHECKSUMS:
+  apple_music_kit_ios: ee78494f0863b49617b37bb708424d1de80afd42
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  musaic_query_ios: 2267aa3571ab70008c8cf872d5b1cb9883ba8f65
+  SwiftyBeaver: ade157e4f857812e7d7f15f2e3396bb8733f8a1c
+
+PODFILE CHECKSUM: bd29822c3d5baf6b44b726f00ea3293a19339ef2
+
+COCOAPODS: 1.16.2

@@ -1,0 +1,56 @@
+/*
+=============
+Author: Lucas Josino
+Github: https://github.com/LucJosin
+Website: https://www.lucasjosino.com/
+=============
+Plugin/Id: musaic_query#0
+Copyright: © 2021, Lucas Josino. All rights reserved.
+=============
+*/
+
+import 'package:flutter/material.dart';
+import 'package:musaic_query_example/albums_page.dart';
+import 'package:musaic_query_example/artists_page.dart';
+import 'package:musaic_query_example/playlist_page.dart';
+import 'package:musaic_query_example/songs_page.dart';
+
+void main() {
+  runApp(
+    const MaterialApp(
+      home: HomePage(),
+    ),
+  );
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 4,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Music Library'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Songs', icon: Icon(Icons.music_note)),
+              Tab(text: 'Playlists', icon: Icon(Icons.playlist_play)),
+              Tab(text: 'Albums', icon: Icon(Icons.album)),
+              Tab(text: 'Artists', icon: Icon(Icons.person)),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            SongsPage(),
+            PlaylistPage(),
+            AlbumsPage(),
+            ArtistsPage()
+          ],
+        ),
+      ),
+    );
+  }
+}

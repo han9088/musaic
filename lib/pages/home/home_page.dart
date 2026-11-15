@@ -5,8 +5,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'album_artwork.dart';
 import '../../services/album_haptics.dart';
 import '../../services/mock_album_cache.dart';
+import '../../services/music/music_source_controller.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'home_sheet.dart';
 import 'canvas/album_canvas.dart';
 import 'canvas/album_grid_snapshot.dart';
@@ -18,7 +21,9 @@ import 'layout/layout_switch_overlay.dart';
 import 'playback/album_playback.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.albumCache});
+  const HomePage({super.key, required this.albumCache, this.sources});
+
+  final MusicSourceController? sources;
 
   final MockAlbumCache albumCache;
 
@@ -29,6 +34,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _haptics = AlbumHaptics();
   final _playback = AlbumPlayback();
+  late final _sources = widget.sources ?? MusicSourceController();
+  late final VoidCallback _stopSourceListener;
   late final AnimationController _layout;
   late final Animation<double> _layoutProgress;
   bool _hasOrientation = false;
@@ -54,7 +61,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _prepareExpansion() {
     final albums = _catalog;
     final size = _portraitSize;
-    if (albums == null || size == null) return;
+    if (albums == null || albums.isEmpty || size == null) return;
     final snapshot = AlbumGridSnapshot.capture(size, _transform.value);
     if (snapshot.cells.isEmpty) return;
     _gridSnapshot = snapshot;
@@ -74,7 +81,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   void _prepareCollapse() {
     final albums = _flowAlbums ?? _catalog;
-    if (albums == null) return;
+    if (albums == null || albums.isEmpty) return;
     _gridSnapshot ??= AlbumGridSnapshot.capture(
       MediaQuery.sizeOf(context),
       _transform.value,
@@ -135,6 +142,38 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           status == AnimationStatus.dismissed) {
         setState(() {});
       }
+    });
+    _playback.onError = () {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).musicPlaybackFailed),
+        ),
+      );
+    };
+    _stopSourceListener = _sources.catalog.subscribe((albums) {
+      if (!mounted) return;
+      _playback.bind(_sources.provider, albums);
+      setState(() {
+        _albums = albums == null
+            ? _mockAlbums
+            : Future.value([
+                for (final album in albums)
+                  <String, dynamic>{
+                    'asset': album.artworkUrl ?? 'local:${album.reference.id}',
+                    'title': album.title,
+                    'artist': album.artist ?? '',
+                  },
+              ]);
+        _catalog = null;
+        _flowAlbums = null;
+        _gridAlbums.clear();
+        _gridSnapshot = null;
+        _selectedAlbum = null;
+        _flowPosition = 0;
+        _flowTilt = 0;
+        _gridOffset = 0;
+      });
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -220,20 +259,30 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void dispose() {
     unawaited(_haptics.dispose());
+    _stopSourceListener();
     _playback.dispose();
+    if (widget.sources == null) {
+      unawaited(
+        _sources.dispose().catchError((Object error) {
+          debugPrint('Music source disposal failed: $error');
+        }),
+      );
+    }
     _layout.dispose();
     _ticker.dispose();
     _transform.dispose();
     super.dispose();
   }
 
-  late final Future<List<Map<String, dynamic>>> _albums = widget.albumCache
+  late final Future<List<Map<String, dynamic>>> _mockAlbums = widget.albumCache
       .load();
+  late Future<List<Map<String, dynamic>>> _albums = _mockAlbums;
 
   @override
   Widget build(BuildContext context) {
     return HomeSheet(
       enabled: !_landscape,
+      sources: _sources,
       child: Scaffold(
         backgroundColor: const Color(0xff171715),
         body: Builder(
@@ -246,7 +295,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             return LayoutSwitchOverlay(
               coverFlow: _landscape,
               onSwitch: () {
-                if (_catalog == null) return;
+                if (_catalog == null || _catalog!.isEmpty) return;
                 setState(() {
                   _manualLayout = !_landscape;
                   _updateLayout(_manualLayout!);
@@ -261,6 +310,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildAlbums() => FutureBuilder<List<Map<String, dynamic>>>(
+    key: ObjectKey(_albums),
     future: _albums,
     builder: (context, snapshot) {
       if (snapshot.hasError) {
@@ -271,6 +321,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return const Center(child: CircularProgressIndicator());
       }
       _catalog = albums;
+      if (albums.isEmpty) {
+        return Center(
+          child: Text(
+            AppLocalizations.of(context).musicSourceEmpty,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        );
+      }
       if (_layout.isAnimating && _gridSnapshot != null) {
         return AlbumLayoutTransition(
           albums: _flowAlbums ?? albums,
@@ -366,7 +424,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   _selectedAlbum = (row, col);
                                   _selectionPaused = true;
                                 }),
-                                child: Image.asset(
+                                child: albumArtwork(
                                   _albumAt(row, col, albums)['asset'] as String,
                                   fit: BoxFit.cover,
                                   semanticLabel:

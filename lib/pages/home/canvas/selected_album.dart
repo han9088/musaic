@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../album_artwork.dart';
 import '../playback/album_play_button.dart';
 import '../playback/album_playback.dart';
 
@@ -42,7 +43,7 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset(
+          albumArtwork(
             widget.asset,
             fit: BoxFit.cover,
             semanticLabel: widget.title,

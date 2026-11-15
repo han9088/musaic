@@ -41,4 +41,92 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appIconVinylWhite => 'White Label Vinyl';
+
+  @override
+  String get musicSource => 'Music source';
+
+  @override
+  String get musicSourceMock => 'Demo music (Mock)';
+
+  @override
+  String get musicSourceLocal => 'Local music';
+
+  @override
+  String get musicSourceLocalHint =>
+      'Allow access and scan the device music library';
+
+  @override
+  String get musicSourceScanning => 'Authorizing or scanning…';
+
+  @override
+  String get musicSourceRescan => 'Rescan';
+
+  @override
+  String musicSourceAlbumCount(int count) {
+    return '$count albums';
+  }
+
+  @override
+  String get musicSourceDenied =>
+      'Music access was not granted. Source unchanged. Retry or allow access in system settings.';
+
+  @override
+  String get musicSourceRestricted =>
+      'Music library access is restricted. Source unchanged.';
+
+  @override
+  String get musicSourceUnavailable =>
+      'The local music library is not supported on this platform.';
+
+  @override
+  String get musicSourceScanFailed =>
+      'Could not scan or switch music source. Please retry.';
+
+  @override
+  String get musicSourceEmpty => 'No albums in the local music library';
+
+  @override
+  String get musicPlaybackFailed =>
+      'Could not play this local album. Check the file and music access.';
+
+  @override
+  String get musicDirectories => 'Music folders';
+
+  @override
+  String get musicAddDirectory => 'Add folder';
+
+  @override
+  String get musicCancelScan => 'Cancel scan';
+
+  @override
+  String get musicForceRefresh => 'Re-read all metadata';
+
+  @override
+  String get musicReauthorize => 'Restore folder access';
+
+  @override
+  String get musicRemoveDirectory => 'Remove from library';
+
+  @override
+  String get musicScanCancelled =>
+      'Scan cancelled. Saved music is still available.';
+
+  @override
+  String musicScanCounts(
+    int added,
+    int updated,
+    int skipped,
+    int deleted,
+    int failed,
+  ) {
+    return 'Added $added · Updated $updated · Unchanged $skipped · Removed $deleted · Failed $failed';
+  }
+
+  @override
+  String musicFolderSummary(int count, String size) {
+    return '$count audio files · $size';
+  }
+
+  @override
+  String get musicFolderIncomplete => 'Scan incomplete; saved music retained';
 }

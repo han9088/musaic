@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
@@ -48,8 +47,6 @@ void main() {
     testWidgets('bottom handle opens once and dismisses on $platform', (
       tester,
     ) async {
-      debugDefaultTargetPlatformOverride = platform;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       await tester.pumpWidget(
         const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -75,7 +72,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(sheet.isPresented, isFalse);
       await tester.pumpWidget(const SizedBox.shrink());
-    });
+    }, variant: TargetPlatformVariant.only(platform));
   }
 }
 

@@ -9,5 +9,64 @@
   "appIconUnsupported": "App icon switching is not supported.",
   "retry": "Retry",
   "appIconVinyl": "Vinyl",
-  "appIconVinylWhite": "White Label Vinyl"
+  "appIconVinylWhite": "White Label Vinyl",
+  "musicSource": "Music source",
+  "musicSourceMock": "Demo music (Mock)",
+  "musicSourceLocal": "Local music",
+  "musicSourceLocalHint": "Allow access and scan the device music library",
+  "musicSourceScanning": "Authorizing or scanning…",
+  "musicSourceRescan": "Rescan",
+  "musicSourceAlbumCount": "{count} albums",
+  "musicSourceDenied": "Music access was not granted. Source unchanged. Retry or allow access in system settings.",
+  "musicSourceRestricted": "Music library access is restricted. Source unchanged.",
+  "musicSourceUnavailable": "The local music library is not supported on this platform.",
+  "musicSourceScanFailed": "Could not scan or switch music source. Please retry.",
+  "musicSourceEmpty": "No albums in the local music library",
+  "musicPlaybackFailed": "Could not play this local album. Check the file and music access.",
+  "@musicSourceAlbumCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "musicDirectories": "Music folders",
+  "musicAddDirectory": "Add folder",
+  "musicCancelScan": "Cancel scan",
+  "musicForceRefresh": "Re-read all metadata",
+  "musicReauthorize": "Restore folder access",
+  "musicRemoveDirectory": "Remove from library",
+  "musicScanCancelled": "Scan cancelled. Saved music is still available.",
+  "musicScanCounts": "Added {added} · Updated {updated} · Unchanged {skipped} · Removed {deleted} · Failed {failed}",
+  "@musicScanCounts": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "updated": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      },
+      "deleted": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "musicFolderSummary": "{count} audio files · {size}",
+  "musicFolderIncomplete": "Scan incomplete; saved music retained",
+  "@musicFolderSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  }
 }

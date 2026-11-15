@@ -14,23 +14,31 @@ dependencies:
     sdk: flutter
   apple_music_kit:
     path: ../apple_music_kit/packages/apple_music_kit
-  material_ui: ^1.5.0
-  signals_flutter: ^7.1.0
-  go_router: ^18.0.2
-  flex_color_scheme: ^9.0.0
-  talker_flutter: ^5.1.20
-  talker_dio_logger: ^5.1.20
-  google_fonts: ^9.0.0
-  phosphoricons_flutter: ^1.0.0
-  pulsar_haptics: ^0.1.1
-  audioplayers: ^6.8.1
-  sensors_plus: ^7.1.1
-  dynamic_app_icon_flutter_plus: ^2.2.1
+  material_ui: 1.11.0
+  signals_flutter: 7.1.0
+  go_router: 18.1.4
+  flex_color_scheme: 9.0.0
+  talker_flutter: 5.2.0
+  talker_dio_logger: 5.2.0
+  google_fonts: 9.0.0
+  phosphoricons_flutter: 1.1.1
+  pulsar_haptics: 0.1.1
+  audioplayers: 6.8.1
+  sensors_plus: 7.1.1
+  dynamic_app_icon_flutter_plus: 2.2.1
+  sqflite: ^2.4.6
+  musaic_query:
+    path: packages/musaic_query/packages/musaic_query
+
+dependency_overrides:
+  audioplayers_android:
+    path: packages/audioplayers_android
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.4.7
 flutter:
   generate: true
   uses-material-design: true

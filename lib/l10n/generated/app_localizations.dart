@@ -159,6 +159,150 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'白标黑胶'**
   String get appIconVinylWhite;
+
+  /// No description provided for @musicSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'音乐源'**
+  String get musicSource;
+
+  /// No description provided for @musicSourceMock.
+  ///
+  /// In zh, this message translates to:
+  /// **'示例音乐（Mock）'**
+  String get musicSourceMock;
+
+  /// No description provided for @musicSourceLocal.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地音乐'**
+  String get musicSourceLocal;
+
+  /// No description provided for @musicSourceLocalHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'授权并扫描设备音乐资料库'**
+  String get musicSourceLocalHint;
+
+  /// No description provided for @musicSourceScanning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在授权或扫描…'**
+  String get musicSourceScanning;
+
+  /// No description provided for @musicSourceRescan.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新扫描'**
+  String get musicSourceRescan;
+
+  /// No description provided for @musicSourceAlbumCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 张专辑'**
+  String musicSourceAlbumCount(int count);
+
+  /// No description provided for @musicSourceDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'未获得音乐库权限，音乐源未切换。可重试或前往系统设置开启权限。'**
+  String get musicSourceDenied;
+
+  /// No description provided for @musicSourceRestricted.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统限制访问音乐库，音乐源未切换。'**
+  String get musicSourceRestricted;
+
+  /// No description provided for @musicSourceUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台暂不支持本地音乐库。'**
+  String get musicSourceUnavailable;
+
+  /// No description provided for @musicSourceScanFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描或切换失败，请重试。'**
+  String get musicSourceScanFailed;
+
+  /// No description provided for @musicSourceEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地音乐库暂无专辑'**
+  String get musicSourceEmpty;
+
+  /// No description provided for @musicPlaybackFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法播放此本地专辑，请检查文件和访问权限。'**
+  String get musicPlaybackFailed;
+
+  /// No description provided for @musicDirectories.
+  ///
+  /// In zh, this message translates to:
+  /// **'音乐文件夹'**
+  String get musicDirectories;
+
+  /// No description provided for @musicAddDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加文件夹'**
+  String get musicAddDirectory;
+
+  /// No description provided for @musicCancelScan.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消扫描'**
+  String get musicCancelScan;
+
+  /// No description provided for @musicForceRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新读取全部标签'**
+  String get musicForceRefresh;
+
+  /// No description provided for @musicReauthorize.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新授权文件夹'**
+  String get musicReauthorize;
+
+  /// No description provided for @musicRemoveDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'从音乐库移除'**
+  String get musicRemoveDirectory;
+
+  /// No description provided for @musicScanCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描已取消，已保存的音乐仍可浏览。'**
+  String get musicScanCancelled;
+
+  /// No description provided for @musicScanCounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增 {added} · 更新 {updated} · 未变 {skipped} · 移除 {deleted} · 失败 {failed}'**
+  String musicScanCounts(
+    int added,
+    int updated,
+    int skipped,
+    int deleted,
+    int failed,
+  );
+
+  /// No description provided for @musicFolderSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 首音频 · {size}'**
+  String musicFolderSummary(int count, String size);
+
+  /// No description provided for @musicFolderIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描未完成，已保留缓存'**
+  String get musicFolderIncomplete;
 }
 
 class _AppLocalizationsDelegate

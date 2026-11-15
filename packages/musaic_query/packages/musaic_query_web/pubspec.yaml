@@ -1,0 +1,42 @@
+# ========
+# author: Lucas Josino
+# github: https://github.com/LucJosin
+# website: https://www.lucasjosino.com/
+# ========
+name: musaic_query_web
+publish_to: none
+description: The web implementation of [musaic_query].
+version: 1.6.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  # musaic_query
+  musaic_query_platform_interface:
+    path: ../musaic_query_platform_interface
+
+  # Others
+  path: ^1.8.0
+  id3: ^1.0.2
+
+  # Flutter
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+
+dev_dependencies:
+  # Flutter
+  flutter_lints: ^1.0.4
+  flutter_test:
+    sdk: flutter
+
+# The following section is specific to Flutter.
+flutter:
+  plugin:
+    platforms:
+      web:
+        pluginClass: MusaicQueryPlugin
+        fileName: musaic_query_web.dart

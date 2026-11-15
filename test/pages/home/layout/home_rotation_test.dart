@@ -93,9 +93,12 @@ void main() {
         await tester.tapAt(const Offset(150, 250));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
-        await tester.tap(find.byType(AlbumPlayButton));
+        await tester.tap(find.byType(AlbumPlayButton).hitTestable());
         await tester.pump();
-        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+        expect(
+          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
+          findsOneWidget,
+        );
         tester.view.physicalSize = const Size(800, 400);
         await tester.pump();
         if (!reduced) {
@@ -121,13 +124,16 @@ void main() {
         final flow = tester.widget<AlbumCoverFlow>(find.byType(AlbumCoverFlow));
         expect(flow.playback!.playing, isTrue);
         final button = tester.widget<AlbumPlayButton>(
-          find.byType(AlbumPlayButton),
+          find.byType(AlbumPlayButton).hitTestable(),
         );
         if (flow.playback!.isPlaying(button.asset, button.title)) {
-          await tester.tap(find.byType(AlbumPlayButton));
+          await tester.tap(find.byType(AlbumPlayButton).hitTestable());
           await tester.pump();
         }
-        expect(find.byIcon(PhosphorIcons.playFill), findsOneWidget);
+        expect(
+          find.byIcon(PhosphorIcons.playFill).hitTestable(),
+          findsOneWidget,
+        );
         final next = flow.initialPosition.round() + 1;
         final title = flow.albums[next % flow.albums.length]['title'] as String;
         if (!reduced) {
@@ -135,14 +141,20 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.text(title), findsOneWidget);
         }
-        await tester.tap(find.byType(AlbumPlayButton));
+        await tester.tap(find.byType(AlbumPlayButton).hitTestable());
         await tester.pump();
-        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+        expect(
+          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
+          findsOneWidget,
+        );
         tester.view.physicalSize = const Size(400, 800);
         await tester.pump();
         if (!reduced) await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(InteractiveViewer), findsOneWidget);
-        expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+        expect(
+          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
+          findsOneWidget,
+        );
         expect(handle, 10);
         expect(calls.where((c) => c == 'PatternComposer_release'), isEmpty);
         await tester.pumpWidget(const SizedBox());

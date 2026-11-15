@@ -40,4 +40,85 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appIconVinylWhite => '白标黑胶';
+
+  @override
+  String get musicSource => '音乐源';
+
+  @override
+  String get musicSourceMock => '示例音乐（Mock）';
+
+  @override
+  String get musicSourceLocal => '本地音乐';
+
+  @override
+  String get musicSourceLocalHint => '授权并扫描设备音乐资料库';
+
+  @override
+  String get musicSourceScanning => '正在授权或扫描…';
+
+  @override
+  String get musicSourceRescan => '重新扫描';
+
+  @override
+  String musicSourceAlbumCount(int count) {
+    return '$count 张专辑';
+  }
+
+  @override
+  String get musicSourceDenied => '未获得音乐库权限，音乐源未切换。可重试或前往系统设置开启权限。';
+
+  @override
+  String get musicSourceRestricted => '系统限制访问音乐库，音乐源未切换。';
+
+  @override
+  String get musicSourceUnavailable => '当前平台暂不支持本地音乐库。';
+
+  @override
+  String get musicSourceScanFailed => '扫描或切换失败，请重试。';
+
+  @override
+  String get musicSourceEmpty => '本地音乐库暂无专辑';
+
+  @override
+  String get musicPlaybackFailed => '无法播放此本地专辑，请检查文件和访问权限。';
+
+  @override
+  String get musicDirectories => '音乐文件夹';
+
+  @override
+  String get musicAddDirectory => '添加文件夹';
+
+  @override
+  String get musicCancelScan => '取消扫描';
+
+  @override
+  String get musicForceRefresh => '重新读取全部标签';
+
+  @override
+  String get musicReauthorize => '重新授权文件夹';
+
+  @override
+  String get musicRemoveDirectory => '从音乐库移除';
+
+  @override
+  String get musicScanCancelled => '扫描已取消，已保存的音乐仍可浏览。';
+
+  @override
+  String musicScanCounts(
+    int added,
+    int updated,
+    int skipped,
+    int deleted,
+    int failed,
+  ) {
+    return '新增 $added · 更新 $updated · 未变 $skipped · 移除 $deleted · 失败 $failed';
+  }
+
+  @override
+  String musicFolderSummary(int count, String size) {
+    return '$count 首音频 · $size';
+  }
+
+  @override
+  String get musicFolderIncomplete => '扫描未完成，已保留缓存';
 }

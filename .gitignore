@@ -26,3 +26,9 @@ lib/config/env.g.dart
 *.p12
 *.mobileprovision
 android/key.properties
+
+# Python build and test helpers
+__pycache__/
+
+# Cloudflare generated deployment output
+.cloudflare/

@@ -13,6 +13,7 @@ analyzer:
     - ios/**
     - packages/**
     - macos/**
+    - web/**
 
 linter:
   rules:

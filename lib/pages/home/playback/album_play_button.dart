@@ -19,15 +19,17 @@ class AlbumPlayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: playback,
-    builder: (context, child) => Center(
-      child: GlassIconButton(
-        diameter: diameter,
-        label: '${playback.isPlaying(asset, title) ? '暂停' : '播放'} $title',
-        icon: playback.isPlaying(asset, title)
-            ? PhosphorIcons.pauseFill
-            : PhosphorIcons.playFill,
-        onPressed: () => playback.toggle(asset, title),
-      ),
-    ),
+    builder: (context, child) => !playback.supportsPlayback
+        ? const SizedBox.shrink()
+        : Center(
+            child: GlassIconButton(
+              diameter: diameter,
+              label: '${playback.isPlaying(asset, title) ? '暂停' : '播放'} $title',
+              icon: playback.isPlaying(asset, title)
+                  ? PhosphorIcons.pauseFill
+                  : PhosphorIcons.playFill,
+              onPressed: () => playback.toggle(asset, title),
+            ),
+          ),
   );
 }

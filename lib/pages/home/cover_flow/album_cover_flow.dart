@@ -5,6 +5,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../album_artwork.dart';
+import 'cover_flow_input.dart';
 import '../../../services/album_haptics.dart';
 import '../playback/album_play_button.dart';
 import '../playback/album_playback.dart';
@@ -85,8 +87,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     final previous = _lastShortSwipe;
     if (time == null ||
         previous == null ||
-        _dragDistance.sign != _shortSwipeDirection)
+        _dragDistance.sign != _shortSwipeDirection) {
       return false;
+    }
     final interval = time - previous;
     return interval > Duration.zero && interval <= _rapidSwipeInterval;
   }
@@ -193,7 +196,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   }
 
   Widget _image(Map<String, dynamic> album, double size) {
-    return Image.asset(
+    return albumArtwork(
       album['asset'] as String,
       width: size,
       height: size,
@@ -247,151 +250,175 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                 label: '${selected['artist']}, ${selected['title']}',
                 onIncrease: () => _settle(_position.roundToDouble() + 1),
                 onDecrease: () => _settle(_position.roundToDouble() - 1),
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onHorizontalDragStart: (details) {
-                    _dragging = true;
-                    _dragDistance = 0;
-                    _gestureTilt = _tilt;
-                    if (_target != null) _velocity = 0;
-                    _target = null;
-                    _lastDrag = details.sourceTimeStamp;
-                    _wake();
-                  },
-                  onHorizontalDragUpdate: (details) {
-                    final delta = -details.delta.dx * _dragSensitivity / stride;
-                    final time = details.sourceTimeStamp;
-                    final previous = _lastDrag;
+                child: CoverFlowInput(
+                  canStartInput: () => !_dragging,
+                  onScroll: (delta) {
                     setState(() {
-                      _position += delta;
-                      _dragDistance += details.delta.dx;
-                      final rapidSwipes =
-                          _shortSwipeCount >= 2 &&
-                          _dragDistance.abs() >= _shortSwipeMinDistance &&
-                          _continuesShortSwipes(time);
-                      if (_gestureTilt != 0) {
-                        if (details.delta.dx != 0 &&
-                            (details.delta.dx * _gestureTilt < 0 ||
-                                _dragDistance.abs() > _tiltDeadZone ||
-                                rapidSwipes)) {
-                          _gestureTilt = details.delta.dx.sign * _maxTilt;
-                        }
-                      } else if (_dragDistance.abs() > _tiltDeadZone ||
-                          rapidSwipes) {
-                        _gestureTilt = _dragDistance.sign * _maxTilt;
-                      }
-                      if (time != null && previous != null && time > previous) {
-                        final dt = (time - previous).inMicroseconds / 1000000;
-                        final dragVelocity = delta / dt;
-                        _velocity =
-                            (_velocity * dragVelocity < 0
-                                    ? dragVelocity
-                                    : _velocity * 0.35 + dragVelocity * 0.65)
-                                .clamp(-12.0, 12.0);
-                      }
+                      _dragging = true;
+                      _target = null;
+                      _velocity = 0;
+                      _gestureTilt = 0;
+                      _position += delta * _dragSensitivity / stride;
                     });
-                    _lastDrag = time;
-                  },
-                  onHorizontalDragEnd: (details) {
-                    _dragging = false;
-                    if (_dragDistance.abs() >= _shortSwipeMinDistance &&
-                        _dragDistance.abs() <= _tiltDeadZone) {
-                      _shortSwipeCount = _continuesShortSwipes(_lastDrag)
-                          ? (_shortSwipeCount + 1).clamp(1, 3)
-                          : 1;
-                      _lastShortSwipe = _lastDrag;
-                      _shortSwipeDirection = _dragDistance.sign;
-                    } else {
-                      _shortSwipeCount = 0;
-                      _lastShortSwipe = null;
-                    }
-                    final releaseVelocity =
-                        (-details.velocity.pixelsPerSecond.dx *
-                                _dragSensitivity /
-                                stride)
-                            .clamp(-12.0, 12.0);
-                    // Keep recent motion when the release estimate points backwards.
-                    if (_velocity * releaseVelocity >= 0) {
-                      _velocity = releaseVelocity == 0
-                          ? 0
-                          : _velocity * 0.65 + releaseVelocity * 0.35;
-                    }
-                    final now = _lastDrag;
-                    final previousRelease = _lastReleaseTime;
-                    final interval = previousRelease == null || now == null
-                        ? 1.0
-                        : (now - previousRelease).inMicroseconds / 1000000;
-                    final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
-                    _coastGain =
-                        _velocity.abs() >= 0.35 &&
-                            _velocity.sign == _lastReleaseDirection
-                        ? 1 + (_coastGain * 0.35 + 0.3) * cadence
-                        : 1;
-                    _lastReleaseTime = now;
-                    _lastReleaseDirection = _velocity.sign;
-                    if (_velocity.abs() < 0.35) {
-                      _settle(_position.roundToDouble());
-                    }
                     _wake();
                   },
-                  onHorizontalDragCancel: () {
-                    _shortSwipeCount = 0;
-                    _lastShortSwipe = null;
+                  onScrollEnd: () {
                     _dragging = false;
                     _settle(_position.roundToDouble());
                   },
-                  child: Stack(
-                    clipBehavior: Clip.hardEdge,
-                    children: [
-                      Positioned.fill(
-                        child: Transform(
-                          key: const ValueKey('cover-flow-plane'),
-                          alignment: const Alignment(0, 0.04),
-                          transform: plane,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              for (final index in indices)
-                                _cover(
-                                  index,
-                                  widths[index]!,
-                                  centers[index]! - anchor,
-                                  constraints,
-                                ),
-                            ],
+                  onStep: (direction) {
+                    _velocity = 0;
+                    _settle((_target ?? _position.roundToDouble()) + direction);
+                  },
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (details) {
+                      _dragging = true;
+                      _dragDistance = 0;
+                      _gestureTilt = _tilt;
+                      if (_target != null) _velocity = 0;
+                      _target = null;
+                      _lastDrag = details.sourceTimeStamp;
+                      _wake();
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      final delta =
+                          -details.delta.dx * _dragSensitivity / stride;
+                      final time = details.sourceTimeStamp;
+                      final previous = _lastDrag;
+                      setState(() {
+                        _position += delta;
+                        _dragDistance += details.delta.dx;
+                        final rapidSwipes =
+                            _shortSwipeCount >= 2 &&
+                            _dragDistance.abs() >= _shortSwipeMinDistance &&
+                            _continuesShortSwipes(time);
+                        if (_gestureTilt != 0) {
+                          if (details.delta.dx != 0 &&
+                              (details.delta.dx * _gestureTilt < 0 ||
+                                  _dragDistance.abs() > _tiltDeadZone ||
+                                  rapidSwipes)) {
+                            _gestureTilt = details.delta.dx.sign * _maxTilt;
+                          }
+                        } else if (_dragDistance.abs() > _tiltDeadZone ||
+                            rapidSwipes) {
+                          _gestureTilt = _dragDistance.sign * _maxTilt;
+                        }
+                        if (time != null &&
+                            previous != null &&
+                            time > previous) {
+                          final dt = (time - previous).inMicroseconds / 1000000;
+                          final dragVelocity = delta / dt;
+                          _velocity =
+                              (_velocity * dragVelocity < 0
+                                      ? dragVelocity
+                                      : _velocity * 0.35 + dragVelocity * 0.65)
+                                  .clamp(-12.0, 12.0);
+                        }
+                      });
+                      _lastDrag = time;
+                    },
+                    onHorizontalDragEnd: (details) {
+                      _dragging = false;
+                      if (_dragDistance.abs() >= _shortSwipeMinDistance &&
+                          _dragDistance.abs() <= _tiltDeadZone) {
+                        _shortSwipeCount = _continuesShortSwipes(_lastDrag)
+                            ? (_shortSwipeCount + 1).clamp(1, 3)
+                            : 1;
+                        _lastShortSwipe = _lastDrag;
+                        _shortSwipeDirection = _dragDistance.sign;
+                      } else {
+                        _shortSwipeCount = 0;
+                        _lastShortSwipe = null;
+                      }
+                      final releaseVelocity =
+                          (-details.velocity.pixelsPerSecond.dx *
+                                  _dragSensitivity /
+                                  stride)
+                              .clamp(-12.0, 12.0);
+                      // Keep recent motion when the release estimate points backwards.
+                      if (_velocity * releaseVelocity >= 0) {
+                        _velocity = releaseVelocity == 0
+                            ? 0
+                            : _velocity * 0.65 + releaseVelocity * 0.35;
+                      }
+                      final now = _lastDrag;
+                      final previousRelease = _lastReleaseTime;
+                      final interval = previousRelease == null || now == null
+                          ? 1.0
+                          : (now - previousRelease).inMicroseconds / 1000000;
+                      final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
+                      _coastGain =
+                          _velocity.abs() >= 0.35 &&
+                              _velocity.sign == _lastReleaseDirection
+                          ? 1 + (_coastGain * 0.35 + 0.3) * cadence
+                          : 1;
+                      _lastReleaseTime = now;
+                      _lastReleaseDirection = _velocity.sign;
+                      if (_velocity.abs() < 0.35) {
+                        _settle(_position.roundToDouble());
+                      }
+                      _wake();
+                    },
+                    onHorizontalDragCancel: () {
+                      _shortSwipeCount = 0;
+                      _lastShortSwipe = null;
+                      _dragging = false;
+                      _settle(_position.roundToDouble());
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        Positioned.fill(
+                          child: Transform(
+                            key: const ValueKey('cover-flow-plane'),
+                            alignment: const Alignment(0, 0.04),
+                            transform: plane,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                for (final index in indices)
+                                  _cover(
+                                    index,
+                                    widths[index]!,
+                                    centers[index]! - anchor,
+                                    constraints,
+                                  ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        top: 6,
-                        left: 20,
-                        right: 20,
-                        child: IgnorePointer(
-                          child: Column(
-                            children: [
-                              Text(
-                                selected['artist'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Color(0xffbfc6ce),
-                                  fontSize: 12,
+                        Positioned(
+                          top: 6,
+                          left: 20,
+                          right: 20,
+                          child: IgnorePointer(
+                            child: Column(
+                              children: [
+                                Text(
+                                  selected['artist'] as String,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xffbfc6ce),
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                selected['title'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                                Text(
+                                  selected['title'] as String,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );

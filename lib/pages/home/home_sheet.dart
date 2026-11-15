@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../services/app_icon_service.dart';
 import 'app_icon_picker.dart';
+import 'music_source_picker.dart';
+import '../../services/music/music_source_controller.dart';
 
 class HomeSheet extends StatefulWidget {
   const HomeSheet({
@@ -13,11 +15,13 @@ class HomeSheet extends StatefulWidget {
     required this.child,
     this.icons = const AppIconService(),
     this.enabled = true,
+    this.sources,
   });
 
   final Widget child;
   final AppIconService icons;
   final bool enabled;
+  final MusicSourceController? sources;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -37,8 +41,11 @@ class _HomeSheetState extends State<HomeSheet> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    if (!widget.enabled || _open || MediaQuery.accessibleNavigationOf(context))
+    if (!widget.enabled ||
+        _open ||
+        MediaQuery.accessibleNavigationOf(context)) {
       return;
+    }
     _hideTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) setState(() => _visible = false);
     });
@@ -79,7 +86,15 @@ class _HomeSheetState extends State<HomeSheet> {
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     DeskBottomSheet.of(context).present(
-      BottomSheetScrollView(child: AppIconPicker(icons: widget.icons)),
+      BottomSheetScrollView(
+        child: Column(
+          children: [
+            if (widget.sources case final sources?)
+              MusicSourcePicker(sources: sources),
+            AppIconPicker(icons: widget.icons),
+          ],
+        ),
+      ),
       BottomSheetOptions(
         mode: BottomSheetMode.push,
         pushDirection: PushDirection.bottom,
@@ -150,8 +165,9 @@ class _HomeSheetState extends State<HomeSheet> {
                             if (_dragUp >= 36) _present();
                           },
                           onVerticalDragEnd: (details) {
-                            if ((details.primaryVelocity ?? 0) <= -200)
+                            if ((details.primaryVelocity ?? 0) <= -200) {
                               _present();
+                            }
                             _dragUp = 0;
                           },
                           onVerticalDragCancel: () => _dragUp = 0,
