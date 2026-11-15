@@ -8,6 +8,19 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test(
+    'large catalogs have bounded warmup and duplicate covers load once',
+    () async {
+      final cache = _LargeCatalog();
+      final images = <ImageProvider>[];
+      await cache.warmImages((image) async => images.add(image));
+      expect(images.length, 16);
+      expect(images.toSet().length, 16);
+      await cache.warmImages((image) async => images.add(image));
+      expect(images.length, 16);
+    },
+  );
+
+  test(
     'catalog and all covers are reused; clear permits warming again',
     () async {
       final cache = MockAlbumCache();
@@ -46,4 +59,14 @@ void main() {
       expect(count, 1);
     },
   );
+}
+
+class _LargeCatalog extends MockAlbumCache {
+  final _albums = List.generate(
+    100000,
+    (index) => <String, dynamic>{'asset': 'assets/albums/${index ~/ 2}.jpg'},
+  );
+
+  @override
+  Future<List<Map<String, dynamic>>> load() async => _albums;
 }

@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
 class MockAlbumCache {
+  static const _warmupLimit = 32;
   Future<List<Map<String, dynamic>>>? _catalog;
   Future<void>? _warming;
   int _generation = 0;
@@ -22,9 +23,12 @@ class MockAlbumCache {
     Future<void> Function(ImageProvider) precache,
     int generation,
   ) async {
-    for (final album in await load()) {
+    final warmed = <String>{};
+    // The image cache loads the remaining covers on demand as they enter view.
+    for (final album in (await load()).take(_warmupLimit)) {
       if (generation != _generation) return;
-      await precache(AssetImage(album['asset'] as String));
+      final asset = album['asset'] as String;
+      if (warmed.add(asset)) await precache(AssetImage(asset));
     }
   }
 

@@ -62,9 +62,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       for (final cell in snapshot.cells)
         _albumAt(cell.row, cell.column, albums),
     ];
+    final visibleAlbums = visible.toSet();
     _flowAlbums = [
       ...visible,
-      ...albums.where((album) => !visible.contains(album)),
+      ...albums.where((album) => !visibleAlbums.contains(album)),
     ];
     _flowPosition = snapshot.focus.toDouble();
     _flowTilt = 0;
