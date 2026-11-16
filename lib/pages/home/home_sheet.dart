@@ -17,12 +17,16 @@ class HomeSheet extends StatefulWidget {
     this.icons = const AppIconService(),
     this.enabled = true,
     this.sources,
+    this.sourceSwitching,
+    this.onSourceSelection,
   });
 
   final Widget child;
   final AppIconService icons;
   final bool enabled;
   final MusicSourceController? sources;
+  final ValueListenable<bool>? sourceSwitching;
+  final Future<void> Function(Future<void> Function())? onSourceSelection;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -30,6 +34,8 @@ class HomeSheet extends StatefulWidget {
 
 class _HomeSheetState extends State<HomeSheet> {
   bool _open = false;
+  bool _sourceSelectionPending = false;
+  Completer<void>? _sourceSheetDismissed;
   double _dragUp = 0;
   Timer? _hideTimer;
   bool _visible = true;
@@ -78,6 +84,8 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    final dismissed = _sourceSheetDismissed;
+    if (dismissed != null && !dismissed.isCompleted) dismissed.complete();
     super.dispose();
   }
 
@@ -91,7 +99,11 @@ class _HomeSheetState extends State<HomeSheet> {
         child: Column(
           children: [
             if (widget.sources case final sources?)
-              MusicSourcePicker(sources: sources),
+              MusicSourcePicker(
+                sources: sources,
+                sourceSwitching: widget.sourceSwitching,
+                onSourceSelection: _selectSource,
+              ),
             if (kIsWeb) const FullscreenControl(),
             AppIconPicker(icons: widget.icons),
           ],
@@ -111,6 +123,10 @@ class _HomeSheetState extends State<HomeSheet> {
         enableContentPanningGesture: true,
         showHandle: true,
         onDismiss: () {
+          final dismissed = _sourceSheetDismissed;
+          if (dismissed != null && !dismissed.isCompleted) {
+            dismissed.complete();
+          }
           if (mounted) {
             setState(() => _open = false);
             _reveal();
@@ -119,6 +135,30 @@ class _HomeSheetState extends State<HomeSheet> {
       ),
     );
     setState(() => _open = true);
+  }
+
+  Future<void> _selectSource(Future<void> Function() select) async {
+    if (_sourceSelectionPending) return;
+    _sourceSelectionPending = true;
+    try {
+      if (_open) {
+        final dismissed = Completer<void>();
+        _sourceSheetDismissed = dismissed;
+        DeskBottomSheet.of(context).dismiss();
+        await dismissed.future;
+        _sourceSheetDismissed = null;
+      }
+      if (!mounted) return;
+      final onSourceSelection = widget.onSourceSelection;
+      if (onSourceSelection == null) {
+        await select();
+      } else {
+        await onSourceSelection(select);
+      }
+    } finally {
+      _sourceSheetDismissed = null;
+      _sourceSelectionPending = false;
+    }
   }
 
   @override

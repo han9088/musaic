@@ -48,6 +48,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get musicSourceMock => '示例音乐（Mock）';
 
   @override
+  String get musicSourceMock2 => '示例音乐（Mock 2）';
+
+  @override
   String get musicSourceLocal => '本地音乐';
 
   @override

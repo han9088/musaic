@@ -49,6 +49,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicSourceMock => 'Demo music (Mock)';
 
   @override
+  String get musicSourceMock2 => 'Demo music (Mock 2)';
+
+  @override
   String get musicSourceLocal => 'Local music';
 
   @override

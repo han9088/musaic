@@ -50,7 +50,12 @@ void main() {
     );
     expect(sources.catalog.value, isNull);
     expect(creations, 0);
+    await sources.selectMock2();
+    expect(sources.catalog.value, isNull);
+    expect(sources.mock2Selected.value, isTrue);
+    expect(creations, 0);
     await sources.selectMock();
+    expect(sources.mock2Selected.value, isFalse);
     expect(creations, 0);
     await sources.dispose();
   });

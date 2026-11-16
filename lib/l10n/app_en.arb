@@ -12,6 +12,7 @@
   "appIconVinylWhite": "White Label Vinyl",
   "musicSource": "Music source",
   "musicSourceMock": "Demo music (Mock)",
+  "musicSourceMock2": "Demo music (Mock 2)",
   "musicSourceLocal": "Local music",
   "musicSourceLocalHint": "Allow access and scan the device music library",
   "musicSourceScanning": "Authorizing or scanning…",

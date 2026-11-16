@@ -172,6 +172,12 @@ abstract class AppLocalizations {
   /// **'示例音乐（Mock）'**
   String get musicSourceMock;
 
+  /// No description provided for @musicSourceMock2.
+  ///
+  /// In zh, this message translates to:
+  /// **'示例音乐（Mock 2）'**
+  String get musicSourceMock2;
+
   /// No description provided for @musicSourceLocal.
   ///
   /// In zh, this message translates to:

@@ -12,6 +12,7 @@
   "appIconVinylWhite": "白标黑胶",
   "musicSource": "音乐源",
   "musicSourceMock": "示例音乐（Mock）",
+  "musicSourceMock2": "示例音乐（Mock 2）",
   "musicSourceLocal": "本地音乐",
   "musicSourceLocalHint": "授权并扫描设备音乐资料库",
   "musicSourceScanning": "正在授权或扫描…",

@@ -10,13 +10,15 @@ import 'music_provider.dart';
 
 enum MusicSourceProblem { denied, restricted, unavailable, scanFailed }
 
-/// Null catalog means mock. A source change is committed only after a full scan.
+/// Null catalog means a bundled demo source; mock2Selected distinguishes them.
+/// A library source change is committed only after a full scan.
 final class MusicSourceController {
   MusicSourceController({MusicProvider Function()? createLocal})
     : _createLocal = createLocal ?? LocalMusicProvider.new;
 
   final MusicProvider Function() _createLocal;
   final catalog = signal<List<ProviderAlbum>?>(null);
+  final mock2Selected = signal(false);
   final busy = signal(false);
   final problem = signal<MusicSourceProblem?>(null);
   MusicProvider? _provider;
@@ -66,6 +68,7 @@ final class MusicSourceController {
       directorySelected.value = true;
       await library.index.setSelected(true);
       if (_disposed) return;
+      mock2Selected.value = false;
       _publishDirectories();
       await library.refresh();
     } catch (_) {
@@ -114,6 +117,7 @@ final class MusicSourceController {
       directorySelected.value = false;
       await directories?.index.setSelected(false);
       if (_disposed) return;
+      mock2Selected.value = false;
       _provider = candidate;
       candidate = null;
       catalog.value = List<ProviderAlbum>.unmodifiable(albums);
@@ -129,7 +133,11 @@ final class MusicSourceController {
     }
   }
 
-  Future<void> selectMock() async {
+  Future<void> selectMock() => _selectMock(mock2: false);
+
+  Future<void> selectMock2() => _selectMock(mock2: true);
+
+  Future<void> _selectMock({required bool mock2}) async {
     if (_disposed || busy.value) return;
     _selectionTouched = true;
     busy.value = true;
@@ -140,6 +148,7 @@ final class MusicSourceController {
       directorySelected.value = false;
       await directories?.index.setSelected(false);
       if (_disposed) return;
+      mock2Selected.value = mock2;
       catalog.value = null;
       problem.value = null;
     } catch (_) {
@@ -160,6 +169,7 @@ final class MusicSourceController {
       await _provider?.dispose();
     } finally {
       catalog.dispose();
+      mock2Selected.dispose();
       busy.dispose();
       problem.dispose();
     }
