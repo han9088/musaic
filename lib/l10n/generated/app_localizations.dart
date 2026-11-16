@@ -303,6 +303,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'扫描未完成，已保留缓存'**
   String get musicFolderIncomplete;
+
+  /// No description provided for @enterFullscreen.
+  ///
+  /// In zh, this message translates to:
+  /// **'进入全屏'**
+  String get enterFullscreen;
+
+  /// No description provided for @exitFullscreen.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出全屏'**
+  String get exitFullscreen;
+
+  /// No description provided for @fullscreenFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法切换全屏，请重试。'**
+  String get fullscreenFailed;
 }
 
 class _AppLocalizationsDelegate

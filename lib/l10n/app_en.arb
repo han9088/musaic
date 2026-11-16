@@ -68,5 +68,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "enterFullscreen": "Enter fullscreen",
+  "exitFullscreen": "Exit fullscreen",
+  "fullscreenFailed": "Could not change fullscreen mode. Try again."
 }

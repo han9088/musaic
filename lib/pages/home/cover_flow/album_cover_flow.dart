@@ -94,6 +94,38 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     return interval > Duration.zero && interval <= _rapidSwipeInterval;
   }
 
+  void _updateGestureTilt(double dx, Duration? time) {
+    _dragDistance += dx;
+    final rapidSwipes =
+        _shortSwipeCount >= 2 &&
+        _dragDistance.abs() >= _shortSwipeMinDistance &&
+        _continuesShortSwipes(time);
+    if (_gestureTilt != 0) {
+      if (dx != 0 &&
+          (dx * _gestureTilt < 0 ||
+              _dragDistance.abs() > _tiltDeadZone ||
+              rapidSwipes)) {
+        _gestureTilt = dx.sign * _maxTilt;
+      }
+    } else if (_dragDistance.abs() > _tiltDeadZone || rapidSwipes) {
+      _gestureTilt = _dragDistance.sign * _maxTilt;
+    }
+  }
+
+  void _recordShortSwipe() {
+    if (_dragDistance.abs() >= _shortSwipeMinDistance &&
+        _dragDistance.abs() <= _tiltDeadZone) {
+      _shortSwipeCount = _continuesShortSwipes(_lastDrag)
+          ? (_shortSwipeCount + 1).clamp(1, 3)
+          : 1;
+      _lastShortSwipe = _lastDrag;
+      _shortSwipeDirection = _dragDistance.sign;
+    } else {
+      _shortSwipeCount = 0;
+      _lastShortSwipe = null;
+    }
+  }
+
   void _wake() {
     if (!_ticker.isActive) {
       _lastFrame = null;
@@ -252,18 +284,24 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                 onDecrease: () => _settle(_position.roundToDouble() - 1),
                 child: CoverFlowInput(
                   canStartInput: () => !_dragging,
-                  onScroll: (delta) {
+                  onScroll: (delta, time) {
                     setState(() {
+                      if (!_dragging) {
+                        _dragDistance = 0;
+                        _gestureTilt = _tilt;
+                      }
                       _dragging = true;
                       _target = null;
                       _velocity = 0;
-                      _gestureTilt = 0;
+                      _updateGestureTilt(-delta, time);
+                      _lastDrag = time;
                       _position += delta * _dragSensitivity / stride;
                     });
                     _wake();
                   },
                   onScrollEnd: () {
                     _dragging = false;
+                    _recordShortSwipe();
                     _settle(_position.roundToDouble());
                   },
                   onStep: (direction) {
@@ -288,22 +326,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                       final previous = _lastDrag;
                       setState(() {
                         _position += delta;
-                        _dragDistance += details.delta.dx;
-                        final rapidSwipes =
-                            _shortSwipeCount >= 2 &&
-                            _dragDistance.abs() >= _shortSwipeMinDistance &&
-                            _continuesShortSwipes(time);
-                        if (_gestureTilt != 0) {
-                          if (details.delta.dx != 0 &&
-                              (details.delta.dx * _gestureTilt < 0 ||
-                                  _dragDistance.abs() > _tiltDeadZone ||
-                                  rapidSwipes)) {
-                            _gestureTilt = details.delta.dx.sign * _maxTilt;
-                          }
-                        } else if (_dragDistance.abs() > _tiltDeadZone ||
-                            rapidSwipes) {
-                          _gestureTilt = _dragDistance.sign * _maxTilt;
-                        }
+                        _updateGestureTilt(details.delta.dx, time);
                         if (time != null &&
                             previous != null &&
                             time > previous) {
@@ -320,17 +343,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     },
                     onHorizontalDragEnd: (details) {
                       _dragging = false;
-                      if (_dragDistance.abs() >= _shortSwipeMinDistance &&
-                          _dragDistance.abs() <= _tiltDeadZone) {
-                        _shortSwipeCount = _continuesShortSwipes(_lastDrag)
-                            ? (_shortSwipeCount + 1).clamp(1, 3)
-                            : 1;
-                        _lastShortSwipe = _lastDrag;
-                        _shortSwipeDirection = _dragDistance.sign;
-                      } else {
-                        _shortSwipeCount = 0;
-                        _lastShortSwipe = null;
-                      }
+                      _recordShortSwipe();
                       final releaseVelocity =
                           (-details.velocity.pixelsPerSecond.dx *
                                   _dragSensitivity /

@@ -18,7 +18,7 @@ class CoverFlowInput extends StatefulWidget {
   });
 
   final bool Function() canStartInput;
-  final ValueChanged<double> onScroll;
+  final void Function(double delta, Duration time) onScroll;
   final VoidCallback onScrollEnd;
   final ValueChanged<int> onStep;
   final Widget child;
@@ -55,7 +55,7 @@ class _CoverFlowInputState extends State<CoverFlowInput> {
     }
     GestureBinding.instance.pointerSignalResolver.register(event, (_) {
       _scrolling = true;
-      widget.onScroll(event.scrollDelta.dx);
+      widget.onScroll(event.scrollDelta.dx, event.timeStamp);
       _scrollEnd?.cancel();
       _scrollEnd = Timer(const Duration(milliseconds: 120), _finishScroll);
     });

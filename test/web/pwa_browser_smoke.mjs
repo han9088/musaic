@@ -28,7 +28,7 @@ const server = createServer(async (request, response) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const chrome = spawn(process.env.CHROME_EXECUTABLE || 'google-chrome', [
-  '--headless=new', '--no-first-run', '--no-default-browser-check',
+  '--no-first-run', '--no-default-browser-check',
   '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1100,700', 'about:blank',
 ], {stdio: 'ignore'});
 let socket;
@@ -87,12 +87,47 @@ try {
   await until(() => evaluate('window.firstFrame && !!navigator.serviceWorker.controller'), 'first controlled page');
   console.log('First frame and worker activated');
   assert.deepEqual((await send('Page.getInstallabilityErrors')).installabilityErrors, []);
-  await until(() => evaluate(`Array.from(document.querySelectorAll('button')).some(button => /^(Install Musaic|安装 Musaic)$/.test(button.textContent))`), 'browser install button');
-  console.log('Installability and install button passed');
+  assert.equal(await evaluate(`Array.from(document.querySelectorAll('button')).some(button => /^(Install Musaic|安装 Musaic)$/.test(button.textContent))`), false);
+  console.log('Installability passed; no custom install button');
   const cachesBefore = await evaluate('caches.keys()');
   assert.equal(cachesBefore.filter(key => key.startsWith('musaic-pwa:')).length, 1);
   // macOS starts on the canvas; use the existing layout control to enter Cover Flow.
   const viewport = await evaluate('({width: innerWidth, height: innerHeight})');
+  await send('Page.bringToFront');
+  await evaluate("document.querySelector('flt-semantics-placeholder')?.click()");
+  const clickAt = async (x, y) => {
+    await send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1});
+    await send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
+  };
+  await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: viewport.width / 2, y: viewport.height - 40});
+  await sleep(300);
+  await clickAt(viewport.width / 2, viewport.height - 40);
+  const fullscreenButton = label => evaluate(`(() => {
+    const element = [...document.querySelectorAll('[role=button]')].find(node => node.getAttribute('aria-label') === '${label}' || node.textContent === '${label}');
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+  })()`);
+  await until(() => fullscreenButton('Enter fullscreen'), 'fullscreen menu entry');
+  await sleep(600);
+  let target = await fullscreenButton('Enter fullscreen');
+  await clickAt(target.x, target.y);
+  await until(() => evaluate('!!document.fullscreenElement'), 'enter fullscreen from menu');
+  console.log('Menu fullscreen entry passed');
+  await until(() => fullscreenButton('Exit fullscreen'), 'fullscreen state label');
+  target = await fullscreenButton('Exit fullscreen');
+  await clickAt(target.x, target.y);
+  await until(() => evaluate('!document.fullscreenElement'), 'exit fullscreen from menu');
+  await until(() => fullscreenButton('Enter fullscreen'), 'exit state synchronized');
+  console.log('Menu fullscreen exit passed');
+  await sleep(2000);
+  target = await fullscreenButton('Enter fullscreen');
+  await clickAt(target.x, target.y);
+  await until(() => evaluate('!!document.fullscreenElement'), 'reenter fullscreen');
+  await evaluate('document.exitFullscreen()');
+  await until(() => fullscreenButton('Enter fullscreen'), 'external fullscreen exit synchronized');
+  await clickAt(10, 10);
+  await sleep(600);
   await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: viewport.width - 38, y: viewport.height - 38});
   await sleep(300);
   await send('Input.dispatchMouseEvent', {type: 'mousePressed', x: viewport.width - 38, y: viewport.height - 38, button: 'left', clickCount: 1});

@@ -129,4 +129,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get musicFolderIncomplete => 'Scan incomplete; saved music retained';
+
+  @override
+  String get enterFullscreen => 'Enter fullscreen';
+
+  @override
+  String get exitFullscreen => 'Exit fullscreen';
+
+  @override
+  String get fullscreenFailed => 'Could not change fullscreen mode. Try again.';
 }

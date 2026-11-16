@@ -55,9 +55,9 @@ audio restrictions may require interaction before album tick sounds can play.
 PWA builds bundle the rendering engine locally and generate a versioned offline
 cache. A [custom Flutter bootstrap](https://docs.flutter.dev/platform-integration/web/initialization)
 leaves service-worker registration exclusively to Musaic, avoiding Flutter's legacy
-worker replacing the offline cache on later visits. Serve over HTTPS (localhost also works), then use the browser toolbar install action or the app's Install Musaic button
-(shown when the browser exposes its native install prompt). Safari/iOS uses Add to
-Home Screen instead. Installed standalone windows hide the install button. The first complete cache download requires a connection;
+worker replacing the offline cache on later visits. Serve over HTTPS (localhost also works), then use the browser toolbar or menu install action. The app does not add an
+Install button or intercept the browser's installation prompt. Safari/iOS uses
+Add to Home Screen instead. The first complete cache download requires a connection;
 subsequent launches can use the bundled sample catalog offline. New versions take
 over after all existing app tabs/windows close, avoiding mixed build assets.
 Serve `index.html`, `pwa.js`, and `service-worker.js` with revalidation/no-cache;
@@ -73,6 +73,9 @@ In Cover Flow, horizontal two-finger trackpad scrolling moves the albums; browse
 inertia is used directly without adding another fling. macOS native trackpad pans
 reuse the existing drag physics. Left/right arrow keys select the previous/next album
 while Cover Flow has focus; modified browser shortcuts and dialogs keep their keys.
+Web browsers that support fullscreen expose Enter/Exit fullscreen in the existing
+bottom menu. Browser fullscreen changes update the label, and unavailable APIs
+hide the entry. Native Android/iOS do not include this control.
 Click Cover Flow to restore focus after using another control. macOS retains its
 canvas default; switch to Cover Flow using the existing layout button.
 
@@ -111,7 +114,8 @@ python3 -m unittest discover -s test/web -p 'test_*.py'
 node test/web/pwa_browser_smoke.mjs
 ```
 
-The browser check runs against `build/web`, checks installability and the actual
+The browser check opens a temporary Chrome window against `build/web`,
+checks menu fullscreen entry/exit and external state changes, checks installability and the absence of a custom
 install button, sends keyboard/horizontal scroll events, rejects a mixed deployment,
 verifies an upgrade downloads only its changed asset and preserves the old tab,
 then disables the origin and reloads from the offline cache. It does not install an app on your machine.
@@ -206,3 +210,7 @@ or a failed write is returned as an error without committing the new selection.
 The sandbox remains enabled with user-selected read/write access. Finder custom
 icons persist independently of the running app; replacing the app during an update
 may remove them. `MusaicMosaicPreview` supplies the collage for Finder and Dock.
+
+2026-11-16 update: removed the custom Install overlay; browser installation remains available.
+Added fullscreen to the existing Web menu. Analyze, 177 Flutter tests, Web release
+build and Web hot restart passed. Native platforms do not display the entry.

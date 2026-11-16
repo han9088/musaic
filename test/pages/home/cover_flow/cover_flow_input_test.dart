@@ -23,6 +23,110 @@ void main() {
     await tester.pump();
   }
 
+  for (final nativePan in [false, true]) {
+    testWidgets(
+      'trackpad preserves short swipe, long swipe and reversal (pan: $nativePan)',
+      (tester) async {
+        await mount(tester, (_) {});
+        double tilt() => tester
+            .widget<Transform>(find.byKey(const ValueKey('cover-flow-plane')))
+            .transform
+            .entry(0, 2);
+        final pointer = TestPointer(9, PointerDeviceKind.trackpad);
+        const point = Offset(400, 300);
+        if (nativePan) {
+          await tester.sendEventToBinding(pointer.panZoomStart(point));
+        }
+        var pan = Offset.zero;
+        var time = Duration.zero;
+        for (final direction in [-1.0, 1.0]) {
+          for (var i = 0; i < 20; i++) {
+            time += const Duration(milliseconds: 16);
+            pan += Offset(20 * direction, 0);
+            await tester.sendEventToBinding(
+              nativePan
+                  ? pointer.panZoomUpdate(point, pan: pan, timeStamp: time)
+                  : PointerScrollEvent(
+                      position: point,
+                      scrollDelta: Offset(-20 * direction, 0),
+                      timeStamp: time,
+                    ),
+            );
+            await tester.pump(const Duration(milliseconds: 16));
+            if (direction == -1 && i < 6) {
+              expect(tilt(), closeTo(0, .000001));
+            }
+          }
+          expect(tilt() * direction, greaterThan(0.1));
+        }
+        if (nativePan) {
+          await tester.sendEventToBinding(pointer.panZoomEnd(timeStamp: time));
+        }
+        await tester.pumpAndSettle();
+        expect(tilt(), closeTo(0, .000001));
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    );
+  }
+
+  for (final nativePan in [false, true]) {
+    for (final pause in [140, 800]) {
+      testWidgets(
+        'trackpad short swipe cadence (pan: $nativePan, pause: $pause)',
+        (tester) async {
+          await mount(tester, (_) {});
+          var time = Duration.zero;
+          double tilt() => tester
+              .widget<Transform>(find.byKey(const ValueKey('cover-flow-plane')))
+              .transform
+              .entry(0, 2);
+          for (var swipe = 0; swipe < 3; swipe++) {
+            final pointer = TestPointer(20 + swipe, PointerDeviceKind.trackpad);
+            const point = Offset(400, 300);
+            if (nativePan) {
+              await tester.sendEventToBinding(
+                pointer.panZoomStart(point, timeStamp: time),
+              );
+            }
+            for (var frame = 0; frame < 8; frame++) {
+              time += const Duration(milliseconds: 16);
+              await tester.sendEventToBinding(
+                nativePan
+                    ? pointer.panZoomUpdate(
+                        point,
+                        pan: Offset(-12.0 * (frame + 1), 0),
+                        timeStamp: time,
+                      )
+                    : PointerScrollEvent(
+                        position: point,
+                        scrollDelta: const Offset(12, 0),
+                        timeStamp: time,
+                      ),
+              );
+              await tester.pump(const Duration(milliseconds: 16));
+            }
+            expect(
+              tilt().abs(),
+              swipe == 2 && pause == 140
+                  ? greaterThan(.1)
+                  : closeTo(0, .000001),
+            );
+            if (nativePan) {
+              await tester.sendEventToBinding(
+                pointer.panZoomEnd(timeStamp: time),
+              );
+            }
+            time += Duration(milliseconds: pause);
+            await tester.pump(Duration(milliseconds: pause));
+          }
+          await tester.pumpAndSettle();
+          expect(tilt(), closeTo(0, .000001));
+        },
+        variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+      );
+    }
+  }
+
   testWidgets('arrow repeats accumulate and modified shortcuts remain free', (
     tester,
   ) async {

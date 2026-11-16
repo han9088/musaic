@@ -121,4 +121,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get musicFolderIncomplete => '扫描未完成，已保留缓存';
+
+  @override
+  String get enterFullscreen => '进入全屏';
+
+  @override
+  String get exitFullscreen => '退出全屏';
+
+  @override
+  String get fullscreenFailed => '无法切换全屏，请重试。';
 }

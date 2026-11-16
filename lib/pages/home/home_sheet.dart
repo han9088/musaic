@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../services/app_icon_service.dart';
 import 'app_icon_picker.dart';
+import 'fullscreen_control.dart';
 import 'music_source_picker.dart';
 import '../../services/music/music_source_controller.dart';
 
@@ -91,6 +92,7 @@ class _HomeSheetState extends State<HomeSheet> {
           children: [
             if (widget.sources case final sources?)
               MusicSourcePicker(sources: sources),
+            if (kIsWeb) const FullscreenControl(),
             AppIconPicker(icons: widget.icons),
           ],
         ),

@@ -68,5 +68,8 @@
         "type": "String"
       }
     }
-  }
+  },
+  "enterFullscreen": "进入全屏",
+  "exitFullscreen": "退出全屏",
+  "fullscreenFailed": "无法切换全屏，请重试。"
 }
