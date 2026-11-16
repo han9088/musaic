@@ -4,7 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 
 class MockAlbumCache {
-  static const _warmupLimit = 32;
+  static const _warmupLimit = 16;
   Future<List<Map<String, dynamic>>>? _catalog;
   Future<void>? _warming;
   int _generation = 0;

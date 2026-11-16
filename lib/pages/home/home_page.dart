@@ -153,6 +153,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     };
     _stopSourceListener = _sources.catalog.subscribe((albums) {
       if (!mounted) return;
+      if (albums == null) _warmMockImages();
       _playback.bind(_sources.provider, albums);
       setState(() {
         _albums = albums == null
@@ -178,18 +179,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_haptics.prepare());
-      unawaited(
-        widget.albumCache
-            .warmImages((image) async {
-              if (mounted) await precacheImage(image, context);
-            })
-            .catchError((Object error, StackTrace stack) {
-              FlutterError.reportError(
-                FlutterErrorDetails(exception: error, stack: stack),
-              );
-            }),
-      );
     });
+  }
+
+  void _warmMockImages() {
+    // Let first-frame work and restored source selection finish before offscreen decoding.
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 300), () async {
+        if (!mounted || _sources.catalog.value != null) return;
+        await widget.albumCache.warmImages((image) async {
+          if (mounted) await precacheImage(image, context);
+        });
+      }).catchError((Object error, StackTrace stack) {
+        FlutterError.reportError(
+          FlutterErrorDetails(exception: error, stack: stack),
+        );
+      }),
+    );
   }
 
   @override
@@ -284,7 +290,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       enabled: !_landscape,
       sources: _sources,
       child: Scaffold(
-        backgroundColor: const Color(0xff171715),
+        backgroundColor: const Color(0xff000000),
         body: Builder(
           builder: (context) {
             final content = _buildAlbums();

@@ -13,29 +13,34 @@ void main() {
       final cache = _LargeCatalog();
       final images = <ImageProvider>[];
       await cache.warmImages((image) async => images.add(image));
-      expect(images.length, 16);
-      expect(images.toSet().length, 16);
+      expect(images.length, 8);
+      expect(images.toSet().length, 8);
       await cache.warmImages((image) async => images.add(image));
-      expect(images.length, 16);
+      expect(images.length, 8);
     },
   );
 
   test(
-    'catalog and all covers are reused; clear permits warming again',
+    'catalog and warmed covers are reused; clear permits warming again',
     () async {
       final cache = MockAlbumCache();
       final catalog = await cache.load();
       expect(identical(catalog, await cache.load()), isTrue);
+      final warmCount = catalog
+          .take(16)
+          .map((album) => album['asset'])
+          .toSet()
+          .length;
       final images = <ImageProvider>[];
       Future<void> warm(ImageProvider image) async => images.add(image);
       await cache.warmImages(warm);
-      expect(images.length, catalog.length);
-      expect(images.toSet().length, catalog.length);
+      expect(images.length, warmCount);
+      expect(images.toSet().length, warmCount);
       await cache.warmImages(warm);
-      expect(images.length, catalog.length);
+      expect(images.length, warmCount);
       await cache.clear();
       await cache.warmImages(warm);
-      expect(images.length, catalog.length * 2);
+      expect(images.length, warmCount * 2);
     },
   );
 

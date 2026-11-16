@@ -67,7 +67,9 @@ class _MusaicAppState extends State<MusaicApp> {
   @override
   void initState() {
     super.initState();
-    unawaited(_restoreMusic());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_restoreMusic());
+    });
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 

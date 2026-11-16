@@ -6,6 +6,7 @@ class MainFlutterWindow: NSWindow {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
+    self.backgroundColor = .black
     self.setFrame(windowFrame, display: true)
     self.minSize = NSSize(width: 360, height: 400)
     self.styleMask.insert(.fullSizeContentView)

@@ -44,6 +44,7 @@ final class DirectoryMusicLibrary {
   Future<void>? _closing;
   AudioScanCancellation? _cancellation;
   bool _disposed = false;
+  bool _cacheLoaded = false;
   int _artworkRevision = 0;
   Map<String, IndexedAudio> _tracksById = const {};
   IndexedAudio? track(String id) => _tracksById[id];
@@ -52,7 +53,7 @@ final class DirectoryMusicLibrary {
 
   /// Returns after disk cache is published, before any native directory access.
   Future<void> loadCached() {
-    if (_disposed) return Future.value();
+    if (_disposed || _cacheLoaded) return Future.value();
     if (_refresh != null) return _refresh!;
     return _cacheLoad ??= _exclusive(_loadCached)
         .whenComplete(() => _cacheLoad = null);
@@ -68,6 +69,7 @@ final class DirectoryMusicLibrary {
     );
     if (_disposed) return;
     _invalidateArtwork();
+    _cacheLoaded = true;
     _publish(cached);
     state.value = DirectoryScanState.idle;
   }
@@ -278,6 +280,7 @@ final class DirectoryMusicLibrary {
       );
       if (!_disposed) {
         _invalidateArtwork();
+        _cacheLoaded = true;
         _publish(current);
         counts.value = totals.copy();
         state.value = cancellation.isCancelled

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'directory_music_library.dart';
 
+import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 import 'local_music_provider.dart';
@@ -34,9 +35,15 @@ final class MusicSourceController {
       if (!_disposed && directorySelected.value) _publishDirectories();
     });
     if (await library.index.isSelected() && !_disposed && !_selectionTouched) {
+      await library.loadCached();
+      if (_disposed || _selectionTouched) return;
       directorySelected.value = true;
       _publishDirectories();
-      unawaited(library.refresh());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_disposed && directorySelected.value) {
+          unawaited(library.refresh());
+        }
+      });
     }
   }
 
@@ -51,6 +58,7 @@ final class MusicSourceController {
     busy.value = true;
     try {
       if (add && !await library.addDirectory()) return;
+      await library.loadCached();
       if (_disposed) return;
       await _provider?.dispose();
       _provider = null;
