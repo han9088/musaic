@@ -39,8 +39,7 @@ class AlbumCanvasViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PortraitTilt(
-      child: LayoutBuilder(
+    return LayoutBuilder(
         builder: (context, constraints) {
           onViewportSizeChanged(constraints.biggest);
           return Listener(
@@ -139,7 +138,6 @@ class AlbumCanvasViewport extends StatelessWidget {
             ),
           );
         },
-      ),
     );
   }
 }
