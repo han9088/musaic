@@ -20,12 +20,11 @@ import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
 import '../../features/music/transition/music_source_transition.dart';
+import '../../features/music/transition/home_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/catalog/album_catalog_mapper.dart';
 
 enum _HomeMusicSource { mock, mock2, local, directories }
-
-enum _SourceTransitionPhase { exit, handoff, enter }
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.albumCache, this.sources});
@@ -45,17 +44,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final VoidCallback _stopSourceListener;
   late final AnimationController _layout;
   late final Animation<double> _layoutProgress;
-  late final AnimationController _sourceTimeline;
-  final _sourceSwitching = ValueNotifier(false);
-  List<Map<String, dynamic>>? _transitionTargetAlbums;
-  Map<(int, int), SourceTileMotion> _exitMotions = const {};
-  Map<(int, int), SourceTileMotion> _enterMotions = const {};
+  late final HomeSourceTransition _sourceTransition;
   _HomeMusicSource _renderedSource = _HomeMusicSource.mock;
-  _SourceTransitionPhase? _sourcePhase;
-  Completer<void>? _sourceTransitionCompleter;
-  double _exitDurationMs = 0;
-  double _sourceDurationMs = 0;
-  bool _sourcePreparing = false;
   bool _hasOrientation = false;
   Size? _portraitSize;
   final _albumLayout = HomeAlbumLayoutState();
@@ -82,7 +72,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _applyCatalog(List<ProviderAlbum>? sourceAlbums) async {
     final albums = await _readCatalog(sourceAlbums);
-    if (!mounted || _sourceSwitching.value) return;
+    if (!mounted || _sourceTransition.switching.value) return;
     if (sourceAlbums == null) _warmMockImages();
     _playback.bind(_sources.provider, sourceAlbums);
     setState(() {
@@ -93,9 +83,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _selectMusicSource(Future<void> Function() select) async {
-    if (_sourceSwitching.value || _sourcePhase != null) return;
+    if (_sourceTransition.switching.value || _sourceTransition.phase != null) return;
     final previousCatalog = _sources.catalog.value;
-    _sourceSwitching.value = true;
+    _sourceTransition.switching.value = true;
     try {
       await select();
       if (!mounted) return;
@@ -130,7 +120,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         });
         return;
       }
-      setState(() => _sourcePreparing = true);
+      setState(() => _sourceTransition.preparing = true);
       _syncMotion();
       final viewportSize = _portraitSize ?? MediaQuery.sizeOf(context);
       await WidgetsBinding.instance.endOfFrame;
@@ -153,25 +143,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() {
           _catalog = target;
           _renderedSource = source;
-          _sourcePreparing = false;
+          _sourceTransition.preparing = false;
           _albumLayout.clear();
         });
         return;
       }
-      _exitMotions = exit.tiles;
-      _enterMotions = enter.tiles;
-      _exitDurationMs = exit.durationMs;
-      _sourceDurationMs = exit.durationMs + sourceHandoffMs + enter.durationMs;
-      _sourceDurationMs = _sourceDurationMs.ceilToDouble();
-      _transitionTargetAlbums = target;
-      _sourceTransitionCompleter = Completer<void>();
-      _sourceTimeline.duration = Duration(
-        milliseconds: _sourceDurationMs.ceil(),
+      await _sourceTransition.start(
+        targetAlbums: target,
+        exit: exit,
+        enter: enter,
       );
-      setState(() => _sourcePhase = _SourceTransitionPhase.exit);
-      _syncMotion();
-      _sourceTimeline.forward(from: 0);
-      await _sourceTransitionCompleter!.future;
     } catch (error, stack) {
       FlutterError.reportError(
         FlutterErrorDetails(
@@ -182,11 +163,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } finally {
       if (mounted) {
-        if (_sourcePhase == null && _sourcePreparing) {
-          setState(() => _sourcePreparing = false);
+        if (_sourceTransition.phase == null && _sourceTransition.preparing) {
+          setState(() => _sourceTransition.preparing = false);
           _syncMotion();
         }
-        _sourceSwitching.value = false;
+        _sourceTransition.switching.value = false;
       }
     }
   }
@@ -230,65 +211,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
-  void _advanceSourceTransition() {
-    final phase = _sourcePhase;
-    if (!mounted || phase == null) return;
-    final elapsed = _sourceTimeline.value * _sourceDurationMs;
-    if (phase == _SourceTransitionPhase.exit && elapsed >= _exitDurationMs) {
-      setState(() => _sourcePhase = _SourceTransitionPhase.handoff);
-    }
-    if (_sourcePhase == _SourceTransitionPhase.handoff &&
-        elapsed >= _exitDurationMs + sourceHandoffMs) {
-      final target = _transitionTargetAlbums!;
-      _catalog = target;
-      _renderedSource = _currentSource;
-      _playback.bind(_sources.provider, _sources.catalog.value);
-      _albumLayout.clear();
-      setState(() => _sourcePhase = _SourceTransitionPhase.enter);
-    }
-  }
-
-  void _finishSourceTransition() {
-    final done = _sourceTransitionCompleter;
-    _sourceTransitionCompleter = null;
-    if (done != null && !done.isCompleted) done.complete();
-  }
-
-  Widget _animateSourceTile(int row, int column, Widget child) {
-    final phase = _sourcePhase;
-    if (phase == null) return child;
-    final motion = phase == _SourceTransitionPhase.enter
-        ? _enterMotions[(row, column)]
-        : _exitMotions[(row, column)];
-    if (motion == null) return child;
-    return AnimatedBuilder(
-      animation: _sourceTimeline,
-      child: child,
-      builder: (context, child) {
-        final scale = _transform.value.getColumn(0).length;
-        final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
-        final elapsed = _sourceTimeline.value * _sourceDurationMs;
-        final value = phase == _SourceTransitionPhase.enter
-            ? motion.enterTransform(
-                elapsedMs: elapsed - _exitDurationMs - sourceHandoffMs,
-                viewport: viewport,
-                scale: scale,
-                tileSize: albumGridExtent,
-              )
-            : motion.exitTransform(
-                elapsedMs: elapsed,
-                viewport: viewport,
-                scale: scale,
-                tileSize: albumGridExtent,
-              );
-        return Transform(
-          alignment: Alignment.center,
-          transform: value.transform,
-          child: Opacity(opacity: value.alpha, child: child),
-        );
-      },
-    );
-  }
+  Widget _animateSourceTile(int row, int column, Widget child) =>
+      _sourceTransition.animateTile(
+        row,
+        column,
+        child,
+        scale: () => _transform.value.getColumn(0).length,
+        viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
+      );
 
   void _syncMotion() {
     final animating = _layout.isAnimating;
@@ -296,8 +226,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (_landscape ||
         _reduceMotion ||
         animating ||
-        _sourcePreparing ||
-        _sourcePhase != null) {
+        _sourceTransition.preparing ||
+        _sourceTransition.phase != null) {
       _ticker.stop();
       _drift.lastTick = null;
     } else if (!_ticker.isActive) {
@@ -323,20 +253,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 520),
     );
     _layoutProgress = _layout.drive(CurveTween(curve: Curves.easeInOutCubic));
-    _sourceTimeline = AnimationController(vsync: this)
-      ..addListener(_advanceSourceTransition)
-      ..addStatusListener((status) {
-        if (status != AnimationStatus.completed || !mounted) return;
-        setState(() {
-          _sourcePhase = null;
-          _transitionTargetAlbums = null;
-          _exitMotions = const {};
-          _enterMotions = const {};
-          _sourcePreparing = false;
-        });
-        _syncMotion();
-        _finishSourceTransition();
-      });
+    _sourceTransition = HomeSourceTransition(
+      vsync: this,
+      isMounted: () => mounted,
+      notifyChanged: () => setState(() {}),
+      onHandoff: (target) {
+        _catalog = target;
+        _renderedSource = _currentSource;
+        _playback.bind(_sources.provider, _sources.catalog.value);
+        _albumLayout.clear();
+      },
+      onMotionChanged: _syncMotion,
+    );
     _layout.addStatusListener((status) {
       if (!mounted) return;
       _syncMotion();
@@ -363,7 +291,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _stopSourceListener = _sources.catalog.subscribe((albums) {
       if (!mounted || identical(albums, lastCatalog)) return;
       lastCatalog = albums;
-      if (_sourceSwitching.value) return;
+      if (_sourceTransition.switching.value) return;
       unawaited(_applyCatalog(albums));
     });
     if (initialCatalog == null) _warmMockImages();
@@ -443,8 +371,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     enabled: !_interaction.touching &&
         _interaction.pressedPointers.isEmpty &&
         !_interaction.selectionPaused &&
-        !_sourcePreparing &&
-        _sourcePhase == null &&
+        !_sourceTransition.preparing &&
+        _sourceTransition.phase == null &&
         !_reduceMotion &&
         !_landscape,
   );
@@ -462,9 +390,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
     _layout.dispose();
-    _sourceTransitionCompleter?.complete();
-    _sourceTimeline.dispose();
-    _sourceSwitching.dispose();
+    _sourceTransition.dispose();
     _ticker.dispose();
     _transform.dispose();
     super.dispose();
@@ -486,7 +412,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return HomeSheet(
       enabled: !_landscape,
       sources: _sources,
-      sourceSwitching: _sourceSwitching,
+      sourceSwitching: _sourceTransition.switching,
       onSourceSelection: _selectMusicSource,
       xeroxEnabled: _xeroxEnabled,
       onXeroxChanged: (enabled) => setState(() => _xeroxEnabled = enabled),
@@ -517,8 +443,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildAlbums() {
-    final target = _sourcePhase == _SourceTransitionPhase.enter
-        ? _transitionTargetAlbums
+    final target = _sourceTransition.phase == SourceTransitionPhase.enter
+        ? _sourceTransition.targetAlbums
         : null;
     final albums = target ?? _catalog;
     if (albums != null) return _buildAlbumContent(albums);
@@ -542,7 +468,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildAlbumContent(List<Map<String, dynamic>> albums) {
     if (albums.isEmpty) {
-      if (_sourcePhase == _SourceTransitionPhase.handoff) {
+      if (_sourceTransition.phase == SourceTransitionPhase.handoff) {
         return const SizedBox.expand();
       }
       return Center(
@@ -584,7 +510,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       interaction: _interaction,
       playback: _playback,
       xerox: _xeroxEnabled,
-      interactionBlocked: _sourcePreparing || _sourcePhase != null,
+      interactionBlocked: _sourceTransition.preparing || _sourceTransition.phase != null,
       onViewportSizeChanged: (size) => _portraitSize = size,
       onTileSelected: (row, column) => setState(() {
         _albumLayout.selectedAlbum = (row, column);
