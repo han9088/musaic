@@ -15,7 +15,6 @@ import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
-import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/visible_album_preloader.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
@@ -471,23 +470,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         },
       );
     }
-    return PortraitTilt(
-      child: AlbumCanvasViewport(
-        albums: albums,
-        layout: _albumLayout,
-        transform: _transform,
-        interaction: _interaction,
-        playback: _playback,
-        xerox: _xeroxEnabled,
-        interactionBlocked:
-            _sourceTransition.preparing || _sourceTransition.phase != null,
-        onViewportSizeChanged: (size) => _portraitSize = size,
-        onTileSelected: (row, column) => setState(() {
-          _albumLayout.selectedAlbum = (row, column);
-          _interaction.selectionPaused = true;
-        }),
-        animateSourceTile: _animateSourceTile,
-      ),
+    return AlbumCanvasViewport(
+      albums: albums,
+      layout: _albumLayout,
+      transform: _transform,
+      interaction: _interaction,
+      playback: _playback,
+      xerox: _xeroxEnabled,
+      interactionBlocked: _sourceTransition.preparing || _sourceTransition.phase != null,
+      onViewportSizeChanged: (size) => _portraitSize = size,
+      onTileSelected: (row, column) => setState(() {
+        _albumLayout.selectedAlbum = (row, column);
+        _interaction.selectionPaused = true;
+      }),
+      animateSourceTile: _animateSourceTile,
     );
   }
 }

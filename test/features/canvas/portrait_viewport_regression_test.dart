@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/canvas/album_canvas_viewport.dart';
@@ -24,9 +25,19 @@ class _FixedAlbumCache extends MockAlbumCache {
   ) async {}
 }
 
-void main() {
+class _ControlledSensors extends SensorsPlatform {
+  _ControlledSensors(this.events);
 
-  testWidgets('HomePage mounts the sensor owner above the infinite viewport', (
+  final Stream<AccelerometerEvent> events;
+
+  @override
+  Stream<AccelerometerEvent> accelerometerEventStream({
+    Duration samplingPeriod = SensorInterval.normalInterval,
+  }) => events;
+}
+
+void main() {
+  testWidgets('HomePage keeps the sensor plane inside the infinite viewport', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(400, 800);
@@ -39,8 +50,13 @@ void main() {
     );
     await tester.pump();
     expect(find.byType(PortraitTilt), findsOneWidget);
-    final plane = tester.widget<PortraitTilt>(find.byType(PortraitTilt));
-    expect(plane.child, isA<AlbumCanvasViewport>());
+    expect(
+      find.descendant(
+        of: find.byType(AlbumCanvasViewport),
+        matching: find.byType(PortraitTilt),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(InteractiveViewer), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -50,6 +66,13 @@ void main() {
   ) async {
     final events = StreamController<AccelerometerEvent>.broadcast();
     addTearDown(events.close);
+    final originalSensors = SensorsPlatform.instance;
+    SensorsPlatform.instance = _ControlledSensors(events.stream);
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() {
+      SensorsPlatform.instance = originalSensors;
+      debugDefaultTargetPlatformOverride = null;
+    });
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -63,9 +86,7 @@ void main() {
     final interaction = CanvasInteractionState(CanvasDrift());
 
     Widget canvas({bool xerox = false}) => MaterialApp(
-      home: PortraitTilt(
-        events: events.stream,
-        child: AlbumCanvasViewport(
+      home: AlbumCanvasViewport(
           albums: const [
             {
               'asset': 'assets/albums/0.jpg',
@@ -82,7 +103,6 @@ void main() {
           onViewportSizeChanged: (_) {},
           onTileSelected: (_, _) {},
           animateSourceTile: (_, _, child) => child,
-        ),
       ),
     );
 
