@@ -474,17 +474,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return PortraitTilt(
       child: AlbumCanvasViewport(
         albums: albums,
-      layout: _albumLayout,
-      transform: _transform,
-      interaction: _interaction,
-      playback: _playback,
-      xerox: _xeroxEnabled,
-      interactionBlocked: _sourceTransition.preparing || _sourceTransition.phase != null,
-      onViewportSizeChanged: (size) => _portraitSize = size,
-      onTileSelected: (row, column) => setState(() {
-        _albumLayout.selectedAlbum = (row, column);
-        _interaction.selectionPaused = true;
-      }),
+        layout: _albumLayout,
+        transform: _transform,
+        interaction: _interaction,
+        playback: _playback,
+        xerox: _xeroxEnabled,
+        interactionBlocked:
+            _sourceTransition.preparing || _sourceTransition.phase != null,
+        onViewportSizeChanged: (size) => _portraitSize = size,
+        onTileSelected: (row, column) => setState(() {
+          _albumLayout.selectedAlbum = (row, column);
+          _interaction.selectionPaused = true;
+        }),
         animateSourceTile: _animateSourceTile,
       ),
     );

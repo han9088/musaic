@@ -8,9 +8,43 @@ import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
+import 'package:musaic/pages/home/home_page.dart';
+import 'package:musaic/services/mock_album_cache.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+class _FixedAlbumCache extends MockAlbumCache {
+  @override
+  Future<List<Map<String, dynamic>>> load() async => [
+    {'asset': 'assets/albums/0.jpg', 'title': 'Album', 'artist': 'Artist'},
+  ];
+
+  @override
+  Future<void> warmImages(
+    Future<void> Function(ImageProvider) precache,
+  ) async {}
+}
+
 void main() {
+
+  testWidgets('HomePage mounts the sensor owner above the infinite viewport', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(home: HomePage(albumCache: _FixedAlbumCache())),
+    );
+    await tester.pump();
+    expect(find.byType(PortraitTilt), findsOneWidget);
+    final plane = tester.widget<PortraitTilt>(find.byType(PortraitTilt));
+    expect(plane.child, isA<AlbumCanvasViewport>());
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('the canvas preserves the portrait sensor plane across rebuilds', (
     tester,
   ) async {
