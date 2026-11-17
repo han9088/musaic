@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/album_artwork.dart';
 import '../canvas/album_grid_snapshot.dart';
+import '../cover_flow/cover_flow_geometry.dart';
 
 /// Temporary presentation only; the settled CoverFlow owns its original renderer.
 class AlbumLayoutTransition extends StatelessWidget {
@@ -62,23 +63,14 @@ class AlbumLayoutTransition extends StatelessWidget {
                     last - first + 1,
                     (i) => first + i,
                   );
-                  final widths = {
-                    for (final i in indices)
-                      i:
-                          size *
-                          (0.7 +
-                              0.3 * (1 - (i - position).abs()).clamp(0.0, 1.0)),
-                  };
-                  final centers = <int, double>{first: 0};
-                  for (var i = first + 1; i <= last; i++) {
-                    centers[i] =
-                        centers[i - 1]! + (widths[i - 1]! + widths[i]!) / 2 + 6;
-                  }
-                  final lower = position.floor();
-                  final fraction = position - lower;
-                  final anchor =
-                      centers[lower]! * (1 - fraction) +
-                      centers[lower + 1]! * fraction;
+                  final geometry = CoverFlowGeometry.calculate(
+                    indices: indices,
+                    position: position,
+                    size: size,
+                  );
+                  final widths = geometry.widths;
+                  final centers = geometry.centers;
+                  final anchor = geometry.anchor;
                   final paintOrder = indices.toList()
                     ..sort(
                       (a, b) =>

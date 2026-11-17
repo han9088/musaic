@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../artwork/album_artwork.dart';
 import 'cover_flow_input.dart';
 import 'cover_flow_motion.dart';
+import 'cover_flow_geometry.dart';
 import '../../services/album_haptics.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
@@ -161,26 +162,14 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
               final stride = size * 0.7 + 6;
               final center = _motion.position.round();
               final indices = List.generate(15, (i) => center + i - 7);
-              final widths = <int, double>{
-                for (final i in indices)
-                  i:
-                      size *
-                      (0.7 + 0.3 * (1 - (i - _motion.position).abs()).clamp(0.0, 1.0)),
-              };
-              final centers = <int, double>{indices.first: 0};
-              for (var i = 1; i < indices.length; i++) {
-                final previous = indices[i - 1];
-                final current = indices[i];
-                centers[current] =
-                    centers[previous]! +
-                    (widths[previous]! + widths[current]!) / 2 +
-                    6;
-              }
-              final lower = _motion.position.floor();
-              final fraction = _motion.position - lower;
-              final anchor =
-                  centers[lower]! * (1 - fraction) +
-                  centers[lower + 1]! * fraction;
+              final geometry = CoverFlowGeometry.calculate(
+                indices: indices,
+                position: _motion.position,
+                size: size,
+              );
+              final widths = geometry.widths;
+              final centers = geometry.centers;
+              final anchor = geometry.anchor;
               final plane = Matrix4.identity()
                 ..setEntry(3, 2, 0.88 / constraints.maxWidth)
                 ..rotateY(_motion.tilt);
