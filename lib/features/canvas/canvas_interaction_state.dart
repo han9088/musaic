@@ -11,8 +11,13 @@ class CanvasInteractionState {
   final pressedPointers = <int>{};
   bool selectionPaused = false;
 
-  void pointerDown(int pointer) => pressedPointers.add(pointer);
-  void pointerUp(int pointer) => pressedPointers.remove(pointer);
+  void pointerDown(int pointer) {
+    pressedPointers.add(pointer);
+  }
+
+  void pointerUp(int pointer) {
+    pressedPointers.remove(pointer);
+  }
 
   void interactionStart() {
     touching = true;
