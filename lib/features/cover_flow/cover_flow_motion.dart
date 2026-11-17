@@ -73,6 +73,83 @@ class CoverFlowMotion {
     }
   }
 
+  void scroll(double delta, Duration time, double stride) {
+    if (!dragging) {
+      dragDistance = 0;
+      gestureTilt = tilt;
+    }
+    dragging = true;
+    target = null;
+    velocity = 0;
+    updateGestureTilt(-delta, time);
+    lastDrag = time;
+    position += delta * dragSensitivity / stride;
+  }
+
+  void endScroll() {
+    dragging = false;
+    recordShortSwipe();
+  }
+
+  void startDrag(Duration? time) {
+    dragging = true;
+    dragDistance = 0;
+    gestureTilt = tilt;
+    if (target != null) velocity = 0;
+    target = null;
+    lastDrag = time;
+  }
+
+  void updateDrag(double deltaX, Duration? time, double stride) {
+    final delta = -deltaX * dragSensitivity / stride;
+    final previous = lastDrag;
+    position += delta;
+    updateGestureTilt(deltaX, time);
+    if (time != null && previous != null && time > previous) {
+      final dt = (time - previous).inMicroseconds / 1000000;
+      final dragVelocity = delta / dt;
+      velocity =
+          (velocity * dragVelocity < 0
+                  ? dragVelocity
+                  : velocity * 0.35 + dragVelocity * 0.65)
+              .clamp(-12.0, 12.0);
+    }
+    lastDrag = time;
+  }
+
+  /// Returns true when the widget should immediately begin slot settling.
+  bool endDrag(double releaseDx, double stride) {
+    dragging = false;
+    recordShortSwipe();
+    final releaseVelocity =
+        (-releaseDx * dragSensitivity / stride).clamp(-12.0, 12.0);
+    // Keep recent motion when the release estimate points backwards.
+    if (velocity * releaseVelocity >= 0) {
+      velocity = releaseVelocity == 0
+          ? 0
+          : velocity * 0.65 + releaseVelocity * 0.35;
+    }
+    final now = lastDrag;
+    final previousRelease = lastReleaseTime;
+    final interval = previousRelease == null || now == null
+        ? 1.0
+        : (now - previousRelease).inMicroseconds / 1000000;
+    final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
+    coastGain = velocity.abs() >= 0.35 &&
+            velocity.sign == lastReleaseDirection
+        ? 1 + (coastGain * 0.35 + 0.3) * cadence
+        : 1;
+    lastReleaseTime = now;
+    lastReleaseDirection = velocity.sign;
+    return velocity.abs() < 0.35;
+  }
+
+  void cancelDrag() {
+    shortSwipeCount = 0;
+    lastShortSwipe = null;
+    dragging = false;
+  }
+
   ({bool changed, bool settled}) advance(
     Duration time, {
     required bool reduced,

@@ -191,23 +191,11 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                 child: CoverFlowInput(
                   canStartInput: () => !_motion.dragging,
                   onScroll: (delta, time) {
-                    setState(() {
-                      if (!_motion.dragging) {
-                        _motion.dragDistance = 0;
-                        _motion.gestureTilt = _motion.tilt;
-                      }
-                      _motion.dragging = true;
-                      _motion.target = null;
-                      _motion.velocity = 0;
-                      _motion.updateGestureTilt(-delta, time);
-                      _motion.lastDrag = time;
-                      _motion.position += delta * CoverFlowMotion.dragSensitivity / stride;
-                    });
+                    setState(() => _motion.scroll(delta, time, stride));
                     _wake();
                   },
                   onScrollEnd: () {
-                    _motion.dragging = false;
-                    _motion.recordShortSwipe();
+                    _motion.endScroll();
                     _settle(_motion.position.roundToDouble());
                   },
                   onStep: (direction) {
@@ -217,72 +205,28 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onHorizontalDragStart: (details) {
-                      _motion.dragging = true;
-                      _motion.dragDistance = 0;
-                      _motion.gestureTilt = _motion.tilt;
-                      if (_motion.target != null) _motion.velocity = 0;
-                      _motion.target = null;
-                      _motion.lastDrag = details.sourceTimeStamp;
+                      _motion.startDrag(details.sourceTimeStamp);
                       _wake();
                     },
                     onHorizontalDragUpdate: (details) {
-                      final delta =
-                          -details.delta.dx * CoverFlowMotion.dragSensitivity / stride;
-                      final time = details.sourceTimeStamp;
-                      final previous = _motion.lastDrag;
-                      setState(() {
-                        _motion.position += delta;
-                        _motion.updateGestureTilt(details.delta.dx, time);
-                        if (time != null &&
-                            previous != null &&
-                            time > previous) {
-                          final dt = (time - previous).inMicroseconds / 1000000;
-                          final dragVelocity = delta / dt;
-                          _motion.velocity =
-                              (_motion.velocity * dragVelocity < 0
-                                      ? dragVelocity
-                                      : _motion.velocity * 0.35 + dragVelocity * 0.65)
-                                  .clamp(-12.0, 12.0);
-                        }
-                      });
-                      _motion.lastDrag = time;
+                      setState(() => _motion.updateDrag(
+                        details.delta.dx,
+                        details.sourceTimeStamp,
+                        stride,
+                      ));
                     },
                     onHorizontalDragEnd: (details) {
-                      _motion.dragging = false;
-                      _motion.recordShortSwipe();
-                      final releaseVelocity =
-                          (-details.velocity.pixelsPerSecond.dx *
-                                  CoverFlowMotion.dragSensitivity /
-                                  stride)
-                              .clamp(-12.0, 12.0);
-                      // Keep recent motion when the release estimate points backwards.
-                      if (_motion.velocity * releaseVelocity >= 0) {
-                        _motion.velocity = releaseVelocity == 0
-                            ? 0
-                            : _motion.velocity * 0.65 + releaseVelocity * 0.35;
-                      }
-                      final now = _motion.lastDrag;
-                      final previousRelease = _motion.lastReleaseTime;
-                      final interval = previousRelease == null || now == null
-                          ? 1.0
-                          : (now - previousRelease).inMicroseconds / 1000000;
-                      final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
-                      _motion.coastGain =
-                          _motion.velocity.abs() >= 0.35 &&
-                              _motion.velocity.sign == _motion.lastReleaseDirection
-                          ? 1 + (_motion.coastGain * 0.35 + 0.3) * cadence
-                          : 1;
-                      _motion.lastReleaseTime = now;
-                      _motion.lastReleaseDirection = _motion.velocity.sign;
-                      if (_motion.velocity.abs() < 0.35) {
+                      final shouldSettle = _motion.endDrag(
+                        details.velocity.pixelsPerSecond.dx,
+                        stride,
+                      );
+                      if (shouldSettle) {
                         _settle(_motion.position.roundToDouble());
                       }
                       _wake();
                     },
                     onHorizontalDragCancel: () {
-                      _motion.shortSwipeCount = 0;
-                      _motion.lastShortSwipe = null;
-                      _motion.dragging = false;
+                      _motion.cancelDrag();
                       _settle(_motion.position.roundToDouble());
                     },
                     child: Stack(
