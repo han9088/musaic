@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import '../../../l10n/generated/app_localizations.dart';
-import '../../../services/app_icon_service.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../services/app_icon_service.dart';
 
 class AppIconPicker extends StatefulWidget {
   const AppIconPicker({super.key, required this.icons});

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../../../features/artwork/album_artwork.dart';
+import '../artwork/album_artwork.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 

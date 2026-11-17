@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import '../../../l10n/generated/app_localizations.dart';
-import '../../../services/browser/fullscreen.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../services/browser/fullscreen.dart';
 
 class FullscreenControl extends StatefulWidget {
   const FullscreenControl({super.key});
