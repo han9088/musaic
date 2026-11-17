@@ -5,19 +5,17 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../../features/artwork/album_artwork.dart';
 import '../../services/album_haptics.dart';
 import '../../services/mock_album_cache.dart';
 import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'home_sheet.dart';
-import '../../features/canvas/album_canvas.dart';
 import '../../features/canvas/album_grid_snapshot.dart';
 import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
-import '../../features/canvas/portrait_tilt.dart';
-import '../../features/canvas/selected_album.dart';
+import '../../features/canvas/canvas_interaction_state.dart';
+import '../../features/canvas/album_canvas_viewport.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
@@ -62,7 +60,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Size? _portraitSize;
   final _albumLayout = HomeAlbumLayoutState();
   List<Map<String, dynamic>>? _catalog;
-  bool _selectionPaused = false;
   bool _xeroxEnabled = false;
 
   _HomeMusicSource get _currentSource => _sources.catalog.value == null
@@ -312,8 +309,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _transform = TransformationController();
   late final Ticker _ticker;
   final _drift = CanvasDrift();
-  bool _touching = false;
-  final _pressedPointers = <int>{};
+  late final _interaction = CanvasInteractionState(_drift);
   bool _reduceMotion = false;
   bool _landscape = false;
   bool? _manualLayout;
@@ -415,9 +411,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } else if (landscape != _landscape) {
       final reversing = _layout.isAnimating;
       _landscape = landscape;
-      _touching = false;
-      _pressedPointers.clear();
-      _selectionPaused = false;
+      _interaction.resetForLayoutChange();
       if (landscape && !reversing) {
         _albumLayout.prepareExpansion(_catalog, _portraitSize, _transform.value);
       }
@@ -446,9 +440,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _advance(Duration elapsed) => _drift.advance(
     elapsed,
     _transform,
-    enabled: !_touching &&
-        _pressedPointers.isEmpty &&
-        !_selectionPaused &&
+    enabled: !_interaction.touching &&
+        _interaction.pressedPointers.isEmpty &&
+        !_interaction.selectionPaused &&
         !_sourcePreparing &&
         _sourcePhase == null &&
         !_reduceMotion &&
@@ -583,135 +577,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         },
       );
     }
-    return PortraitTilt(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          _portraitSize = constraints.biggest;
-          return Listener(
-            onPointerDown: (event) => _pressedPointers.add(event.pointer),
-            onPointerUp: (event) => _pressedPointers.remove(event.pointer),
-            onPointerCancel: (event) => _pressedPointers.remove(event.pointer),
-            child: IgnorePointer(
-              ignoring: _sourcePreparing || _sourcePhase != null,
-              child: InteractiveViewer.builder(
-                clipBehavior: Clip.none,
-                transformationController: _transform,
-                // Custom drift owns inertia after the gesture ends.
-                interactionEndFrictionCoefficient: 1e-100,
-                onInteractionStart: (_) {
-                  _touching = true;
-                  _drift.velocity = Offset.fromDirection(_drift.velocity.direction, 12);
-                },
-                onInteractionUpdate: (details) {
-                  if (details.pointerCount == 1 &&
-                      details.focalPointDelta.distance > 0.1) {
-                    _selectionPaused = false;
-                    _drift.velocity = Offset.fromDirection(
-                      details.focalPointDelta.direction,
-                      12,
-                    );
-                  }
-                },
-                onInteractionEnd: (details) {
-                  final velocity = details.velocity.pixelsPerSecond;
-                  if (velocity.distance > 12) {
-                    _drift.velocity = Offset.fromDirection(
-                      velocity.direction,
-                      velocity.distance.clamp(12.0, 2400.0),
-                    );
-                  }
-                  _touching = false;
-                },
-                minScale: 0.4,
-                maxScale: 2.5,
-                boundaryMargin: const EdgeInsets.all(double.infinity),
-                builder: (context, viewport) {
-                  final rect = viewport;
-                  final scale = _transform.value.getColumn(0).length;
-                  final margin =
-                      PortraitTilt.overscan(constraints.biggest) / scale;
-                  final left =
-                      ((rect.point0.x - margin) / albumGridExtent).floor() - 1;
-                  final right =
-                      ((rect.point2.x + margin) / albumGridExtent).ceil() + 1;
-                  final top =
-                      ((rect.point0.y - margin) / albumGridExtent).floor() - 1;
-                  final bottom =
-                      ((rect.point2.y + margin) / albumGridExtent).ceil() + 1;
-                  return AlbumCanvas(
-                    size: constraints.biggest,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        for (var row = top; row <= bottom; row++)
-                          for (var col = left; col <= right; col++)
-                            Positioned(
-                              key: ValueKey((row, col)),
-                              left: col * albumGridExtent,
-                              top: row * albumGridExtent,
-                              width: albumGridExtent,
-                              height: albumGridExtent,
-                              child: _animateSourceTile(
-                                row,
-                                col,
-                                GestureDetector(
-                                  onTap: () => setState(() {
-                                    _albumLayout.selectedAlbum = (row, col);
-                                    _selectionPaused = true;
-                                  }),
-                                  child: albumArtwork(
-                                    _albumLayout.albumAt(row, col, albums)['asset']
-                                        as String,
-                                    fit: BoxFit.cover,
-                                    xerox: _xeroxEnabled,
-                                    scale: scale,
-                                    semanticLabel:
-                                        _albumLayout.albumAt(row, col, albums)['title']
-                                            as String,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        if (_albumLayout.selectedAlbum case final selected?)
-                          Positioned(
-                            key: ValueKey(('selected', selected)),
-                            left: selected.$2 * albumGridExtent,
-                            top: selected.$1 * albumGridExtent,
-                            width: albumGridExtent,
-                            height: albumGridExtent,
-                            child: _animateSourceTile(
-                              selected.$1,
-                              selected.$2,
-                              SelectedAlbum(
-                                playback: _playback,
-                                xerox: _xeroxEnabled,
-                                scale: scale,
-                                asset:
-                                    _albumLayout.albumAt(
-                                          selected.$1,
-                                          selected.$2,
-                                          albums,
-                                        )['asset']
-                                        as String,
-                                title:
-                                    _albumLayout.albumAt(
-                                          selected.$1,
-                                          selected.$2,
-                                          albums,
-                                        )['title']
-                                        as String,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      ),
+    return AlbumCanvasViewport(
+      albums: albums,
+      layout: _albumLayout,
+      transform: _transform,
+      interaction: _interaction,
+      playback: _playback,
+      xerox: _xeroxEnabled,
+      interactionBlocked: _sourcePreparing || _sourcePhase != null,
+      onViewportSizeChanged: (size) => _portraitSize = size,
+      onTileSelected: (row, column) => setState(() {
+        _albumLayout.selectedAlbum = (row, column);
+        _interaction.selectionPaused = true;
+      }),
+      animateSourceTile: _animateSourceTile,
     );
   }
 }
