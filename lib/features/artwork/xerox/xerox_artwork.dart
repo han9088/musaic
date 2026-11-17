@@ -166,21 +166,28 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       final program = _program;
       if (program != null) _shader ??= program.fragmentShader();
       final provider = ResizeImage(widget.image, width: requestedResolution);
+      final isXeroxReady = _image != null && _shader != null;
       return RepaintBoundary(
         child: Stack(
           fit: StackFit.passthrough,
           children: [
-            Image(
-              image: provider,
-              width: widget.width,
-              height: widget.height,
-              fit: widget.fit,
-              filterQuality: widget.filterQuality,
-              semanticLabel: widget.semanticLabel,
-              excludeFromSemantics: widget.excludeFromSemantics,
-              errorBuilder: widget.errorBuilder,
+            // Keep the original image laid out and subscribed, but avoid
+            // drawing it underneath the fully opaque Xerox output.
+            Opacity(
+              opacity: isXeroxReady ? 0 : 1,
+              alwaysIncludeSemantics: true,
+              child: Image(
+                image: provider,
+                width: widget.width,
+                height: widget.height,
+                fit: widget.fit,
+                filterQuality: widget.filterQuality,
+                semanticLabel: widget.semanticLabel,
+                excludeFromSemantics: widget.excludeFromSemantics,
+                errorBuilder: widget.errorBuilder,
+              ),
             ),
-            if (_image != null && _shader != null)
+            if (isXeroxReady)
               Positioned.fill(
                 child: IgnorePointer(
                   child: CustomPaint(
