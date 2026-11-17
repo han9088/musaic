@@ -89,11 +89,11 @@ void main() {
     Widget canvas({bool xerox = false}) => MaterialApp(
       home: AlbumCanvasViewport(
         albums: const [
-            {
-              'asset': 'assets/albums/0.jpg',
-              'title': 'Album',
-              'artist': 'Artist',
-            },
+          {
+            'asset': 'assets/albums/0.jpg',
+            'title': 'Album',
+            'artist': 'Artist',
+          },
         ],
         layout: layout,
         transform: transform,

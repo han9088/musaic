@@ -102,7 +102,12 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite', 'MuasicXerox'];
+            return <String>[
+              'MusaicMosaic',
+              'MusaicVinyl',
+              'MusaicVinylWhite',
+              'MuasicXerox',
+            ];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
@@ -139,7 +144,12 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite', 'MuasicXerox'];
+            return <String>[
+              'MusaicMosaic',
+              'MusaicVinyl',
+              'MusaicVinylWhite',
+              'MuasicXerox',
+            ];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
