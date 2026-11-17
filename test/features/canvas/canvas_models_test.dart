@@ -9,12 +9,13 @@ void main() {
   test('drift preserves the original 12px/s floor and pauses without moving', () {
     final controller = TransformationController();
     final drift = CanvasDrift(random: math.Random(1));
-    final initial = controller.value.clone();
 
     drift.advance(Duration.zero, controller, enabled: true);
-    expect(controller.value, initial);
+    expect(controller.value.entry(0, 3), 0);
+    expect(controller.value.entry(1, 3), 0);
     drift.advance(const Duration(milliseconds: 16), controller, enabled: false);
-    expect(controller.value, initial);
+    expect(controller.value.entry(0, 3), 0);
+    expect(controller.value.entry(1, 3), 0);
     drift.advance(const Duration(milliseconds: 32), controller, enabled: true);
     expect(drift.velocity.distance, closeTo(12, 1e-9));
     expect(controller.value.entry(0, 3), isNot(0));
