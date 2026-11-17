@@ -4,53 +4,13 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-class XeroxConfig {
-  const XeroxConfig({
-    this.edge = 0.9,
-    this.contrast = 32,
-    this.smooth = 0,
-    this.grain = 0.5,
-    this.invert = false,
-  });
+import 'xerox_config.dart';
+import 'xerox_resolution.dart';
+import 'xerox_seed.dart';
 
-  final double edge;
-  final double contrast;
-  final double smooth;
-  final double grain;
-  final bool invert;
-}
-
-const xeroxConfig = XeroxConfig();
-const _xeroxResolutions = [64, 128, 256, 512];
-
-int xeroxResolution(double physicalExtent, {int? current}) {
-  if (!physicalExtent.isFinite || physicalExtent <= 0) return current ?? 128;
-  if (current == null) {
-    return _xeroxResolutions.firstWhere(
-      (resolution) => physicalExtent <= resolution,
-      orElse: () => _xeroxResolutions.last,
-    );
-  }
-
-  var resolution = current;
-  while (resolution < _xeroxResolutions.last &&
-      physicalExtent > resolution * 1.35) {
-    resolution = _xeroxResolutions[_xeroxResolutions.indexOf(resolution) + 1];
-  }
-  while (resolution > _xeroxResolutions.first &&
-      physicalExtent < resolution * 0.65) {
-    resolution = _xeroxResolutions[_xeroxResolutions.indexOf(resolution) - 1];
-  }
-  return resolution;
-}
-
-int xeroxSeed(String identity) {
-  var hash = 0x811c9dc5;
-  for (final unit in identity.codeUnits) {
-    hash = ((hash ^ unit) * 0x01000193) & 0x7fffffff;
-  }
-  return hash % 65521;
-}
+export 'xerox_config.dart';
+export 'xerox_resolution.dart';
+export 'xerox_seed.dart';
 
 class XeroxArtwork extends StatefulWidget {
   const XeroxArtwork({

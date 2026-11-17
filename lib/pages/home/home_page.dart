@@ -22,6 +22,7 @@ import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
 import '../../features/music/transition/music_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
+import '../../features/music/catalog/album_catalog_mapper.dart';
 
 enum _HomeMusicSource { mock, mock2, local, directories }
 
@@ -85,15 +86,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ? _HomeMusicSource.directories
       : _HomeMusicSource.local;
 
-  List<Map<String, dynamic>> _mapAlbums(List<ProviderAlbum> albums) => [
-    for (final album in albums)
-      <String, dynamic>{
-        'asset': album.artworkUrl ?? 'local:${album.reference.id}',
-        'title': album.title,
-        'artist': album.artist ?? '',
-      },
-  ];
-
   Future<List<Map<String, dynamic>>> _readCatalog(
     List<ProviderAlbum>? albums, {
     _HomeMusicSource? source,
@@ -102,7 +94,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 (source == null && _sources.mock2Selected.value)
             ? _mock2Albums
             : _mockAlbums
-      : Future.value(_mapAlbums(albums));
+      : Future.value(mapProviderAlbums(albums));
 
   void _clearLayoutForCatalog() {
     _flowAlbums = null;
@@ -437,7 +429,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     };
     final initialCatalog = _sources.catalog.value;
     _renderedSource = _currentSource;
-    _catalog = initialCatalog == null ? null : _mapAlbums(initialCatalog);
+    _catalog = initialCatalog == null
+        ? null
+        : mapProviderAlbums(initialCatalog);
     _playback.bind(_sources.provider, initialCatalog);
     List<ProviderAlbum>? lastCatalog = initialCatalog;
     _stopSourceListener = _sources.catalog.subscribe((albums) {
