@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/pages/home/playback/album_playback.dart';
+import 'package:musaic/features/music/playback/album_playback.dart';
 
 void main() {
   test('browse-only catalog never falls back to simulated playback', () {

@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import '../glass_icon_button.dart';
+import '../../../ui/widgets/glass_icon_button.dart';
 import 'album_playback.dart';
 
 class AlbumPlayButton extends StatelessWidget {

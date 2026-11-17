@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
-import 'package:musaic/pages/home/music_source_picker.dart';
+import 'package:musaic/features/music/presentation/music_source_picker.dart';
 import 'package:musaic/services/music/local_music_library.dart';
 import 'package:musaic/services/music/music_models.dart';
 import 'package:musaic/services/music/music_source_controller.dart';

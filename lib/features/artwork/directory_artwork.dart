@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../services/music/directory_music_library.dart';
-import 'xerox_artwork.dart';
+import 'xerox/xerox_artwork.dart';
 
 class DirectoryArtworkScope extends InheritedWidget {
   const DirectoryArtworkScope({

@@ -7,9 +7,9 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../services/app_icon_service.dart';
-import 'app_icon_picker.dart';
-import 'fullscreen_control.dart';
-import 'music_source_picker.dart';
+import '../../features/settings/app_icon_picker.dart';
+import '../../features/settings/fullscreen_control.dart';
+import '../../features/music/presentation/music_source_picker.dart';
 import '../../services/music/music_source_controller.dart';
 
 class HomeSheet extends StatefulWidget {

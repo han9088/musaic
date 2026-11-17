@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
-import 'package:musaic/pages/home/app_icon_picker.dart';
+import 'package:musaic/features/settings/app_icon_picker.dart';
 import 'package:musaic/services/app_icon_service.dart';
 
 void main() {

@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 
-import '../../services/music/directory_music_library.dart';
+import '../../../services/music/directory_music_library.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-import '../../l10n/generated/app_localizations.dart';
-import '../../services/music/music_source_controller.dart';
+import '../../../l10n/generated/app_localizations.dart';
+import '../../../services/music/music_source_controller.dart';
 
 class MusicSourcePicker extends StatelessWidget {
   const MusicSourcePicker({

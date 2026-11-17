@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/pages/home/cover_flow/album_cover_flow.dart';
+import 'package:musaic/features/cover_flow/album_cover_flow.dart';
 
 void main() {
   for (final direction in [-1.0, 1.0]) {

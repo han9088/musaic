@@ -1,7 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/pages/home/music_source_transition.dart';
+import 'package:musaic/features/music/transition/music_source_transition.dart';
 
 void main() {
   const viewport = Size(400, 800);

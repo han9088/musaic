@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 
-import '../album_artwork.dart';
-import '../playback/album_play_button.dart';
-import '../playback/album_playback.dart';
+import '../../../features/artwork/album_artwork.dart';
+import '../music/playback/album_play_button.dart';
+import '../music/playback/album_playback.dart';
 
 class SelectedAlbum extends StatefulWidget {
   const SelectedAlbum({

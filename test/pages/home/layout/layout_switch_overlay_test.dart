@@ -1,7 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/pages/home/layout/layout_switch_overlay.dart';
+import 'package:musaic/features/layout/layout_switch_overlay.dart';
 
 void main() {
   testWidgets('Mac hover reveals and holds the switch without clicking', (

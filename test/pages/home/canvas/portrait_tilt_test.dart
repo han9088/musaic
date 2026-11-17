@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/pages/home/canvas/portrait_tilt.dart';
+import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 void main() {

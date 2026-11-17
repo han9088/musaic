@@ -1,10 +1,10 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/pages/home/cover_flow/album_cover_flow.dart';
+import 'package:musaic/features/cover_flow/album_cover_flow.dart';
 import 'package:musaic/pages/home/home_page.dart';
-import 'package:musaic/pages/home/layout/album_layout_transition.dart';
-import 'package:musaic/pages/home/playback/album_play_button.dart';
+import 'package:musaic/features/layout/album_layout_transition.dart';
+import 'package:musaic/features/music/playback/album_play_button.dart';
 import 'package:musaic/services/mock_album_cache.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 

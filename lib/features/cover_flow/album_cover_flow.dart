@@ -5,11 +5,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../album_artwork.dart';
+import '../artwork/album_artwork.dart';
 import 'cover_flow_input.dart';
-import '../../../services/album_haptics.dart';
-import '../playback/album_play_button.dart';
-import '../playback/album_playback.dart';
+import '../../services/album_haptics.dart';
+import '../music/playback/album_play_button.dart';
+import '../music/playback/album_playback.dart';
 
 class AlbumCoverFlow extends StatefulWidget {
   const AlbumCoverFlow({

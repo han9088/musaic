@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../album_artwork.dart';
+import '../artwork/album_artwork.dart';
 import '../canvas/album_grid_snapshot.dart';
 
 /// Temporary presentation only; the settled CoverFlow owns its original renderer.

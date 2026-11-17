@@ -6,22 +6,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'album_artwork.dart';
+import '../../features/artwork/album_artwork.dart';
 import '../../services/album_haptics.dart';
 import '../../services/mock_album_cache.dart';
 import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'home_sheet.dart';
-import 'canvas/album_canvas.dart';
-import 'canvas/album_grid_snapshot.dart';
-import 'canvas/portrait_tilt.dart';
-import 'canvas/selected_album.dart';
-import 'cover_flow/album_cover_flow.dart';
-import 'layout/album_layout_transition.dart';
-import 'layout/layout_switch_overlay.dart';
-import 'music_source_transition.dart';
-import 'playback/album_playback.dart';
+import '../../features/canvas/album_canvas.dart';
+import '../../features/canvas/album_grid_snapshot.dart';
+import '../../features/canvas/portrait_tilt.dart';
+import '../../features/canvas/selected_album.dart';
+import '../../features/cover_flow/album_cover_flow.dart';
+import '../../features/layout/album_layout_transition.dart';
+import '../../features/layout/layout_switch_overlay.dart';
+import '../../features/music/transition/music_source_transition.dart';
+import '../../features/music/playback/album_playback.dart';
 
 enum _HomeMusicSource { mock, mock2, local, directories }
 

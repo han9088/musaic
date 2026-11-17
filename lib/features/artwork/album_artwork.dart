@@ -1,5 +1,5 @@
 import 'directory_artwork.dart';
-import 'xerox_artwork.dart';
+import 'xerox/xerox_artwork.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
