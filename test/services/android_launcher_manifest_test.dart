@@ -19,12 +19,13 @@ void main() {
       final aliases = RegExp(
         r'<activity-alias\b[^>]*>[\s\S]*?</activity-alias>',
       ).allMatches(manifest).map((match) => match.group(0)!).toList();
-      expect(aliases, hasLength(4));
+      expect(aliases, hasLength(5));
       for (final name in [
         'default',
         'MusaicMosaic',
         'MusaicVinyl',
         'MusaicVinylWhite',
+        'MuasicXerox',
       ]) {
         final alias = aliases.singleWhere(
           (alias) => alias.contains('MainActivity.$name"'),

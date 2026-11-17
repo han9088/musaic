@@ -24,6 +24,7 @@ class DelayedDirectories extends FakeDirectories {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
   test('restored catalog publishes before native scan completes', () async {
     final index = await MusicIndex.open(

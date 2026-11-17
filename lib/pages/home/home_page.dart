@@ -39,6 +39,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _haptics = AlbumHaptics();
+  final _mockWarmupTimers = <Timer>{};
   final _playback = AlbumPlayback();
   late final _sources = widget.sources ?? MusicSourceController();
   late final VoidCallback _stopSourceListener;
@@ -269,22 +270,26 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _warmMockImages() {
-    // Let first-frame work and restored source selection finish before offscreen decoding.
-    unawaited(
-      Future<void>.delayed(const Duration(milliseconds: 300), () async {
-        if (!mounted || _sources.catalog.value != null) return;
-        final cache = _sources.mock2Selected.value
-            ? _mock2AlbumCache
-            : widget.albumCache;
-        await cache.warmImages((image) async {
+    // Defer offscreen decoding until after first-frame and source restoration.
+    // Cancel pending warmups when the page is removed from the widget tree.
+    late final Timer timer;
+    timer = Timer(const Duration(milliseconds: 300), () {
+      _mockWarmupTimers.remove(timer);
+      if (!mounted || _sources.catalog.value != null) return;
+      final cache = _sources.mock2Selected.value
+          ? _mock2AlbumCache
+          : widget.albumCache;
+      unawaited(
+        cache.warmImages((image) async {
           if (mounted) await precacheImage(image, context);
-        });
-      }).catchError((Object error, StackTrace stack) {
-        FlutterError.reportError(
-          FlutterErrorDetails(exception: error, stack: stack),
-        );
-      }),
-    );
+        }).catchError((Object error, StackTrace stack) {
+          FlutterError.reportError(
+            FlutterErrorDetails(exception: error, stack: stack),
+          );
+        }),
+      );
+    });
+    _mockWarmupTimers.add(timer);
   }
 
   @override
@@ -346,6 +351,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    for (final timer in _mockWarmupTimers) {
+      timer.cancel();
+    }
+    _mockWarmupTimers.clear();
     unawaited(_haptics.dispose());
     _stopSourceListener();
     _playback.dispose();

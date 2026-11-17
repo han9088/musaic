@@ -18,6 +18,7 @@ void main() {
       debugDefaultTargetPlatformOverride = platform;
       expect(service.choices, isNot(contains(AppIconChoice.vinylWhite)));
       expect(service.choices, contains(AppIconChoice.vinyl));
+      expect(service.choices, contains(AppIconChoice.xerox));
     }
   });
 
@@ -37,6 +38,7 @@ void main() {
                 'MusaicMosaic',
                 'MusaicVinyl',
                 'MusaicVinylWhite',
+                'MuasicXerox',
               ];
             case 'mGetAlternateIconName':
               throw PlatformException(code: code);
@@ -100,7 +102,7 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite'];
+            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite', 'MuasicXerox'];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
@@ -137,7 +139,7 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite'];
+            return <String>['MusaicMosaic', 'MusaicVinyl', 'MusaicVinylWhite', 'MuasicXerox'];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':

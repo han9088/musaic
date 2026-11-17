@@ -67,11 +67,12 @@ void main() {
     final events = StreamController<AccelerometerEvent>.broadcast();
     addTearDown(events.close);
     final originalSensors = SensorsPlatform.instance;
+    final originalPlatformOverride = debugDefaultTargetPlatformOverride;
     SensorsPlatform.instance = _ControlledSensors(events.stream);
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     addTearDown(() {
       SensorsPlatform.instance = originalSensors;
-      debugDefaultTargetPlatformOverride = null;
+      debugDefaultTargetPlatformOverride = originalPlatformOverride;
     });
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
@@ -87,22 +88,22 @@ void main() {
 
     Widget canvas({bool xerox = false}) => MaterialApp(
       home: AlbumCanvasViewport(
-          albums: const [
+        albums: const [
             {
               'asset': 'assets/albums/0.jpg',
               'title': 'Album',
               'artist': 'Artist',
             },
-          ],
-          layout: layout,
-          transform: transform,
-          interaction: interaction,
-          playback: playback,
-          xerox: xerox,
-          interactionBlocked: false,
-          onViewportSizeChanged: (_) {},
-          onTileSelected: (_, _) {},
-          animateSourceTile: (_, _, child) => child,
+        ],
+        layout: layout,
+        transform: transform,
+        interaction: interaction,
+        playback: playback,
+        xerox: xerox,
+        interactionBlocked: false,
+        onViewportSizeChanged: (_) {},
+        onTileSelected: (_, _) {},
+        animateSourceTile: (_, _, child) => child,
       ),
     );
 
@@ -138,5 +139,7 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
     expect(events.hasListener, isFalse);
+    SensorsPlatform.instance = originalSensors;
+    debugDefaultTargetPlatformOverride = originalPlatformOverride;
   });
 }
