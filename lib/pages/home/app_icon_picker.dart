@@ -123,6 +123,7 @@ class _AppIconPickerState extends State<AppIconPicker> {
                           AppIconChoice.mosaic => l10n.appIconMosaic,
                           AppIconChoice.vinyl => l10n.appIconVinyl,
                           AppIconChoice.vinylWhite => l10n.appIconVinylWhite,
+                          AppIconChoice.xerox => l10n.appIconXerox,
                         }, style: const TextStyle(color: Colors.white)),
                         trailing: choice == state.current
                             ? const Icon(

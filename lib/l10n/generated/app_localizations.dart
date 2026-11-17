@@ -160,6 +160,12 @@ abstract class AppLocalizations {
   /// **'白标黑胶'**
   String get appIconVinylWhite;
 
+  /// No description provided for @appIconXerox.
+  ///
+  /// In zh, this message translates to:
+  /// **'拼贴复印'**
+  String get appIconXerox;
+
   /// No description provided for @musicSource.
   ///
   /// In zh, this message translates to:

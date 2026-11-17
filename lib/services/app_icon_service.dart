@@ -6,7 +6,8 @@ enum AppIconChoice {
   classic(null, 'assets/branding/classic.png'),
   mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
   vinyl('MusaicVinyl', 'assets/branding/vinyl.png'),
-  vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png');
+  vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png'),
+  xerox('MuasicXerox', 'assets/branding/xerox.png');
 
   const AppIconChoice(this.nativeName, this.previewAsset);
 

@@ -42,6 +42,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appIconVinylWhite => '白标黑胶';
 
   @override
+  String get appIconXerox => '拼贴复印';
+
+  @override
   String get musicSource => '音乐源';
 
   @override

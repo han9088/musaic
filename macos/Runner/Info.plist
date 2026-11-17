@@ -8,6 +8,8 @@
 		<string>MusaicMosaicPreview</string>
 		<key>MusaicVinyl</key>
 		<string>MusaicVinylPreview</string>
+		<key>MuasicXerox</key>
+		<string>MusaicXeroxPreview</string>
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

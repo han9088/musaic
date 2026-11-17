@@ -32,6 +32,7 @@
 		A11400020000000000000003 /* AppIconPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000004 /* AppIconPlugin.swift */; };
 		A11400040000000000000001 /* MusaicMosaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400040000000000000002 /* MusaicMosaic.icon */; };
 		A11500040000000000000001 /* MusaicVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500040000000000000002 /* MusaicVinyl.icon */; };
+		A11600020000000000000001 /* MuasicXerox.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11600020000000000000002 /* MuasicXerox.icon */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +89,7 @@
 		A11400020000000000000004 /* AppIconPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconPlugin.swift; sourceTree = "<group>"; };
 		A11400040000000000000002 /* MusaicMosaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicMosaic.icon; sourceTree = "<group>"; };
 		A11500040000000000000002 /* MusaicVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinyl.icon; sourceTree = "<group>"; };
+		A11600020000000000000002 /* MuasicXerox.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MuasicXerox.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -180,6 +182,7 @@
 				A11400020000000000000002 /* musaic.icon */,
 				A11400040000000000000002 /* MusaicMosaic.icon */,
 				A11500040000000000000002 /* MusaicVinyl.icon */,
+				A11600020000000000000002 /* MuasicXerox.icon */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -309,6 +312,7 @@
 				A11400020000000000000001 /* musaic.icon in Resources */,
 				A11400040000000000000001 /* MusaicMosaic.icon in Resources */,
 				A11500040000000000000001 /* MusaicVinyl.icon in Resources */,
+				A11600020000000000000001 /* MuasicXerox.icon in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -500,7 +504,7 @@
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MuasicXerox";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -633,7 +637,7 @@
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MuasicXerox";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -654,7 +658,7 @@
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl";
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MuasicXerox";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
