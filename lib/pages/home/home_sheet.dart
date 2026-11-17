@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
+import '../../l10n/generated/app_localizations.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../services/app_icon_service.dart';
 import 'app_icon_picker.dart';
@@ -19,6 +21,8 @@ class HomeSheet extends StatefulWidget {
     this.sources,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.xeroxEnabled = false,
+    this.onXeroxChanged,
   });
 
   final Widget child;
@@ -27,6 +31,8 @@ class HomeSheet extends StatefulWidget {
   final MusicSourceController? sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final bool xeroxEnabled;
+  final ValueChanged<bool>? onXeroxChanged;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -94,6 +100,8 @@ class _HomeSheetState extends State<HomeSheet> {
     _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
+    var xeroxEnabled = widget.xeroxEnabled;
+    final onXeroxChanged = widget.onXeroxChanged;
     DeskBottomSheet.of(context).present(
       BottomSheetScrollView(
         child: Column(
@@ -105,6 +113,29 @@ class _HomeSheetState extends State<HomeSheet> {
                 onSourceSelection: _selectSource,
               ),
             if (kIsWeb) const FullscreenControl(),
+            if (onXeroxChanged != null)
+              StatefulBuilder(
+                builder: (context, setSheetState) => ListTile(
+                  key: const ValueKey('xerox-toggle'),
+                  selected: xeroxEnabled,
+                  leading: const Icon(
+                    PhosphorIcons.printer,
+                    color: Colors.white70,
+                  ),
+                  title: Text(
+                    AppLocalizations.of(context).xeroxMode,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                  trailing: xeroxEnabled
+                      ? const Icon(PhosphorIcons.check, color: Colors.white)
+                      : null,
+                  onTap: () {
+                    final enabled = !xeroxEnabled;
+                    setSheetState(() => xeroxEnabled = enabled);
+                    onXeroxChanged(enabled);
+                  },
+                ),
+              ),
             AppIconPicker(icons: widget.icons),
           ],
         ),

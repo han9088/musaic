@@ -17,6 +17,7 @@ class AlbumCoverFlow extends StatefulWidget {
     required this.albums,
     this.haptics,
     this.playback,
+    this.xerox = false,
     this.initialPosition = 0,
     this.initialTilt = 0,
     this.onMotionChanged,
@@ -29,6 +30,7 @@ class AlbumCoverFlow extends StatefulWidget {
   /// When provided, the caller owns preparation and disposal.
   final AlbumHaptics? haptics;
   final AlbumPlayback? playback;
+  final bool xerox;
 
   final List<Map<String, dynamic>> albums;
 
@@ -235,6 +237,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       fit: BoxFit.cover,
       filterQuality: FilterQuality.medium,
       excludeFromSemantics: true,
+      xerox: widget.xerox,
     );
   }
 

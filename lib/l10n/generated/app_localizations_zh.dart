@@ -136,4 +136,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get fullscreenFailed => '无法切换全屏，请重试。';
+
+  @override
+  String get xeroxMode => 'Xerox 化';
 }

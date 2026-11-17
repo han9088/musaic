@@ -73,5 +73,6 @@
   },
   "enterFullscreen": "Enter fullscreen",
   "exitFullscreen": "Exit fullscreen",
-  "fullscreenFailed": "Could not change fullscreen mode. Try again."
+  "fullscreenFailed": "Could not change fullscreen mode. Try again.",
+  "xeroxMode": "Xerox mode"
 }

@@ -144,4 +144,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fullscreenFailed => 'Could not change fullscreen mode. Try again.';
+
+  @override
+  String get xeroxMode => 'Xerox mode';
 }

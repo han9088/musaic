@@ -1,4 +1,5 @@
 import 'directory_artwork.dart';
+import 'xerox_artwork.dart';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
@@ -12,6 +13,8 @@ Widget albumArtwork(
   FilterQuality filterQuality = FilterQuality.medium,
   String? semanticLabel,
   bool excludeFromSemantics = false,
+  bool xerox = false,
+  double scale = 1,
 }) {
   if (asset.startsWith('directory:')) {
     return DirectoryArtwork(
@@ -20,6 +23,8 @@ Widget albumArtwork(
       height: height,
       fit: fit,
       semanticLabel: excludeFromSemantics ? null : semanticLabel,
+      xerox: xerox,
+      scale: scale,
       placeholder: albumArtwork(
         'local:placeholder',
         width: width,
@@ -29,6 +34,19 @@ Widget albumArtwork(
     );
   }
   if (!asset.startsWith('local:')) {
+    if (xerox) {
+      return XeroxArtwork(
+        identity: asset,
+        image: AssetImage(asset),
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: filterQuality,
+        semanticLabel: semanticLabel,
+        excludeFromSemantics: excludeFromSemantics,
+        scale: scale,
+      );
+    }
     return Image.asset(
       asset,
       width: width,

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../services/music/directory_music_library.dart';
+import 'xerox_artwork.dart';
 
 class DirectoryArtworkScope extends InheritedWidget {
   const DirectoryArtworkScope({
@@ -25,12 +26,16 @@ class DirectoryArtwork extends StatefulWidget {
     this.height,
     this.fit,
     this.semanticLabel,
+    this.xerox = false,
+    this.scale = 1,
   });
   final String identity;
   final Widget placeholder;
   final double? width, height;
   final BoxFit? fit;
   final String? semanticLabel;
+  final bool xerox;
+  final double scale;
   @override
   State<DirectoryArtwork> createState() => _DirectoryArtworkState();
 }
@@ -83,8 +88,22 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
     builder: (context, snapshot) {
       final uri = snapshot.data;
       if (uri == null) return widget.placeholder;
+      final file = File.fromUri(Uri.parse(uri));
+      if (widget.xerox) {
+        return XeroxArtwork(
+          key: ValueKey(widget.identity),
+          identity: widget.identity,
+          image: FileImage(file),
+          width: widget.width,
+          height: widget.height,
+          fit: widget.fit,
+          semanticLabel: widget.semanticLabel,
+          scale: widget.scale,
+          errorBuilder: (_, error, stack) => widget.placeholder,
+        );
+      }
       return Image.file(
-        File.fromUri(Uri.parse(uri)),
+        file,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,

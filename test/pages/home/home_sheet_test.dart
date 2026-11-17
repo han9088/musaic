@@ -43,6 +43,53 @@ void main() {
     },
   );
 
+  testWidgets('Xerox mode toggles from the existing bottom sheet', (
+    tester,
+  ) async {
+    var xeroxEnabled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(
+            icons: const _Icons(),
+            xeroxEnabled: xeroxEnabled,
+            onXeroxChanged: (enabled) => xeroxEnabled = enabled,
+            child: const ColoredBox(color: Colors.black),
+          ),
+        ),
+      ),
+    );
+
+    final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    final size = tester.getSize(find.byType(HomeSheet));
+    final gesture = await tester.startGesture(
+      Offset(size.width / 2, size.height - 32),
+    );
+    await gesture.moveBy(const Offset(0, -25));
+    await gesture.moveBy(const Offset(0, -50));
+    await gesture.moveBy(const Offset(0, -50));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final toggle = find.byKey(const ValueKey('xerox-toggle'));
+    expect(toggle, findsOneWidget);
+    expect(tester.widget<ListTile>(toggle).selected, isFalse);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(xeroxEnabled, isTrue);
+    expect(tester.widget<ListTile>(toggle).selected, isTrue);
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(xeroxEnabled, isFalse);
+    expect(tester.widget<ListTile>(toggle).selected, isFalse);
+
+    sheet.dismiss();
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets('bottom handle opens once and dismisses on $platform', (
       tester,

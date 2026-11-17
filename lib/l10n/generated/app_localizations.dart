@@ -333,6 +333,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无法切换全屏，请重试。'**
   String get fullscreenFailed;
+
+  /// No description provided for @xeroxMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'Xerox 化'**
+  String get xeroxMode;
 }
 
 class _AppLocalizationsDelegate

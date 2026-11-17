@@ -50,3 +50,5 @@ flutter:
     - assets/albums/
     - assets/google_fonts/
     - assets/textures/dialog_noise.png
+  shaders:
+    - shaders/xerox.frag

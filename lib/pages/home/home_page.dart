@@ -67,6 +67,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   int _gridOffset = 0;
   (int, int)? _selectedAlbum;
   bool _selectionPaused = false;
+  bool _xeroxEnabled = false;
 
   Map<String, dynamic> _albumAt(
     int row,
@@ -576,6 +577,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       sources: _sources,
       sourceSwitching: _sourceSwitching,
       onSourceSelection: _selectMusicSource,
+      xeroxEnabled: _xeroxEnabled,
+      onXeroxChanged: (enabled) => setState(() => _xeroxEnabled = enabled),
       child: Scaffold(
         backgroundColor: const Color(0xff000000),
         body: Builder(
@@ -646,6 +649,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         tilt: _flowTilt,
         gridOffset: _gridOffset,
         progress: _layoutProgress,
+        xerox: _xeroxEnabled,
       );
     }
     if (_landscape) {
@@ -653,6 +657,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         albums: _flowAlbums ?? albums,
         haptics: _haptics,
         playback: _playback,
+        xerox: _xeroxEnabled,
         initialPosition: _flowPosition,
         initialTilt: _flowTilt,
         onMotionChanged: (position, tilt) {
@@ -705,9 +710,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 boundaryMargin: const EdgeInsets.all(double.infinity),
                 builder: (context, viewport) {
                   final rect = viewport;
+                  final scale = _transform.value.getColumn(0).length;
                   final margin =
-                      PortraitTilt.overscan(constraints.biggest) /
-                      _transform.value.getColumn(0).length;
+                      PortraitTilt.overscan(constraints.biggest) / scale;
                   final left =
                       ((rect.point0.x - margin) / albumGridExtent).floor() - 1;
                   final right =
@@ -741,6 +746,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                     _albumAt(row, col, albums)['asset']
                                         as String,
                                     fit: BoxFit.cover,
+                                    xerox: _xeroxEnabled,
+                                    scale: scale,
                                     semanticLabel:
                                         _albumAt(row, col, albums)['title']
                                             as String,
@@ -760,6 +767,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               selected.$2,
                               SelectedAlbum(
                                 playback: _playback,
+                                xerox: _xeroxEnabled,
+                                scale: scale,
                                 asset:
                                     _albumAt(
                                           selected.$1,

@@ -10,11 +10,15 @@ class SelectedAlbum extends StatefulWidget {
     required this.asset,
     required this.title,
     required this.playback,
+    this.xerox = false,
+    this.scale = 1,
   });
 
   final String asset;
   final String title;
   final AlbumPlayback playback;
+  final bool xerox;
+  final double scale;
 
   @override
   State<SelectedAlbum> createState() => _SelectedAlbumState();
@@ -47,6 +51,8 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
             widget.asset,
             fit: BoxFit.cover,
             semanticLabel: widget.title,
+            xerox: widget.xerox,
+            scale: widget.scale * 1.16,
           ),
           AlbumPlayButton(
             asset: widget.asset,

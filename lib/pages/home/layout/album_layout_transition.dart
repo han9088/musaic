@@ -16,6 +16,7 @@ class AlbumLayoutTransition extends StatelessWidget {
     required this.tilt,
     required this.gridOffset,
     required this.progress,
+    this.xerox = false,
   });
 
   final List<Map<String, dynamic>> albums;
@@ -24,6 +25,7 @@ class AlbumLayoutTransition extends StatelessWidget {
   final double tilt;
   final int gridOffset;
   final Animation<double> progress;
+  final bool xerox;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +188,7 @@ class AlbumLayoutTransition extends StatelessWidget {
       fit: BoxFit.cover,
       filterQuality: FilterQuality.medium,
       excludeFromSemantics: true,
+      xerox: xerox,
     );
     return Positioned.fill(
       child: AnimatedBuilder(
