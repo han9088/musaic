@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/album_artwork.dart';
 import 'cover_flow_input.dart';
+import 'cover_flow_motion.dart';
 import '../../services/album_haptics.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
@@ -40,149 +41,51 @@ class AlbumCoverFlow extends StatefulWidget {
 
 class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  static const _friction = 1.8;
-  static const _dragSensitivity = 1.12;
-  static const _settlingRate = 10.0;
-  static const _maxTilt = 0.66;
-  static const _tiltDeadZone = 200.0;
-  static const _shortSwipeMinDistance = 20.0;
-  static const _rapidSwipeInterval = Duration(milliseconds: 350);
-
   late final Ticker _ticker;
   late final AlbumHaptics _haptics;
-  double _position = 0;
+  late final CoverFlowMotion _motion;
   int _hapticIndex = 0;
   Duration? _lastHapticTime;
-  double _velocity = 0;
-  double _tilt = 0;
-  double _dragDistance = 0;
-  double _gestureTilt = 0;
-  double? _target;
-  bool _dragging = false;
-  Duration? _lastFrame;
-  Duration? _lastDrag;
-  Duration? _lastShortSwipe;
-  double _shortSwipeDirection = 0;
-  int _shortSwipeCount = 0;
-  Duration? _lastReleaseTime;
-  double _lastReleaseDirection = 0;
-  double _coastGain = 1;
 
   @override
   void initState() {
     super.initState();
-    _position = widget.initialPosition;
-    _hapticIndex = _position.round();
-    _tilt = widget.initialTilt;
-    _gestureTilt = _tilt;
+    _motion = CoverFlowMotion(
+      position: widget.initialPosition,
+      tilt: widget.initialTilt,
+    );
+    _hapticIndex = _motion.position.round();
     _ticker = createTicker(_tick);
     _haptics = widget.haptics ?? AlbumHaptics();
     WidgetsBinding.instance.addObserver(this);
     if (widget.haptics == null) unawaited(_haptics.prepare());
-    if (_tilt != 0 || _position != _position.roundToDouble()) {
-      _target = _position.roundToDouble();
+    if (_motion.tilt != 0 || _motion.position != _motion.position.roundToDouble()) {
+      _motion.target = _motion.position.roundToDouble();
       _wake();
-    }
-  }
-
-  bool _continuesShortSwipes(Duration? time) {
-    final previous = _lastShortSwipe;
-    if (time == null ||
-        previous == null ||
-        _dragDistance.sign != _shortSwipeDirection) {
-      return false;
-    }
-    final interval = time - previous;
-    return interval > Duration.zero && interval <= _rapidSwipeInterval;
-  }
-
-  void _updateGestureTilt(double dx, Duration? time) {
-    _dragDistance += dx;
-    final rapidSwipes =
-        _shortSwipeCount >= 2 &&
-        _dragDistance.abs() >= _shortSwipeMinDistance &&
-        _continuesShortSwipes(time);
-    if (_gestureTilt != 0) {
-      if (dx != 0 &&
-          (dx * _gestureTilt < 0 ||
-              _dragDistance.abs() > _tiltDeadZone ||
-              rapidSwipes)) {
-        _gestureTilt = dx.sign * _maxTilt;
-      }
-    } else if (_dragDistance.abs() > _tiltDeadZone || rapidSwipes) {
-      _gestureTilt = _dragDistance.sign * _maxTilt;
-    }
-  }
-
-  void _recordShortSwipe() {
-    if (_dragDistance.abs() >= _shortSwipeMinDistance &&
-        _dragDistance.abs() <= _tiltDeadZone) {
-      _shortSwipeCount = _continuesShortSwipes(_lastDrag)
-          ? (_shortSwipeCount + 1).clamp(1, 3)
-          : 1;
-      _lastShortSwipe = _lastDrag;
-      _shortSwipeDirection = _dragDistance.sign;
-    } else {
-      _shortSwipeCount = 0;
-      _lastShortSwipe = null;
     }
   }
 
   void _wake() {
     if (!_ticker.isActive) {
-      _lastFrame = null;
+      _motion.lastFrame = null;
       _ticker.start();
     }
   }
 
   void _tick(Duration time) {
-    final previous = _lastFrame;
-    _lastFrame = time;
-    if (previous == null) return;
-    final dt = ((time - previous).inMicroseconds / 1000000).clamp(0.0, 0.032);
-    final reduced = MediaQuery.disableAnimationsOf(context);
-    setState(() {
-      if (!_dragging) {
-        if (_target == null && _velocity.abs() < 0.35) {
-          _target = _position.roundToDouble();
-        }
-        final target = _target;
-        if (target == null) {
-          final friction = _friction / _coastGain;
-          final decay = math.exp(-friction * dt);
-          _position += _velocity * (1 - decay) / friction;
-          _velocity *= decay;
-        } else {
-          // Critically damped settling preserves velocity when entering a slot.
-          final error = _position - target;
-          final c = _velocity + _settlingRate * error;
-          final decay = math.exp(-_settlingRate * dt);
-          _position = target + (error + c * dt) * decay;
-          _velocity = (_velocity - _settlingRate * c * dt) * decay;
-        }
-      }
-      final desiredTilt = reduced || _target != null ? 0.0 : _gestureTilt;
-      // Hold perspective while coasting; ease back only when settling.
-      final tiltResponse = _dragging ? 10.0 : 6.0;
-      _tilt += (desiredTilt - _tilt) * (1 - math.exp(-tiltResponse * dt));
-      if (!_dragging &&
-          _target != null &&
-          (_position - _target!).abs() < 0.001 &&
-          _velocity.abs() < 0.01 &&
-          _tilt.abs() < 0.001) {
-        _position = _target!;
-        _velocity = 0;
-        _tilt = 0;
-        _gestureTilt = 0;
-        _ticker.stop();
-      }
-    });
+    final frame = _motion.advance(
+      time,
+      reduced: MediaQuery.disableAnimationsOf(context),
+    );
+    if (!frame.changed) return;
+    setState(() {});
+    if (frame.settled) _ticker.stop();
     _notifyAlbumChange();
   }
 
   void _notifyAlbumChange() {
-    widget.onMotionChanged?.call(_position, _tilt);
-    final index = _position.round();
+    widget.onMotionChanged?.call(_motion.position, _motion.tilt);
+    final index = _motion.position.round();
     if (index == _hapticIndex) return;
     final movingLeft = index > _hapticIndex;
     _hapticIndex = index;
@@ -195,19 +98,19 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     unawaited(
       _haptics.tick(
         movingLeft: movingLeft,
-        strength: (_velocity.abs() / 8).clamp(0.15, 1.0),
+        strength: (_motion.velocity.abs() / 8).clamp(0.15, 1.0),
       ),
     );
   }
 
   void _settle(double target) {
-    _target = target;
+    _motion.target = target;
     if (MediaQuery.disableAnimationsOf(context)) {
       setState(() {
-        _position = target;
-        _velocity = 0;
-        _tilt = 0;
-        _gestureTilt = 0;
+        _motion.position = target;
+        _motion.velocity = 0;
+        _motion.tilt = 0;
+        _motion.gestureTilt = 0;
       });
       _ticker.stop();
       _notifyAlbumChange();
@@ -243,7 +146,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
 
   @override
   Widget build(BuildContext context) {
-    final selected = widget.albums[_position.round() % widget.albums.length];
+    final selected = widget.albums[_motion.position.round() % widget.albums.length];
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: ColoredBox(
@@ -256,13 +159,13 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                 constraints.maxWidth * 0.31,
               );
               final stride = size * 0.7 + 6;
-              final center = _position.round();
+              final center = _motion.position.round();
               final indices = List.generate(15, (i) => center + i - 7);
               final widths = <int, double>{
                 for (final i in indices)
                   i:
                       size *
-                      (0.7 + 0.3 * (1 - (i - _position).abs()).clamp(0.0, 1.0)),
+                      (0.7 + 0.3 * (1 - (i - _motion.position).abs()).clamp(0.0, 1.0)),
               };
               final centers = <int, double>{indices.first: 0};
               for (var i = 1; i < indices.length; i++) {
@@ -273,114 +176,114 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     (widths[previous]! + widths[current]!) / 2 +
                     6;
               }
-              final lower = _position.floor();
-              final fraction = _position - lower;
+              final lower = _motion.position.floor();
+              final fraction = _motion.position - lower;
               final anchor =
                   centers[lower]! * (1 - fraction) +
                   centers[lower + 1]! * fraction;
               final plane = Matrix4.identity()
                 ..setEntry(3, 2, 0.88 / constraints.maxWidth)
-                ..rotateY(_tilt);
+                ..rotateY(_motion.tilt);
               return Semantics(
                 label: '${selected['artist']}, ${selected['title']}',
-                onIncrease: () => _settle(_position.roundToDouble() + 1),
-                onDecrease: () => _settle(_position.roundToDouble() - 1),
+                onIncrease: () => _settle(_motion.position.roundToDouble() + 1),
+                onDecrease: () => _settle(_motion.position.roundToDouble() - 1),
                 child: CoverFlowInput(
-                  canStartInput: () => !_dragging,
+                  canStartInput: () => !_motion.dragging,
                   onScroll: (delta, time) {
                     setState(() {
-                      if (!_dragging) {
-                        _dragDistance = 0;
-                        _gestureTilt = _tilt;
+                      if (!_motion.dragging) {
+                        _motion.dragDistance = 0;
+                        _motion.gestureTilt = _motion.tilt;
                       }
-                      _dragging = true;
-                      _target = null;
-                      _velocity = 0;
-                      _updateGestureTilt(-delta, time);
-                      _lastDrag = time;
-                      _position += delta * _dragSensitivity / stride;
+                      _motion.dragging = true;
+                      _motion.target = null;
+                      _motion.velocity = 0;
+                      _motion.updateGestureTilt(-delta, time);
+                      _motion.lastDrag = time;
+                      _motion.position += delta * CoverFlowMotion.dragSensitivity / stride;
                     });
                     _wake();
                   },
                   onScrollEnd: () {
-                    _dragging = false;
-                    _recordShortSwipe();
-                    _settle(_position.roundToDouble());
+                    _motion.dragging = false;
+                    _motion.recordShortSwipe();
+                    _settle(_motion.position.roundToDouble());
                   },
                   onStep: (direction) {
-                    _velocity = 0;
-                    _settle((_target ?? _position.roundToDouble()) + direction);
+                    _motion.velocity = 0;
+                    _settle((_motion.target ?? _motion.position.roundToDouble()) + direction);
                   },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
                     onHorizontalDragStart: (details) {
-                      _dragging = true;
-                      _dragDistance = 0;
-                      _gestureTilt = _tilt;
-                      if (_target != null) _velocity = 0;
-                      _target = null;
-                      _lastDrag = details.sourceTimeStamp;
+                      _motion.dragging = true;
+                      _motion.dragDistance = 0;
+                      _motion.gestureTilt = _motion.tilt;
+                      if (_motion.target != null) _motion.velocity = 0;
+                      _motion.target = null;
+                      _motion.lastDrag = details.sourceTimeStamp;
                       _wake();
                     },
                     onHorizontalDragUpdate: (details) {
                       final delta =
-                          -details.delta.dx * _dragSensitivity / stride;
+                          -details.delta.dx * CoverFlowMotion.dragSensitivity / stride;
                       final time = details.sourceTimeStamp;
-                      final previous = _lastDrag;
+                      final previous = _motion.lastDrag;
                       setState(() {
-                        _position += delta;
-                        _updateGestureTilt(details.delta.dx, time);
+                        _motion.position += delta;
+                        _motion.updateGestureTilt(details.delta.dx, time);
                         if (time != null &&
                             previous != null &&
                             time > previous) {
                           final dt = (time - previous).inMicroseconds / 1000000;
                           final dragVelocity = delta / dt;
-                          _velocity =
-                              (_velocity * dragVelocity < 0
+                          _motion.velocity =
+                              (_motion.velocity * dragVelocity < 0
                                       ? dragVelocity
-                                      : _velocity * 0.35 + dragVelocity * 0.65)
+                                      : _motion.velocity * 0.35 + dragVelocity * 0.65)
                                   .clamp(-12.0, 12.0);
                         }
                       });
-                      _lastDrag = time;
+                      _motion.lastDrag = time;
                     },
                     onHorizontalDragEnd: (details) {
-                      _dragging = false;
-                      _recordShortSwipe();
+                      _motion.dragging = false;
+                      _motion.recordShortSwipe();
                       final releaseVelocity =
                           (-details.velocity.pixelsPerSecond.dx *
-                                  _dragSensitivity /
+                                  CoverFlowMotion.dragSensitivity /
                                   stride)
                               .clamp(-12.0, 12.0);
                       // Keep recent motion when the release estimate points backwards.
-                      if (_velocity * releaseVelocity >= 0) {
-                        _velocity = releaseVelocity == 0
+                      if (_motion.velocity * releaseVelocity >= 0) {
+                        _motion.velocity = releaseVelocity == 0
                             ? 0
-                            : _velocity * 0.65 + releaseVelocity * 0.35;
+                            : _motion.velocity * 0.65 + releaseVelocity * 0.35;
                       }
-                      final now = _lastDrag;
-                      final previousRelease = _lastReleaseTime;
+                      final now = _motion.lastDrag;
+                      final previousRelease = _motion.lastReleaseTime;
                       final interval = previousRelease == null || now == null
                           ? 1.0
                           : (now - previousRelease).inMicroseconds / 1000000;
                       final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
-                      _coastGain =
-                          _velocity.abs() >= 0.35 &&
-                              _velocity.sign == _lastReleaseDirection
-                          ? 1 + (_coastGain * 0.35 + 0.3) * cadence
+                      _motion.coastGain =
+                          _motion.velocity.abs() >= 0.35 &&
+                              _motion.velocity.sign == _motion.lastReleaseDirection
+                          ? 1 + (_motion.coastGain * 0.35 + 0.3) * cadence
                           : 1;
-                      _lastReleaseTime = now;
-                      _lastReleaseDirection = _velocity.sign;
-                      if (_velocity.abs() < 0.35) {
-                        _settle(_position.roundToDouble());
+                      _motion.lastReleaseTime = now;
+                      _motion.lastReleaseDirection = _motion.velocity.sign;
+                      if (_motion.velocity.abs() < 0.35) {
+                        _settle(_motion.position.roundToDouble());
                       }
                       _wake();
                     },
                     onHorizontalDragCancel: () {
-                      _shortSwipeCount = 0;
-                      _lastShortSwipe = null;
-                      _dragging = false;
-                      _settle(_position.roundToDouble());
+                      _motion.shortSwipeCount = 0;
+                      _motion.lastShortSwipe = null;
+                      _motion.dragging = false;
+                      _settle(_motion.position.roundToDouble());
                     },
                     child: Stack(
                       clipBehavior: Clip.hardEdge,
@@ -495,9 +398,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
               width: size,
               height: size,
               child: IgnorePointer(
-                ignoring: index != _position.round(),
+                ignoring: index != _motion.position.round(),
                 child: AnimatedOpacity(
-                  opacity: index == _position.round() ? 1 : 0,
+                  opacity: index == _motion.position.round() ? 1 : 0,
                   duration: MediaQuery.disableAnimationsOf(context)
                       ? Duration.zero
                       : const Duration(milliseconds: 180),
