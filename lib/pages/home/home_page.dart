@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -16,6 +15,7 @@ import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
+import '../../features/artwork/visible_album_preloader.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
@@ -129,7 +129,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewportSize,
         _transform.value,
       );
-      await _precacheVisibleAlbums(target, snapshot.cells);
+      await const VisibleAlbumPreloader().warm(
+        albums: target,
+        cells: snapshot.cells,
+        directory: _sources.directories,
+        context: context,
+        isActive: () => mounted,
+      );
       if (!mounted) return;
       final exit = SourceTileMotion.exit(
         oldAlbums.isEmpty ? const [] : snapshot.cells,
@@ -168,45 +174,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _syncMotion();
         }
         _sourceTransition.switching.value = false;
-      }
-    }
-  }
-
-  Future<void> _precacheVisibleAlbums(
-    List<Map<String, dynamic>> albums,
-    List<({int row, int column, Rect rect})> cells,
-  ) async {
-    final prepared = <String>{};
-    for (final cell in cells) {
-      if (albums.isEmpty) return;
-      final album =
-          albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
-      final asset = album['asset'] as String;
-      if (!prepared.add(asset) || asset.startsWith('local:')) continue;
-      ImageProvider? image;
-      if (asset.startsWith('directory:')) {
-        final library = _sources.directories;
-        final id = Uri.decodeComponent(asset.substring('directory:'.length));
-        final track = library?.track(id);
-        if (library != null && track != null) {
-          try {
-            final uri = await library.artwork(track);
-            if (uri != null) image = FileImage(File.fromUri(Uri.parse(uri)));
-          } catch (_) {
-            // The existing DirectoryArtwork widget will show its placeholder.
-          }
-        }
-      } else {
-        image = AssetImage(asset);
-      }
-      if (!mounted) return;
-      if (image != null) {
-        await precacheImage(
-          image,
-          context,
-          size: const Size(albumGridExtent, albumGridExtent),
-          onError: (error, stackTrace) {},
-        );
       }
     }
   }
