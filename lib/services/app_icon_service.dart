@@ -26,7 +26,8 @@ class AppIconService {
         choice != AppIconChoice.vinylWhite ||
         (!kIsWeb &&
             (defaultTargetPlatform == TargetPlatform.iOS ||
-                defaultTargetPlatform == TargetPlatform.android)),
+                defaultTargetPlatform == TargetPlatform.android ||
+                defaultTargetPlatform == TargetPlatform.macOS)),
   );
 
   Future<AppIconSnapshot> read() async {

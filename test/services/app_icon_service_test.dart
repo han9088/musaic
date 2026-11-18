@@ -8,18 +8,16 @@ void main() {
   const channel = MethodChannel('flutter_dynamic_icon');
   const service = AppIconService();
 
-  test('white vinyl is available only where its native icon is configured', () {
+  test('white vinyl is available where its native icon is configured', () {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     expect(service.choices, contains(AppIconChoice.vinylWhite));
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     expect(service.choices, contains(AppIconChoice.vinylWhite));
-    for (final platform in [TargetPlatform.macOS]) {
-      debugDefaultTargetPlatformOverride = platform;
-      expect(service.choices, isNot(contains(AppIconChoice.vinylWhite)));
-      expect(service.choices, contains(AppIconChoice.vinyl));
-      expect(service.choices, contains(AppIconChoice.xerox));
-    }
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(service.choices, contains(AppIconChoice.vinylWhite));
+    expect(service.choices, contains(AppIconChoice.vinyl));
+    expect(service.choices, contains(AppIconChoice.xerox));
   });
 
   for (final code in ['ICON_CHANGE_PENDING', 'ICON_WRITE_FAILED']) {
