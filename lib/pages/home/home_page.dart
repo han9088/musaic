@@ -239,11 +239,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     bool includeSelected = false,
   }) async {
     if (albums.isEmpty) return const [];
-    final selectedAsset = includeSelected &&
-            _albumLayout.selectedAlbum case final selected?
-        ? _albumLayout.albumAt(selected.$1, selected.$2, albums)['asset']
-            as String
-        : null;
+    String? selectedAsset;
+    if (includeSelected) {
+      final selected = _albumLayout.selectedAlbum;
+      if (selected != null) {
+        selectedAsset = _albumLayout.albumAt(
+          selected.$1,
+          selected.$2,
+          albums,
+        )['asset'] as String;
+      }
+    }
 
     return const XeroxVisibleArtworkPlanner().build(
       cells: cells,
