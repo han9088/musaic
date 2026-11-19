@@ -1,15 +1,15 @@
-import 'dart:io';
-
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/painting.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../services/music/directory_music_library.dart';
 import '../canvas/album_grid_snapshot.dart';
+import 'artwork_image_provider.dart';
 
-/// Preloads only the cells in the impending source transition, in scene order.
-/// A bounded batch avoids serializing network/disk reads and image decodes.
+/// Preloads only the cells in an impending source transition, in scene order.
+/// The resolver handles Asset, Network and directory artwork uniformly.
 class VisibleAlbumPreloader {
   const VisibleAlbumPreloader({this.maxConcurrent = 4})
-      : assert(maxConcurrent > 0);
+    : assert(maxConcurrent > 0);
 
   final int maxConcurrent;
 
@@ -21,9 +21,7 @@ class VisibleAlbumPreloader {
     final prepared = <String>{};
     final assets = <String>[];
     for (final cell in cells) {
-      final album = albums[
-        gridAlbumIndex(cell.row, cell.column, albums.length)
-      ];
+      final album = albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
       final asset = album['asset'] as String;
       if (!prepared.add(asset) || asset.startsWith('local:')) continue;
       assets.add(asset);
@@ -43,8 +41,8 @@ class VisibleAlbumPreloader {
       if (!isActive()) return;
       final end = (start + maxConcurrent).clamp(0, assets.length);
       await Future.wait([
-        for (var i = start; i < end; i++)
-          _warmAsset(assets[i], directory, context, isActive),
+        for (final asset in assets.sublist(start, end))
+          _warmAsset(asset, directory, context, isActive),
       ]);
     }
   }
@@ -55,30 +53,17 @@ class VisibleAlbumPreloader {
     BuildContext context,
     bool Function() isActive,
   ) async {
-    ImageProvider? image;
-    if (asset.startsWith('directory:')) {
-      final id = Uri.decodeComponent(asset.substring('directory:'.length));
-      final track = directory?.track(id);
-      if (directory != null && track != null) {
-        try {
-          final uri = await directory.artwork(track);
-          if (uri != null) image = FileImage(File.fromUri(Uri.parse(uri)));
-        } catch (_) {
-          // DirectoryArtwork retains its original placeholder behavior.
-        }
-      }
-    } else {
-      image = AssetImage(asset);
-    }
+    final image = await resolveArtworkImageProvider(
+      asset,
+      directories: directory,
+    );
+    if (!isActive() || image == null) return;
 
-    if (!isActive()) return;
-    if (image != null) {
-      await precacheImage(
-        image,
-        context,
-        size: const Size(albumGridExtent, albumGridExtent),
-        onError: (error, stackTrace) {},
-      );
-    }
+    await precacheImage(
+      image,
+      context,
+      size: const Size(albumGridExtent, albumGridExtent),
+      onError: (error, stackTrace) {},
+    );
   }
 }

@@ -19,7 +19,7 @@ class ArtworkImage extends StatefulWidget {
     required this.image,
     this.width,
     this.height,
-    this.fit = BoxFit.cover,
+    this.fit,
     this.filterQuality = FilterQuality.medium,
     this.semanticLabel,
     this.excludeFromSemantics = false,
@@ -35,7 +35,7 @@ class ArtworkImage extends StatefulWidget {
   final ImageProvider<Object> image;
   final double? width;
   final double? height;
-  final BoxFit fit;
+  final BoxFit? fit;
   final FilterQuality filterQuality;
   final String? semanticLabel;
   final bool excludeFromSemantics;
@@ -105,7 +105,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           sourceKey: widget.sourceKey,
           image: widget.image,
           resolution: xeroxResolution(physicalExtent),
-          fit: widget.fit,
+          fit: widget.fit ?? BoxFit.scaleDown,
           devicePixelRatio: dpr,
         );
 

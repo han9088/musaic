@@ -1,24 +1,19 @@
-import 'dart:io';
-
-import 'package:flutter/widgets.dart';
+import 'package:flutter/painting.dart';
 
 import '../../services/music/directory_music_library.dart';
+import 'source/artwork_image_resolver.dart';
 
-/// Resolves the same provider used by the artwork widgets for raster jobs.
+export 'source/artwork_image_resolver.dart' show ArtworkImageResolver, ResolvedArtwork;
+export 'source/artwork_source.dart';
+
+/// Backwards-compatible entry point used by the home transition planner.
 Future<ImageProvider<Object>?> resolveArtworkImageProvider(
   String identity, {
   DirectoryMusicLibrary? directories,
 }) async {
-  if (identity.startsWith('local:')) return null;
-  if (!identity.startsWith('directory:')) return AssetImage(identity);
-
-  final id = Uri.decodeComponent(
-    identity.substring('directory:'.length),
+  final resolved = await const ArtworkImageResolver().resolve(
+    identity,
+    directories: directories,
   );
-  final track = directories?.track(id);
-  if (directories == null || track == null) return null;
-
-  final uri = await directories.artwork(track);
-  if (uri == null || uri.isEmpty) return null;
-  return FileImage(File.fromUri(Uri.parse(uri)));
+  return resolved?.image;
 }
