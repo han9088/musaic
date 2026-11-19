@@ -62,13 +62,13 @@ class ArtworkImageResolver {
     final uri = await directories.artwork(track);
     if (uri == null || uri.isEmpty) return null;
 
-    final provider = file_provider.createArtworkFileProvider(uri);
-    if (provider == null) return null;
+    final fileImage = file_provider.createArtworkFileProvider(uri);
+    if (fileImage == null) return null;
     final version = jsonEncode(track.file.data);
     return ResolvedArtwork(
       identity: source.identity,
-      sourceKey: '${provider.toString()}:$version:$uri',
-      image: provider,
+      sourceKey: '${fileImage.toString()}:$version:$uri',
+      image: fileImage,
     );
   }
 }
