@@ -15,29 +15,34 @@ class XeroxRasterizer {
 
   Future<ui.Image> rasterize(XeroxRasterRequest request) async {
     final source = await _resolveSource(request);
-    final program = await _loadProgram();
-    final shader = program.fragmentShader();
-    final recorder = ui.PictureRecorder();
-    final size = ui.Size.square(request.resolution.toDouble());
-
     try {
-      XeroxShaderRenderer.paint(
-        canvas: ui.Canvas(recorder),
-        size: size,
-        image: source,
-        shader: shader,
-        fit: request.fit,
-        identity: request.identity,
-        config: request.config,
-      );
-      final picture = recorder.endRecording();
+      final program = await _loadProgram();
+      final shader = program.fragmentShader();
+      final recorder = ui.PictureRecorder();
+      final size = ui.Size.square(request.resolution.toDouble());
+
       try {
-        return await picture.toImage(request.resolution, request.resolution);
+        XeroxShaderRenderer.paint(
+          canvas: ui.Canvas(recorder),
+          size: size,
+          image: source,
+          shader: shader,
+          fit: request.fit,
+          identity: request.identity,
+          config: request.config,
+        );
+        final picture = recorder.endRecording();
+        try {
+          return await picture.toImage(request.resolution, request.resolution);
+        } finally {
+          picture.dispose();
+        }
       } finally {
-        picture.dispose();
+        shader.dispose();
       }
     } finally {
-      shader.dispose();
+      // The decoded source handle is distinct from the ImageCache's handle.
+      source.dispose();
     }
   }
 
@@ -56,7 +61,19 @@ class XeroxRasterizer {
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
       (frame, _) {
-        if (!completer.isCompleted) completer.complete(frame.image);
+        // ImageStream listeners own the delivered ImageInfo. Retain a separate
+        // image handle while the asynchronous GPU rasterization is running.
+        ui.Image? retained;
+        try {
+          if (!completer.isCompleted) retained = frame.image.clone();
+        } catch (error, stackTrace) {
+          if (!completer.isCompleted) {
+            completer.completeError(error, stackTrace);
+          }
+        } finally {
+          frame.dispose();
+        }
+        if (retained != null) completer.complete(retained);
       },
       onError: (error, stackTrace) {
         if (!completer.isCompleted) {
