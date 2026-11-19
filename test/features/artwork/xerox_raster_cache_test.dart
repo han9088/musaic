@@ -75,6 +75,31 @@ void main() {
     leases[1].release();
   });
 
+  test('cancelling the last queued waiter prevents stale raster work', () async {
+    final rasterizer = _FakeRasterizer(
+      delay: const Duration(milliseconds: 5),
+    );
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      maxConcurrentJobs: 1,
+      rasterizer: rasterizer,
+    );
+    final active = cache.request(_request('active'));
+    final queued = cache.request(_request('queued'));
+    final cancelled = expectLater(
+      queued.future,
+      throwsA(isA<XeroxRasterCancelled>()),
+    );
+
+    queued.cancel();
+    final lease = await active.future;
+    await cancelled;
+
+    expect(rasterizer.calls, 1);
+    expect(cache.queuedJobs, 0);
+    lease.release();
+  });
+
   test('pinned images survive the budget and are evicted after release', () async {
     final cache = XeroxRasterCache(
       maxBytes: 64,
