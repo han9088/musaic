@@ -15,6 +15,10 @@ class XeroxModeController {
   bool enabled = false;
   bool preparing = false;
 
+  void beginPreparation() => preparing = true;
+
+  void endPreparation() => preparing = false;
+
   Future<void> prepareEnable(
     Iterable<XeroxRasterRequest> requests, {
     bool Function()? isActive,

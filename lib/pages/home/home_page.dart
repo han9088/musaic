@@ -16,6 +16,13 @@ import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
 import '../../features/artwork/visible_album_preloader.dart';
+import '../../features/artwork/artwork_image_provider.dart';
+import '../../features/artwork/xerox/home_artwork_mode_transition.dart';
+import '../../features/artwork/xerox/xerox_job_scheduler.dart';
+import '../../features/artwork/xerox/xerox_mode_controller.dart';
+import '../../features/artwork/xerox/xerox_raster_cache.dart';
+import '../../features/artwork/xerox/xerox_raster_request.dart';
+import '../../features/artwork/xerox/xerox_resolution.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
@@ -46,6 +53,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AnimationController _layout;
   late final Animation<double> _layoutProgress;
   late final HomeSourceTransition _sourceTransition;
+  late final HomeArtworkModeTransition _artworkTransition;
+  final _xeroxMode = XeroxModeController();
   _HomeMusicSource _renderedSource = _HomeMusicSource.mock;
   bool _hasOrientation = false;
   Size? _portraitSize;
@@ -73,7 +82,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _applyCatalog(List<ProviderAlbum>? sourceAlbums) async {
     final albums = await _readCatalog(sourceAlbums);
-    if (!mounted || _sourceTransition.switching.value) return;
+    if (!mounted ||
+        _sourceTransition.switching.value ||
+        _xeroxMode.preparing ||
+        _artworkTransition.isActive) return;
     if (sourceAlbums == null) _warmMockImages();
     _playback.bind(_sources.provider, sourceAlbums);
     setState(() {
@@ -84,7 +96,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Future<void> _selectMusicSource(Future<void> Function() select) async {
-    if (_sourceTransition.switching.value || _sourceTransition.phase != null) return;
+    if (_sourceTransition.switching.value ||
+        _sourceTransition.phase != null ||
+        _xeroxMode.preparing ||
+        _artworkTransition.isActive) return;
+    final sourceXeroxLeases = <XeroxRasterLease>[];
     final previousCatalog = _sources.catalog.value;
     _sourceTransition.switching.value = true;
     try {
@@ -130,13 +146,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewportSize,
         _transform.value,
       );
-      await const VisibleAlbumPreloader().warm(
-        albums: target,
-        cells: snapshot.cells,
-        directory: _sources.directories,
-        context: context,
-        isActive: () => mounted,
-      );
+      if (_xeroxMode.enabled) {
+        final requests = await _buildXeroxRequests(
+          target,
+          snapshot.cells,
+          useLayout: false,
+        );
+        sourceXeroxLeases.addAll(
+          await _xeroxMode.scheduler.prepare(
+            requests,
+            isActive: () => mounted,
+          ),
+        );
+      } else {
+        await const VisibleAlbumPreloader().warm(
+          albums: target,
+          cells: snapshot.cells,
+          directory: _sources.directories,
+          context: context,
+          isActive: () => mounted,
+        );
+      }
       if (!mounted) return;
       final exit = SourceTileMotion.exit(
         oldAlbums.isEmpty ? const [] : snapshot.cells,
@@ -169,6 +199,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     } finally {
+      for (final lease in sourceXeroxLeases) {
+        lease.release();
+      }
       if (mounted) {
         if (_sourceTransition.phase == null && _sourceTransition.preparing) {
           setState(() => _sourceTransition.preparing = false);
@@ -188,6 +221,149 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
       );
 
+  Widget _animateCanvasTile(int row, int column, Widget child) {
+    if (_sourceTransition.phase != null) {
+      return _animateSourceTile(row, column, child);
+    }
+    return _artworkTransition.animateTile(
+      row,
+      column,
+      child,
+      scale: () => _transform.value.getColumn(0).length,
+      viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
+    );
+  }
+
+  Future<List<XeroxRasterRequest>> _buildXeroxRequests(
+    List<Map<String, dynamic>> albums,
+    List<({int row, int column, Rect rect})> cells, {
+    required bool useLayout,
+    bool includeSelected = false,
+  }) async {
+    final scale = _transform.value.getColumn(0).length;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final requests = <XeroxRasterRequest>[];
+    final seen = <XeroxRasterKey>{};
+
+    Future<void> addArtwork(String asset, double artworkScale) async {
+      final provider = await resolveArtworkImageProvider(
+        asset,
+        directories: _sources.directories,
+      );
+      if (provider == null) return;
+      final request = XeroxRasterRequest(
+        identity: asset,
+        image: provider,
+        resolution: xeroxResolution(100 * artworkScale * dpr),
+        fit: BoxFit.cover,
+        devicePixelRatio: dpr,
+      );
+      if (seen.add(request.key)) requests.add(request);
+    }
+
+    for (final cell in cells) {
+      final album = useLayout
+          ? _albumLayout.albumAt(cell.row, cell.column, albums)
+          : albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
+      await addArtwork(album['asset'] as String, scale);
+    }
+
+    if (includeSelected && _albumLayout.selectedAlbum case final selected?) {
+      final album = _albumLayout.albumAt(
+        selected.$1,
+        selected.$2,
+        albums,
+      );
+      await addArtwork(album['asset'] as String, scale * 1.16);
+    }
+    return requests;
+  }
+
+  Future<void> _setXeroxMode(bool enabled) async {
+    if (enabled == _xeroxMode.enabled ||
+        _xeroxMode.preparing ||
+        _artworkTransition.isActive ||
+        _sourceTransition.switching.value ||
+        _sourceTransition.phase != null ||
+        _layout.isAnimating ||
+        _landscape) {
+      return;
+    }
+
+    final albums = _catalog;
+    if (albums == null || albums.isEmpty) {
+      setState(() => _xeroxMode.commit(enabled));
+      return;
+    }
+
+    setState(_xeroxMode.beginPreparation);
+    _syncMotion();
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
+      final snapshot = AlbumGridSnapshot.capture(viewport, _transform.value);
+      final requests = await _buildXeroxRequests(
+        albums,
+        snapshot.cells,
+        useLayout: true,
+        includeSelected: true,
+      );
+
+      if (enabled) {
+        await _xeroxMode.prepareEnable(
+          requests,
+          isActive: () => mounted,
+        );
+      } else {
+        await _xeroxMode.prepareDisable(
+          requests,
+          context,
+          isActive: () => mounted,
+        );
+      }
+      if (!mounted) return;
+
+      final exit = SourceTileMotion.exit(snapshot.cells, viewport);
+      final enter = SourceTileMotion.enter(snapshot.cells);
+      if (snapshot.cells.isEmpty || _reduceMotion || exit.tiles.isEmpty) {
+        setState(() => _xeroxMode.commit(enabled));
+        _xeroxMode.finishTransition();
+        _syncMotion();
+        return;
+      }
+
+      _xeroxMode.endPreparation();
+      await _artworkTransition.start(
+        exit: exit,
+        enter: enter,
+        onHandoff: () {
+          if (mounted) setState(() => _xeroxMode.commit(enabled));
+        },
+        onCompleted: () {
+          _xeroxMode.finishTransition();
+          _syncMotion();
+        },
+      );
+    } catch (error, stack) {
+      _xeroxMode.cancelPreparation();
+      _syncMotion();
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'Xerox mode transition',
+        ),
+      );
+    } finally {
+      if (mounted && _xeroxMode.preparing && !_artworkTransition.isActive) {
+        _xeroxMode.cancelPreparation();
+        _syncMotion();
+      }
+    }
+  }
+
   void _syncMotion() {
     final animating = _layout.isAnimating;
     unawaited(_haptics.setActive(_landscape && !animating));
@@ -195,7 +371,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _reduceMotion ||
         animating ||
         _sourceTransition.preparing ||
-        _sourceTransition.phase != null) {
+        _sourceTransition.phase != null ||
+        _xeroxMode.preparing ||
+        _artworkTransition.phase != null) {
       _ticker.stop();
       _drift.lastTick = null;
     } else if (!_ticker.isActive) {
@@ -221,6 +399,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 520),
     );
     _layoutProgress = _layout.drive(CurveTween(curve: Curves.easeInOutCubic));
+    _artworkTransition = HomeArtworkModeTransition(
+      vsync: this,
+      isMounted: () => mounted,
+      notifyChanged: () => setState(() {}),
+      onMotionChanged: _syncMotion,
+    );
     _sourceTransition = HomeSourceTransition(
       vsync: this,
       isMounted: () => mounted,
@@ -345,6 +529,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         !_interaction.selectionPaused &&
         !_sourceTransition.preparing &&
         _sourceTransition.phase == null &&
+        !_xeroxMode.preparing &&
+        _artworkTransition.phase == null &&
         !_reduceMotion &&
         !_landscape,
   );
@@ -367,6 +553,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
     _layout.dispose();
     _sourceTransition.dispose();
+    _artworkTransition.dispose();
+    _xeroxMode.dispose();
     _ticker.dispose();
     _transform.dispose();
     super.dispose();
@@ -390,8 +578,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       sources: _sources,
       sourceSwitching: _sourceTransition.switching,
       onSourceSelection: _selectMusicSource,
-      xeroxEnabled: _xeroxEnabled,
-      onXeroxChanged: (enabled) => setState(() => _xeroxEnabled = enabled),
+      xeroxEnabled: _xeroxMode.enabled,
+      onXeroxChanged: _setXeroxMode,
       child: Scaffold(
         backgroundColor: const Color(0xff000000),
         body: Builder(
@@ -462,7 +650,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         tilt: _albumLayout.flowTilt,
         gridOffset: _albumLayout.gridOffset,
         progress: _layoutProgress,
-        xerox: _xeroxEnabled,
+        xerox: _xeroxMode.enabled,
       );
     }
     if (_landscape) {
@@ -470,7 +658,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         albums: _albumLayout.flowAlbums ?? albums,
         haptics: _haptics,
         playback: _playback,
-        xerox: _xeroxEnabled,
+        xerox: _xeroxMode.enabled,
         initialPosition: _albumLayout.flowPosition,
         initialTilt: _albumLayout.flowTilt,
         onMotionChanged: (position, tilt) {
@@ -485,14 +673,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       transform: _transform,
       interaction: _interaction,
       playback: _playback,
-      xerox: _xeroxEnabled,
-      interactionBlocked: _sourceTransition.preparing || _sourceTransition.phase != null,
+      xerox: _xeroxMode.enabled,
+      interactionBlocked: _sourceTransition.preparing ||
+          _sourceTransition.phase != null ||
+          _xeroxMode.preparing ||
+          _artworkTransition.phase != null,
       onViewportSizeChanged: (size) => _portraitSize = size,
       onTileSelected: (row, column) => setState(() {
         _albumLayout.selectedAlbum = (row, column);
         _interaction.selectionPaused = true;
       }),
-      animateSourceTile: _animateSourceTile,
+      animateSourceTile: _animateCanvasTile,
     );
   }
 }

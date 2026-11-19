@@ -32,7 +32,7 @@ class HomeSheet extends StatefulWidget {
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final bool xeroxEnabled;
-  final ValueChanged<bool>? onXeroxChanged;
+  final Future<void> Function(bool enabled)? onXeroxChanged;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -101,6 +101,7 @@ class _HomeSheetState extends State<HomeSheet> {
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
     var xeroxEnabled = widget.xeroxEnabled;
+    var xeroxPending = false;
     final onXeroxChanged = widget.onXeroxChanged;
     DeskBottomSheet.of(context).present(
       BottomSheetScrollView(
@@ -126,14 +127,33 @@ class _HomeSheetState extends State<HomeSheet> {
                     AppLocalizations.of(context).xeroxMode,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  trailing: xeroxEnabled
+                  trailing: xeroxPending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : xeroxEnabled
                       ? const Icon(PhosphorIcons.check, color: Colors.white)
                       : null,
-                  onTap: () {
-                    final enabled = !xeroxEnabled;
-                    setSheetState(() => xeroxEnabled = enabled);
-                    onXeroxChanged(enabled);
-                  },
+                  onTap: xeroxPending
+                      ? null
+                      : () async {
+                          final enabled = !xeroxEnabled;
+                          setSheetState(() => xeroxPending = true);
+                          try {
+                            await onXeroxChanged(enabled);
+                            if (context.mounted) {
+                              setSheetState(
+                                () => xeroxEnabled = widget.xeroxEnabled,
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) {
+                              setSheetState(() => xeroxPending = false);
+                            }
+                          }
+                        },
                 ),
               ),
             AppIconPicker(icons: widget.icons),
