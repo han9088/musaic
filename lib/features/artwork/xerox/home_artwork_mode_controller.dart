@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 
 import '../../canvas/album_grid_snapshot.dart';
+import '../../music/transition/music_source_transition.dart';
 import 'home_artwork_mode_transition.dart';
 import 'xerox_job_scheduler.dart';
 import 'xerox_mode_controller.dart';
