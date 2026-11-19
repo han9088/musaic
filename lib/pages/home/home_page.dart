@@ -144,10 +144,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _transform.value,
       );
       if (_artworkMode.enabled) {
+        final scale = _transform.value.getColumn(0).length;
+        final preparationSnapshot = AlbumGridSnapshot.capture(
+          viewportSize,
+          _transform.value,
+          overscan:
+              PortraitTilt.overscan(viewportSize) + albumGridExtent * scale,
+        );
         final requests = await _buildXeroxRequests(
           target,
-          snapshot.cells,
+          preparationSnapshot.cells,
           useLayout: false,
+          isActive: () => mounted,
         );
         sourceXeroxLeases.addAll(
           await _artworkMode.scheduler.prepare(
@@ -237,6 +245,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     List<({int row, int column, Rect rect})> cells, {
     required bool useLayout,
     bool includeSelected = false,
+    bool Function()? isActive,
   }) async {
     if (albums.isEmpty) return const [];
     String? selectedAsset;
@@ -267,6 +276,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         directories: _sources.directories,
       ),
       selectedAsset: selectedAsset,
+      isActive: isActive,
     );
   }
 
@@ -303,6 +313,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         preparationSnapshot.cells,
         useLayout: true,
         includeSelected: true,
+        isActive: () => mounted,
       );
       if (!mounted) return;
 
