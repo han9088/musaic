@@ -51,6 +51,7 @@ class ArtworkImage extends StatefulWidget {
 
 class _ArtworkImageState extends State<ArtworkImage> {
   int? _decodeResolution;
+  int? _xeroxResolution;
   XeroxRasterKey? _lastBackgroundKey;
 
   @override
@@ -61,6 +62,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
         oldWidget.image.toString() != widget.image.toString() ||
         (oldWidget.xerox && !widget.xerox)) {
       _decodeResolution = null;
+      _xeroxResolution = null;
       _lastBackgroundKey = null;
     }
   }
@@ -100,11 +102,16 @@ class _ArtworkImageState extends State<ArtworkImage> {
         );
         _decodeResolution = decodeResolution;
 
+        final rasterResolution = xeroxResolution(
+          physicalExtent,
+          current: _xeroxResolution,
+        );
+        _xeroxResolution = rasterResolution;
         final rasterRequest = XeroxRasterRequest(
           identity: widget.identity,
           sourceKey: widget.sourceKey,
           image: widget.image,
-          resolution: xeroxResolution(physicalExtent),
+          resolution: rasterResolution,
           fit: widget.fit ?? BoxFit.scaleDown,
           devicePixelRatio: dpr,
         );
