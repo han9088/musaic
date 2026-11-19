@@ -8,6 +8,7 @@ import 'xerox_raster_request.dart';
 class XeroxJobScheduler {
   XeroxJobScheduler({
     this.maxConcurrentRequests = 2,
+    this.priority = 100,
     XeroxRasterCache? cache,
   }) : cache = cache ?? XeroxRasterCache.instance {
     if (maxConcurrentRequests <= 0) {
@@ -16,6 +17,7 @@ class XeroxJobScheduler {
   }
 
   final int maxConcurrentRequests;
+  final int priority;
   final XeroxRasterCache cache;
 
   Future<List<XeroxRasterLease>> prepare(
@@ -44,7 +46,7 @@ class XeroxJobScheduler {
         final request = values[cursor++];
 
         try {
-          final lease = await cache.acquire(request);
+          final lease = await cache.acquire(request, priority: priority);
           if (cancelled || (isActive != null && !isActive())) {
             lease.release();
             cancelled = true;

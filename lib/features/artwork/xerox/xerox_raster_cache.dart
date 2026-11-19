@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ui' as ui;
 
+import 'xerox_disk_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_rasterizer.dart';
 
@@ -21,10 +22,12 @@ class _RasterWaiter {
 }
 
 class _PendingRaster {
-  _PendingRaster(this.request);
+  _PendingRaster(this.request, this.priority, this.sequence);
 
   final XeroxRasterRequest request;
   final waiters = <_RasterWaiter>{};
+  int priority;
+  final int sequence;
   bool started = false;
 }
 
@@ -38,6 +41,9 @@ class XeroxRasterTask {
   factory XeroxRasterTask.completed(XeroxRasterLease lease) =>
       XeroxRasterTask._(Future.value(lease), () {});
 
+  factory XeroxRasterTask.failed(Object error) =>
+      XeroxRasterTask._(Future.error(error, StackTrace.current), () {});
+
   final Future<XeroxRasterLease> future;
   final void Function() _cancel;
   bool _cancelled = false;
@@ -47,6 +53,13 @@ class XeroxRasterTask {
     _cancelled = true;
     _cancel();
   }
+}
+
+class XeroxRasterQueueFull implements Exception {
+  const XeroxRasterQueueFull();
+
+  @override
+  String toString() => 'Xerox raster queue is full.';
 }
 
 class XeroxRasterCancelled implements Exception {
@@ -63,11 +76,17 @@ class XeroxRasterCache {
   XeroxRasterCache({
     this.maxBytes = 96 * 1024 * 1024,
     this.maxConcurrentJobs = 2,
+    this.maxQueuedJobs = 128,
     XeroxRasterizer? rasterizer,
-  }) : _rasterizer = rasterizer ?? XeroxRasterizer() {
+    XeroxRasterDiskStore? diskStore,
+  }) : _rasterizer = rasterizer ?? XeroxRasterizer(),
+       _diskStore = diskStore ?? XeroxDiskCache.instance {
     if (maxBytes <= 0) throw ArgumentError.value(maxBytes, 'maxBytes');
     if (maxConcurrentJobs <= 0) {
       throw ArgumentError.value(maxConcurrentJobs, 'maxConcurrentJobs');
+    }
+    if (maxQueuedJobs <= 0) {
+      throw ArgumentError.value(maxQueuedJobs, 'maxQueuedJobs');
     }
   }
 
@@ -75,14 +94,17 @@ class XeroxRasterCache {
 
   final int maxBytes;
   final int maxConcurrentJobs;
+  final int maxQueuedJobs;
   final XeroxRasterizer _rasterizer;
+  final XeroxRasterDiskStore _diskStore;
   final LinkedHashMap<XeroxRasterKey, _RasterEntry> _entries =
       LinkedHashMap<XeroxRasterKey, _RasterEntry>();
   final Map<XeroxRasterKey, _PendingRaster> _pending = {};
-  final Queue<_PendingRaster> _queue = Queue<_PendingRaster>();
+  final List<_PendingRaster> _queue = [];
 
   int _bytes = 0;
   int _activeJobs = 0;
+  int _nextSequence = 0;
 
   int get cachedBytes => _bytes;
   int get cachedEntries => _entries.length;
@@ -99,17 +121,23 @@ class XeroxRasterCache {
     return _lease(key, entry, key.resolution);
   }
 
-  XeroxRasterTask requestBest(XeroxRasterRequest request) {
+  XeroxRasterTask requestBest(
+    XeroxRasterRequest request, {
+    int priority = 100,
+  }) {
     final lease = tryAcquireBest(request);
     return lease == null
-        ? this.request(request)
+        ? this.request(request, priority: priority)
         : XeroxRasterTask.completed(lease);
   }
 
   Future<XeroxRasterLease> acquireBest(XeroxRasterRequest request) =>
       requestBest(request).future;
 
-  XeroxRasterTask request(XeroxRasterRequest request) {
+  XeroxRasterTask request(
+    XeroxRasterRequest request, {
+    int priority = 0,
+  }) {
     final key = request.key;
     final hit = _entries.remove(key);
     if (hit != null) {
@@ -118,11 +146,23 @@ class XeroxRasterCache {
       return XeroxRasterTask.completed(_lease(key, hit, request.resolution));
     }
 
-    final pending = _pending.putIfAbsent(key, () {
-      final created = _PendingRaster(request);
-      _queue.addLast(created);
-      return created;
-    });
+    var pending = _pending[key];
+    if (pending == null) {
+      if (_queue.length >= maxQueuedJobs) {
+        final lowest = _queue.last;
+        if (priority <= lowest.priority) {
+          return XeroxRasterTask.failed(const XeroxRasterQueueFull());
+        }
+        _discardQueued(lowest, const XeroxRasterQueueFull());
+      }
+      pending = _PendingRaster(request, priority, _nextSequence++);
+      _pending[key] = pending;
+      _queue.add(pending);
+      _sortQueue();
+    } else if (!pending.started && priority > pending.priority) {
+      pending.priority = priority;
+      _sortQueue();
+    }
     final waiter = _RasterWaiter();
     pending.waiters.add(waiter);
     _pump();
@@ -133,8 +173,10 @@ class XeroxRasterCache {
     );
   }
 
-  Future<XeroxRasterLease> acquire(XeroxRasterRequest request) =>
-      this.request(request).future;
+  Future<XeroxRasterLease> acquire(
+    XeroxRasterRequest request, {
+    int priority = 0,
+  }) => this.request(request, priority: priority).future;
 
   (XeroxRasterKey, _RasterEntry)? _findBest(
     XeroxRasterRequest request,
@@ -206,9 +248,27 @@ class XeroxRasterCache {
     _evict();
   }
 
+  void _sortQueue() {
+    _queue.sort((a, b) {
+      final byPriority = b.priority.compareTo(a.priority);
+      return byPriority != 0 ? byPriority : a.sequence.compareTo(b.sequence);
+    });
+  }
+
+  void _discardQueued(_PendingRaster pending, Object reason) {
+    _queue.remove(pending);
+    _pending.remove(pending.request.key);
+    for (final waiter in pending.waiters) {
+      if (waiter.cancelled || waiter.completed) continue;
+      waiter.completed = true;
+      waiter.completer.completeError(reason, StackTrace.current);
+    }
+    pending.waiters.clear();
+  }
+
   void _pump() {
     while (_activeJobs < maxConcurrentJobs && _queue.isNotEmpty) {
-      final pending = _queue.removeFirst();
+      final pending = _queue.removeAt(0);
       if (pending.waiters.isEmpty) {
         _pending.remove(pending.request.key);
         continue;
@@ -222,13 +282,24 @@ class XeroxRasterCache {
   Future<ui.Image> _rasterizeWithRetry(
     XeroxRasterRequest request,
   ) async {
+    try {
+      final cached = await _diskStore.read(request.key);
+      if (cached != null) return cached;
+    } catch (_) {
+      // A disk-cache failure is treated as a miss; the original remains valid.
+    }
+
     Object? lastError;
     StackTrace? lastStack;
     // One retry covers transient decode/GPU failures without allowing an
     // unavailable source to keep the mode switch spinning indefinitely.
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
-        return await _rasterizer.rasterize(request);
+        final image = await _rasterizer.rasterize(request);
+        unawaited(
+          _diskStore.write(request.key, image).catchError((Object _) {}),
+        );
+        return image;
       } catch (error, stack) {
         lastError = error;
         lastStack = stack;
