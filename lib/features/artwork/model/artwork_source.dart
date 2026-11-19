@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import 'artwork_identity.dart';
 
-/// 专辑封面实际存放或获取的位置。
-enum ArtworkSourceType { asset, network, directory, placeholder }
+/// 专辑封面实际存放或获取的位置；占位 UI 不属于图片来源。
+enum ArtworkSourceType { asset, network, directory }
 
 /// 将历史字符串引用解析为有明确类型的图片来源。
 @immutable
@@ -22,22 +22,20 @@ class ArtworkSource {
     ArtworkIdentity? identity,
     ArtworkVersion? version,
   }) {
+    if (reference.startsWith('local:')) {
+      throw ArgumentError.value(
+        reference,
+        'reference',
+        '占位标识属于界面展示，不是 Artwork 图片来源。',
+      );
+    }
+
     if (reference.startsWith('directory:')) {
       final value = reference.substring('directory:'.length);
       return ArtworkSource._(
         type: ArtworkSourceType.directory,
         value: value,
         artworkIdentity: identity ?? ArtworkIdentity('directory:$value'),
-        version: version,
-      );
-    }
-
-    if (reference.startsWith('local:')) {
-      final value = reference.substring('local:'.length);
-      return ArtworkSource._(
-        type: ArtworkSourceType.placeholder,
-        value: value,
-        artworkIdentity: identity ?? ArtworkIdentity('local:$value'),
         version: version,
       );
     }
@@ -75,5 +73,4 @@ class ArtworkSource {
   String get cacheKey => '${artworkIdentity.value}|${version?.value ?? ''}|$value';
 
   bool get isDirectory => type == ArtworkSourceType.directory;
-  bool get isPlaceholder => type == ArtworkSourceType.placeholder;
 }

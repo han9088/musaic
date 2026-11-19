@@ -12,10 +12,11 @@ void main() {
     expect(source.isDirectory, isTrue);
   });
 
-  test('parses local placeholders separately from asset paths', () {
-    final placeholder = ArtworkSource.parse('local:placeholder');
-    expect(placeholder.type, ArtworkSourceType.placeholder);
-    expect(placeholder.isPlaceholder, isTrue);
+  test('keeps UI placeholders outside the Artwork source model', () {
+    expect(
+      () => ArtworkSource.parse('local:placeholder'),
+      throwsArgumentError,
+    );
 
     final asset = ArtworkSource.parse('assets/albums/cover.png');
     expect(asset.type, ArtworkSourceType.asset);

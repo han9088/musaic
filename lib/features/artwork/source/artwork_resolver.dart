@@ -42,7 +42,6 @@ class ArtworkResolver {
           version: source.version,
         );
       case ArtworkSourceType.directory:
-      case ArtworkSourceType.placeholder:
         return null;
     }
   }
@@ -70,11 +69,13 @@ class ArtworkResolver {
     directories: directories,
   );
 
-  /// 解析来源并返回可供展示、预加载或 Xerox Raster 使用的完整资源描述。
+  /// 占位引用由展示层处理，不允许进入图片解析、下载或解码流程。
   Future<ResolvedArtwork?> resolveRequest(
     ArtworkRequest request, {
     required DirectoryMusicLibrary? directories,
   }) async {
+    if (request.source.startsWith('local:')) return null;
+
     final source = ArtworkSource.parse(
       request.source,
       identity: request.identity,

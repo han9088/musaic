@@ -26,6 +26,28 @@ Widget albumArtwork(
   ArtworkIdentity? artworkIdentity,
   ArtworkVersion? artworkVersion,
 }) {
+  // 占位标识只用于 UI 兜底，必须在解析 ArtworkSource 前单独处理。
+  if (asset.startsWith('local:')) {
+    return Semantics(
+      label: excludeFromSemantics ? null : semanticLabel,
+      excludeSemantics: excludeFromSemantics,
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: const ColoredBox(
+          color: Color(0xff292929),
+          child: Center(
+            child: Icon(
+              PhosphorIcons.vinylRecord,
+              color: Colors.white38,
+              size: 48,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   final source = ArtworkSource.parse(
     asset,
     identity: artworkIdentity,
@@ -50,28 +72,6 @@ Widget albumArtwork(
         width: width,
         height: height,
         fit: fit,
-      ),
-    );
-  }
-
-  // 占位内容只负责界面兜底，不是真实图片来源，因此不进入图片管线。
-  if (source.isPlaceholder) {
-    return Semantics(
-      label: excludeFromSemantics ? null : semanticLabel,
-      excludeSemantics: excludeFromSemantics,
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: const ColoredBox(
-          color: Color(0xff292929),
-          child: Center(
-            child: Icon(
-              PhosphorIcons.vinylRecord,
-              color: Colors.white38,
-              size: 48,
-            ),
-          ),
-        ),
       ),
     );
   }

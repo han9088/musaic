@@ -6,7 +6,6 @@ import '../../../services/music/directory_music_library.dart';
 import '../../canvas/album_grid_snapshot.dart';
 import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
-import '../model/artwork_source.dart';
 import '../source/artwork_resolver.dart';
 import 'artwork_decode_policy.dart';
 
@@ -28,7 +27,7 @@ class ArtworkPrefetchScheduler {
     for (final cell in cells) {
       final album = albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
       final source = album['asset'] as String;
-      if (ArtworkSource.parse(source).isPlaceholder) continue;
+      if (source.startsWith('local:')) continue;
       final rawIdentity = album['id'] as String?;
       final request = (
         source: source,
