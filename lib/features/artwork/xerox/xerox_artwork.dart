@@ -1,18 +1,17 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
 import 'xerox_config.dart';
+import 'xerox_raster_cache.dart';
+import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
 import 'xerox_seed.dart';
 
 export 'xerox_config.dart';
 export 'xerox_resolution.dart';
 export 'xerox_seed.dart';
-
-part 'xerox_painter.dart';
 
 class XeroxArtwork extends StatefulWidget {
   const XeroxArtwork({
@@ -45,104 +44,64 @@ class XeroxArtwork extends StatefulWidget {
 }
 
 class _XeroxArtworkState extends State<XeroxArtwork> {
-  static Future<ui.FragmentProgram?>? _programFuture;
-
-  ui.FragmentProgram? _program;
-  ui.FragmentShader? _shader;
-  ui.Image? _image;
-  ImageStream? _stream;
-  ImageStreamListener? _listener;
-  int _resolution = 0;
+  final _cache = XeroxRasterCache.instance;
+  XeroxRasterLease? _lease;
+  Timer? _requestTimer;
+  XeroxRasterKey? _scheduledKey;
   int _generation = 0;
-  bool _resolveScheduled = false;
-
-  static Future<ui.FragmentProgram?> _loadProgram() =>
-      _programFuture ??= ui.FragmentProgram.fromAsset('shaders/xerox.frag')
-          .then(
-            (program) => program,
-            onError: (Object error, StackTrace stack) {
-              debugPrint('Xerox shader unavailable: $error');
-              return null;
-            },
-          );
-
-  @override
-  void initState() {
-    super.initState();
-    unawaited(
-      _loadProgram().then((program) {
-        if (mounted) setState(() => _program = program);
-      }),
-    );
-  }
+  int _requestedResolution = 0;
+  Object? _error;
 
   @override
   void didUpdateWidget(XeroxArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
-        oldWidget.image != widget.image) {
-      _unbindImage();
-      _image = null;
-      _scheduleResolve();
+        oldWidget.image.toString() != widget.image.toString()) {
+      _generation++;
+      _requestTimer?.cancel();
+      _scheduledKey = null;
+      _lease?.release();
+      _lease = null;
+      _requestedResolution = 0;
+      _error = null;
     }
   }
 
-  void _unbindImage() {
-    _generation++;
-    final stream = _stream;
-    final listener = _listener;
-    if (stream != null && listener != null) stream.removeListener(listener);
-    _stream = null;
-    _listener = null;
-  }
-
-  void _scheduleResolve() {
-    if (_resolveScheduled) return;
-    _resolveScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _resolveScheduled = false;
-      if (mounted) _resolveImage();
+  void _scheduleAcquire(
+    XeroxRasterRequest request, {
+    required Duration delay,
+  }) {
+    if (_lease?.key == request.key || _scheduledKey == request.key) return;
+    _requestTimer?.cancel();
+    _scheduledKey = request.key;
+    final generation = ++_generation;
+    _requestTimer = Timer(delay, () async {
+      try {
+        final next = await _cache.acquire(request);
+        if (!mounted || generation != _generation) {
+          next.release();
+          return;
+        }
+        final previous = _lease;
+        setState(() {
+          _lease = next;
+          _error = null;
+        });
+        previous?.release();
+      } catch (error) {
+        if (!mounted || generation != _generation) return;
+        setState(() => _error = error);
+      } finally {
+        if (_scheduledKey == request.key) _scheduledKey = null;
+      }
     });
-  }
-
-  void _resolveImage() {
-    _unbindImage();
-    final generation = _generation;
-    final provider = ResizeImage(widget.image, width: _resolution);
-    final stream = provider.resolve(
-      createLocalImageConfiguration(
-        context,
-        size: Size(
-          widget.width ?? _resolution.toDouble(),
-          widget.height ?? _resolution.toDouble(),
-        ),
-      ),
-    );
-    final listener = ImageStreamListener(
-      (frame, _) {
-        if (!mounted || generation != _generation) return;
-        setState(() => _image = frame.image);
-      },
-      onError: (error, stackTrace) {
-        if (!mounted || generation != _generation) return;
-        setState(() => _image = null);
-      },
-    );
-    _stream = stream;
-    _listener = listener;
-    stream.addListener(listener);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _scheduleResolve();
   }
 
   @override
   void dispose() {
-    _unbindImage();
-    _shader?.dispose();
+    _generation++;
+    _requestTimer?.cancel();
+    _lease?.release();
     super.dispose();
   }
 
@@ -155,58 +114,62 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         width.isFinite ? width : 0,
         height.isFinite ? height : 0,
       );
-      final requestedResolution = xeroxResolution(
-        extent * widget.scale * MediaQuery.devicePixelRatioOf(context),
-        current: _resolution == 0 ? null : _resolution,
+      final dpr = MediaQuery.devicePixelRatioOf(context);
+      final resolution = xeroxResolution(
+        extent * widget.scale * dpr,
+        current: _requestedResolution == 0 ? null : _requestedResolution,
       );
-      if (_resolution != requestedResolution) {
-        _resolution = requestedResolution;
-        _unbindImage();
-        _image = null;
-        _scheduleResolve();
+      final request = XeroxRasterRequest(
+        identity: widget.identity,
+        image: widget.image,
+        resolution: resolution,
+        fit: widget.fit ?? BoxFit.scaleDown,
+        devicePixelRatio: dpr,
+      );
+
+      final currentLease = _lease;
+      final sameArtwork = currentLease?.key.sameArtwork(request.key) ?? false;
+      final canKeepCurrent = sameArtwork &&
+          currentLease!.resolution >= resolution;
+      if (!canKeepCurrent) {
+        _requestedResolution = resolution;
+        _scheduleAcquire(
+          request,
+          delay: currentLease == null
+              ? Duration.zero
+              : const Duration(milliseconds: 120),
+        );
+      } else {
+        _requestedResolution = currentLease.resolution;
       }
-      final program = _program;
-      if (program != null) _shader ??= program.fragmentShader();
-      final provider = ResizeImage(widget.image, width: requestedResolution);
-      final isXeroxReady = _image != null && _shader != null;
-      return RepaintBoundary(
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            // Keep the original image laid out and subscribed, but avoid
-            // drawing it underneath the fully opaque Xerox output.
-            Opacity(
-              opacity: isXeroxReady ? 0 : 1,
-              alwaysIncludeSemantics: true,
-              child: Image(
-                image: provider,
-                width: widget.width,
-                height: widget.height,
-                fit: widget.fit,
-                filterQuality: widget.filterQuality,
-                semanticLabel: widget.semanticLabel,
-                excludeFromSemantics: widget.excludeFromSemantics,
-                errorBuilder: widget.errorBuilder,
-              ),
-            ),
-            if (isXeroxReady)
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: CustomPaint(
-                    painter: _XeroxPainter(
-                      image: _image!,
-                      shader: _shader!,
-                      fit: widget.fit ?? BoxFit.scaleDown,
-                      identity: widget.identity,
-                      config: xeroxConfig,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+
+      final image = canKeepCurrent
+          ? currentLease.image
+          : currentLease?.image ?? _cache.peekBest(request);
+      if (image != null) {
+        _scheduleAcquire(request, delay: Duration.zero);
+        return Semantics(
+          image: true,
+          label: widget.excludeFromSemantics ? null : widget.semanticLabel,
+          excludeSemantics: widget.excludeFromSemantics,
+          child: RawImage(
+            image: image,
+            width: widget.width,
+            height: widget.height,
+            fit: widget.fit,
+            filterQuality: widget.filterQuality,
+          ),
+        );
+      }
+
+      if (_error != null && widget.errorBuilder != null) {
+        return widget.errorBuilder!(context, _error!, StackTrace.current);
+      }
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: const ColoredBox(color: Color(0xff171715)),
       );
     },
   );
 }
-
