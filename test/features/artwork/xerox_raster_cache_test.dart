@@ -186,7 +186,8 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    // A prepared cache hit is acquired synchronously in the first build,
+    // so the entrance animation never flies in a temporary placeholder.
     expect(find.byType(RawImage), findsOneWidget);
     expect(find.byType(Image), findsNothing);
     expect(find.byType(CustomPaint), findsNothing);
