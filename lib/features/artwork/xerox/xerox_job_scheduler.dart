@@ -108,7 +108,11 @@ class XeroxJobScheduler {
       await Future.wait([
         for (final request in values.sublist(start, end))
           precacheImage(
-            request.image,
+            ResizeImage(
+              request.image,
+              width: request.resolution < 256 ? 256 : request.resolution,
+              height: request.resolution < 256 ? 256 : request.resolution,
+            ),
             context,
             size: Size.square(request.resolution.toDouble()),
             onError: (error, stack) {},

@@ -3,7 +3,10 @@ import 'package:flutter/widgets.dart';
 
 import '../../services/music/directory_music_library.dart';
 import '../canvas/album_grid_snapshot.dart';
-import 'artwork_image_provider.dart';
+import 'pipeline/xerox_background_processor.dart';
+import 'source/artwork_image_resolver.dart';
+import 'xerox/xerox_raster_request.dart';
+import 'xerox/xerox_resolution.dart';
 import 'pipeline/artwork_decode_policy.dart';
 
 /// Preloads only the cells in an impending source transition, in scene order.
@@ -54,19 +57,34 @@ class VisibleAlbumPreloader {
     BuildContext context,
     bool Function() isActive,
   ) async {
-    final image = await resolveArtworkImageProvider(
+    final artwork = await const ArtworkImageResolver().resolve(
       asset,
       directories: directory,
     );
-    if (!isActive() || image == null) return;
+    if (!isActive() || artwork == null) return;
 
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final decodeSize = artworkDecodeResolution(albumGridExtent * dpr);
     await precacheImage(
-      ResizeImage(image, width: decodeSize, height: decodeSize),
+      ResizeImage(artwork.image, width: decodeSize, height: decodeSize),
       context,
       size: const Size(albumGridExtent, albumGridExtent),
       onError: (error, stackTrace) {},
+    );
+    if (!isActive()) return;
+
+    // Source-transition preloads are likely to become visible immediately;
+    // queue their Xerox raster above speculative normal-scroll preloads.
+    XeroxBackgroundProcessor.instance.enqueue(
+      XeroxRasterRequest(
+        identity: artwork.identity,
+        sourceKey: artwork.sourceKey,
+        image: artwork.image,
+        resolution: xeroxResolution(albumGridExtent * dpr),
+        fit: BoxFit.cover,
+        devicePixelRatio: dpr,
+      ),
+      priority: 20,
     );
   }
 }
