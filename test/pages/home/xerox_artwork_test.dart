@@ -111,12 +111,11 @@ void main() {
       ))!.buffer.asUint8List();
       output.dispose();
       source.dispose();
-      return actual;
+      return (actual: actual, expected: expected);
     });
     expect(bytes, isNotNull);
-    // The source image and the output use the same shader uniforms, sampling
-    // quality, seed and final pixel dimensions as the former CustomPainter.
-    expect(bytes, isNotEmpty);
+    // The raster path must be pixel-identical to the previous live painter.
+    expect(bytes!.actual, equals(bytes.expected));
   });
 
   testWidgets('shader thresholds, composites alpha, and applies stable grain', (
