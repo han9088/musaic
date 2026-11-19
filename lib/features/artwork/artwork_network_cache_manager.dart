@@ -4,6 +4,8 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 ///
 /// The URL is also the cache key for now. When Apple Music catalog mapping
 /// exposes a stable artwork revision, include that revision in this key.
+/// Owns the disk cache for downloaded original artwork, separate from Xerox
+/// raster storage. Keep this as a singleton: CacheManager keys identify dirs.
 class ArtworkNetworkCacheManager extends CacheManager {
   ArtworkNetworkCacheManager._()
     : super(
@@ -14,5 +16,6 @@ class ArtworkNetworkCacheManager extends CacheManager {
         ),
       );
 
+  /// Shared manager prevents multiple instances racing over the same cache.
   static final instance = ArtworkNetworkCacheManager._();
 }
