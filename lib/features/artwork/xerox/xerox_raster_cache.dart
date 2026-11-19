@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'xerox_disk_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_rasterizer.dart';
 
@@ -64,7 +66,9 @@ class XeroxRasterCache {
     this.maxBytes = 96 * 1024 * 1024,
     this.maxConcurrentJobs = 2,
     XeroxRasterizer? rasterizer,
-  }) : _rasterizer = rasterizer ?? XeroxRasterizer() {
+    XeroxDiskCache? diskCache,
+  }) : _rasterizer = rasterizer ?? XeroxRasterizer(),
+       _diskCache = diskCache ?? XeroxDiskCache.instance {
     if (maxBytes <= 0) throw ArgumentError.value(maxBytes, 'maxBytes');
     if (maxConcurrentJobs <= 0) {
       throw ArgumentError.value(maxConcurrentJobs, 'maxConcurrentJobs');
@@ -76,6 +80,7 @@ class XeroxRasterCache {
   final int maxBytes;
   final int maxConcurrentJobs;
   final XeroxRasterizer _rasterizer;
+  final XeroxDiskCache _diskCache;
   final LinkedHashMap<XeroxRasterKey, _RasterEntry> _entries =
       LinkedHashMap<XeroxRasterKey, _RasterEntry>();
   final Map<XeroxRasterKey, _PendingRaster> _pending = {};
@@ -219,6 +224,30 @@ class XeroxRasterCache {
     }
   }
 
+  Future<ui.Image> _loadOrRasterize(
+    XeroxRasterRequest request,
+  ) async {
+    final key = request.key.diskCacheKey;
+    try {
+      final cached = await _diskCache.read(key);
+      if (cached != null) return cached;
+    } catch (_) {
+      // A corrupt or obsolete disk entry is a cache miss, not a fatal error.
+      await _diskCache.remove(key);
+    }
+
+    final image = await _rasterizeWithRetry(request);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (data != null) {
+        await _diskCache.write(key, data.buffer.asUint8List());
+      }
+    } catch (_) {
+      // Persistence is opportunistic. The in-memory raster remains usable.
+    }
+    return image;
+  }
+
   Future<ui.Image> _rasterizeWithRetry(
     XeroxRasterRequest request,
   ) async {
@@ -243,7 +272,7 @@ class XeroxRasterCache {
   Future<void> _rasterize(_PendingRaster pending) async {
     final key = pending.request.key;
     try {
-      final image = await _rasterizeWithRetry(pending.request);
+      final image = await _loadOrRasterize(pending.request);
       final activeWaiters = pending.waiters
           .where((waiter) => !waiter.cancelled)
           .toList(growable: false);

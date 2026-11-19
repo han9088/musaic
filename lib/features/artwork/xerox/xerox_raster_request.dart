@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
@@ -21,6 +23,24 @@ class XeroxRasterKey {
   final BoxFit fit;
   final double devicePixelRatio;
   final XeroxConfig config;
+
+  /// Stable, versioned identifier used by the persistent Xerox disk cache.
+  String get diskCacheKey {
+    final value = jsonEncode([
+      identity,
+      sourceKey,
+      resolution,
+      fit.name,
+      devicePixelRatio,
+      config.edge,
+      config.contrast,
+      config.smooth,
+      config.grain,
+      config.invert,
+      'xerox-raster-v1',
+    ]);
+    return base64Url.encode(utf8.encode(value)).replaceAll('=', '');
+  }
 
   bool sameArtwork(XeroxRasterKey other) =>
       identity == other.identity &&
