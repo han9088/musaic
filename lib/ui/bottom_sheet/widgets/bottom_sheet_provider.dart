@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../engine/bottom_sheet_engine.dart';
@@ -9,7 +11,7 @@ import 'bottom_sheet_backdrop.dart';
 import 'bottom_sheet_host.dart';
 import 'bottom_sheet_overlay_host.dart';
 
-/// Root host for global bottom sheet presentation.
+/// 封装或定义底部弹层提供器相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetProvider extends StatefulWidget {
   const BottomSheetProvider({
     super.key,
@@ -30,6 +32,7 @@ class BottomSheetProvider extends StatefulWidget {
   State<BottomSheetProvider> createState() => _BottomSheetProviderState();
 }
 
+/// 封装或定义底部弹层提供器状态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _BottomSheetProviderState extends State<BottomSheetProvider> {
   BottomSheetEngine? _engine;
 
@@ -85,8 +88,8 @@ class _BottomSheetProviderState extends State<BottomSheetProvider> {
     final topInset = media.padding.top;
     final bottomInset = media.padding.bottom;
 
-    // Paint order matches RN z-index:
-    // letterbox (0) < host (1) < sheets (2+).
+    // 绘制顺序与 RN 的 z-index 规则保持一致：
+    // letterbox（0）< 宿主（1）< 弹层（2 及以上）。
     return BottomSheetScope(
       engine: engine,
       child: ColoredBox(
@@ -119,7 +122,7 @@ class _BottomSheetProviderState extends State<BottomSheetProvider> {
   }
 }
 
-/// Letterbox sits behind the host so scaled/pushed app content stays visible.
+/// 封装或定义letterboxlayer相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _LetterboxLayer extends StatelessWidget {
   const _LetterboxLayer({required this.engine});
 

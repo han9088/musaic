@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -9,10 +11,13 @@ import '../../storage/music/music_index.dart';
 import 'directory_catalog.dart';
 import 'music_provider.dart';
 
+/// 封装或定义本地目录scan状态相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 enum DirectoryScanState { idle, loading, scanning, complete, cancelled, failed }
 
+/// 封装或定义scancounts相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class ScanCounts {
   int added = 0, updated = 0, deleted = 0, skipped = 0, failed = 0;
+  /// 执行当前模块中的copy操作，用于音乐源、媒体库、播放及切换流程。
   ScanCounts copy() => ScanCounts()
     ..added = added
     ..updated = updated
@@ -21,7 +26,7 @@ final class ScanCounts {
     ..failed = failed;
 }
 
-/// Owns one refresh at a time; cancellation is checked before every page commit.
+/// 封装或定义本地目录音乐媒体库相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class DirectoryMusicLibrary {
   DirectoryMusicLibrary({
     required this.index,
@@ -47,11 +52,12 @@ final class DirectoryMusicLibrary {
   bool _cacheLoaded = false;
   int _artworkRevision = 0;
   Map<String, IndexedAudio> _tracksById = const {};
+  /// 执行当前模块中的track操作，用于音乐源、媒体库、播放及切换流程。
   IndexedAudio? track(String id) => _tracksById[id];
   final _artwork = <String, Future<String?>>{};
   final _covers = <String, Future<AudioFileEntry?>>{};
 
-  /// Returns after disk cache is published, before any native directory access.
+  /// 读取并恢复所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> loadCached() {
     if (_disposed || _cacheLoaded) return Future.value();
     if (_refresh != null) return _refresh!;
@@ -59,6 +65,7 @@ final class DirectoryMusicLibrary {
         .whenComplete(() => _cacheLoad = null);
   }
 
+  /// 读取并恢复所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> _loadCached() async {
     if (_disposed) return;
     state.value = DirectoryScanState.loading;
@@ -74,7 +81,7 @@ final class DirectoryMusicLibrary {
     state.value = DirectoryScanState.idle;
   }
 
-  // Source mutations and scans share a queue; failures must not poison later work.
+  // 媒体源变更与扫描任务共用同一队列；单次失败不能影响后续任务执行。
   Future<T> _exclusive<T>(Future<T> Function() action) {
     final result = _work.then((_) => action());
     _work = result.then<void>((_) {}, onError: (Object _, StackTrace _) {});
@@ -91,6 +98,7 @@ final class DirectoryMusicLibrary {
     return !_disposed;
   });
 
+  /// 执行当前模块中的reauthorize操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> reauthorize(AudioDirectory old) async {
     var changed = false;
     await _exclusive(() async {
@@ -108,6 +116,7 @@ final class DirectoryMusicLibrary {
     if (changed) await refresh();
   }
 
+  /// 移除、清理或重置相关状态与资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> remove(AudioDirectory source) {
     cancel();
     return _exclusive(() async {
@@ -122,6 +131,7 @@ final class DirectoryMusicLibrary {
     });
   }
 
+  /// 更新相关状态并同步依赖方，用于音乐源、媒体库、播放及切换流程。
   Future<void> refresh({bool force = false}) {
     if (_disposed) return Future.value();
     if (_refresh != null) return _refresh!;
@@ -133,6 +143,7 @@ final class DirectoryMusicLibrary {
         });
   }
 
+  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   void cancel() => _cancellation?.cancel();
   Future<void> _scan(bool force, AudioScanCancellation cancellation) async {
     if (_disposed) return;
@@ -190,7 +201,7 @@ final class DirectoryMusicLibrary {
                   file.size != null &&
                   file.data['reliable'] == true;
               final verified = old?['verified'] as int?;
-              // Providers without trustworthy stamps are revalidated at least daily.
+              // 对于无法提供可靠时间戳的媒体源，至少每天重新校验一次。
               final freshUnknown =
                   !known &&
                   verified != null &&
@@ -313,6 +324,7 @@ final class DirectoryMusicLibrary {
     _artwork.clear();
   }
 
+  /// 执行当前模块中的专辑封面操作，用于音乐源、媒体库、播放及切换流程。
   Future<String?> artwork(IndexedAudio track, {int size = 512}) async {
     if (_disposed) return null;
     final revision = _artworkRevision;
@@ -356,6 +368,7 @@ final class DirectoryMusicLibrary {
     }
   }
 
+  /// 移除、清理或重置相关状态与资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> clearArtworkCache() async {
     if (_disposed) return;
     await directories.clearArtworkCache();
@@ -363,7 +376,7 @@ final class DirectoryMusicLibrary {
     if (!_disposed) tracks.value = List.of(tracks.value);
   }
 
-  /// Summaries use the same persisted enumeration, never another filesystem scan.
+  /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioFolderSummary>> summaries({
     bool recursive = false,
     AudioFilter filter = const AudioFilter(),
@@ -374,8 +387,10 @@ final class DirectoryMusicLibrary {
     );
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> dispose() => _closing ??= _dispose();
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> _dispose() async {
     _disposed = true;
     cancel();

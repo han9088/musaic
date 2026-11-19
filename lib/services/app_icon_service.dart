@@ -1,7 +1,10 @@
+// 文件职责：应用级服务、平台适配与辅助能力。
+
 import 'package:dynamic_app_icon_flutter_plus/dynamic_app_icon_flutter_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+/// 封装或定义应用图标choice相关类型与行为，负责应用级服务、平台适配与辅助能力。
 enum AppIconChoice {
   vinylPrimary('MusaicVinylPrimary', 'assets/branding/vinyl_primary.png'),
   text('MusaicText', 'assets/branding/text.png'),
@@ -16,12 +19,14 @@ enum AppIconChoice {
   final String previewAsset;
 }
 
+/// 封装或定义应用图标快照相关类型与行为，负责应用级服务、平台适配与辅助能力。
 typedef AppIconSnapshot = ({bool supported, AppIconChoice current});
 
-/// Native configuration owns available icons; null selects the primary icon.
+/// 封装或定义应用图标服务相关类型与行为，负责应用级服务、平台适配与辅助能力。
 class AppIconService {
   const AppIconService();
 
+  /// 执行当前模块中的choices操作，用于应用级服务、平台适配与辅助能力。
   Iterable<AppIconChoice> get choices => AppIconChoice.values.where(
     (choice) =>
         choice != AppIconChoice.vinylWhite ||
@@ -31,6 +36,7 @@ class AppIconService {
                 defaultTargetPlatform == TargetPlatform.macOS)),
   );
 
+  /// 读取并恢复所需数据或资源，用于应用级服务、平台适配与辅助能力。
   Future<AppIconSnapshot> read() async {
     if (kIsWeb ||
         !const [
@@ -59,6 +65,7 @@ class AppIconService {
     );
   }
 
+  /// 应用选择并更新对应状态，用于应用级服务、平台适配与辅助能力。
   Future<void> change(AppIconChoice choice) async {
     try {
       await DynamicAppIconFlutterPlus.setAlternateIconName(
@@ -67,7 +74,7 @@ class AppIconService {
         deferUntilBackground: false,
       );
     } on PlatformException {
-      // Like Loive, accept an invalidated iOS callback only after OS confirmation.
+      // 与 Live 模式类似，iOS 回调失效后，只有操作系统再次确认才能接受结果。
       if (!kIsWeb &&
           defaultTargetPlatform == TargetPlatform.iOS &&
           await DynamicAppIconFlutterPlus.getAlternateIconName() ==

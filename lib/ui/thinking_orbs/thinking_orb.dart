@@ -1,10 +1,12 @@
+// 文件职责：思考光球的状态驱动、几何计算与绘制动画。
+
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
 part 'thinking_orb_engine.dart';
 
-/// The nine animation states from Jakub Antalik's thinking-orbs.
+/// 封装或定义思考光球状态相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 enum ThinkingOrbState {
   working,
   searching,
@@ -17,7 +19,7 @@ enum ThinkingOrbState {
   shaping,
 }
 
-/// The source project ships two separately tuned designs, not arbitrary scale.
+/// 封装或定义思考光球尺寸相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 enum ThinkingOrbSize {
   regular(64),
   inline(20);
@@ -27,9 +29,12 @@ enum ThinkingOrbSize {
   final double pixels;
 }
 
+/// 封装或定义思考光球主题相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 enum ThinkingOrbTheme { auto, dark, light }
 
+/// 封装或定义思考光球状态label相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 extension ThinkingOrbStateLabel on ThinkingOrbState {
+  /// 执行当前模块中的label操作，用于思考光球的状态驱动、几何计算与绘制动画。
   String get label => switch (this) {
     ThinkingOrbState.working => 'Working…',
     ThinkingOrbState.searching => 'Searching…',
@@ -44,6 +49,7 @@ extension ThinkingOrbStateLabel on ThinkingOrbState {
 }
 
 @visibleForTesting
+/// 执行当前模块中的debug绘制思考光球frame操作，用于思考光球的状态驱动、几何计算与绘制动画。
 void debugPaintThinkingOrbFrame(
   Canvas canvas, {
   required ThinkingOrbState state,
@@ -55,11 +61,7 @@ void debugPaintThinkingOrbFrame(
   _drawMode(canvas, size.pixels, time, dark, preset);
 }
 
-/// Flutter port of https://github.com/Jakubantalik/thinking-orbs.
-///
-/// It retains the original nine painters, the independently tuned 64/20
-/// presets, monochrome depth shading, shared clock, pause behavior, and a
-/// static representative frame when animations are disabled.
+/// 封装或定义思考光球相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class ThinkingOrb extends StatefulWidget {
   const ThinkingOrb({
     super.key,
@@ -82,6 +84,7 @@ class ThinkingOrb extends StatefulWidget {
   State<ThinkingOrb> createState() => _ThinkingOrbState();
 }
 
+/// 封装或定义思考光球状态相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _ThinkingOrbState extends State<ThinkingOrb>
     with SingleTickerProviderStateMixin {
   static final Stopwatch _sharedClock = Stopwatch()..start();

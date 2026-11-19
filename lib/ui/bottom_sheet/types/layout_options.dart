@@ -1,5 +1,8 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 part of '../types.dart';
 
+/// 封装或定义底部弹层弹簧选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetSpringOptions {
   const BottomSheetSpringOptions({
     required this.damping,
@@ -11,6 +14,7 @@ class BottomSheetSpringOptions {
   final double stiffness;
   final double mass;
 
+  /// 执行当前模块中的合并操作，用于底部弹层的状态、布局、手势与动画引擎。
   BottomSheetSpringOptions merge(BottomSheetSpringOptions? other) {
     if (other == null) return this;
     return BottomSheetSpringOptions(
@@ -20,10 +24,12 @@ class BottomSheetSpringOptions {
     );
   }
 
+  /// 执行当前模块中的to弹簧description操作，用于底部弹层的状态、布局、手势与动画引擎。
   SpringDescription toSpringDescription() =>
       SpringDescription(mass: mass, stiffness: stiffness, damping: damping);
 }
 
+/// 封装或定义底部弹层布局motion选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutMotionOptions {
   const BottomSheetLayoutMotionOptions({
     required this.sheetSpring,
@@ -36,6 +42,7 @@ class BottomSheetLayoutMotionOptions {
   final BottomSheetSpringOptions pushLayoutSpring;
 }
 
+/// 封装或定义底部弹层布局presentation选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutPresentationOptions {
   const BottomSheetLayoutPresentationOptions({
     required this.hostScale,
@@ -48,6 +55,7 @@ class BottomSheetLayoutPresentationOptions {
   final double hostTopInsetMin;
 }
 
+/// 封装或定义底部弹层布局推动选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutPushOptions {
   const BottomSheetLayoutPushOptions({
     required this.hostHorizontalInset,
@@ -62,6 +70,7 @@ class BottomSheetLayoutPushOptions {
   final PushDirection direction;
 }
 
+/// 封装或定义底部弹层布局stack选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutStackOptions {
   const BottomSheetLayoutStackOptions({
     required this.scalePerLevel,
@@ -76,6 +85,7 @@ class BottomSheetLayoutStackOptions {
   final double radiusBonusPerLevel;
 }
 
+/// 封装或定义底部弹层布局gestures选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutGesturesOptions {
   const BottomSheetLayoutGesturesOptions({
     required this.dismissDragThreshold,
@@ -90,6 +100,7 @@ class BottomSheetLayoutGesturesOptions {
   final double activationOffset;
 }
 
+/// 封装或定义底部弹层布局手柄选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutHandleOptions {
   const BottomSheetLayoutHandleOptions({
     required this.height,
@@ -100,6 +111,7 @@ class BottomSheetLayoutHandleOptions {
   final double hiddenHeight;
 }
 
+/// 封装或定义底部弹层布局scroll选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutScrollOptions {
   const BottomSheetLayoutScrollOptions({
     required this.endExtra,
@@ -110,6 +122,7 @@ class BottomSheetLayoutScrollOptions {
   final double offsetEpsilon;
 }
 
+/// 封装或定义底部弹层布局停靠点选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutDetentsOptions {
   const BottomSheetLayoutDetentsOptions({
     required this.medium,
@@ -133,6 +146,7 @@ class BottomSheetLayoutDetentsOptions {
   }
 }
 
+/// 封装或定义底部弹层布局选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutOptions {
   const BottomSheetLayoutOptions({
     required this.motion,

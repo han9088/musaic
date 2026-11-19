@@ -1,3 +1,5 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -5,11 +7,13 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+/// 封装或定义纵向倾斜动效相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class PortraitTiltMotion {
   static const maxAngle = 10 * math.pi / 180;
   Offset? _neutral;
   Offset _filtered = Offset.zero;
 
+  /// 更新相关状态并同步依赖方，用于专辑墙无限画布的布局、视口与交互状态。
   Offset update(double x, double y, double z) {
     if (!x.isFinite || !y.isFinite || !z.isFinite) return _filtered;
     final gravity = math.sqrt(x * x + y * y + z * z);
@@ -36,19 +40,22 @@ class PortraitTiltMotion {
     return _filtered;
   }
 
+  /// 移除、清理或重置相关状态与资源，用于专辑墙无限画布的布局、视口与交互状态。
   void reset() {
     _neutral = null;
     _filtered = Offset.zero;
   }
 }
 
-/// A small viewport transform, independent of the grid's pan and zoom state.
+/// 封装或定义纵向倾斜相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class PortraitTilt extends StatefulWidget {
   const PortraitTilt({super.key, required this.child, this.events});
 
-  // Paint extra albums before projecting; clip only at the screen boundary.
+  // 先额外绘制视口周边的专辑，再执行倾斜投影；只在屏幕边界进行裁剪。
+  /// 执行当前模块中的overscan操作，用于专辑墙无限画布的布局、视口与交互状态。
   static double overscan(Size size) => size.longestSide * 0.15 + 16;
 
+  /// 执行当前模块中的projection操作，用于专辑墙无限画布的布局、视口与交互状态。
   static Matrix4 projection(Offset angle, Size size) => Matrix4.identity()
     ..setEntry(3, 2, math.min(0.0007, 0.6 / size.longestSide))
     ..rotateX(angle.dx)
@@ -61,6 +68,7 @@ class PortraitTilt extends StatefulWidget {
   State<PortraitTilt> createState() => _PortraitTiltState();
 }
 
+/// 封装或定义纵向倾斜状态相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class _PortraitTiltState extends State<PortraitTilt>
     with WidgetsBindingObserver {
   final _motion = PortraitTiltMotion();
@@ -138,6 +146,7 @@ class _PortraitTiltState extends State<PortraitTilt>
     );
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于专辑墙无限画布的布局、视口与交互状态。
   void _stop() {
     _generation++;
     final subscription = _subscription;

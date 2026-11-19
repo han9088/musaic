@@ -1,9 +1,11 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'constants.dart';
 import 'detents.dart';
 import 'push_direction.dart';
 import 'types.dart';
 
-/// Sheet top Y at fully open for the current detent — drives push progress.
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushLayoutProgress(
   double sheetTopY,
   double openY,
@@ -23,11 +25,13 @@ double getPushLayoutProgress(
   return interpolateClamped(sheetTopY, screenHeight, openY, 0, 1);
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushHorizontalInset(
   double progress, {
   double targetInset = kPushHostHorizontalInset,
 }) => interpolateClamped(progress, 0, 1, 0, targetInset);
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushScale(
   double screenWidth,
   double progress, {
@@ -37,6 +41,7 @@ double getPushScale(
   getPushHorizontalInset(progress, targetInset: targetInset),
 );
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushVisualInset(
   double screenWidth,
   double progress, {
@@ -46,6 +51,7 @@ double getPushVisualInset(
   return (screenWidth * (1 - scale)) / 2;
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushVisibleSheetHeight(
   double sheetTopY,
   double screenHeight,
@@ -63,7 +69,7 @@ double getPushVisibleSheetHeight(
   return h < 0 ? 0 : h;
 }
 
-/// Signed host translate offset for push mode.
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushHostOffset(
   double screenWidth,
   double screenHeight,
@@ -75,8 +81,8 @@ double getPushHostOffset(
   double targetInset = kPushHostHorizontalInset,
   double? verticalGap,
 }) {
-  // Vertical gap is independent of side inset so full-bleed sides can still
-  // keep a host↔sheet seam (defaults to the horizontal inset for RN parity).
+  // 垂直间距独立于两侧内边距计算，因此即使侧边贴边显示，
+  // 宿主与弹层之间仍可保留接缝；默认值与横向内边距一致，以兼容 RN 版本。
   final gap = interpolateClamped(progress, 0, 1, 0, verticalGap ?? targetInset);
   final visibleHeight = getPushVisibleSheetHeight(
     sheetTopY,
@@ -89,6 +95,7 @@ double getPushHostOffset(
   return pushDirection == PushDirectionJs.top ? magnitude : -magnitude;
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushHostOffsetFromSheetTopY(
   double screenWidth,
   double screenHeight,
@@ -120,6 +127,7 @@ double getPushHostOffsetFromSheetTopY(
   );
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getBottomSheetCornerRadius(
   double progress, {
   double maxRadius = kBottomSheetCornerRadius,
@@ -171,9 +179,11 @@ getPushSheetCornerRadiusStyle(
   );
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 String getPushTransformOrigin(int pushDirection) =>
     pushDirection == PushDirectionJs.top ? 'top' : 'bottom';
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushSheetHeightForDetent(
   BottomSheetDetent detent,
   double screenHeight,

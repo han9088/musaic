@@ -1,6 +1,8 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
-/// Full-screen letterbox (presentation/push) or solid modal dim.
+/// 封装或定义底部弹层背景相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetBackdrop extends StatelessWidget {
   const BottomSheetBackdrop({
     super.key,

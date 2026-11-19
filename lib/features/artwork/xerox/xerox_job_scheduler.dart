@@ -1,10 +1,12 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 
 import 'xerox_raster_cache.dart';
 import 'xerox_raster_request.dart';
 
-/// Prepares a finite set of artwork requests while the cache caps GPU work.
+/// 封装或定义Xeroxjob调度器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxJobScheduler {
   XeroxJobScheduler({
     this.maxConcurrentRequests = 2,
@@ -18,6 +20,7 @@ class XeroxJobScheduler {
   final int maxConcurrentRequests;
   final XeroxRasterCache cache;
 
+  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<List<XeroxRasterLease>> prepare(
     Iterable<XeroxRasterRequest> requests, {
     bool Function()? isActive,
@@ -88,6 +91,7 @@ class XeroxJobScheduler {
     }
   }
 
+  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<void> precacheOriginals(
     Iterable<XeroxRasterRequest> requests,
     BuildContext context, {

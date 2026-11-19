@@ -1,5 +1,8 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 part of '../types.dart';
 
+/// 封装或定义底部弹层主题相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetTheme {
   const BottomSheetTheme({
     this.sheetBackgroundColor,
@@ -19,6 +22,7 @@ class BottomSheetTheme {
   final Color? scrimColor;
   final Color? modalBackdropColor;
 
+  /// 执行当前模块中的合并操作，用于底部弹层的状态、布局、手势与动画引擎。
   BottomSheetTheme merge(BottomSheetTheme? other) {
     if (other == null) return this;
     return BottomSheetTheme(
@@ -33,6 +37,7 @@ class BottomSheetTheme {
   }
 }
 
+/// 封装或定义resolved底部弹层主题相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class ResolvedBottomSheetTheme {
   const ResolvedBottomSheetTheme({
     required this.sheetBackgroundColor,
@@ -53,6 +58,7 @@ class ResolvedBottomSheetTheme {
   final Color modalBackdropColor;
 }
 
+/// 封装或定义底部弹层选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetOptions {
   const BottomSheetOptions({
     this.mode,
@@ -96,6 +102,7 @@ class BottomSheetOptions {
   final String? accessibilityLabel;
   final String? sheetId;
 
+  /// 基于当前对象创建副本，仅替换指定字段，用于底部弹层的状态、布局、手势与动画引擎。
   BottomSheetOptions copyWith({
     BottomSheetMode? mode,
     PushDirection? pushDirection,
@@ -142,6 +149,7 @@ class BottomSheetOptions {
   }
 }
 
+/// 封装或定义resolved底部弹层选项相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class ResolvedBottomSheetOptions {
   const ResolvedBottomSheetOptions({
     required this.mode,

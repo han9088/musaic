@@ -1,3 +1,5 @@
+// 文件职责：对话框、通知及其转场和展示管理。
+
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
@@ -9,7 +11,7 @@ import '../theme/app_radius.dart';
 
 part 'app_notification_overlay.dart';
 
-// Keep delightful_toast's bottom stack geometry.
+// 保持 delightful_toast 原有的底部堆叠布局参数。
 const appNotificationDefaultDuration = Duration(milliseconds: 5000);
 const appNotificationAnimationDuration = Duration(milliseconds: 700);
 const appNotificationEnterDuration = Duration(milliseconds: 520);
@@ -21,15 +23,17 @@ const appNotificationIconOpacity = 0.68;
 const appNotificationBorderColor = Color(0x14000000);
 const _appNotificationNoiseAsset = 'assets/textures/dialog_noise.png';
 
+/// 封装或定义应用通知type相关类型与行为，负责对话框、通知及其转场和展示管理。
 enum AppNotificationType { info, success, warning, error }
 
-/// A handle that can dismiss a notification before its timeout.
+/// 封装或定义应用通知手柄相关类型与行为，负责对话框、通知及其转场和展示管理。
 final class AppNotificationHandle {
   AppNotificationHandle._(this._controller, this._record);
 
   final _AppNotificationController _controller;
   final _AppNotificationRecord _record;
 
+  /// 执行当前模块中的dismiss操作，用于对话框、通知及其转场和展示管理。
   void dismiss() {
     final state = _record.cardKey.currentState;
     if (state != null) {
@@ -40,10 +44,7 @@ final class AppNotificationHandle {
   }
 }
 
-/// Shows a bottom notification that replaces the app's former SnackBars.
-///
-/// Multiple notifications keep `delightful_toast`'s position and scale stack,
-/// while motion and surface treatment match the app dialog.
+/// 执行当前模块中的show应用通知操作，用于对话框、通知及其转场和展示管理。
 AppNotificationHandle showAppNotification(
   BuildContext context, {
   required String message,
@@ -73,6 +74,7 @@ AppNotificationHandle showAppNotification(
 final Expando<_AppNotificationController> _controllers =
     Expando<_AppNotificationController>('app notification controllers');
 
+/// 封装或定义应用通知record相关类型与行为，负责对话框、通知及其转场和展示管理。
 final class _AppNotificationRecord {
   _AppNotificationRecord({
     required this.title,
@@ -92,6 +94,7 @@ final class _AppNotificationRecord {
   final GlobalKey<_AppNotificationCardState> cardKey = GlobalKey();
 }
 
+/// 封装或定义应用通知控制器相关类型与行为，负责对话框、通知及其转场和展示管理。
 final class _AppNotificationController {
   _AppNotificationController(this.overlay);
 
@@ -101,11 +104,13 @@ final class _AppNotificationController {
   );
   OverlayEntry? _entry;
 
+  /// 注册或添加相关数据与监听关系，用于对话框、通知及其转场和展示管理。
   void add(_AppNotificationRecord record) {
     _ensureOverlay();
     records.value = [...records.value, record];
   }
 
+  /// 移除、清理或重置相关状态与资源，用于对话框、通知及其转场和展示管理。
   void remove(_AppNotificationRecord record) {
     if (!records.value.contains(record)) return;
     records.value = records.value.where((item) => item != record).toList();

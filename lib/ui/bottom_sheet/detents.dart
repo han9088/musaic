@@ -1,7 +1,10 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'constants.dart';
 import 'push_direction.dart';
 import 'types.dart';
 
+/// 解析输入并转换为内部数据，用于底部弹层的状态、布局、手势与动画引擎。
 double resolveDetentFraction(
   BottomSheetDetent detent, [
   BottomSheetLayoutDetentsOptions fractions = kDetentFractions,
@@ -15,6 +18,7 @@ double resolveDetentFraction(
   };
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getDetentHeight(
   BottomSheetDetent detent,
   double screenHeight,
@@ -28,6 +32,7 @@ double getDetentHeight(
   return screenHeight * resolveDetentFraction(detent, fractions);
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getDetentTranslateY(
   BottomSheetDetent detent,
   double screenHeight,
@@ -35,7 +40,7 @@ double getDetentTranslateY(
   BottomSheetLayoutDetentsOptions fractions = kDetentFractions,
 ]) => screenHeight - getDetentHeight(detent, screenHeight, topInset, fractions);
 
-/// Fully dismissed top Y for top-down push (sheet off-screen above).
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushClosedTopY(
   int pushDirection,
   double screenHeight,
@@ -45,7 +50,7 @@ double getPushClosedTopY(
   return screenHeight;
 }
 
-/// Open detent top Y for push mode. Top-down is always y=0 (immersive).
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushDetentTopY(
   BottomSheetDetent detent,
   int pushDirection,
@@ -57,6 +62,7 @@ double getPushDetentTopY(
   return getDetentTranslateY(detent, screenHeight, topInset, fractions);
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPushOpenTopY(
   int pushDirection,
   double screenHeight,
@@ -66,6 +72,7 @@ double getPushOpenTopY(
   return screenHeight;
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 int findNearestDetentIndex(
   double translateY,
   List<BottomSheetDetent> detents,
@@ -93,11 +100,13 @@ int findNearestDetentIndex(
   return nearestIndex;
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 int findDetentIndex(List<BottomSheetDetent> detents, BottomSheetDetent detent) {
   final index = detents.indexOf(detent);
   return index >= 0 ? index : 0;
 }
 
+/// 执行当前模块中的clampindex操作，用于底部弹层的状态、布局、手势与动画引擎。
 int clampIndex(int index, int detentCount) {
   if (detentCount <= 0) return 0;
   if (index < 0) return 0;
@@ -105,6 +114,7 @@ int clampIndex(int index, int detentCount) {
   return index;
 }
 
+/// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
 double buildDynamicSheetHeight(
   double contentHeight,
   double screenHeight,
@@ -117,9 +127,11 @@ double buildDynamicSheetHeight(
   return totalHeight < maxHeight ? totalHeight : maxHeight;
 }
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getTranslateYFromSheetHeight(double sheetHeight, double screenHeight) =>
     screenHeight - sheetHeight;
 
+/// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
 BottomSheetDetent buildDynamicSnapPoint(
   double contentHeight,
   double screenHeight,
@@ -137,6 +149,7 @@ BottomSheetDetent buildDynamicSnapPoint(
   return BottomSheetDetent.fraction(clampedHeight / screenHeight);
 }
 
+/// 合并多组配置并保留各自约束，用于底部弹层的状态、布局、手势与动画引擎。
 List<BottomSheetDetent> mergeSnapPoints(
   List<BottomSheetDetent> snapPoints,
   BottomSheetDetent? dynamicSnapPoint,

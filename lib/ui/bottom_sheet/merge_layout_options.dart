@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'constants.dart';
 import 'types.dart';
 
@@ -52,7 +54,7 @@ BottomSheetSpringOptions _mergeSpring(
   );
 }
 
-/// Deep-merges partial layout options with [kDefaultLayoutOptions].
+/// 合并多组配置并保留各自约束，用于底部弹层的状态、布局、手势与动画引擎。
 BottomSheetLayoutOptions mergeLayoutOptions([
   BottomSheetLayoutOptions? partial,
 ]) {
@@ -111,7 +113,7 @@ BottomSheetLayoutOptions mergeLayoutOptions([
   );
 }
 
-/// Merges a partial override onto defaults (RN-style Partial deep merge).
+/// 合并多组配置并保留各自约束，用于底部弹层的状态、布局、手势与动画引擎。
 BottomSheetLayoutOptions mergeLayoutOptionsPartial(
   BottomSheetLayoutOptionsPartial? partial,
 ) {
@@ -178,7 +180,7 @@ BottomSheetLayoutOptions mergeLayoutOptionsPartial(
   );
 }
 
-/// Flat partial overrides for provider `layout` prop (Dart-friendly).
+/// 封装或定义底部弹层布局选项partial相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetLayoutOptionsPartial {
   const BottomSheetLayoutOptionsPartial({
     this.sheetSpring,

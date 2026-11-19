@@ -1,15 +1,11 @@
+// 文件职责：应用装配、全局依赖与页面宿主。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../ui/bottom_sheet/bottom_sheet.dart';
 import '../ui/theme/app_colors.dart';
 
-/// App-wide bottom-sheet host chrome (theme + default mode/layout).
-///
-/// - **Home**: wrap the shell once (the routed content).
-/// - **Secondary pages**: wrap that page (or a subtree) when it needs sheets.
-///
-/// Each host owns an independent sheet stack — nested hosts do not share
-/// sheets with the shell.
+/// 封装应用底部弹层宿主相关的类型与行为，负责应用装配、全局依赖与页面宿主。
 class AppBottomSheetHost extends StatelessWidget {
   const AppBottomSheetHost({
     super.key,

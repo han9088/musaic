@@ -1,9 +1,12 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../ui/widgets/glass_icon_button.dart';
 import 'album_playback.dart';
 
+/// 封装或定义专辑播放按钮相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class AlbumPlayButton extends StatelessWidget {
   const AlbumPlayButton({
     super.key,

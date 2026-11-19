@@ -1,6 +1,8 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
-/// Tap target above the sheet panel.
+/// 封装或定义底部弹层遮罩相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetMask extends StatelessWidget {
   const BottomSheetMask({
     super.key,

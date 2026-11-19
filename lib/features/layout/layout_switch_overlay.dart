@@ -1,3 +1,5 @@
+// 文件职责：专辑墙布局切换及过渡效果。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -6,6 +8,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../ui/widgets/glass_icon_button.dart';
 
+/// 封装或定义布局switch覆层相关类型与行为，负责专辑墙布局切换及过渡效果。
 class LayoutSwitchOverlay extends StatefulWidget {
   const LayoutSwitchOverlay({
     super.key,
@@ -20,6 +23,7 @@ class LayoutSwitchOverlay extends StatefulWidget {
   State<LayoutSwitchOverlay> createState() => _LayoutSwitchOverlayState();
 }
 
+/// 封装或定义布局switch覆层状态相关类型与行为，负责专辑墙布局切换及过渡效果。
 class _LayoutSwitchOverlayState extends State<LayoutSwitchOverlay> {
   Timer? _hideTimer;
   bool _visible = false;

@@ -1,3 +1,5 @@
+// 文件职责：Cover Flow 的几何计算、输入处理与动效。
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -13,6 +15,7 @@ import '../../services/album_haptics.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 
+/// 封装或定义专辑封面流动相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class AlbumCoverFlow extends StatefulWidget {
   const AlbumCoverFlow({
     super.key,
@@ -40,6 +43,7 @@ class AlbumCoverFlow extends StatefulWidget {
   State<AlbumCoverFlow> createState() => _AlbumCoverFlowState();
 }
 
+/// 封装或定义专辑封面流动状态相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final Ticker _ticker;
@@ -84,6 +88,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     _notifyAlbumChange();
   }
 
+  /// 更新相关状态并同步依赖方，用于Cover Flow 的几何计算、输入处理与动效。
   void _notifyAlbumChange() {
     widget.onMotionChanged?.call(_motion.position, _motion.tilt);
     final index = _motion.position.round();

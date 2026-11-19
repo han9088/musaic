@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../../canvas/album_grid_snapshot.dart';
@@ -7,7 +9,7 @@ import 'xerox_job_scheduler.dart';
 import 'xerox_mode_controller.dart';
 import 'xerox_raster_request.dart';
 
-/// Coordinates viewport preparation, resource handoff, and tile choreography.
+/// 封装或定义首页专辑封面模式控制器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class HomeArtworkModeController {
   HomeArtworkModeController({
     required TickerProvider vsync,
@@ -31,12 +33,18 @@ class HomeArtworkModeController {
   final _mode = XeroxModeController();
   late final HomeArtworkModeTransition _transition;
 
+  /// 执行当前模块中的enabled操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   bool get enabled => _mode.enabled;
+  /// 执行当前模块中的preparing操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   bool get preparing => _mode.preparing;
+  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   bool get isTransitioning => _transition.isActive;
+  /// 执行当前模块中的phase操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   ArtworkModeTransitionPhase? get phase => _transition.phase;
+  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxJobScheduler get scheduler => _mode.scheduler;
 
+  /// 控制流程的开始、暂停、取消或结束，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void beginPreparation() {
     if (_mode.preparing) return;
     _mode.beginPreparation();
@@ -44,6 +52,7 @@ class HomeArtworkModeController {
     _onMotionChanged();
   }
 
+  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void cancelPreparation() {
     _mode.cancelPreparation();
     if (!_isMounted()) return;
@@ -51,6 +60,7 @@ class HomeArtworkModeController {
     _onMotionChanged();
   }
 
+  /// 应用选择并更新对应状态，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<void> apply({
     required bool enabled,
     required List<XeroxRasterRequest> requests,
@@ -108,6 +118,7 @@ class HomeArtworkModeController {
     }
   }
 
+  /// 协调动画进度与状态过渡，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Widget animateTile(
     int row,
     int column,
@@ -122,6 +133,7 @@ class HomeArtworkModeController {
     viewport: viewport,
   );
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void dispose() {
     _transition.dispose();
     _mode.dispose();

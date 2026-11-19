@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -11,6 +13,7 @@ export 'xerox_config.dart';
 export 'xerox_resolution.dart';
 export 'xerox_seed.dart';
 
+/// 封装或定义Xerox专辑封面相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxArtwork extends StatefulWidget {
   const XeroxArtwork({
     super.key,
@@ -45,6 +48,7 @@ class XeroxArtwork extends StatefulWidget {
   State<XeroxArtwork> createState() => _XeroxArtworkState();
 }
 
+/// 封装或定义Xerox专辑封面状态相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _XeroxArtworkState extends State<XeroxArtwork> {
   XeroxRasterCache get _cache => widget.cache ?? XeroxRasterCache.instance;
   XeroxRasterLease? _lease;
@@ -76,6 +80,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     }
   }
 
+  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _scheduleAcquire(
     XeroxRasterRequest request, {
     required Duration delay,
@@ -118,9 +123,9 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       } catch (error) {
         if (!mounted || generation != _generation) return;
         if (error is! XeroxRasterCancelled) {
-          // The cache owns bounded retries for every caller, including
-          // mode-transition preparation. If they fail, stay on a neutral
-          // Xerox fallback instead of revealing the original artwork.
+          // 所有调用方的有限次数重试都由缓存层统一管理，包括
+          // 模式切换前的资源准备；重试仍失败时，继续显示中性
+          // Xerox 占位内容，不回退显示原始彩色封面。
           setState(() {
             _error = error;
             _failedKey = request.key;

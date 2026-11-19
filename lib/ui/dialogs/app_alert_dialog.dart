@@ -1,3 +1,5 @@
+// 文件职责：对话框、通知及其转场和展示管理。
+
 import 'dart:async';
 import 'dart:ui';
 
@@ -52,13 +54,14 @@ Future<T?> showAppDialog<T>({
   final dismissTimer = autoDismissAfter == null
       ? null
       : Timer(autoDismissAfter, () {
-          // Only dismiss this route. If another route has appeared above it,
-          // never pop that unrelated UI when the timer fires.
+          // 只关闭当前路由。如果此路由上方又出现了其他路由，
+          // 定时器触发时不能误关闭那个无关界面。
           if (route.isCurrent) navigator.pop<T>(autoDismissResult);
         });
   return result.whenComplete(() => dismissTimer?.cancel());
 }
 
+/// 封装或定义应用对话框route相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _AppDialogRoute<T> extends RawDialogRoute<T> {
   _AppDialogRoute({
     required super.pageBuilder,
@@ -74,9 +77,7 @@ class _AppDialogRoute<T> extends RawDialogRoute<T> {
   final Duration reverseTransitionDuration;
 }
 
-/// 问题现象：各业务弹窗沿用默认实色背景，宽度和视觉风格不统一。
-/// 问题原因：弹窗直接使用 [AlertDialog]，缺少统一的视觉承载层。
-/// 修复思路：集中提供浅色微透磨砂、噪点和响应式宽度，业务只传内容。
+/// 封装或定义应用提示对话框相关类型与行为，负责对话框、通知及其转场和展示管理。
 class AppAlertDialog extends StatelessWidget {
   const AppAlertDialog({
     super.key,

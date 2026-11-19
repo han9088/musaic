@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:async';
 
 import 'directory_music_library.dart';
@@ -8,10 +10,10 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'local_music_provider.dart';
 import 'music_provider.dart';
 
+/// 封装或定义音乐来源问题相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 enum MusicSourceProblem { denied, restricted, unavailable, scanFailed }
 
-/// Null catalog means a bundled demo source; mock2Selected distinguishes them.
-/// A library source change is committed only after a full scan.
+/// 封装或定义音乐来源控制器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicSourceController {
   MusicSourceController({MusicProvider Function()? createLocal})
     : _createLocal = createLocal ?? LocalMusicProvider.new;
@@ -22,14 +24,18 @@ final class MusicSourceController {
   final busy = signal(false);
   final problem = signal<MusicSourceProblem?>(null);
   MusicProvider? _provider;
+  /// 获取当前选中的音乐源提供器。
   MusicProvider? get provider => _provider;
   bool _disposed = false;
   bool _selectionTouched = false;
   final directoryLibrary = signal<DirectoryMusicLibrary?>(null);
+  /// 获取当前本地音乐目录媒体库。
   DirectoryMusicLibrary? get directories => directoryLibrary.value;
   final directorySelected = signal(false);
+  /// 用于取消本地媒体库曲目变化订阅的回调。
   void Function()? _stopDirectories;
 
+  /// 连接本地音乐媒体库，并订阅曲目变化以同步专辑目录。
   Future<void> attachDirectories(DirectoryMusicLibrary library) async {
     if (_disposed) return;
     directoryLibrary.value = library;
@@ -53,6 +59,7 @@ final class MusicSourceController {
     catalog.value = directories!.albums.value;
   }
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectDirectories({bool add = false}) async {
     final library = directories;
     if (library == null || _disposed || busy.value) return;
@@ -78,6 +85,7 @@ final class MusicSourceController {
     }
   }
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectLocal() async {
     if (_disposed || busy.value) return;
     _selectionTouched = true;
@@ -133,10 +141,13 @@ final class MusicSourceController {
     }
   }
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectMock() => _selectMock(mock2: false);
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectMock2() => _selectMock(mock2: true);
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> _selectMock({required bool mock2}) async {
     if (_disposed || busy.value) return;
     _selectionTouched = true;
@@ -158,6 +169,7 @@ final class MusicSourceController {
     }
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;

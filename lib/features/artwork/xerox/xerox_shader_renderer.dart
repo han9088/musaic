@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -5,10 +7,11 @@ import 'package:flutter/painting.dart';
 import 'xerox_config.dart';
 import 'xerox_seed.dart';
 
-/// Shared shader drawing path for both live previews and raster generation.
+/// 封装或定义Xerox着色器渲染器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxShaderRenderer {
   const XeroxShaderRenderer._();
 
+  /// 根据当前状态和几何参数绘制视觉内容，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   static void paint({
     required ui.Canvas canvas,
     required ui.Size size,

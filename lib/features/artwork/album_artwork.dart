@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
@@ -6,7 +8,7 @@ import 'artwork_image.dart';
 import 'source/artwork_image_resolver.dart';
 import 'source/artwork_source.dart';
 
-/// Public artwork entry point. Source resolution is independent from rendering.
+/// 执行当前模块中的专辑封面图操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -18,6 +20,8 @@ Widget albumArtwork(
   bool xerox = false,
   double scale = 1,
 }) {
+  // 先将来源解析为明确类型，避免后续逻辑反复判断字符串前缀。
+  // 统一解析来源类型，让后续分支直接使用结构化信息。
   final source = ArtworkSource.parse(asset);
   if (source.isDirectory) {
     return DirectoryArtwork(
@@ -39,6 +43,7 @@ Widget albumArtwork(
     );
   }
 
+  // 占位内容只负责界面兜底，不是真实图片来源，因此不参与图片解码或 Xerox 光栅化。
   if (source.isPlaceholder) {
     return Semantics(
       label: excludeFromSemantics ? null : semanticLabel,

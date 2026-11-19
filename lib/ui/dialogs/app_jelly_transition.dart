@@ -1,8 +1,10 @@
+// 文件职责：对话框、通知及其转场和展示管理。
+
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-/// Shared asymmetric jelly motion for app dialogs and anchored bubbles.
+/// 封装或定义应用果冻过渡相关类型与行为，负责对话框、通知及其转场和展示管理。
 class AppJellyTransition extends StatelessWidget {
   const AppJellyTransition({
     super.key,
@@ -66,6 +68,7 @@ class AppJellyTransition extends StatelessWidget {
   }
 }
 
+/// 封装或定义果冻弹簧curve相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _JellySpringCurve extends Curve {
   const _JellySpringCurve();
 

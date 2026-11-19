@@ -1,9 +1,12 @@
+// 文件职责：应用级服务、平台适配与辅助能力。
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:pulsar_haptics/pulsar.dart';
 
 import 'album_tick_sound.dart';
 
+/// 封装或定义专辑触觉反馈相关类型与行为，负责应用级服务、平台适配与辅助能力。
 class AlbumHaptics {
   AlbumHaptics({AlbumTickSound? sound}) : _sound = sound ?? AlbumTickSound();
 
@@ -25,8 +28,10 @@ class AlbumHaptics {
   bool _disposed = false;
   bool _playing = false;
 
+  /// 准备并调度后续任务，用于应用级服务、平台适配与辅助能力。
   Future<void> prepare() => _preparation ??= _prepare();
 
+  /// 准备并调度后续任务，用于应用级服务、平台适配与辅助能力。
   Future<void> _prepare() async {
     if (_disposed) return;
     if (!_usesSystemSound) await _sound.prepare();
@@ -54,6 +59,7 @@ class AlbumHaptics {
     }
   }
 
+  /// 应用选择并更新对应状态，用于应用级服务、平台适配与辅助能力。
   Future<void> setActive(bool active) async {
     _active = active;
     if (!active && !_usesSystemSound) await _sound.stop();
@@ -66,11 +72,12 @@ class AlbumHaptics {
     }
   }
 
+  /// 执行当前模块中的刻度音操作，用于应用级服务、平台适配与辅助能力。
   Future<void> tick({required bool movingLeft, double strength = 1}) async {
     if (!_active || _disposed || _playing) return;
     _playing = true;
     try {
-      // Reuse the parsed native players; never queue missed scroll ticks.
+      // 复用已解析的原生播放器，不为错过的滚动刻度累积待播放音效。
       final level = strength.clamp(0.0, 1.0);
       await Future.wait([
         if (_usesSystemSound)
@@ -88,6 +95,7 @@ class AlbumHaptics {
     }
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于应用级服务、平台适配与辅助能力。
   Future<void> dispose() async {
     _disposed = true;
     await _preparation;

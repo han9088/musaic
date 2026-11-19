@@ -1,9 +1,12 @@
+// 文件职责：设置项展示与系统能力控制。
+
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/browser/fullscreen.dart';
 
+/// 封装或定义全屏control相关类型与行为，负责设置项展示与系统能力控制。
 class FullscreenControl extends StatefulWidget {
   const FullscreenControl({super.key});
 
@@ -11,6 +14,7 @@ class FullscreenControl extends StatefulWidget {
   State<FullscreenControl> createState() => _FullscreenControlState();
 }
 
+/// 封装或定义全屏control状态相关类型与行为，负责设置项展示与系统能力控制。
 class _FullscreenControlState extends State<FullscreenControl> {
   final _fullscreen = BrowserFullscreen();
   bool _pending = false;

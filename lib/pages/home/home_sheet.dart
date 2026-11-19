@@ -1,3 +1,5 @@
+// 文件职责：页面状态组织与业务流程协调。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -12,6 +14,7 @@ import '../../features/settings/fullscreen_control.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../services/music/music_source_controller.dart';
 
+/// 封装或定义首页弹层相关类型与行为，负责页面状态组织与业务流程协调。
 class HomeSheet extends StatefulWidget {
   const HomeSheet({
     super.key,
@@ -38,6 +41,7 @@ class HomeSheet extends StatefulWidget {
   State<HomeSheet> createState() => _HomeSheetState();
 }
 
+/// 封装或定义首页弹层状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomeSheetState extends State<HomeSheet> {
   bool _open = false;
   bool _sourceSelectionPending = false;
@@ -52,6 +56,7 @@ class _HomeSheetState extends State<HomeSheet> {
     _scheduleHide();
   }
 
+  /// 准备并调度后续任务，用于页面状态组织与业务流程协调。
   void _scheduleHide() {
     _hideTimer?.cancel();
     if (!widget.enabled ||

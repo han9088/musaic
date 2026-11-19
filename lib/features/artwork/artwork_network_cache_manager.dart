@@ -1,9 +1,8 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
-/// Shared persistent cache for original network artwork.
-///
-/// The URL is also the cache key for now. When Apple Music catalog mapping
-/// exposes a stable artwork revision, include that revision in this key.
+/// 封装或定义封面图网络缓存管理器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class ArtworkNetworkCacheManager extends CacheManager {
   ArtworkNetworkCacheManager._()
     : super(
@@ -14,5 +13,6 @@ class ArtworkNetworkCacheManager extends CacheManager {
         ),
       );
 
+  /// Shared manager prevents multiple instances racing over the same cache.
   static final instance = ArtworkNetworkCacheManager._();
 }

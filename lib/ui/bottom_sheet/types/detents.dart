@@ -1,20 +1,17 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 part of '../types.dart';
 
-/// Host presentation style for bottom sheets.
-///
-/// - [presentation] — iOS-style: scales the app behind the sheet, letterbox,
-///   stacked card peek.
-/// - [modal] — standard overlay: app stays full size, dimmed scrim.
-/// - [push] — pushes the host away from the sheet.
+/// 封装或定义底部弹层模式相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum BottomSheetMode { presentation, modal, push }
 
-/// Which screen edge the sheet pushes from in [BottomSheetMode.push].
+/// 封装或定义推动方向相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum PushDirection { bottom, top }
 
-/// Built-in snap heights: 50%, 90%, and full screen.
+/// 封装或定义底部弹层detentpreset相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum BottomSheetDetentPreset { medium, large, full }
 
-/// Preset, screen-height fraction (0–1), or percentage string such as `50%`.
+/// 封装或定义底部弹层detent相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 sealed class BottomSheetDetent {
   const BottomSheetDetent();
 
@@ -25,7 +22,7 @@ sealed class BottomSheetDetent {
   const factory BottomSheetDetent.percent(String percent) =
       BottomSheetDetentPercent;
 
-  /// Parses a snap point: preset name, `0–1` fraction, or `"50%"` string.
+  /// 解析输入并转换为内部数据，用于底部弹层的状态、布局、手势与动画引擎。
   static BottomSheetDetent parse(Object value) {
     if (value is BottomSheetDetent) return value;
     if (value is BottomSheetDetentPreset) {
@@ -56,6 +53,7 @@ sealed class BottomSheetDetent {
   static const full = BottomSheetDetent.preset(BottomSheetDetentPreset.full);
 }
 
+/// 封装或定义底部弹层detentpresetvalue相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 final class BottomSheetDetentPresetValue extends BottomSheetDetent {
   const BottomSheetDetentPresetValue(this.preset);
   final BottomSheetDetentPreset preset;
@@ -65,12 +63,14 @@ final class BottomSheetDetentPresetValue extends BottomSheetDetent {
       other is BottomSheetDetentPresetValue && other.preset == preset;
 
   @override
+  /// 判断当前状态是否满足指定条件，用于底部弹层的状态、布局、手势与动画引擎。
   int get hashCode => preset.hashCode;
 
   @override
   String toString() => 'BottomSheetDetent.preset($preset)';
 }
 
+/// 封装或定义底部弹层detentfraction相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 final class BottomSheetDetentFraction extends BottomSheetDetent {
   const BottomSheetDetentFraction(this.fraction);
   final double fraction;
@@ -80,12 +80,14 @@ final class BottomSheetDetentFraction extends BottomSheetDetent {
       other is BottomSheetDetentFraction && other.fraction == fraction;
 
   @override
+  /// 判断当前状态是否满足指定条件，用于底部弹层的状态、布局、手势与动画引擎。
   int get hashCode => fraction.hashCode;
 
   @override
   String toString() => 'BottomSheetDetent.fraction($fraction)';
 }
 
+/// 封装或定义底部弹层detentpercent相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 final class BottomSheetDetentPercent extends BottomSheetDetent {
   const BottomSheetDetentPercent(this.percent);
   final String percent;
@@ -95,15 +97,19 @@ final class BottomSheetDetentPercent extends BottomSheetDetent {
       other is BottomSheetDetentPercent && other.percent == percent;
 
   @override
+  /// 判断当前状态是否满足指定条件，用于底部弹层的状态、布局、手势与动画引擎。
   int get hashCode => percent.hashCode;
 
   @override
   String toString() => 'BottomSheetDetent.percent($percent)';
 }
 
+/// 封装或定义snappoint相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 typedef SnapPoint = BottomSheetDetent;
 
+/// 封装或定义底部弹层keyboardbehavior相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum BottomSheetKeyboardBehavior { interactive, fillParent, extend }
 
+/// 封装或定义底部弹层keyboardblurbehavior相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum BottomSheetKeyboardBlurBehavior { none, restore }
 

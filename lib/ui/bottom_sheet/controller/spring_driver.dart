@@ -1,9 +1,11 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 
 import '../types.dart';
 
-/// Drives a [ValueNotifier] with a spring simulation matching RN withSpring.
+/// 封装或定义弹簧driver相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class SpringDriver {
   SpringDriver({required TickerProvider vsync, required this.value})
     : _controller = AnimationController.unbounded(vsync: vsync) {
@@ -18,6 +20,7 @@ class SpringDriver {
     value.value = _controller.value;
   }
 
+  /// 协调动画进度与状态过渡，用于底部弹层的状态、布局、手势与动画引擎。
   void animateTo(
     double target, {
     required BottomSheetSpringOptions spring,
@@ -40,17 +43,20 @@ class SpringDriver {
     });
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于底部弹层的状态、布局、手势与动画引擎。
   void stop() {
     _controller.stop();
     _onComplete = null;
   }
 
+  /// 执行当前模块中的jumpto操作，用于底部弹层的状态、布局、手势与动画引擎。
   void jumpTo(double target) {
     stop();
     _controller.value = target;
     value.value = target;
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于底部弹层的状态、布局、手势与动画引擎。
   void dispose() {
     _controller
       ..removeListener(_onTick)

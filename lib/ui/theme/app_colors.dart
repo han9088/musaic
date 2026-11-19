@@ -1,6 +1,8 @@
+// 文件职责：应用视觉令牌、主题配置与排版规范。
+
 import 'package:material_ui/material_ui.dart';
 
-/// Musaic design system color tokens.
+/// 封装或定义应用色彩相关类型与行为，负责应用视觉令牌、主题配置与排版规范。
 abstract final class AppColors {
   static const background = Color(0xFFFFFFFF);
   static const surface = Color(0xFFF7F8FA);

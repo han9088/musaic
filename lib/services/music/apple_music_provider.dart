@@ -1,15 +1,17 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'package:apple_music_kit/apple_music_kit.dart' as apple;
 
 import 'music_provider.dart';
 
-/// Owns the supplied client. Do not share it with another provider instance.
-/// SDK errors retain their codes, details and retryAfter for the caller.
+/// 封装或定义Apple音乐提供器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class AppleMusicProvider implements MusicProvider {
   AppleMusicProvider({required this._client});
 
   final apple.AppleMusicClient _client;
 
   @override
+  /// 执行当前模块中的id操作，用于音乐源、媒体库、播放及切换流程。
   String get id => 'apple_music';
 
   @override
@@ -128,6 +130,7 @@ final class AppleMusicProvider implements MusicProvider {
   }
 
   @override
+  /// 执行当前模块中的播放操作，用于音乐源、媒体库、播放及切换流程。
   Stream<MusicPlayback> get playback => _client.player.states.map(
     (state) => (
       status: switch (state.status) {
@@ -212,6 +215,7 @@ final class AppleMusicProvider implements MusicProvider {
     }
   }
 
+  /// 检查输入或当前状态是否符合约束，用于音乐源、媒体库、播放及切换流程。
   static void _validateLimit(int limit) =>
       RangeError.checkValueInInterval(limit, 1, 25, 'limit');
 

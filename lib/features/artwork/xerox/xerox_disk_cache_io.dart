@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -5,9 +7,11 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'xerox_disk_cache.dart';
 
+/// 创建并组装所需对象或界面结构，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 XeroxDiskCacheStore createXeroxDiskCacheStore() =>
     _IoXeroxDiskCacheStore();
 
+/// 封装或定义ioXerox磁盘缓存存储相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _IoXeroxDiskCacheStore implements XeroxDiskCacheStore {
   static final CacheManager _manager = CacheManager(
     Config(

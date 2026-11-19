@@ -1,14 +1,20 @@
+// 文件职责：思考光球的状态驱动、几何计算与绘制动画。
+
 part of 'thinking_orb.dart';
 
-// Ported from thinking-orbs (MIT), Copyright (c) 2026 Jakub Antalik.
-// The original TypeScript source and tuned constants are preserved here as
-// closely as Dart/Flutter's Canvas API permits.
+// 移植自 thinking-orbs（MIT 许可证），版权所有 © 2026 Jakub Antalik。
+// 此处尽可能保留原始 TypeScript 实现和经过调优的常量，
+// 仅在 Dart/Flutter Canvas API 的能力范围内做必要适配。
 
+/// 封装或定义modeopts相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 typedef _ModeOpts = Map<String, double>;
+/// 封装或定义projector相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 typedef _Projector = _ProjectedPoint Function(double x, double y, double z);
 
+/// 封装或定义光球mode相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 enum _OrbMode { orbits, globe, rubik, wave, web, braid, ribbon, ring, morph }
 
+/// 封装或定义dot相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _Dot {
   const _Dot({
     required this.x,
@@ -27,6 +33,7 @@ class _Dot {
   final double alpha;
 }
 
+/// 封装或定义光球line相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _OrbLine {
   const _OrbLine({
     required this.x1,
@@ -47,6 +54,7 @@ class _OrbLine {
   final double width;
 }
 
+/// 封装或定义vec3相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _Vec3 {
   const _Vec3(this.x, this.y, this.z);
 
@@ -55,6 +63,7 @@ class _Vec3 {
   final double z;
 }
 
+/// 封装或定义projectedpoint相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _ProjectedPoint {
   const _ProjectedPoint(this.x, this.y, this.z);
 
@@ -63,6 +72,7 @@ class _ProjectedPoint {
   final double z;
 }
 
+/// 封装或定义resolvedpreset相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _ResolvedPreset {
   const _ResolvedPreset(this.mode, this.speed, this.opts);
 
@@ -71,6 +81,7 @@ class _ResolvedPreset {
   final _ModeOpts opts;
 }
 
+/// 封装或定义preset相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _Preset {
   const _Preset({
     required this.speed,
@@ -85,6 +96,7 @@ class _Preset {
   final _ModeOpts extra;
 }
 
+/// 封装或定义思考光球绘制器相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _ThinkingOrbPainter extends CustomPainter {
   _ThinkingOrbPainter({
     required this.state,
@@ -195,6 +207,7 @@ Color _inkColor(bool dark, double white, double alpha) {
   return Color.fromRGBO(gray, gray, gray, alpha.clamp(0.0, 1.0));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _paintDots(
   Canvas canvas,
   List<_Dot> dots,
@@ -214,6 +227,7 @@ void _paintDots(
   }
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _paintLines(Canvas canvas, List<_OrbLine> lines, bool dark) {
   final paint = Paint()..style = PaintingStyle.stroke;
   for (final line in lines) {
@@ -225,6 +239,7 @@ void _paintLines(Canvas canvas, List<_OrbLine> lines, bool dark) {
   }
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawMode(
   Canvas canvas,
   double size,
@@ -253,6 +268,7 @@ void _drawMode(
   }
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawOrbits(
   Canvas canvas,
   double size,
@@ -341,6 +357,7 @@ void _drawOrbits(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawGlobe(
   Canvas canvas,
   double size,
@@ -402,6 +419,7 @@ void _drawGlobe(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 封装或定义rubikmove相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _RubikMove {
   const _RubikMove(this.axis, this.low, this.high, this.angle);
 
@@ -411,6 +429,7 @@ class _RubikMove {
   final double angle;
 }
 
+/// 封装或定义solvecycle相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _SolveCycle {
   const _SolveCycle(this.amount, this.active);
 
@@ -418,6 +437,7 @@ class _SolveCycle {
   final int active;
 }
 
+/// 封装或定义movedpoint相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 class _MovedPoint {
   const _MovedPoint(this.point, this.active);
 
@@ -503,6 +523,7 @@ _MovedPoint _applyMoves(
   return _MovedPoint(_Vec3(x, y, z), inActive);
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawRubik(
   Canvas canvas,
   double size,
@@ -573,6 +594,7 @@ void _drawRubik(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawWave(
   Canvas canvas,
   double size,
@@ -630,6 +652,7 @@ void _drawWave(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawWeb(
   Canvas canvas,
   double size,
@@ -731,6 +754,7 @@ void _drawWeb(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawBraid(
   Canvas canvas,
   double size,
@@ -801,6 +825,7 @@ void _drawBraid(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawRibbon(
   Canvas canvas,
   double size,
@@ -903,6 +928,7 @@ void _drawRibbon(
   _paintDots(canvas, dots, dark, _o(opts, 'rMin', 0.3));
 }
 
+/// 封装或定义pathsampler相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 typedef _PathSampler = Offset Function(double fraction);
 
 double _smoothEase(double value) => value * value * (3 - 2 * value);
@@ -954,6 +980,7 @@ final _PathSampler _squarePath = _polygonPath(const [
   Offset(-0.2, -0.2),
 ]);
 
+/// 执行对应内容的绘制或渲染，用于思考光球的状态驱动、几何计算与绘制动画。
 void _drawMorph(
   Canvas canvas,
   double size,

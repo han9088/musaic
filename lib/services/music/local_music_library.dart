@@ -1,10 +1,12 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:musaic_query/musaic_query.dart';
 
 import 'music_models.dart';
 
-/// Read-only access to Android MediaStore and the iOS system music library.
+/// 封装或定义本地音乐媒体库相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class LocalMusicLibrary {
   LocalMusicLibrary({MusaicQuery? query}) : _query = query ?? MusaicQuery();
 
@@ -14,21 +16,24 @@ final class LocalMusicLibrary {
   Map<String, ProviderAlbum> _albums = {};
   Map<String, String> _sources = {};
   List<ProviderAlbum> _orderedAlbums = const [];
+  /// 执行当前模块中的albums操作，用于音乐源、媒体库、播放及切换流程。
   List<ProviderAlbum> get albums => _orderedAlbums;
 
+  /// 执行当前模块中的authorizationstatus操作，用于音乐源、媒体库、播放及切换流程。
   Future<MusicAccess> authorizationStatus({bool request = false}) async {
     if (kIsWeb) return MusicAccess.unavailable;
     try {
       final authorized = request
           ? await _query.permissionsRequest()
           : await _query.permissionsStatus();
-      // The plugin exposes a boolean grant, not individual denial reasons.
+      // 插件只提供是否授权的布尔结果，不会区分具体的拒绝原因。
       return authorized ? MusicAccess.authorized : MusicAccess.denied;
     } on MissingPluginException {
       return MusicAccess.unavailable;
     }
   }
 
+  /// 移除、清理或重置相关状态与资源，用于音乐源、媒体库、播放及切换流程。
   void clear() {
     _songs = {};
     _albums = {};
@@ -36,6 +41,7 @@ final class LocalMusicLibrary {
     _orderedAlbums = const [];
   }
 
+  /// 执行当前模块中的scan操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> scan() async {
     final result = await compute(
       _buildCatalog,
@@ -122,6 +128,7 @@ final class LocalMusicLibrary {
     );
   }
 
+  /// 执行当前模块中的来源操作，用于音乐源、媒体库、播放及切换流程。
   String source(ProviderSong song) {
     final value = _sources[song.reference.id];
     if (value == null) {
@@ -132,6 +139,7 @@ final class LocalMusicLibrary {
     return value;
   }
 
+  /// 执行当前模块中的专辑操作，用于音乐源、媒体库、播放及切换流程。
   ProviderAlbum album(MusicReference ref) {
     validate(ref);
     final value = ref.kind == MusicKind.album ? _albums[ref.id] : null;
@@ -141,10 +149,12 @@ final class LocalMusicLibrary {
     return value;
   }
 
+  /// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
   List<ProviderSong> resolve(List<MusicReference> items) => [
     for (final item in items) ..._resolve(item),
   ];
 
+  /// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
   Iterable<ProviderSong> _resolve(MusicReference ref) {
     validate(ref);
     if (ref.kind == MusicKind.album) {
@@ -162,6 +172,7 @@ final class LocalMusicLibrary {
     return [song];
   }
 
+  /// 检查输入或当前状态是否符合约束，用于音乐源、媒体库、播放及切换流程。
   static void validate(MusicReference ref) {
     if (ref.provider != providerId ||
         ref.source != MusicSource.library ||
@@ -174,6 +185,7 @@ final class LocalMusicLibrary {
     }
   }
 
+  /// 执行当前模块中的reference操作，用于音乐源、媒体库、播放及切换流程。
   static MusicReference reference(String id, MusicKind kind) => (
     provider: providerId,
     id: id,

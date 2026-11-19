@@ -1,9 +1,12 @@
+// 文件职责：设置项展示与系统能力控制。
+
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 
+/// 封装或定义应用图标选择器相关类型与行为，负责设置项展示与系统能力控制。
 class AppIconPicker extends StatefulWidget {
   const AppIconPicker({super.key, required this.icons});
 
@@ -13,6 +16,7 @@ class AppIconPicker extends StatefulWidget {
   State<AppIconPicker> createState() => _AppIconPickerState();
 }
 
+/// 封装或定义应用图标选择器状态相关类型与行为，负责设置项展示与系统能力控制。
 class _AppIconPickerState extends State<AppIconPicker> {
   late Future<AppIconSnapshot> _loading = widget.icons.read();
   bool _changing = false;

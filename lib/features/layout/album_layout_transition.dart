@@ -1,3 +1,5 @@
+// 文件职责：专辑墙布局切换及过渡效果。
+
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
@@ -7,7 +9,7 @@ import '../artwork/album_artwork.dart';
 import '../canvas/album_grid_snapshot.dart';
 import '../cover_flow/cover_flow_geometry.dart';
 
-/// Temporary presentation only; the settled CoverFlow owns its original renderer.
+/// 封装或定义专辑布局过渡相关类型与行为，负责专辑墙布局切换及过渡效果。
 class AlbumLayoutTransition extends StatelessWidget {
   const AlbumLayoutTransition({
     super.key,

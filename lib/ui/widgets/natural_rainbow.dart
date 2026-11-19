@@ -1,3 +1,5 @@
+// 文件职责：应用通用界面组件及其视觉绘制实现。
+
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -7,13 +9,7 @@ import 'package:flutter/widgets.dart';
 
 part 'natural_rainbow_painter.dart';
 
-/// A transparent, bottom-aligned rainbow rendered entirely with Canvas.
-///
-/// With [autoPlay] off, [progress] is visibility: 0 is absent, 1 fully formed.
-/// Automatic playback fades in, rests with subtle light variation, then fades
-/// out; [duration] covers one complete loop. Reduced motion uses [progress].
-/// [radius] is the spectrum's central radius; [thickness] is its spectral width
-/// in logical pixels. Both adapt to the available space when omitted.
+/// 封装或定义自然彩虹相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class NaturalRainbow extends StatefulWidget {
   const NaturalRainbow({
     super.key,
@@ -58,6 +54,7 @@ class NaturalRainbow extends StatefulWidget {
   State<NaturalRainbow> createState() => _NaturalRainbowState();
 }
 
+/// 封装或定义自然彩虹状态相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class _NaturalRainbowState extends State<NaturalRainbow>
     with SingleTickerProviderStateMixin {
   late final _animation = AnimationController(

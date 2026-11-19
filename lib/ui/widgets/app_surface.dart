@@ -1,8 +1,11 @@
+// 文件职责：应用通用界面组件及其视觉绘制实现。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 
+/// 封装或定义应用表面相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class AppSurface extends StatelessWidget {
   const AppSurface({
     super.key,

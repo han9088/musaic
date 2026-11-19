@@ -1,7 +1,8 @@
+// 文件职责：Cover Flow 的几何计算、输入处理与动效。
+
 import 'dart:math' as math;
 
-/// The numerical model for Cover Flow swipes, coasting, tilt, and settling.
-/// UI, haptics, and ticker ownership stay in AlbumCoverFlow.
+/// 封装或定义封面流动动效相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class CoverFlowMotion {
   CoverFlowMotion({required this.position, required this.tilt})
       : gestureTilt = tilt;
@@ -30,6 +31,7 @@ class CoverFlowMotion {
   double lastReleaseDirection = 0;
   double coastGain = 1;
 
+  /// 执行当前模块中的continuesshortswipes操作，用于Cover Flow 的几何计算、输入处理与动效。
   bool continuesShortSwipes(Duration? time) {
     final previous = lastShortSwipe;
     if (time == null ||
@@ -41,6 +43,7 @@ class CoverFlowMotion {
     return interval > Duration.zero && interval <= rapidSwipeInterval;
   }
 
+  /// 更新相关状态并同步依赖方，用于Cover Flow 的几何计算、输入处理与动效。
   void updateGestureTilt(double dx, Duration? time) {
     dragDistance += dx;
     final rapidSwipes =
@@ -59,6 +62,7 @@ class CoverFlowMotion {
     }
   }
 
+  /// 执行当前模块中的recordshortswipe操作，用于Cover Flow 的几何计算、输入处理与动效。
   void recordShortSwipe() {
     if (dragDistance.abs() >= shortSwipeMinDistance &&
         dragDistance.abs() <= tiltDeadZone) {
@@ -73,6 +77,7 @@ class CoverFlowMotion {
     }
   }
 
+  /// 执行当前模块中的scroll操作，用于Cover Flow 的几何计算、输入处理与动效。
   void scroll(double delta, Duration time, double stride) {
     if (!dragging) {
       dragDistance = 0;
@@ -86,11 +91,13 @@ class CoverFlowMotion {
     position += delta * dragSensitivity / stride;
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于Cover Flow 的几何计算、输入处理与动效。
   void endScroll() {
     dragging = false;
     recordShortSwipe();
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于Cover Flow 的几何计算、输入处理与动效。
   void startDrag(Duration? time) {
     dragging = true;
     dragDistance = 0;
@@ -100,6 +107,7 @@ class CoverFlowMotion {
     lastDrag = time;
   }
 
+  /// 更新相关状态并同步依赖方，用于Cover Flow 的几何计算、输入处理与动效。
   void updateDrag(double deltaX, Duration? time, double stride) {
     final delta = -deltaX * dragSensitivity / stride;
     final previous = lastDrag;
@@ -117,13 +125,13 @@ class CoverFlowMotion {
     lastDrag = time;
   }
 
-  /// Returns true when the widget should immediately begin slot settling.
+  /// 控制流程的开始、暂停、取消或结束，用于Cover Flow 的几何计算、输入处理与动效。
   bool endDrag(double releaseDx, double stride) {
     dragging = false;
     recordShortSwipe();
     final releaseVelocity =
         (-releaseDx * dragSensitivity / stride).clamp(-12.0, 12.0);
-    // Keep recent motion when the release estimate points backwards.
+    // 松手速度估算方向与当前运动相反时，保留近期运动趋势以避免突变。
     if (velocity * releaseVelocity >= 0) {
       velocity = releaseVelocity == 0
           ? 0
@@ -144,6 +152,7 @@ class CoverFlowMotion {
     return velocity.abs() < 0.35;
   }
 
+  /// 判断当前状态是否满足指定条件，用于Cover Flow 的几何计算、输入处理与动效。
   void cancelDrag() {
     shortSwipeCount = 0;
     lastShortSwipe = null;
@@ -169,7 +178,7 @@ class CoverFlowMotion {
         position += velocity * (1 - decay) / effectiveFriction;
         velocity *= decay;
       } else {
-        // The original critically damped settling formula.
+        // 使用原始的临界阻尼收敛公式。
         final error = position - currentTarget;
         final c = velocity + settlingRate * error;
         final decay = math.exp(-settlingRate * dt);

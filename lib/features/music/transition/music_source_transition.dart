@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
@@ -10,6 +12,7 @@ const enterStaggerMs = 28.0;
 const enterRowMs = 190.0;
 const enterHoldMs = 60.0;
 
+/// 封装或定义来源tile动效相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class SourceTileMotion {
   const SourceTileMotion({required this.rect, required this.startMs});
 

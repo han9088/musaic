@@ -1,20 +1,25 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:convert';
 
 import 'package:musaic_query/musaic_query.dart';
 
+/// 封装或定义indexedaudio相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class IndexedAudio {
   IndexedAudio(this.source, this.file, this.metadata);
   final AudioDirectory source;
   final AudioFileEntry file;
   final Map<String, Object?> metadata;
+  /// 执行当前模块中的title操作，用于音乐源、媒体库、播放及切换流程。
   String get title => metadata['title'] as String? ?? file.name;
 }
 
-/// Only plain database values cross the worker boundary, never a connection.
+/// 封装或定义音乐索引rows相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicIndexRows {
   MusicIndexRows(this.sources, this.files, this.memberships);
   final List<Map<String, Object?>> sources, files, memberships;
 
+  /// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
   MusicIndexSnapshot decode() {
     final roots = {
       for (final row in sources)
@@ -63,8 +68,10 @@ final class MusicIndexRows {
   }
 }
 
+/// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
 List<IndexedAudio> decodeTracks(MusicIndexRows rows) => rows.decode().tracks;
 
+/// 封装或定义音乐索引快照相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicIndexSnapshot {
   MusicIndexSnapshot(
     this.sources,
@@ -81,6 +88,7 @@ final class MusicIndexSnapshot {
   final Map<String, List<String>> members;
   final List<IndexedAudio> tracks;
 
+  /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   List<AudioFolderSummary> summaries({
     bool recursive = false,
     AudioFilter filter = const AudioFilter(),

@@ -1,9 +1,10 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
-/// Owns the canvas drift formula and its previous-frame timestamp.
-/// Gesture and animation lifecycle decisions remain with the viewport owner.
+/// 封装或定义画布漂移相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class CanvasDrift {
   CanvasDrift({math.Random? random})
       : velocity = Offset.fromDirection(
@@ -14,6 +15,7 @@ class CanvasDrift {
   Offset velocity;
   Duration? lastTick;
 
+  /// 执行当前模块中的advance操作，用于专辑墙无限画布的布局、视口与交互状态。
   void advance(
     Duration elapsed,
     TransformationController transform, {

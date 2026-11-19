@@ -1,3 +1,5 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../artwork/album_artwork.dart';
@@ -9,8 +11,7 @@ import 'home_album_layout_state.dart';
 import 'portrait_tilt.dart';
 import 'selected_album.dart';
 
-/// The grid viewport builds only tiles intersecting the current scene, plus
-/// the overscan needed by PortraitTilt. The owner keeps animation lifecycle.
+/// 封装或定义专辑画布视口相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class AlbumCanvasViewport extends StatelessWidget {
   const AlbumCanvasViewport({
     super.key,
@@ -52,7 +53,7 @@ class AlbumCanvasViewport extends StatelessWidget {
               child: InteractiveViewer.builder(
                 clipBehavior: Clip.none,
                 transformationController: transform,
-                // Custom drift owns inertia after the gesture ends.
+                // 手势结束后由自定义漂移逻辑继续接管惯性运动。
                 interactionEndFrictionCoefficient: 1e-100,
                 onInteractionStart: (_) => interaction.interactionStart(),
                 onInteractionUpdate: interaction.interactionUpdate,

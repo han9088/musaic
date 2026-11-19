@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:async';
 import 'dart:ui' as ui;
 
@@ -6,13 +8,15 @@ import 'package:flutter/painting.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_shader_renderer.dart';
 
-/// Turns an artwork provider into a reusable, opaque Xerox bitmap.
+/// 封装或定义Xerox光栅化器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterizer {
   static Future<ui.FragmentProgram>? _programFuture;
 
+  /// 读取并恢复所需数据或资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   static Future<ui.FragmentProgram> _loadProgram() =>
       _programFuture ??= ui.FragmentProgram.fromAsset('shaders/xerox.frag');
 
+  /// 执行当前模块中的rasterize操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<ui.Image> rasterize(XeroxRasterRequest request) async {
     final source = await _resolveSource(request);
     try {
@@ -41,11 +45,12 @@ class XeroxRasterizer {
         shader.dispose();
       }
     } finally {
-      // The decoded source handle is distinct from the ImageCache's handle.
+      // 解码得到的源图片句柄与 ImageCache 持有的句柄相互独立。
       source.dispose();
     }
   }
 
+  /// 解析输入并转换为内部数据，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<ui.Image> _resolveSource(XeroxRasterRequest request) async {
     final completer = Completer<ui.Image>();
     final provider = ResizeImage(
@@ -61,8 +66,8 @@ class XeroxRasterizer {
     late final ImageStreamListener listener;
     listener = ImageStreamListener(
       (frame, _) {
-        // ImageStream listeners own the delivered ImageInfo. Retain a separate
-        // image handle while the asynchronous GPU rasterization is running.
+        // ImageStream 监听器拥有回调收到的 ImageInfo；异步光栅化期间需要
+        // 保留单独的图片句柄，避免 GPU 处理完成前源图片资源被释放。
         ui.Image? retained;
         try {
           if (!completer.isCompleted) retained = frame.image.clone();

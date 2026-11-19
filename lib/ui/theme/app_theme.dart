@@ -1,3 +1,5 @@
+// 文件职责：应用视觉令牌、主题配置与排版规范。
+
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
@@ -6,6 +8,7 @@ import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_typography.dart';
 
+/// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildAppTheme({double fontScale = 1.0}) {
   final base = FlexThemeData.light(
     colors: const FlexSchemeColor(
@@ -33,8 +36,8 @@ ThemeData buildAppTheme({double fontScale = 1.0}) {
     canvasColor: AppColors.background,
     cardColor: AppColors.surface,
     dividerColor: AppColors.border,
-    // Flex themes may omit fontSize on some styles; TextTheme.apply asserts
-    // when scaling a null fontSize — scale only styles that define one.
+    // Flex 主题中的部分文本样式可能没有设置 fontSize；此时调用 TextTheme.apply
+    // 会因缩放 null 字体尺寸而触发断言，因此只缩放已定义 fontSize 的样式。
     textTheme: _scaleTextTheme(base.textTheme, fontScale).copyWith(
       bodyMedium: AppTypography.inter(fontSize: 14 * fontScale),
       bodyLarge: AppTypography.inter(fontSize: 16 * fontScale),
@@ -83,6 +86,7 @@ ThemeData buildAppTheme({double fontScale = 1.0}) {
 TextTheme _scaleTextTheme(TextTheme theme, double factor) {
   if (factor == 1.0) return theme;
 
+  /// 执行当前模块中的比例操作，用于应用视觉令牌、主题配置与排版规范。
   TextStyle? scale(TextStyle? style) {
     if (style == null || style.fontSize == null) return style;
     return style.apply(fontSizeFactor: factor);
@@ -107,7 +111,7 @@ TextTheme _scaleTextTheme(TextTheme theme, double factor) {
   );
 }
 
-/// White surfaces for sheet tabs and root-navigator secondary pages.
+/// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildSheetTheme(ThemeData base) {
   const surface = AppColors.sheetBackground;
   return base.copyWith(
@@ -140,10 +144,10 @@ ThemeData buildSheetTheme(ThemeData base) {
   );
 }
 
-/// Secondary pages share the sheet surface.
+/// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildSecondaryPageTheme(ThemeData base) => buildSheetTheme(base);
 
-/// Uses a restrained InkWell overlay for settings controls.
+/// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildSettingsInteractionTheme(ThemeData base) {
   return base.copyWith(
     splashFactory: InkRipple.splashFactory,
@@ -153,6 +157,7 @@ ThemeData buildSettingsInteractionTheme(ThemeData base) {
   );
 }
 
+/// 封装或定义settingsinteraction主题相关类型与行为，负责应用视觉令牌、主题配置与排版规范。
 class SettingsInteractionTheme extends StatelessWidget {
   const SettingsInteractionTheme({super.key, required this.child});
 
@@ -167,7 +172,7 @@ class SettingsInteractionTheme extends StatelessWidget {
   }
 }
 
-/// Wraps a root-navigator page in the shared secondary-page theme.
+/// 执行当前模块中的secondarypage主题操作，用于应用视觉令牌、主题配置与排版规范。
 Widget secondaryPageTheme({required Widget child}) {
   return Builder(
     builder: (context) {

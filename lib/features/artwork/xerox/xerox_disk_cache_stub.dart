@@ -1,14 +1,16 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:collection';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'xerox_disk_cache.dart';
 
+/// 创建并组装所需对象或界面结构，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 XeroxDiskCacheStore createXeroxDiskCacheStore() =>
     _MemoryXeroxDiskCacheStore();
 
-/// Browser fallback: bounded in-memory PNG store. Persistent storage is left
-/// to the browser's HTTP cache for original network artwork.
+/// 封装或定义memoryXerox磁盘缓存存储相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _MemoryXeroxDiskCacheStore implements XeroxDiskCacheStore {
   static const _maxBytes = 32 * 1024 * 1024;
 

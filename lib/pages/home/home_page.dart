@@ -1,3 +1,5 @@
+// 文件职责：页面状态组织与业务流程协调。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -30,8 +32,10 @@ import '../../features/music/transition/home_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/catalog/album_catalog_mapper.dart';
 
+/// 封装或定义首页音乐来源相关类型与行为，负责页面状态组织与业务流程协调。
 enum _HomeMusicSource { mock, mock2, local, directories }
 
+/// 封装或定义首页page相关类型与行为，负责页面状态组织与业务流程协调。
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.albumCache, this.sources});
 
@@ -43,6 +47,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+/// 封装或定义首页page状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _haptics = AlbumHaptics();
   final _playback = AlbumPlayback();
@@ -66,6 +71,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ? _HomeMusicSource.directories
       : _HomeMusicSource.local;
 
+  /// 读取并恢复所需数据或资源，用于页面状态组织与业务流程协调。
   Future<List<Map<String, dynamic>>> _readCatalog(
     List<ProviderAlbum>? albums, {
     _HomeMusicSource? source,
@@ -76,6 +82,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             : _mockAlbums
       : Future.value(mapProviderAlbums(albums));
 
+  /// 应用选择并更新对应状态，用于页面状态组织与业务流程协调。
   Future<void> _applyCatalog(List<ProviderAlbum>? sourceAlbums) async {
     final albums = await _readCatalog(sourceAlbums);
     if (!mounted ||
@@ -214,6 +221,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
   }
 
+  /// 协调动画进度与状态过渡，用于页面状态组织与业务流程协调。
   Widget _animateSourceTile(int row, int column, Widget child) =>
       _sourceTransition.animateTile(
         row,
@@ -223,6 +231,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
       );
 
+  /// 协调动画进度与状态过渡，用于页面状态组织与业务流程协调。
   Widget _animateCanvasTile(int row, int column, Widget child) {
     if (_sourceTransition.phase != null) {
       return _animateSourceTile(row, column, child);
@@ -236,6 +245,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于页面状态组织与业务流程协调。
   Future<List<XeroxRasterRequest>> _buildXeroxRequests(
     List<Map<String, dynamic>> albums,
     List<({int row, int column, Rect rect})> cells, {
@@ -292,9 +302,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
 
-      // The first Xerox tap may arrive before the bundled demo catalog's
-      // FutureBuilder has published its result. Resolve it before capturing
-      // the viewport so the transition can prepare real visible artwork.
+      // 用户第一次点击 Xerox 时，内置演示专辑目录可能尚未
+      // 通过 FutureBuilder 发布加载结果；因此需要先解析目录，再捕获
+      // 当前视口，确保过渡流程能为真正可见的封面准备资源。
       final albums = _catalog ?? await _mockCatalogFor(_currentSource);
       if (!mounted) return;
       _catalog ??= albums;
@@ -454,6 +464,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _updateLayout(landscape);
   }
 
+  /// 更新相关状态并同步依赖方，用于页面状态组织与业务流程协调。
   void _updateLayout(bool landscape) {
     if (_hasOrientation &&
         (_artworkMode.preparing || _artworkMode.isTransitioning)) {
@@ -493,6 +504,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _syncMotion();
   }
 
+  /// 执行当前模块中的advance操作，用于页面状态组织与业务流程协调。
   void _advance(Duration elapsed) => _drift.advance(
     elapsed,
     _transform,
@@ -573,6 +585,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于页面状态组织与业务流程协调。
   Widget _buildAlbums() {
     final target = _sourceTransition.phase == SourceTransitionPhase.enter
         ? _sourceTransition.targetAlbums
@@ -597,6 +610,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于页面状态组织与业务流程协调。
   Widget _buildAlbumContent(List<Map<String, dynamic>> albums) {
     if (albums.isEmpty) {
       if (_sourceTransition.phase == SourceTransitionPhase.handoff) {

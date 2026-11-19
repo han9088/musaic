@@ -1,9 +1,12 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../artwork/album_artwork.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 
+/// 封装或定义选中专辑相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class SelectedAlbum extends StatefulWidget {
   const SelectedAlbum({
     super.key,
@@ -24,6 +27,7 @@ class SelectedAlbum extends StatefulWidget {
   State<SelectedAlbum> createState() => _SelectedAlbumState();
 }
 
+/// 封装或定义选中专辑状态相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class _SelectedAlbumState extends State<SelectedAlbum> {
   @override
   Widget build(BuildContext context) => TweenAnimationBuilder<double>(

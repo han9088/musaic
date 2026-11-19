@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'package:flutter/foundation.dart';
 
 import '../../../services/music/directory_music_library.dart';
@@ -9,6 +11,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/music/music_source_controller.dart';
 
+/// 封装或定义音乐来源选择器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class MusicSourcePicker extends StatelessWidget {
   const MusicSourcePicker({
     super.key,

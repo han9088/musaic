@@ -1,9 +1,11 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../scope/bottom_sheet_scope.dart';
 import '../types.dart';
 
-/// Declarative bottom sheet — mount once, open via [controller].
+/// 封装或定义底部弹层模态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetModal extends StatefulWidget {
   const BottomSheetModal({
     super.key,
@@ -52,6 +54,7 @@ class BottomSheetModal extends StatefulWidget {
   State<BottomSheetModal> createState() => _BottomSheetModalState();
 }
 
+/// 封装或定义底部弹层模态状态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _BottomSheetModalState extends State<BottomSheetModal> {
   late final String _id;
   String? _presentedId;
@@ -92,17 +95,20 @@ class _BottomSheetModalState extends State<BottomSheetModal> {
     sheetId: _id,
   );
 
+  /// 执行当前模块中的present操作，用于底部弹层的状态、布局、手势与动画引擎。
   void present() {
     final engine = BottomSheetScope.of(context);
     if (_presentedId != null) return;
     _presentedId = engine.present(widget.child, _options);
   }
 
+  /// 执行当前模块中的dismiss操作，用于底部弹层的状态、布局、手势与动画引擎。
   void dismiss() {
     if (_presentedId == null) return;
     BottomSheetScope.of(context).dismiss(_presentedId);
   }
 
+  /// 执行当前模块中的forceclose操作，用于底部弹层的状态、布局、手势与动画引擎。
   void forceClose() {
     if (_presentedId == null) return;
     final engine = BottomSheetScope.of(context);
@@ -110,6 +116,7 @@ class _BottomSheetModalState extends State<BottomSheetModal> {
     _presentedId = null;
   }
 
+  /// 执行当前模块中的dismissall操作，用于底部弹层的状态、布局、手势与动画引擎。
   void dismissAll() => BottomSheetScope.of(context).dismissAll();
 
   BottomSheetControllerApi? get _topController {
@@ -122,6 +129,7 @@ class _BottomSheetModalState extends State<BottomSheetModal> {
   Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
+/// 封装或定义底部弹层模态控制器impl相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetModalControllerImpl extends BottomSheetModalController {
   _BottomSheetModalState? _state;
 

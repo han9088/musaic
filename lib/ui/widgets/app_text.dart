@@ -1,10 +1,14 @@
+// 文件职责：应用通用界面组件及其视觉绘制实现。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 
+/// 封装或定义应用文本variant相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 enum AppTextVariant { body, caption, title, display }
 
+/// 封装或定义应用文本相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class AppText extends StatelessWidget {
   const AppText(
     this.text, {

@@ -1,16 +1,21 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:flutter/painting.dart';
 
 import 'constants.dart';
 import 'detents.dart';
 import 'types.dart';
 
+/// 合并多组配置并保留各自约束，用于底部弹层的状态、布局、手势与动画引擎。
 ResolvedBottomSheetTheme mergeTheme({
   BottomSheetTheme? providerTheme,
   BottomSheetTheme? defaultsTheme,
   BottomSheetTheme? optionsTheme,
 }) {
+  /// 执行当前模块中的pickcolor操作，用于底部弹层的状态、布局、手势与动画引擎。
   Color pickColor(Color? a, Color? b, Color? c, Color fallback) =>
       a ?? b ?? c ?? fallback;
+  /// 执行当前模块中的pickdouble操作，用于底部弹层的状态、布局、手势与动画引擎。
   double pickDouble(double? a, double? b, double? c, double fallback) =>
       a ?? b ?? c ?? fallback;
 
@@ -60,6 +65,7 @@ ResolvedBottomSheetTheme mergeTheme({
   );
 }
 
+/// 解析输入并转换为内部数据，用于底部弹层的状态、布局、手势与动画引擎。
 ResolvedBottomSheetOptions resolveBottomSheetOptions({
   BottomSheetOptions? options,
   BottomSheetOptions? providerDefaults,

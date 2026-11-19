@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -5,10 +7,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../canvas/album_grid_snapshot.dart';
 import 'music_source_transition.dart';
 
-/// Owns the exit -> handoff -> enter timeline; page-side data commits are
-/// passed through onHandoff to preserve the original playback binding order.
+/// 封装或定义来源过渡phase相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 enum SourceTransitionPhase { exit, handoff, enter }
 
+/// 封装或定义首页来源过渡相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class HomeSourceTransition {
   HomeSourceTransition({
     required TickerProvider vsync,
@@ -41,6 +43,7 @@ class HomeSourceTransition {
   double sourceDurationMs = 0;
   bool preparing = false;
 
+  /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   Future<void> start({
     required List<Map<String, dynamic>> targetAlbums,
     required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) exit,
@@ -61,6 +64,7 @@ class HomeSourceTransition {
     return _completer!.future;
   }
 
+  /// 执行当前模块中的advance操作，用于音乐源、媒体库、播放及切换流程。
   void _advance() {
     final current = phase;
     if (!_isMounted() || current == null) return;
@@ -77,6 +81,7 @@ class HomeSourceTransition {
     }
   }
 
+  /// 处理对应事件并协调后续状态变化，用于音乐源、媒体库、播放及切换流程。
   void _handleStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !_isMounted()) return;
     phase = null;
@@ -89,12 +94,14 @@ class HomeSourceTransition {
     _finish();
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   void _finish() {
     final done = _completer;
     _completer = null;
     if (done != null && !done.isCompleted) done.complete();
   }
 
+  /// 协调动画进度与状态过渡，用于音乐源、媒体库、播放及切换流程。
   Widget animateTile(
     int row,
     int column,
@@ -137,6 +144,7 @@ class HomeSourceTransition {
     );
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于音乐源、媒体库、播放及切换流程。
   void dispose() {
     _finish();
     timeline.dispose();

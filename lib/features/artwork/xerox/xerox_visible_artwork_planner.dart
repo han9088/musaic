@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
@@ -6,13 +8,14 @@ import '../../canvas/album_grid_snapshot.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
 
-/// Builds a deduplicated, center-first list of raster jobs for one viewport.
+/// 封装或定义Xeroxvisible专辑封面规划器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxVisibleArtworkPlanner {
   const XeroxVisibleArtworkPlanner({this.maxProviderConcurrency = 4})
     : assert(maxProviderConcurrency > 0);
 
   final int maxProviderConcurrency;
 
+  /// 构建并返回当前组件的界面，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<List<XeroxRasterRequest>> build({
     required List<({int row, int column, Rect rect})> cells,
     required Size viewport,
@@ -47,7 +50,7 @@ class XeroxVisibleArtworkPlanner {
         return aDistance.compareTo(bDistance);
       });
 
-    // The selected tile is visually prominent; prepare it before the rest.
+    // 当前选中的专辑视觉权重更高，应优先于其他可视项准备。
     if (selectedAsset != null) addSpec(selectedAsset, scale * selectedScale);
     for (final cell in orderedCells) {
       addSpec(assetAt(cell.row, cell.column), scale);

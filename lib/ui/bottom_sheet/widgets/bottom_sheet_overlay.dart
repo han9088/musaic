@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../controller/bottom_sheet_controller.dart';
@@ -8,6 +10,7 @@ import '../types.dart';
 import 'bottom_sheet_handle.dart';
 import 'bottom_sheet_mask.dart';
 
+/// 封装或定义底部弹层覆层相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetOverlay extends StatefulWidget {
   const BottomSheetOverlay({
     super.key,
@@ -54,6 +57,7 @@ class BottomSheetOverlay extends StatefulWidget {
   State<BottomSheetOverlay> createState() => _BottomSheetOverlayState();
 }
 
+/// 封装或定义底部弹层覆层状态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _BottomSheetOverlayState extends State<BottomSheetOverlay>
     with TickerProviderStateMixin {
   late SheetController _controller;
@@ -72,6 +76,7 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
     });
   }
 
+  /// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
   void _createController() {
     final isPush = widget.sheet.options.mode == BottomSheetMode.push;
     final progress = widget.progress ?? ValueNotifier<double>(0);
@@ -143,7 +148,7 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
             widget.screenHeight,
           );
 
-          // Stack card peek (presentation only).
+          // Stack 卡片露出效果，仅用于展示层。
           double scale = 1;
           double hInset = 0;
           double offsetY = 0;
@@ -156,7 +161,7 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
             radiusBonus = widget.layout.stack.radiusBonusPerLevel * depth;
           }
 
-          // Push sheet scaleX.
+          // 推动式弹层的水平缩放。
           double pushScaleX = 1;
           BorderRadius borderRadius = BorderRadius.vertical(
             top: Radius.circular(
@@ -180,7 +185,7 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
               pushProgress,
               targetInset: widget.layout.push.hostHorizontalInset,
             );
-            // Fixed radius — avoid growing 0→max with open progress.
+            // 圆角保持固定，不随展开进度从 0 增长到最大值。
             final corners = getPushSheetCornerRadiusStyle(
               1,
               pushDir,
@@ -202,17 +207,17 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
           final handleH = options.showHandle
               ? widget.layout.handle.height
               : widget.layout.handle.hiddenHeight;
-          // During open/close springs the panel height can be < handle —
-          // avoid laying out handle + Expanded content (Flex overflow).
+          // 弹层执行展开或收起的弹簧动画时，面板高度可能小于手柄高度，
+          // 此时不能同时布局手柄和 Expanded 内容，否则会触发 Flex 溢出。
           final panelTallEnough = sheetHeight >= handleH + 8;
 
           Widget panel = Material(
             color: theme.sheetBackgroundColor,
             borderRadius: borderRadius,
             clipBehavior: Clip.antiAlias,
-            // Isolate sheet Scaffolds from the host ScaffoldMessenger — otherwise
-            // SnackBars from the root messenger paint on host AND every sheet
-            // Scaffold (Navigation/Settings/…).
+            // 将弹层内部的 Scaffold 与宿主的 ScaffoldMessenger 隔离，否则
+            // 根级 Messenger 发出的 SnackBar 会同时绘制在宿主和每个弹层
+            // 的 Scaffold 上（例如导航页、设置页等）。
             child: ScaffoldMessenger(
               child: panelTallEnough
                   ? Column(
@@ -300,8 +305,8 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
                   ignoring: !widget.isTop,
                   child: Semantics(
                     label: options.accessibilityLabel,
-                    // Push: scaleX only (RN parity) so the sheet top stays flush
-                    // with host — vertical gap matches side inset.
+                    // 推动式效果只改变水平缩放（与 RN 版本一致），使弹层顶部保持对齐，
+                    // 垂直间距则与侧边内边距保持一致。
                     child: _buildSheetTransform(
                       isPush: isPush,
                       isTopPush: isTopPush,
@@ -319,7 +324,7 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
     );
   }
 
-  /// Push sheets use horizontal scale only so the anchored edge stays flush.
+  /// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
   Widget _buildSheetTransform({
     required bool isPush,
     required bool isTopPush,
@@ -346,12 +351,13 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
   }
 }
 
-/// A keyboard shown for a route above the sheet must not move the sheet below.
+/// 解析输入并转换为内部数据，用于底部弹层的状态、布局、手势与动画引擎。
 double resolveBottomSheetKeyboardInset(
   double viewInset, {
   required bool focusBelongsToSheet,
 }) => focusBelongsToSheet ? viewInset : 0;
 
+/// 执行当前模块中的mathpow操作，用于底部弹层的状态、布局、手势与动画引擎。
 double mathPow(double base, double exp) {
   var result = 1.0;
   for (var i = 0; i < exp.round(); i++) {
@@ -360,6 +366,7 @@ double mathPow(double base, double exp) {
   return result;
 }
 
+/// 封装或定义内容拖拽wrapper相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _ContentPanWrapper extends StatefulWidget {
   const _ContentPanWrapper({required this.controller, required this.child});
 
@@ -370,10 +377,7 @@ class _ContentPanWrapper extends StatefulWidget {
   State<_ContentPanWrapper> createState() => _ContentPanWrapperState();
 }
 
-/// Scroll→sheet handoff: when content is at the top and the user pulls down,
-/// drive the sheet pan (close / collapse). Works with any nested vertical
-/// scrollable via [OverscrollNotification] / bounce [ScrollUpdateNotification].
-/// Non-scroll empty areas still use [GestureDetector].
+/// 封装或定义内容拖拽wrapper状态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _ContentPanWrapperState extends State<_ContentPanWrapper> {
   double _translation = 0;
   bool _dragging = false;
@@ -395,6 +399,7 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
     }
   }
 
+  /// 更新相关状态并同步依赖方，用于底部弹层的状态、布局、手势与动画引擎。
   void _updateSheetDrag(double deltaDy) {
     _translation += deltaDy;
     if (_translation < 0) _translation = 0;
@@ -413,7 +418,7 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
     if (!_enabled) return false;
     if (notification.metrics.axis != Axis.vertical) return false;
 
-    // Keep sheet scroll-offset in sync (any nested vertical scrollable).
+    // 同步弹层的滚动偏移，兼容任意层级的纵向可滚动组件。
     if (notification is ScrollUpdateNotification ||
         notification is ScrollStartNotification) {
       widget.controller.scrollOffset.value = notification.metrics.pixels;
@@ -426,14 +431,14 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
     if (!_dragging) {
       if (!atTop) return false;
 
-      // ClampingPhysics: pull-down at top → OverscrollNotification (overscroll < 0).
+      // ClampingPhysics：在列表顶部向下拖动会触发 OverscrollNotification（overscroll 小于 0）。
       if (notification is OverscrollNotification &&
           notification.overscroll < 0) {
         _beginSheetDrag(-notification.overscroll);
         return false;
       }
 
-      // BouncingPhysics: pixels stay ~0 / go slightly negative with scrollDelta < 0.
+      // BouncingPhysics：滚动位置保持在约 0，或在 scrollDelta 小于 0 时略微变为负数。
       if (notification is ScrollUpdateNotification &&
           notification.dragDetails != null &&
           (notification.scrollDelta ?? 0) < 0) {
@@ -443,7 +448,7 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
       return false;
     }
 
-    // Already driving the sheet from content overscroll.
+    // 当前已经由内容区域的过度滚动驱动弹层移动。
     if (notification is OverscrollNotification) {
       if (notification.overscroll < 0) {
         _updateSheetDrag(-notification.overscroll);
@@ -479,7 +484,7 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onVerticalDragStart: (d) {
-          // Empty / non-scroll regions — scrollables win the arena otherwise.
+          // 空白区域或非滚动区域使用此手势处理；其余情况优先让可滚动组件赢得手势竞争。
           if (!_atTop) return;
           _beginSheetDrag(0);
         },

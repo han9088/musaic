@@ -1,7 +1,10 @@
+// 文件职责：应用通用界面组件及其视觉绘制实现。
+
 import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 
+/// 封装或定义玻璃图标按钮相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class GlassIconButton extends StatefulWidget {
   const GlassIconButton({
     super.key,
@@ -20,6 +23,7 @@ class GlassIconButton extends StatefulWidget {
   State<GlassIconButton> createState() => _GlassIconButtonState();
 }
 
+/// 封装或定义玻璃图标按钮状态相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class _GlassIconButtonState extends State<GlassIconButton> {
   bool _pressed = false;
   @override

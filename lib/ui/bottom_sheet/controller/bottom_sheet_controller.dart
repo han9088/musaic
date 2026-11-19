@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:flutter/widgets.dart';
 
 import '../detents.dart';
@@ -7,6 +9,7 @@ import '../sheet_pan.dart';
 import '../types.dart';
 import 'spring_driver.dart';
 
+/// 封装或定义弹层控制器相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class SheetController extends BottomSheetControllerApi {
   SheetController({
     required TickerProvider vsync,
@@ -88,9 +91,11 @@ class SheetController extends BottomSheetControllerApi {
     return layout.motion.sheetSpring;
   }
 
+  /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   double get handleHeight =>
       options.showHandle ? layout.handle.height : layout.handle.hiddenHeight;
 
+  /// 执行当前模块中的effectivesnappoints操作，用于底部弹层的状态、布局、手势与动画引擎。
   List<BottomSheetDetent> get effectiveSnapPoints {
     final dynamicPoint = options.enableDynamicSizing && contentHeight != null
         ? buildDynamicSnapPoint(
@@ -108,13 +113,15 @@ class SheetController extends BottomSheetControllerApi {
     );
   }
 
+  /// 执行当前模块中的keyboardoffset操作，用于底部弹层的状态、布局、手势与动画引擎。
   double get keyboardOffset {
-    // Updated externally via [setKeyboardHeight].
+    // 该值由外部通过 [setKeyboardHeight] 更新。
     return _keyboardHeight;
   }
 
   double _keyboardHeight = 0;
 
+  /// 应用选择并更新对应状态，用于底部弹层的状态、布局、手势与动画引擎。
   void setKeyboardHeight(double height) {
     final behavior = options.keyboardBehavior;
     if (behavior == BottomSheetKeyboardBehavior.extend) {
@@ -145,6 +152,7 @@ class SheetController extends BottomSheetControllerApi {
     }
   }
 
+  /// 执行当前模块中的open操作，用于底部弹层的状态、布局、手势与动画引擎。
   void open() {
     if (_didOpen) return;
     _didOpen = true;
@@ -235,7 +243,7 @@ class SheetController extends BottomSheetControllerApi {
 
   @override
   void snapToPosition(double position) {
-    // position is fraction 0-1 of screen height as detent
+    // position 表示停靠点在屏幕高度中的比例，取值范围为 0 到 1。
     final detent = BottomSheetDetent.fraction(position);
     final targetY = getPushDetentTopY(
       detent,
@@ -264,6 +272,7 @@ class SheetController extends BottomSheetControllerApi {
     snapToIndex(0);
   }
 
+  /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   void onContentLayout(double height) {
     contentHeight = height;
     if (options.enableDynamicSizing && !_didOpen) {
@@ -271,6 +280,7 @@ class SheetController extends BottomSheetControllerApi {
     }
   }
 
+  /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   void onDragStart() {
     _isDragging = true;
     _sheetDriver.stop();
@@ -278,6 +288,7 @@ class SheetController extends BottomSheetControllerApi {
     _dragStartY = sheetTranslateY.value;
   }
 
+  /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   void onDragUpdate(double translationY) {
     if (!_isDragging) return;
     final snaps = effectiveSnapPoints;
@@ -301,6 +312,7 @@ class SheetController extends BottomSheetControllerApi {
     }
   }
 
+  /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   void onDragEnd(double velocityY) {
     if (!_isDragging) return;
     _isDragging = false;
@@ -353,11 +365,12 @@ class SheetController extends BottomSheetControllerApi {
     }
   }
 
-  /// Whether content pan can drag the sheet (scroll at top).
+  /// 判断当前状态是否满足指定条件，用于底部弹层的状态、布局、手势与动画引擎。
   bool get canContentPanSheet =>
       options.enableContentPanningGesture &&
       scrollOffset.value <= layout.scroll.offsetEpsilon;
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于底部弹层的状态、布局、手势与动画引擎。
   void dispose() {
     sheetTranslateY.removeListener(_syncPushProgress);
     _sheetDriver.dispose();

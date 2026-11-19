@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:convert';
 
 import 'package:flutter/painting.dart';
@@ -9,6 +11,7 @@ import '../artwork_network_provider_stub.dart'
     if (dart.library.io) '../artwork_network_provider_io.dart' as network_provider;
 import 'artwork_source.dart';
 
+/// 封装或定义resolved专辑封面相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class ResolvedArtwork {
   const ResolvedArtwork({
     required this.identity,
@@ -21,10 +24,11 @@ class ResolvedArtwork {
   final ImageProvider<Object> image;
 }
 
-/// Resolves Asset, Network and directory artwork using platform-aware providers.
+/// 封装或定义专辑封面图片解析器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class ArtworkImageResolver {
   const ArtworkImageResolver();
 
+  /// 执行当前模块中的提供器for操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   ImageProvider<Object>? providerFor(ArtworkSource source) {
     switch (source.type) {
       case ArtworkSourceType.asset:
@@ -37,6 +41,7 @@ class ArtworkImageResolver {
     }
   }
 
+  /// 解析输入并转换为内部数据，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<ResolvedArtwork?> resolve(
     String reference, {
     required DirectoryMusicLibrary? directories,

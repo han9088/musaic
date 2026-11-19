@@ -1,9 +1,12 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
 import '../../../services/music/music_provider.dart';
 
+/// 封装或定义专辑播放相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class AlbumPlayback extends ChangeNotifier {
   String? asset;
   String? title;
@@ -15,12 +18,15 @@ class AlbumPlayback extends ChangeNotifier {
   Map<String, ProviderAlbum> _songAlbums = {};
   bool _busy = false;
   bool _mock = true;
+  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   bool get supportsPlayback => _mock || _provider != null;
   int _generation = 0;
 
+  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   bool isPlaying(String asset, String title) =>
       this.asset == asset && this.title == title && playing;
 
+  /// 执行当前模块中的bind操作，用于音乐源、媒体库、播放及切换流程。
   void bind(MusicProvider? provider, List<ProviderAlbum>? albums) {
     _generation++;
     final generation = _generation;
@@ -61,6 +67,7 @@ class AlbumPlayback extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   void toggle(String asset, String title) {
     if (!supportsPlayback) return;
     if (_provider == null) {

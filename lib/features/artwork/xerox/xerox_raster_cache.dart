@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:async';
 import 'dart:collection';
 import 'dart:ui' as ui;
@@ -6,6 +8,7 @@ import 'xerox_disk_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_rasterizer.dart';
 
+/// 封装或定义光栅entry相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _RasterEntry {
   _RasterEntry(this.image)
     : bytes = image.width * image.height * 4;
@@ -15,12 +18,14 @@ class _RasterEntry {
   int references = 0;
 }
 
+/// 封装或定义光栅waiter相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _RasterWaiter {
   final completer = Completer<XeroxRasterLease>();
   bool cancelled = false;
   bool completed = false;
 }
 
+/// 封装或定义pending光栅相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _PendingRaster {
   _PendingRaster(this.request);
 
@@ -29,10 +34,7 @@ class _PendingRaster {
   bool started = false;
 }
 
-/// A cancellable request for a shared raster job.
-///
-/// Cancelling one waiter does not affect other widgets requesting the same
-/// artwork. A queued job is removed when its last waiter leaves.
+/// 封装或定义Xerox光栅task相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterTask {
   XeroxRasterTask._(this.future, this._cancel);
 
@@ -43,6 +45,7 @@ class XeroxRasterTask {
   final void Function() _cancel;
   bool _cancelled = false;
 
+  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void cancel() {
     if (_cancelled) return;
     _cancelled = true;
@@ -50,6 +53,7 @@ class XeroxRasterTask {
   }
 }
 
+/// 封装或定义Xerox光栅cancelled相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterCancelled implements Exception {
   const XeroxRasterCancelled();
 
@@ -57,9 +61,7 @@ class XeroxRasterCancelled implements Exception {
   String toString() => 'Xerox raster request was cancelled.';
 }
 
-/// A bounded, deduplicating LRU for GPU-backed Xerox bitmaps.
-///
-/// Images held by [XeroxRasterLease] are pinned and cannot be evicted.
+/// 封装或定义Xerox光栅缓存相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterCache {
   XeroxRasterCache({
     this.maxBytes = 96 * 1024 * 1024,
@@ -88,12 +90,16 @@ class XeroxRasterCache {
   int _bytes = 0;
   int _activeJobs = 0;
 
+  /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get cachedBytes => _bytes;
+  /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get cachedEntries => _entries.length;
+  /// 执行当前模块中的activejobs操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get activeJobs => _activeJobs;
+  /// 执行当前模块中的queuedjobs操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get queuedJobs => _queue.length;
 
-  /// Synchronously pins the best cached raster, if one is already available.
+  /// 执行当前模块中的tryacquirebest操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxRasterLease? tryAcquireBest(XeroxRasterRequest request) {
     final best = _findBest(request);
     if (best == null) return null;
@@ -103,6 +109,7 @@ class XeroxRasterCache {
     return _lease(key, entry, key.resolution);
   }
 
+  /// 执行当前模块中的requestbest操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxRasterTask requestBest(XeroxRasterRequest request) {
     final lease = tryAcquireBest(request);
     return lease == null
@@ -110,9 +117,11 @@ class XeroxRasterCache {
         : XeroxRasterTask.completed(lease);
   }
 
+  /// 管理资源的获取、持有与释放，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<XeroxRasterLease> acquireBest(XeroxRasterRequest request) =>
       requestBest(request).future;
 
+  /// 执行当前模块中的request操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxRasterTask request(XeroxRasterRequest request) {
     final key = request.key;
     final hit = _entries.remove(key);
@@ -137,6 +146,7 @@ class XeroxRasterCache {
     );
   }
 
+  /// 管理资源的获取、持有与释放，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<XeroxRasterLease> acquire(XeroxRasterRequest request) =>
       this.request(request).future;
 
@@ -169,6 +179,7 @@ class XeroxRasterCache {
     return (bestKey, bestEntry);
   }
 
+  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _cancelWaiter(
     XeroxRasterKey key,
     _PendingRaster pending,
@@ -199,17 +210,20 @@ class XeroxRasterCache {
     release: () => _release(key, entry),
   );
 
+  /// 执行当前模块中的touch操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _touch(XeroxRasterKey key, _RasterEntry entry) {
     _entries.remove(key);
     _entries[key] = entry;
   }
 
+  /// 管理资源的获取、持有与释放，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _release(XeroxRasterKey key, _RasterEntry entry) {
     if (entry.references > 0) entry.references--;
     _touch(key, entry);
     _evict();
   }
 
+  /// 执行当前模块中的pump操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _pump() {
     while (_activeJobs < maxConcurrentJobs && _queue.isNotEmpty) {
       final pending = _queue.removeFirst();
@@ -223,6 +237,7 @@ class XeroxRasterCache {
     }
   }
 
+  /// 读取并恢复所需数据或资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<ui.Image> _loadOrRasterize(
     XeroxRasterRequest request,
   ) async {
@@ -238,11 +253,11 @@ class XeroxRasterCache {
         await _diskCache.remove(key);
       }
     } catch (_) {
-      // A corrupt or obsolete disk entry is a cache miss, not a fatal error.
+      // 磁盘缓存损坏或版本过期时按未命中处理，不将其视为致命错误。
       try {
         await _diskCache.remove(key);
       } catch (_) {
-        // A failed cache cleanup must not prevent regeneration from source.
+        // 清理旧缓存失败也不能阻止从原图重新生成。
       }
     }
 
@@ -256,18 +271,19 @@ class XeroxRasterCache {
         );
       }
     } catch (_) {
-      // Persistence is opportunistic. The in-memory raster remains usable.
+      // 磁盘持久化属于尽力而为；即使写入失败，内存中的光栅结果仍可继续使用。
     }
     return image;
   }
 
+  /// 执行当前模块中的rasterizewithretry操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<ui.Image> _rasterizeWithRetry(
     XeroxRasterRequest request,
   ) async {
     Object? lastError;
     StackTrace? lastStack;
-    // One retry covers transient decode/GPU failures without allowing an
-    // unavailable source to keep the mode switch spinning indefinitely.
+    // 仅重试一次以覆盖短暂的解码或 GPU 故障，同时避免
+    // 因图片源不可用而让模式切换无限等待。
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         return await _rasterizer.rasterize(request);
@@ -282,6 +298,7 @@ class XeroxRasterCache {
     Error.throwWithStackTrace(lastError!, lastStack!);
   }
 
+  /// 执行当前模块中的rasterize操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<void> _rasterize(_PendingRaster pending) async {
     final key = pending.request.key;
     try {
@@ -295,8 +312,8 @@ class XeroxRasterCache {
         return;
       }
 
-      // Reserve all leases before completing any waiter. The cache may exceed
-      // its budget while images are pinned, but cannot dispose a live texture.
+      // 在完成任何等待者之前先统一预留资源租约。缓存占用可能暂时超过
+      // 预算，但仍被租约固定的图片不能被释放。
       final entry = _RasterEntry(image)
         ..references = activeWaiters.length;
       _entries[key] = entry;
@@ -324,6 +341,7 @@ class XeroxRasterCache {
     }
   }
 
+  /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _evict() {
     while (_bytes > maxBytes) {
       XeroxRasterKey? victimKey;
@@ -343,6 +361,7 @@ class XeroxRasterCache {
   }
 }
 
+/// 封装或定义Xerox光栅lease相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterLease {
   XeroxRasterLease._({
     required this.image,
@@ -357,6 +376,7 @@ class XeroxRasterLease {
   final void Function() _release;
   bool _released = false;
 
+  /// 管理资源的获取、持有与释放，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void release() {
     if (_released) return;
     _released = true;

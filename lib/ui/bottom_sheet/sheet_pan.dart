@@ -1,10 +1,14 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'detents.dart';
 import 'push_direction.dart';
 import 'types.dart';
 import 'constants.dart';
 
+/// 封装或定义弹层拖拽endkind相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 enum SheetPanEndKind { dismiss, snap }
 
+/// 封装或定义弹层拖拽endresult相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class SheetPanEndResult {
   const SheetPanEndResult({
     required this.kind,
@@ -17,7 +21,7 @@ class SheetPanEndResult {
   final double targetY;
 }
 
-/// Result of applying a drag update — mutates returned via [SheetDragUpdateResult].
+/// 封装或定义弹层dragupdateresult相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class SheetDragUpdateResult {
   const SheetDragUpdateResult({
     required this.sheetTranslateY,
@@ -30,6 +34,7 @@ class SheetDragUpdateResult {
   final double? pushProgressOpenY;
 }
 
+/// 应用选择并更新对应状态，用于底部弹层的状态、布局、手势与动画引擎。
 SheetDragUpdateResult applySheetDragUpdate({
   required double dragStartY,
   required double translationY,
@@ -82,6 +87,7 @@ SheetDragUpdateResult applySheetDragUpdate({
   );
 }
 
+/// 解析输入并转换为内部数据，用于底部弹层的状态、布局、手势与动画引擎。
 SheetPanEndResult resolveSheetPanEnd({
   required double currentY,
   required double velocityY,
@@ -108,7 +114,7 @@ SheetPanEndResult resolveSheetPanEnd({
   if (isTopPush) {
     final dismissY = openY - dismissDragThreshold;
 
-    // Dragged past dismiss threshold → close (any stage).
+    // 拖动距离超过关闭阈值时，直接关闭弹层（适用于任意阶段）。
     if (enablePanDownToClose && currentY < dismissY) {
       return SheetPanEndResult(
         kind: SheetPanEndKind.dismiss,
@@ -117,7 +123,7 @@ SheetPanEndResult resolveSheetPanEnd({
       );
     }
 
-    // Expand toward fuller open.
+    // 向更大的展开阶段移动。
     if (velocityY > detentVelocityThreshold &&
         currentIndex < effectiveSnapPoints.length - 1) {
       final nextIndex = currentIndex + 1;
@@ -134,7 +140,7 @@ SheetPanEndResult resolveSheetPanEnd({
       );
     }
 
-    // Multi-stage: collapse one stage before velocity-dismiss.
+    // 多阶段弹层先回退一个阶段，再根据速度判断是否关闭。
     if (velocityY < -detentVelocityThreshold && currentIndex > 0) {
       final prevIndex = currentIndex - 1;
       return SheetPanEndResult(
@@ -176,7 +182,7 @@ SheetPanEndResult resolveSheetPanEnd({
       ) +
       dismissDragThreshold;
 
-  // Dragged past lowest detent + threshold → close (any stage).
+  // 拖动越过最低停靠点及关闭阈值时，直接关闭弹层（适用于任意阶段）。
   if (enablePanDownToClose && currentY > dismissY) {
     return SheetPanEndResult(
       kind: SheetPanEndKind.dismiss,
@@ -185,7 +191,7 @@ SheetPanEndResult resolveSheetPanEnd({
     );
   }
 
-  // Expand to a higher detent.
+  // 展开到更高的停靠点。
   if (velocityY < -detentVelocityThreshold &&
       currentIndex < effectiveSnapPoints.length - 1) {
     final nextIndex = currentIndex + 1;
@@ -201,7 +207,7 @@ SheetPanEndResult resolveSheetPanEnd({
     );
   }
 
-  // Multi-stage: collapse one stage before velocity-dismiss.
+  // 多阶段弹层先回退一个阶段，再根据速度判断是否关闭。
   if (velocityY > detentVelocityThreshold && currentIndex > 0) {
     final prevIndex = currentIndex - 1;
     return SheetPanEndResult(
@@ -216,7 +222,7 @@ SheetPanEndResult resolveSheetPanEnd({
     );
   }
 
-  // Stage 0 only: fast downward flick closes.
+  // 仅在第 0 阶段，快速向下甩动才会触发关闭。
   if (enablePanDownToClose &&
       currentIndex == 0 &&
       velocityY > dismissVelocityThreshold) {

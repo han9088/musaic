@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:flutter/painting.dart';
 
 import 'types.dart';
@@ -21,7 +23,7 @@ const double kPresentationHostScale = 0.92;
 const double kBottomSheetCornerRadius = 24;
 const double kPresentationHostTopInsetMin = 46;
 
-/// Top letterbox aligned with side inset from scale.
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getPresentationHostTopInset(
   double screenWidth, {
   double presentationHostScale = kPresentationHostScale,
@@ -40,7 +42,7 @@ const double kPushHostHorizontalInset = 16;
 /// overridden independently (e.g. side inset 0, middle gap kept).
 const double kPushHostVerticalGap = kPushHostHorizontalInset;
 
-/// Maps horizontal inset to uniform scale so layout size stays unchanged.
+/// 执行当前模块中的推动insettoscale操作，用于底部弹层的状态、布局、手势与动画引擎。
 double pushInsetToScale(double screenWidth, double inset) {
   if (screenWidth <= 0) return 1;
   final scale = (screenWidth - inset * 2) / screenWidth;
@@ -61,6 +63,7 @@ const double kHiddenHandleHeight = 20;
 
 const double kSheetScrollEndExtra = 24;
 
+/// 获取所需数据或资源，用于底部弹层的状态、布局、手势与动画引擎。
 double getBottomSheetScrollBottomPadding(
   double bottomInset, {
   double endExtra = kSheetScrollEndExtra,
@@ -84,14 +87,17 @@ const ResolvedBottomSheetTheme kDefaultTheme = ResolvedBottomSheetTheme(
 
 const String kDefaultAccessibilityLabel = 'Bottom sheet';
 
+/// 执行当前模块中的clamp01操作，用于底部弹层的状态、布局、手势与动画引擎。
 double clamp01(double value) {
   if (value < 0) return 0;
   if (value > 1) return 1;
   return value;
 }
 
+/// 执行当前模块中的lerpdouble操作，用于底部弹层的状态、布局、手势与动画引擎。
 double lerpDouble(double a, double b, double t) => a + (b - a) * t;
 
+/// 协调动画进度与状态过渡，用于底部弹层的状态、布局、手势与动画引擎。
 double interpolateClamped(
   double value,
   double inputMin,

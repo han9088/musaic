@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
@@ -5,7 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'local_music_library.dart';
 import 'music_provider.dart';
 
-/// Opt-in system music provider. Only requestAuthorization opens a permission prompt.
+/// 封装或定义本地音乐提供器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class LocalMusicProvider implements MusicProvider {
   LocalMusicProvider({LocalMusicLibrary? library})
     : _library = library ?? LocalMusicLibrary();
@@ -35,6 +37,7 @@ final class LocalMusicProvider implements MusicProvider {
   );
 
   @override
+  /// 执行当前模块中的id操作，用于音乐源、媒体库、播放及切换流程。
   String get id => LocalMusicLibrary.providerId;
 
   @override
@@ -46,6 +49,7 @@ final class LocalMusicProvider implements MusicProvider {
     return _initializing ??= _initialize();
   }
 
+  /// 执行当前模块中的initialize操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> _initialize() async {
     try {
       await _library.authorizationStatus();
@@ -90,6 +94,7 @@ final class LocalMusicProvider implements MusicProvider {
     _requireReady();
   }
 
+  /// 读取并恢复所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> _load() async {
     try {
       await _library.scan();
@@ -173,6 +178,7 @@ final class LocalMusicProvider implements MusicProvider {
   }
 
   @override
+  /// 执行当前模块中的播放操作，用于音乐源、媒体库、播放及切换流程。
   Stream<MusicPlayback> get playback => Stream.multi((controller) {
     if (_disposed) {
       controller.closeSync();
@@ -213,6 +219,7 @@ final class LocalMusicProvider implements MusicProvider {
   bool _needsSource = true;
   Duration? _seekOnStart;
 
+  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   Future<void> _cancelLoading() async {
     final cancelled = _loadingCancelled;
     if (cancelled == null || cancelled.isCompleted) return;
@@ -290,6 +297,7 @@ final class LocalMusicProvider implements MusicProvider {
     return player;
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   Future<void> _start() async {
     final player = _getPlayer();
     final cancelled = _loadingCancelled = Completer<void>();
@@ -349,7 +357,7 @@ final class LocalMusicProvider implements MusicProvider {
     return _command(() async {
       await _ensureLibrary();
       RangeError.checkValidIndex(startIndex, snapshot, 'startIndex');
-      // startIndex addresses the supplied items, before albums expand to songs.
+      // startIndex 对应传入的项目列表索引，计算时尚未将专辑展开为曲目。
       final before = _library
           .resolve(snapshot.take(startIndex).toList())
           .length;
@@ -424,7 +432,7 @@ final class LocalMusicProvider implements MusicProvider {
     try {
       await _cancelLoading();
     } catch (_) {
-      // Disposal still releases the native player if stop fails.
+      // 即使停止播放失败，释放阶段仍必须销毁原生播放器资源。
     }
     await _pending;
     try {

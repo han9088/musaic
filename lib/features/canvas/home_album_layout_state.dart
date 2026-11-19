@@ -1,9 +1,10 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'package:material_ui/material_ui.dart';
 
 import 'album_grid_snapshot.dart';
 
-/// State shared by the grid and Cover Flow presentations.
-/// The owning page controls when mutations trigger a rebuild.
+/// 封装或定义首页专辑布局状态相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class HomeAlbumLayoutState {
   AlbumGridSnapshot? snapshot;
   List<Map<String, dynamic>>? flowAlbums;
@@ -13,6 +14,7 @@ class HomeAlbumLayoutState {
   int gridOffset = 0;
   (int, int)? selectedAlbum;
 
+  /// 执行当前模块中的专辑at操作，用于专辑墙无限画布的布局、视口与交互状态。
   Map<String, dynamic> albumAt(
     int row,
     int column,
@@ -21,6 +23,7 @@ class HomeAlbumLayoutState {
       gridAlbums[(row, column)] ??
       albums[gridAlbumIndex(row, column, albums.length)];
 
+  /// 移除、清理或重置相关状态与资源，用于专辑墙无限画布的布局、视口与交互状态。
   void clear() {
     flowAlbums = null;
     gridAlbums.clear();
@@ -31,6 +34,7 @@ class HomeAlbumLayoutState {
     gridOffset = 0;
   }
 
+  /// 准备并调度后续任务，用于专辑墙无限画布的布局、视口与交互状态。
   void prepareExpansion(
     List<Map<String, dynamic>>? albums,
     Size? size,
@@ -54,6 +58,7 @@ class HomeAlbumLayoutState {
     gridOffset = 0;
   }
 
+  /// 准备并调度后续任务，用于专辑墙无限画布的布局、视口与交互状态。
   void prepareCollapse(
     List<Map<String, dynamic>>? catalog,
     Size viewport,

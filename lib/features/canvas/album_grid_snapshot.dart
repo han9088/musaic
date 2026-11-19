@@ -1,10 +1,14 @@
+// 文件职责：专辑墙无限画布的布局、视口与交互状态。
+
 import 'package:material_ui/material_ui.dart';
 
 const albumGridExtent = 100.0;
 
+/// 执行当前模块中的网格专辑索引操作，用于专辑墙无限画布的布局、视口与交互状态。
 int gridAlbumIndex(int row, int column, int count) =>
     ((row * 73856093) ^ (column * 19349663)) % count;
 
+/// 封装或定义专辑网格快照相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class AlbumGridSnapshot {
   AlbumGridSnapshot._(this.viewport, this.cells, this.focus);
 
@@ -62,6 +66,7 @@ class AlbumGridSnapshot {
   final List<({int row, int column, Rect rect})> cells;
   final int focus;
 
+  /// 执行当前模块中的rectfor操作，用于专辑墙无限画布的布局、视口与交互状态。
   Rect rectFor(int index, Size size, EdgeInsets padding) {
     final rect = cells[index].rect;
     return Rect.fromCenter(

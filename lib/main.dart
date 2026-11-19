@@ -1,3 +1,5 @@
+// 文件职责：应用启动、依赖初始化与根组件挂载。
+
 import 'package:google_fonts/google_fonts.dart';
 
 import 'app/app.dart';

@@ -1,5 +1,6 @@
-/// Shared cover positions for the settled Cover Flow and its layout transition.
-/// Keeps the original width curve, spacing, and interpolated center anchor.
+// 文件职责：Cover Flow 的几何计算、输入处理与动效。
+
+/// 封装或定义封面流动几何相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class CoverFlowGeometry {
   const CoverFlowGeometry._();
 

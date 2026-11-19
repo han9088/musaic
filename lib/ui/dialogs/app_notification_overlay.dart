@@ -1,9 +1,8 @@
+// 文件职责：对话框、通知及其转场和展示管理。
+
 part of 'app_notification.dart';
 
-/// 问题现象：纵向通知列表会把多条消息完全展开，和目标库的卡片堆栈不一致。
-/// 问题原因：上一版只复用了“多条可见”的概念，没有复刻每层的位置与缩放公式。
-/// 修复思路：使用与 delightful_toast 相同的 70px 底部基准、15px 层间距和
-/// 缩放公式；层级变化只做平滑插值，新卡使用 Dialog 同款 Jelly 缩放。
+/// 封装或定义应用通知覆层相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _AppNotificationOverlay extends StatelessWidget {
   const _AppNotificationOverlay({required this.controller});
 
@@ -34,6 +33,7 @@ class _AppNotificationOverlay extends StatelessWidget {
   }
 }
 
+/// 封装或定义应用通知stackitem相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _AppNotificationStackItem extends StatelessWidget {
   const _AppNotificationStackItem({
     super.key,
@@ -75,6 +75,7 @@ class _AppNotificationStackItem extends StatelessWidget {
   }
 }
 
+/// 封装或定义应用通知card相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _AppNotificationCard extends StatefulWidget {
   const _AppNotificationCard({
     super.key,
@@ -89,6 +90,7 @@ class _AppNotificationCard extends StatefulWidget {
   State<_AppNotificationCard> createState() => _AppNotificationCardState();
 }
 
+/// 封装或定义应用通知card状态相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _AppNotificationCardState extends State<_AppNotificationCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _jelly;
@@ -116,6 +118,7 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
     }
   }
 
+  /// 执行当前模块中的dismiss操作，用于对话框、通知及其转场和展示管理。
   Future<void> dismiss() async {
     if (_dismissing || !mounted) return;
     _dismissing = true;
@@ -320,6 +323,7 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
   }
 }
 
+/// 封装或定义通知果冻弹簧curve相关类型与行为，负责对话框、通知及其转场和展示管理。
 class _NotificationJellySpringCurve extends Curve {
   const _NotificationJellySpringCurve();
 

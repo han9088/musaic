@@ -1,3 +1,5 @@
+// 文件职责：应用装配、全局依赖与页面宿主。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -17,6 +19,7 @@ import '../pages/home/home_page.dart';
 import '../services/mock_album_cache.dart';
 import 'bottom_sheet_host.dart';
 
+/// 封装musaic应用相关的类型与行为，负责应用装配、全局依赖与页面宿主。
 class MusaicApp extends StatefulWidget {
   const MusaicApp({super.key});
 
@@ -24,11 +27,13 @@ class MusaicApp extends StatefulWidget {
   State<MusaicApp> createState() => _MusaicAppState();
 }
 
+/// 封装musaic应用状态相关的类型与行为，负责应用装配、全局依赖与页面宿主。
 class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
   final _sources = MusicSourceController();
   DirectoryMusicLibrary? _directories;
 
+  /// 读取并恢复所需的数据或资源，用于应用装配、全局依赖与页面宿主。
   Future<void> _restoreMusic() async {
     if (kIsWeb ||
         !{

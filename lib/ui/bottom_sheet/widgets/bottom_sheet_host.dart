@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../constants.dart';
@@ -6,7 +8,7 @@ import '../push_direction.dart';
 import '../push_layout.dart';
 import '../types.dart';
 
-/// Transforms the app host based on active sheet mode.
+/// 封装或定义底部弹层宿主相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetHost extends StatelessWidget {
   const BottomSheetHost({
     super.key,
@@ -57,6 +59,7 @@ class BottomSheetHost extends StatelessWidget {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
   Widget _buildPresentation() {
     final p = progress.value;
     final scale = interpolateClamped(p, 0, 1, 1, layout.presentation.hostScale);
@@ -76,8 +79,8 @@ class BottomSheetHost extends StatelessWidget {
       maxRadius: layout.presentation.cornerRadius,
     );
 
-    // Clip inside both transforms so the radius follows the scaled host edge.
-    // Keeping this ordering local to presentation preserves push rendering.
+    // 将裁剪放在两层变换内部，使圆角始终贴合缩放后的宿主边缘。
+    // 将该顺序限制在展示层内部，可保持推动式弹层的渲染效果。
     return Transform.translate(
       offset: Offset(0, translateY),
       child: Transform.scale(
@@ -91,6 +94,7 @@ class BottomSheetHost extends StatelessWidget {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
   Widget _buildPush(int mode) {
     final pushDirectionJs = mode == HostLayoutMode.pushTop
         ? PushDirectionJs.top
@@ -132,9 +136,9 @@ class BottomSheetHost extends StatelessWidget {
       pushProgress,
       targetInset: layout.push.hostHorizontalInset,
     );
-    // Fixed radius (not progress-lerped) so open state matches sheet.
-    // Clip inside transforms — otherwise corners stay at screen edge while
-    // the host translates away and look square when open.
+    // 圆角保持固定值，不随进度插值，确保完全展开时与弹层圆角一致。
+    // 裁剪必须位于变换内部，否则宿主移动时圆角仍停留在屏幕边缘，
+    // 展开后视觉上会出现方角。
     final corners = getPushHostCornerRadiusStyle(
       1,
       pushDirectionJs,

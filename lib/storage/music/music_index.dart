@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -8,11 +10,12 @@ import 'music_index_snapshot.dart';
 
 export 'music_index_snapshot.dart';
 
-/// App-owned catalog. Grants and file locations never leave this database.
+/// 封装或定义音乐索引相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicIndex {
   MusicIndex(this.database);
   final Database database;
 
+  /// 执行当前模块中的open操作，用于音乐源、媒体库、播放及切换流程。
   static Future<MusicIndex> open({
     DatabaseFactory? factory,
     String? path,
@@ -54,6 +57,7 @@ final class MusicIndex {
     return MusicIndex(db);
   }
 
+  /// 保存数据或持久化当前状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> saveSource(AudioDirectory source) async {
     await database.rawInsert(
       'INSERT INTO sources(id,name,token) VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,token=excluded.token',
@@ -61,10 +65,12 @@ final class MusicIndex {
     );
   }
 
+  /// 执行当前模块中的sources操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioDirectory>> sources() async => [
     for (final row in await database.query('sources'))
       AudioDirectory.fromMap(row),
   ];
+  /// 执行当前模块中的nextgeneration操作，用于音乐源、媒体库、播放及切换流程。
   Future<String> nextGeneration() => database.transaction((txn) async {
     final rows = await txn.query(
       'settings',
@@ -82,6 +88,7 @@ final class MusicIndex {
     return generation;
   });
 
+  /// 执行当前模块中的status操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> status(String id, String state, [Object? error]) async {
     await database.update(
       'sources',
@@ -91,8 +98,10 @@ final class MusicIndex {
     );
   }
 
+  /// 执行当前模块中的来源states操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<Map<String, Object?>>> sourceStates() =>
       database.query('sources');
+  /// 获取所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<Map<String, Map<String, Object?>>> lookup(
     List<AudioFileEntry> entries,
   ) async {
@@ -105,6 +114,7 @@ final class MusicIndex {
     return {for (final row in rows) row['id'] as String: row};
   }
 
+  /// 保存数据或持久化当前状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> writePage(
     String source,
     String generation,
@@ -135,6 +145,7 @@ final class MusicIndex {
     await batch.commit(noResult: true);
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   Future<int> finish(String source, String generation) =>
       database.transaction((txn) async {
         await txn.delete(
@@ -160,6 +171,7 @@ final class MusicIndex {
         );
         return removed;
       });
+  /// 移除、清理或重置相关状态与资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> removeSource(String id) => database.transaction((txn) async {
     await txn.delete('sources', where: 'id = ?', whereArgs: [id]);
     await txn.execute(
@@ -167,7 +179,7 @@ final class MusicIndex {
     );
   });
 
-  /// One consistent read, independent of the number of directory sources.
+  /// 读取并恢复所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<MusicIndexRows> readSnapshot() => database.transaction(
     (txn) async => MusicIndexRows(
       await txn.query('sources', orderBy: 'id'),
@@ -176,9 +188,11 @@ final class MusicIndex {
     ),
   );
 
+  /// 执行当前模块中的tracks操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<IndexedAudio>> tracks() async =>
       await compute(decodeTracks, await readSnapshot());
 
+  /// 执行当前模块中的封面操作，用于音乐源、媒体库、播放及切换流程。
   Future<AudioFileEntry?> cover(String parent) async {
     final entries = [
       for (final row in await database.query(
@@ -195,6 +209,7 @@ final class MusicIndex {
     return entries.firstOrNull;
   }
 
+  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> setSelected(bool selected) async {
     await database.insert('settings', {
       'key': 'directoriesSelected',
@@ -202,6 +217,7 @@ final class MusicIndex {
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   Future<bool> isSelected() async =>
       (await database.query(
         'settings',
@@ -209,6 +225,7 @@ final class MusicIndex {
         whereArgs: ['directoriesSelected'],
       )).firstOrNull?['value'] ==
       '1';
+  /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioFolderSummary>> summaries({
     bool recursive = false,
     AudioFilter filter = const AudioFilter(),
@@ -221,6 +238,7 @@ final class MusicIndex {
     );
   }
 
+  /// 执行当前模块中的close操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> close() => database.close();
 }
 

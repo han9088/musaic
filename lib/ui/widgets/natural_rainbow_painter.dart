@@ -1,5 +1,8 @@
+// 文件职责：应用通用界面组件及其视觉绘制实现。
+
 part of 'natural_rainbow.dart';
 
+/// 封装或定义自然彩虹绘制器相关类型与行为，负责应用通用界面组件及其视觉绘制实现。
 class _NaturalRainbowPainter extends CustomPainter {
   _NaturalRainbowPainter(this.animation, this.options, this.playing)
     : super(
@@ -95,7 +98,7 @@ class _NaturalRainbowPainter extends CustomPainter {
             _arc.center.dy + sample.radius * math.sin(angle);
       }
     }
-    // Vertex colors avoid gradient/vertex-blend snapshots on Impeller.
+    // 使用顶点颜色，避免 Impeller 下渐变或顶点混合产生快照问题。
     for (var layer = 0; layer < _layers.length; layer++) {
       final colors = _meshColors[layer];
       for (var i = 0; i < colors.length; i++) {
@@ -114,6 +117,7 @@ class _NaturalRainbowPainter extends CustomPainter {
     }
   }
 
+  /// 执行对应内容的绘制或渲染，用于应用通用界面组件及其视觉绘制实现。
   void _drawFullArc(Canvas canvas) {
     for (var layer = 0; layer < _layers.length; layer++) {
       final paint = _layers[layer];
@@ -127,6 +131,7 @@ class _NaturalRainbowPainter extends CustomPainter {
     }
   }
 
+  /// 准备并调度后续任务，用于应用通用界面组件及其视觉绘制实现。
   void _prepareLayers(Size size) {
     _size = size;
     final fit = math.min(size.width / 2, size.height * 0.85);
@@ -139,8 +144,8 @@ class _NaturalRainbowPainter extends CustomPainter {
       ..moveTo(center.dx, center.dy)
       ..arcTo(_arc, -math.pi, math.pi, false)
       ..close();
-    // Include every spectral stop in each optical layer, so mesh interpolation
-    // preserves the gradient instead of spreading the faint halo across the core.
+    // 每个光学图层都保留完整的光谱色标，使网格插值
+    // 能还原渐变过渡，而不是把微弱光晕扩散到中心区域。
     final radii = <double>{
       0,
       outerRadius,
@@ -222,7 +227,7 @@ class _NaturalRainbowPainter extends CustomPainter {
 
     void sample(double position, Color color, double sensitivity) {
       final distance = (position - 0.58) / sigma;
-      // Ease the warm outer rim to zero before the gradient's final stop.
+      // 在渐变到达最后一个色标之前，将外侧暖色边缘平滑衰减到透明。
       final outerFade = 1 - _smooth((position - 0.80) / 0.85);
       final alpha =
           (peak *
@@ -242,7 +247,7 @@ class _NaturalRainbowPainter extends CustomPainter {
       );
     }
 
-    // Transparent tails retain the neighboring hue, preventing gray fringes.
+    // 透明尾部沿用相邻色相，避免边缘出现灰色杂边。
     colors.add(_spectrum.first.color.withValues(alpha: 0));
     stops.add(math.max(0, radius - support) / outerRadius);
     for (var i = 1; i < 8; i++) {
@@ -301,7 +306,7 @@ double _smooth(double t) {
   return x * x * (3 - 2 * x);
 }
 
-// Uneven spectral stops preserve the broad warm rim and luminous green center.
+// 采用非均匀光谱色标，保留宽阔的暖色外缘和明亮的绿色中心。
 const _spectrum = [
   (position: 0.00, color: Color(0xFF6551B8), sensitivity: 0.62),
   (position: 0.14, color: Color(0xFF3868D3), sensitivity: 0.78),

@@ -1,9 +1,11 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../constants.dart';
 import '../scope/bottom_sheet_scope.dart';
 
-/// Non-scrolling content wrapper that reports layout height for dynamic sizing.
+/// 封装或定义底部弹层view相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetView extends StatelessWidget {
   const BottomSheetView({super.key, required this.child, this.padding});
 
@@ -39,7 +41,7 @@ class BottomSheetView extends StatelessWidget {
   }
 }
 
-/// ScrollView with scroll→pan handoff contract.
+/// 封装或定义底部弹层滚动view相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetScrollView extends StatelessWidget {
   const BottomSheetScrollView({
     super.key,
@@ -80,7 +82,7 @@ class BottomSheetScrollView extends StatelessWidget {
   }
 }
 
-/// ListView with scroll→pan handoff.
+/// 封装或定义底部弹层listview相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetListView extends StatelessWidget {
   const BottomSheetListView({
     super.key,
@@ -123,7 +125,7 @@ class BottomSheetListView extends StatelessWidget {
   }
 }
 
-/// TextField that participates in keyboard avoidance.
+/// 封装或定义底部弹层textfield相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetTextField extends StatelessWidget {
   const BottomSheetTextField({
     super.key,

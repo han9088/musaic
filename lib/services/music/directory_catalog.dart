@@ -1,3 +1,5 @@
+// 文件职责：音乐源、媒体库、播放及切换流程。
+
 import 'dart:convert';
 
 import 'package:musaic_query/musaic_query.dart';
@@ -5,6 +7,7 @@ import 'package:musaic_query/musaic_query.dart';
 import '../../storage/music/music_index.dart';
 import 'music_provider.dart';
 
+/// 封装或定义本地目录目录相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class DirectoryCatalog {
   DirectoryCatalog(this.tracks, this.sources, this.folders, this.albums)
     : tracksById = {for (final track in tracks) track.file.id: track};
@@ -15,7 +18,7 @@ final class DirectoryCatalog {
   final List<ProviderAlbum> albums;
 }
 
-/// Runs once per database snapshot on a worker, without services or UI state.
+/// 创建并组装所需对象或界面结构，用于音乐源、媒体库、播放及切换流程。
 DirectoryCatalog buildDirectoryCatalog(MusicIndexRows rows) {
   final snapshot = rows.decode();
   final groups = <String, List<IndexedAudio>>{};

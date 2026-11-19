@@ -1,3 +1,5 @@
+// 文件职责：底部弹层的状态、布局、手势与动画引擎。
+
 import 'package:material_ui/material_ui.dart';
 
 import '../engine/bottom_sheet_engine.dart';
@@ -5,6 +7,7 @@ import '../types.dart';
 import 'bottom_sheet_backdrop.dart';
 import 'bottom_sheet_overlay.dart';
 
+/// 封装或定义底部弹层覆层宿主相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class BottomSheetOverlayHost extends StatelessWidget {
   const BottomSheetOverlayHost({
     super.key,
@@ -22,11 +25,11 @@ class BottomSheetOverlayHost extends StatelessWidget {
     return ListenableBuilder(
       listenable: engine,
       builder: (context, _) {
-        // No overlay layer when idle — keeps host fully interactive/visible.
+        // 空闲时不创建覆层，确保宿主界面保持可见且可以正常交互。
         if (engine.sheets.isEmpty) return const SizedBox.shrink();
 
-        // Nested Navigator so sheet content can showDialog above the sheet
-        // (the app root Navigator sits under this overlay layer).
+        // 使用嵌套 Navigator，使弹层内容可以在弹层上方继续展示对话框，
+        // 因为应用根 Navigator 位于当前覆层之下。
         return _SheetLocalOverlay(
           engine: engine,
           topInset: topInset,
@@ -37,6 +40,7 @@ class BottomSheetOverlayHost extends StatelessWidget {
   }
 }
 
+/// 封装或定义弹层stack相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _SheetStack extends StatelessWidget {
   const _SheetStack({
     required this.engine,
@@ -78,6 +82,7 @@ class _SheetStack extends StatelessWidget {
     );
   }
 
+  /// 创建并组装所需对象或界面结构，用于底部弹层的状态、布局、手势与动画引擎。
   Widget _buildStackItem(List<BottomSheetState> sheets, int index) {
     final sheet = sheets[index];
     final stackSize = sheets.length;
@@ -115,7 +120,7 @@ class _SheetStack extends StatelessWidget {
   }
 }
 
-/// Overlay + Navigator for sheet content rendered above the app Navigator.
+/// 封装或定义弹层local覆层相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _SheetLocalOverlay extends StatefulWidget {
   const _SheetLocalOverlay({
     required this.engine,
@@ -131,6 +136,7 @@ class _SheetLocalOverlay extends StatefulWidget {
   State<_SheetLocalOverlay> createState() => _SheetLocalOverlayState();
 }
 
+/// 封装或定义弹层local覆层状态相关类型与行为，负责底部弹层的状态、布局、手势与动画引擎。
 class _SheetLocalOverlayState extends State<_SheetLocalOverlay> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 

@@ -1,3 +1,5 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
@@ -5,9 +7,10 @@ import 'package:material_ui/material_ui.dart';
 import '../../canvas/album_grid_snapshot.dart';
 import '../../music/transition/music_source_transition.dart';
 
+/// 封装或定义专辑封面模式过渡phase相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 enum ArtworkModeTransitionPhase { exit, handoff, enter }
 
-/// Reuses the music-source tile choreography for Original <-> Xerox changes.
+/// 封装或定义首页专辑封面模式过渡相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class HomeArtworkModeTransition {
   HomeArtworkModeTransition({
     required TickerProvider vsync,
@@ -36,8 +39,10 @@ class HomeArtworkModeTransition {
   double _exitDurationMs = 0;
   double _durationMs = 0;
 
+  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   bool get isActive => phase != null || _completer != null;
 
+  /// 控制流程的开始、暂停、取消或结束，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<void> start({
     required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) exit,
     required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) enter,
@@ -60,6 +65,7 @@ class HomeArtworkModeTransition {
     return _completer!.future;
   }
 
+  /// 执行当前模块中的advance操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _advance() {
     if (!_isMounted() || phase == null) return;
     final elapsed = timeline.value * _durationMs;
@@ -77,6 +83,7 @@ class HomeArtworkModeTransition {
     }
   }
 
+  /// 处理对应事件并协调后续状态变化，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _handleStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !_isMounted()) return;
     phase = null;
@@ -90,12 +97,14 @@ class HomeArtworkModeTransition {
     _onCompleted = null;
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _finish() {
     final completer = _completer;
     _completer = null;
     if (completer != null && !completer.isCompleted) completer.complete();
   }
 
+  /// 协调动画进度与状态过渡，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Widget animateTile(
     int row,
     int column,
@@ -139,6 +148,7 @@ class HomeArtworkModeTransition {
     );
   }
 
+  /// 释放控制器、订阅、动画及其他持有资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void dispose() {
     _onHandoff = null;
     _onCompleted = null;

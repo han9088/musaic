@@ -1,3 +1,6 @@
+// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+
+/// 封装或定义Xeroxconfig相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxConfig {
   const XeroxConfig({
     this.edge = 0.9,

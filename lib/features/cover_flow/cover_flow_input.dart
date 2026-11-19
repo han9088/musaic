@@ -1,3 +1,5 @@
+// 文件职责：Cover Flow 的几何计算、输入处理与动效。
+
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -5,8 +7,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// Browser wheel events include trackpad inertia; native pan/zoom stays with
-/// the child's drag recognizer so it is never applied twice.
+/// 封装或定义封面流动输入相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class CoverFlowInput extends StatefulWidget {
   const CoverFlowInput({
     super.key,
@@ -27,11 +28,13 @@ class CoverFlowInput extends StatefulWidget {
   State<CoverFlowInput> createState() => _CoverFlowInputState();
 }
 
+/// 封装或定义封面流动输入状态相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class _CoverFlowInputState extends State<CoverFlowInput> {
   FocusNode? _focus;
   Timer? _scrollEnd;
   bool _scrolling = false;
 
+  /// 控制流程的开始、暂停、取消或结束，用于Cover Flow 的几何计算、输入处理与动效。
   void _finishScroll() {
     _scrollEnd?.cancel();
     if (!_scrolling) return;
