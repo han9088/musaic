@@ -175,9 +175,6 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
 
       final image = sameArtwork ? currentLease!.image : null;
       if (image != null) {
-        if (_lease == null) {
-          _scheduleAcquire(request, delay: Duration.zero);
-        }
         return Semantics(
           image: true,
           label: widget.excludeFromSemantics ? null : widget.semanticLabel,
