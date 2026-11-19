@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../canvas/album_grid_snapshot.dart';
+import '../../canvas/album_grid_snapshot.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
 
