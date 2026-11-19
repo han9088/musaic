@@ -46,6 +46,7 @@ class XeroxArtwork extends StatefulWidget {
 class _XeroxArtworkState extends State<XeroxArtwork> {
   XeroxRasterCache get _cache => widget.cache ?? XeroxRasterCache.instance;
   XeroxRasterLease? _lease;
+  XeroxRasterTask? _task;
   Timer? _requestTimer;
   XeroxRasterKey? _scheduledKey;
   int _generation = 0;
@@ -60,6 +61,8 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         oldWidget.cache != widget.cache) {
       _generation++;
       _requestTimer?.cancel();
+      _task?.cancel();
+      _task = null;
       _scheduledKey = null;
       _lease?.release();
       _lease = null;
@@ -74,13 +77,19 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   }) {
     if (_lease?.key == request.key || _scheduledKey == request.key) return;
     _requestTimer?.cancel();
+    _task?.cancel();
+    _task = null;
     _scheduledKey = request.key;
     final generation = ++_generation;
+
     Future<void> acquire() async {
+      _requestTimer = null;
+      final task = _lease == null
+          ? _cache.requestBest(request)
+          : _cache.request(request);
+      _task = task;
       try {
-        final next = _lease == null
-            ? await _cache.acquireBest(request)
-            : await _cache.acquire(request);
+        final next = await task.future;
         if (!mounted || generation != _generation) {
           next.release();
           return;
@@ -93,8 +102,11 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         previous?.release();
       } catch (error) {
         if (!mounted || generation != _generation) return;
-        setState(() => _error = error);
+        if (error is! XeroxRasterCancelled) {
+          setState(() => _error = error);
+        }
       } finally {
+        if (identical(_task, task)) _task = null;
         if (_scheduledKey == request.key) _scheduledKey = null;
       }
     }
@@ -110,6 +122,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   void dispose() {
     _generation++;
     _requestTimer?.cancel();
+    _task?.cancel();
     _lease?.release();
     super.dispose();
   }
@@ -151,6 +164,9 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       } else {
         if (_scheduledKey != null) {
           _requestTimer?.cancel();
+          _task?.cancel();
+          _task = null;
+          _requestTimer = null;
           _generation++;
           _scheduledKey = null;
         }
