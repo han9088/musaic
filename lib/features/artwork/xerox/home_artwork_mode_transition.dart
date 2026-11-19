@@ -84,10 +84,10 @@ class HomeArtworkModeTransition {
     _enter = const {};
     _onHandoff = null;
     _notifyChanged();
+    _finish();
     _onMotionChanged();
     _onCompleted?.call();
     _onCompleted = null;
-    _finish();
   }
 
   void _finish() {
