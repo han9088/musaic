@@ -373,8 +373,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         },
       );
     } catch (error, stack) {
-      _xeroxMode.cancelPreparation();
-      if (mounted) _syncMotion();
+      if (mounted) {
+        setState(_xeroxMode.cancelPreparation);
+        _syncMotion();
+      } else {
+        _xeroxMode.cancelPreparation();
+      }
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: error,
@@ -384,7 +388,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } finally {
       if (mounted && _xeroxMode.preparing && !_artworkTransition.isActive) {
-        _xeroxMode.cancelPreparation();
+        setState(_xeroxMode.cancelPreparation);
         _syncMotion();
       }
     }

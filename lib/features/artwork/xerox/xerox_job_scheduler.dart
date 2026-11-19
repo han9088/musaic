@@ -28,36 +28,50 @@ class XeroxJobScheduler {
       unique.putIfAbsent(request.key, () => request);
     }
 
+    final values = unique.values.toList(growable: false);
     final leases = <XeroxRasterLease>[];
     final failures = <Object>[];
-    final values = unique.values.toList(growable: false);
-    try {
-      for (var start = 0; start < values.length; start += maxConcurrentRequests) {
+    var cursor = 0;
+    var cancelled = false;
+
+    Future<void> worker() async {
+      while (!cancelled) {
         if (isActive != null && !isActive()) {
-          throw StateError('Xerox preparation was cancelled.');
+          cancelled = true;
+          return;
         }
-        final end = (start + maxConcurrentRequests).clamp(0, values.length);
-        final batch = values.sublist(start, end);
-        final results = await Future.wait(
-          batch.map((request) async {
-            try {
-              return await cache.acquire(request);
-            } catch (error, stack) {
-              failures.add(error);
-              FlutterError.reportError(
-                FlutterErrorDetails(
-                  exception: error,
-                  stack: stack,
-                  library: 'Xerox raster preparation',
-                ),
-              );
-              return null;
-            }
-          }),
-        );
-        leases.addAll(results.whereType<XeroxRasterLease>());
+        if (cursor >= values.length) return;
+        final request = values[cursor++];
+
+        try {
+          final lease = await cache.acquire(request);
+          if (cancelled || (isActive != null && !isActive())) {
+            lease.release();
+            cancelled = true;
+            return;
+          }
+          leases.add(lease);
+        } catch (error, stack) {
+          failures.add(error);
+          FlutterError.reportError(
+            FlutterErrorDetails(
+              exception: error,
+              stack: stack,
+              library: 'Xerox raster preparation',
+            ),
+          );
+        }
       }
-      if (isActive != null && !isActive()) {
+    }
+
+    try {
+      final workerCount = values.length < maxConcurrentRequests
+          ? values.length
+          : maxConcurrentRequests;
+      await Future.wait([
+        for (var i = 0; i < workerCount; i++) worker(),
+      ]);
+      if (cancelled || (isActive != null && !isActive())) {
         throw StateError('Xerox preparation was cancelled.');
       }
       if (failures.isNotEmpty && !allowFailures) {
