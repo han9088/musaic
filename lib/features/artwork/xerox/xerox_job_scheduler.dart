@@ -16,6 +16,7 @@ class XeroxJobScheduler {
   Future<List<XeroxRasterLease>> prepare(
     Iterable<XeroxRasterRequest> requests, {
     bool Function()? isActive,
+    bool allowFailures = false,
   }) async {
     final unique = <XeroxRasterKey, XeroxRasterRequest>{};
     for (final request in requests) {
@@ -23,6 +24,7 @@ class XeroxJobScheduler {
     }
 
     final leases = <XeroxRasterLease>[];
+    final failures = <Object>[];
     final values = unique.values.toList(growable: false);
     try {
       for (var start = 0; start < values.length; start += maxConcurrentRequests) {
@@ -36,6 +38,7 @@ class XeroxJobScheduler {
             try {
               return await cache.acquire(request);
             } catch (error, stack) {
+              failures.add(error);
               FlutterError.reportError(
                 FlutterErrorDetails(
                   exception: error,
@@ -51,6 +54,11 @@ class XeroxJobScheduler {
       }
       if (isActive != null && !isActive()) {
         throw StateError('Xerox preparation was cancelled.');
+      }
+      if (failures.isNotEmpty && !allowFailures) {
+        throw StateError(
+          'Unable to rasterize ${failures.length} visible artwork item(s).',
+        );
       }
       return leases;
     } catch (_) {

@@ -49,6 +49,27 @@ class XeroxRasterCache {
   int get cachedEntries => _entries.length;
   int get activeJobs => _activeJobs;
 
+  Future<XeroxRasterLease> acquireBest(XeroxRasterRequest request) {
+    _RasterEntry? best;
+    XeroxRasterKey? bestKey;
+    var bestDistance = 1 << 30;
+    for (final item in _entries.entries) {
+      if (!item.key.sameArtwork(request.key)) continue;
+      final distance = (item.key.resolution - request.resolution).abs();
+      if (distance < bestDistance) {
+        best = item.value;
+        bestKey = item.key;
+        bestDistance = distance;
+      }
+    }
+    if (best != null && bestKey != null) {
+      best.references++;
+      _touch(bestKey, best);
+      return Future.value(_lease(bestKey, best, bestKey.resolution));
+    }
+    return acquire(request);
+  }
+
   Future<XeroxRasterLease> acquire(XeroxRasterRequest request) {
     final key = request.key;
     final hit = _entries.remove(key);

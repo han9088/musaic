@@ -15,6 +15,7 @@ import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
+import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/visible_album_preloader.dart';
 import '../../features/artwork/artwork_image_provider.dart';
 import '../../features/artwork/xerox/home_artwork_mode_transition.dart';
@@ -303,7 +304,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (!mounted) return;
 
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
-      final snapshot = AlbumGridSnapshot.capture(viewport, _transform.value);
+      final scale = _transform.value.getColumn(0).length;
+      final snapshot = AlbumGridSnapshot.capture(
+        viewport,
+        _transform.value,
+        overscan: PortraitTilt.overscan(viewport) + albumGridExtent * scale,
+      );
       final requests = await _buildXeroxRequests(
         albums,
         snapshot.cells,

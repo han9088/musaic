@@ -8,10 +8,20 @@ int gridAlbumIndex(int row, int column, int count) =>
 class AlbumGridSnapshot {
   AlbumGridSnapshot._(this.viewport, this.cells, this.focus);
 
-  factory AlbumGridSnapshot.capture(Size viewport, Matrix4 transform) {
+  factory AlbumGridSnapshot.capture(
+    Size viewport,
+    Matrix4 transform, {
+    double overscan = 0,
+  }) {
+    final bounds = Rect.fromLTWH(
+      -overscan,
+      -overscan,
+      viewport.width + overscan * 2,
+      viewport.height + overscan * 2,
+    );
     final scene = MatrixUtils.transformRect(
       Matrix4.inverted(transform),
-      Offset.zero & viewport,
+      bounds,
     );
     final cells = <({int row, int column, Rect rect})>[];
     var focus = 0;
@@ -35,7 +45,7 @@ class AlbumGridSnapshot {
             albumGridExtent,
           ),
         );
-        if (!rect.overlaps(Offset.zero & viewport)) continue;
+        if (!rect.overlaps(bounds)) continue;
         final distance =
             (rect.center - viewport.center(Offset.zero)).distanceSquared;
         if (distance < nearest) {

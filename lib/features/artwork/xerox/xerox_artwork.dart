@@ -3,11 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'xerox_config.dart';
 import 'xerox_raster_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
-import 'xerox_seed.dart';
 
 export 'xerox_config.dart';
 export 'xerox_resolution.dart';
@@ -77,7 +75,9 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     final generation = ++_generation;
     _requestTimer = Timer(delay, () async {
       try {
-        final next = await _cache.acquire(request);
+        final next = _lease == null
+            ? await _cache.acquireBest(request)
+            : await _cache.acquire(request);
         if (!mounted || generation != _generation) {
           next.release();
           return;
@@ -140,6 +140,11 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
               : const Duration(milliseconds: 120),
         );
       } else {
+        if (_scheduledKey != null) {
+          _requestTimer?.cancel();
+          _generation++;
+          _scheduledKey = null;
+        }
         _requestedResolution = currentLease.resolution;
       }
 
