@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
   apple_music_kit:
     path: ../apple_music_kit/packages/apple_music_kit
   material_ui: 1.11.0

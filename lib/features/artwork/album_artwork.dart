@@ -1,10 +1,10 @@
-import 'directory_artwork.dart';
-import 'xerox/xerox_artwork.dart';
-
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-/// Keeps mock asset rendering unchanged; local albums currently have no artwork.
+import 'artwork_image.dart';
+import 'directory_artwork.dart';
+
+/// Artwork entry point. Source resolution is independent from presentation.
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -25,6 +25,7 @@ Widget albumArtwork(
       semanticLabel: excludeFromSemantics ? null : semanticLabel,
       xerox: xerox,
       scale: scale,
+      filterQuality: filterQuality,
       placeholder: albumArtwork(
         'local:placeholder',
         width: width,
@@ -33,46 +34,39 @@ Widget albumArtwork(
       ),
     );
   }
-  if (!asset.startsWith('local:')) {
-    if (xerox) {
-      return XeroxArtwork(
-        identity: asset,
-        image: AssetImage(asset),
+
+  final image = ArtworkImageResolver.resolve(asset);
+  if (image == null) {
+    return Semantics(
+      label: excludeFromSemantics ? null : semanticLabel,
+      excludeSemantics: excludeFromSemantics,
+      child: SizedBox(
         width: width,
         height: height,
-        fit: fit,
-        filterQuality: filterQuality,
-        semanticLabel: semanticLabel,
-        excludeFromSemantics: excludeFromSemantics,
-        scale: scale,
-      );
-    }
-    return Image.asset(
-      asset,
-      width: width,
-      height: height,
-      fit: fit,
-      filterQuality: filterQuality,
-      semanticLabel: semanticLabel,
-      excludeFromSemantics: excludeFromSemantics,
-    );
-  }
-  return Semantics(
-    label: excludeFromSemantics ? null : semanticLabel,
-    excludeSemantics: excludeFromSemantics,
-    child: SizedBox(
-      width: width,
-      height: height,
-      child: const ColoredBox(
-        color: Color(0xff292929),
-        child: Center(
-          child: Icon(
-            PhosphorIcons.vinylRecord,
-            color: Colors.white38,
-            size: 48,
+        child: const ColoredBox(
+          color: Color(0xff292929),
+          child: Center(
+            child: Icon(
+              PhosphorIcons.vinylRecord,
+              color: Colors.white38,
+              size: 48,
+            ),
           ),
         ),
       ),
-    ),
+    );
+  }
+
+  return ArtworkImage(
+    identity: asset,
+    image: image,
+    width: width,
+    height: height,
+    fit: fit,
+    filterQuality: filterQuality,
+    semanticLabel: semanticLabel,
+    excludeFromSemantics: excludeFromSemantics,
+    xerox: xerox,
+    scale: scale,
   );
 }

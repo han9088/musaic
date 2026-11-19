@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../services/music/directory_music_library.dart';
-import 'xerox/xerox_artwork.dart';
+import 'artwork_image.dart';
 
 class DirectoryArtworkScope extends InheritedWidget {
   const DirectoryArtworkScope({
@@ -28,6 +28,7 @@ class DirectoryArtwork extends StatefulWidget {
     this.semanticLabel,
     this.xerox = false,
     this.scale = 1,
+    this.filterQuality = FilterQuality.medium,
   });
   final String identity;
   final Widget placeholder;
@@ -36,6 +37,7 @@ class DirectoryArtwork extends StatefulWidget {
   final String? semanticLabel;
   final bool xerox;
   final double scale;
+  final FilterQuality filterQuality;
   @override
   State<DirectoryArtwork> createState() => _DirectoryArtworkState();
 }
@@ -89,26 +91,17 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
       final uri = snapshot.data;
       if (uri == null) return widget.placeholder;
       final file = File.fromUri(Uri.parse(uri));
-      if (widget.xerox) {
-        return XeroxArtwork(
-          key: ValueKey(widget.identity),
-          identity: widget.identity,
-          image: FileImage(file),
-          width: widget.width,
-          height: widget.height,
-          fit: widget.fit,
-          semanticLabel: widget.semanticLabel,
-          scale: widget.scale,
-          errorBuilder: (_, error, stack) => widget.placeholder,
-        );
-      }
-      return Image.file(
-        file,
+      return ArtworkImage(
+        key: ValueKey(widget.identity),
+        identity: widget.identity,
+        image: FileImage(file),
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
+        filterQuality: widget.filterQuality,
         semanticLabel: widget.semanticLabel,
-        errorBuilder: (_, error, stack) => widget.placeholder,
+        xerox: widget.xerox,
+        scale: widget.scale,
       );
     },
   );
