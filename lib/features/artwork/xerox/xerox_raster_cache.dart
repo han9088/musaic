@@ -154,8 +154,9 @@ class XeroxRasterCache {
       return XeroxRasterTask.completed(_lease(key, hit, request.resolution));
     }
 
-    var pending = _pending[key];
-    if (pending == null) {
+    final existing = _pending[key];
+    late final _PendingRaster pending;
+    if (existing == null) {
       if (_queue.length >= maxQueuedJobs) {
         final lowest = _queue.last;
         if (request.priority.index <= lowest.priority.index) {
@@ -167,11 +168,14 @@ class XeroxRasterCache {
       _pending[key] = pending;
       _queue.add(pending);
       _sortQueue();
-    } else if (!pending.started &&
-        request.priority.index > pending.priority.index) {
-      // 相同 Raster 请求合并时允许升级排队优先级，但不改变缓存身份。
-      pending.priority = request.priority;
-      _sortQueue();
+    } else {
+      pending = existing;
+      if (!pending.started &&
+          request.priority.index > pending.priority.index) {
+        // 相同 Raster 请求合并时允许升级排队优先级，但不改变缓存身份。
+        pending.priority = request.priority;
+        _sortQueue();
+      }
     }
     final waiter = _RasterWaiter();
     pending.waiters.add(waiter);
