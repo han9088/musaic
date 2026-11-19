@@ -63,6 +63,8 @@ class _ArtworkImageState extends State<ArtworkImage> {
     BuildContext context,
   ) {
     if (widget.xerox || _preparingKey == request.key) return;
+    _task?.cancel();
+    _task = null;
     _preparingKey = request.key;
     final generation = ++_generation;
     unawaited(_prepare(request, context, generation));
