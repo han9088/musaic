@@ -11,6 +11,8 @@ import 'source/artwork_source.dart';
 ///
 /// Directory references are resolved asynchronously; placeholders stay in the
 /// presentation layer and never enter image decoding or Xerox processing.
+/// Converts a source reference into the appropriate artwork widget.
+/// Directory references resolve asynchronously; placeholders remain UI-only.
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -23,6 +25,7 @@ Widget albumArtwork(
   double scale = 1,
 }) {
   // Parse once so the routing below does not depend on string-prefix checks.
+  // Parse once so routing below uses typed source information.
   final source = ArtworkSource.parse(asset);
   if (source.isDirectory) {
     return DirectoryArtwork(
@@ -45,6 +48,7 @@ Widget albumArtwork(
   }
 
   // A placeholder is UI, not an image source: do not create an ImageProvider.
+  // A placeholder is presentation, not an image to decode or rasterize.
   if (source.isPlaceholder) {
     return Semantics(
       label: excludeFromSemantics ? null : semanticLabel,
