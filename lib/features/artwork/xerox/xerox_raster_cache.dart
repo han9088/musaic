@@ -31,8 +31,10 @@ class XeroxRasterCache {
     this.maxConcurrentJobs = 2,
     XeroxRasterizer? rasterizer,
   }) : _rasterizer = rasterizer ?? XeroxRasterizer() {
-    assert(maxBytes > 0);
-    assert(maxConcurrentJobs > 0);
+    if (maxBytes <= 0) throw ArgumentError.value(maxBytes, 'maxBytes');
+    if (maxConcurrentJobs <= 0) {
+      throw ArgumentError.value(maxConcurrentJobs, 'maxConcurrentJobs');
+    }
   }
 
   static final instance = XeroxRasterCache();
@@ -55,14 +57,22 @@ class XeroxRasterCache {
   Future<XeroxRasterLease> acquireBest(XeroxRasterRequest request) {
     _RasterEntry? best;
     XeroxRasterKey? bestKey;
-    var bestDistance = 1 << 30;
+    var bestLowerResolution = 0;
+    var bestHigherResolution = 1 << 30;
     for (final item in _entries.entries) {
       if (!item.key.sameArtwork(request.key)) continue;
-      final distance = (item.key.resolution - request.resolution).abs();
-      if (distance < bestDistance) {
+      final resolution = item.key.resolution;
+      if (resolution <= request.resolution &&
+          resolution > bestLowerResolution) {
         best = item.value;
         bestKey = item.key;
-        bestDistance = distance;
+        bestLowerResolution = resolution;
+      } else if (bestLowerResolution == 0 &&
+          resolution > request.resolution &&
+          resolution < bestHigherResolution) {
+        best = item.value;
+        bestKey = item.key;
+        bestHigherResolution = resolution;
       }
     }
     if (best != null && bestKey != null) {
@@ -101,7 +111,8 @@ class XeroxRasterCache {
   ) async {
     try {
       final entry = await pending.completer.future;
-      entry.references++;
+      // _rasterize reserves one reference per waiter before completing the
+      // shared future, preventing LRU eviction before a lease is created.
       _touch(key, entry);
       return _lease(key, entry, resolution);
     } finally {
@@ -135,26 +146,6 @@ class XeroxRasterCache {
     _evict();
   }
 
-  /// Returns the best cached image for this artwork without taking ownership.
-  /// A caller should acquire a lease immediately if it needs to keep the image.
-  ui.Image? peekBest(XeroxRasterRequest request) {
-    _RasterEntry? best;
-    XeroxRasterKey? bestKey;
-    var bestDistance = 1 << 30;
-    for (final item in _entries.entries) {
-      if (!item.key.sameArtwork(request.key)) continue;
-      final distance = (item.key.resolution - request.resolution).abs();
-      if (distance < bestDistance) {
-        best = item.value;
-        bestKey = item.key;
-        bestDistance = distance;
-      }
-    }
-    if (best == null || bestKey == null) return null;
-    _touch(bestKey, best);
-    return best.image;
-  }
-
   void _pump() {
     while (_activeJobs < maxConcurrentJobs && _queue.isNotEmpty) {
       final pending = _queue.removeFirst();
@@ -171,7 +162,8 @@ class XeroxRasterCache {
     final key = pending.request.key;
     try {
       final image = await _rasterizer.rasterize(pending.request);
-      final entry = _RasterEntry(image);
+      final entry = _RasterEntry(image)
+        ..references = pending.waiters;
       _entries[key] = entry;
       _bytes += entry.bytes;
       pending.completer.complete(entry);

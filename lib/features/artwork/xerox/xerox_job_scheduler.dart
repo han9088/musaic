@@ -10,7 +10,9 @@ class XeroxJobScheduler {
     this.maxConcurrentRequests = 2,
     XeroxRasterCache? cache,
   }) : cache = cache ?? XeroxRasterCache.instance {
-    assert(maxConcurrentRequests > 0);
+    if (maxConcurrentRequests <= 0) {
+      throw ArgumentError.value(maxConcurrentRequests, 'maxConcurrentRequests');
+    }
   }
 
   final int maxConcurrentRequests;

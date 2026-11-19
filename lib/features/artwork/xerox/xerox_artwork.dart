@@ -76,7 +76,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     _requestTimer?.cancel();
     _scheduledKey = request.key;
     final generation = ++_generation;
-    _requestTimer = Timer(delay, () async {
+    Future<void> acquire() async {
       try {
         final next = _lease == null
             ? await _cache.acquireBest(request)
@@ -97,7 +97,13 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       } finally {
         if (_scheduledKey == request.key) _scheduledKey = null;
       }
-    });
+    }
+
+    if (delay == Duration.zero) {
+      unawaited(acquire());
+    } else {
+      _requestTimer = Timer(delay, () => unawaited(acquire()));
+    }
   }
 
   @override
@@ -151,11 +157,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         _requestedResolution = currentLease.resolution;
       }
 
-      final image = canKeepCurrent
-          ? currentLease.image
-          : sameArtwork
-          ? currentLease?.image ?? _cache.peekBest(request)
-          : _cache.peekBest(request);
+      final image = sameArtwork ? currentLease!.image : null;
       if (image != null) {
         if (_lease == null) {
           _scheduleAcquire(request, delay: Duration.zero);

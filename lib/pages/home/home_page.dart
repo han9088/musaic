@@ -245,6 +245,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final requests = <XeroxRasterRequest>[];
     final seen = <XeroxRasterKey>{};
+    final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
 
     Future<void> addArtwork(String asset, double artworkScale) async {
       final provider = await resolveArtworkImageProvider(
@@ -262,7 +263,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (seen.add(request.key)) requests.add(request);
     }
 
-    for (final cell in cells) {
+    final orderedCells = cells.toList()
+      ..sort((a, b) {
+        final aVisible = a.rect.overlaps(Offset.zero & viewport);
+        final bVisible = b.rect.overlaps(Offset.zero & viewport);
+        if (aVisible != bVisible) return aVisible ? -1 : 1;
+        final aDistance =
+            (a.rect.center - viewport.center(Offset.zero)).distanceSquared;
+        final bDistance =
+            (b.rect.center - viewport.center(Offset.zero)).distanceSquared;
+        return aDistance.compareTo(bDistance);
+      });
+
+    for (final cell in orderedCells) {
       final album = useLayout
           ? _albumLayout.albumAt(cell.row, cell.column, albums)
           : albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
@@ -305,14 +318,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
       final scale = _transform.value.getColumn(0).length;
-      final snapshot = AlbumGridSnapshot.capture(
+      final visibleSnapshot = AlbumGridSnapshot.capture(
+        viewport,
+        _transform.value,
+      );
+      final preparationSnapshot = AlbumGridSnapshot.capture(
         viewport,
         _transform.value,
         overscan: PortraitTilt.overscan(viewport) + albumGridExtent * scale,
       );
       final requests = await _buildXeroxRequests(
         albums,
-        snapshot.cells,
+        preparationSnapshot.cells,
         useLayout: true,
         includeSelected: true,
       );
@@ -331,12 +348,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       }
       if (!mounted) return;
 
-      final exit = SourceTileMotion.exit(snapshot.cells, viewport);
-      final enter = SourceTileMotion.enter(snapshot.cells);
-      if (snapshot.cells.isEmpty || _reduceMotion || exit.tiles.isEmpty) {
+      final exit = SourceTileMotion.exit(visibleSnapshot.cells, viewport);
+      final enter = SourceTileMotion.enter(visibleSnapshot.cells);
+      if (visibleSnapshot.cells.isEmpty || _reduceMotion || exit.tiles.isEmpty) {
         setState(() => _xeroxMode.commit(enabled));
-        _xeroxMode.finishTransition();
-        _syncMotion();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _xeroxMode.finishTransition();
+          _syncMotion();
+        });
         return;
       }
 
@@ -354,7 +374,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     } catch (error, stack) {
       _xeroxMode.cancelPreparation();
-      _syncMotion();
+      if (mounted) _syncMotion();
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: error,

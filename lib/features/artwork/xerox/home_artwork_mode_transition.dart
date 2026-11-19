@@ -140,7 +140,7 @@ class HomeArtworkModeTransition {
   }
 
   void dispose() {
-    _onCompleted?.call();
+    _onHandoff = null;
     _onCompleted = null;
     _finish();
     timeline.dispose();
