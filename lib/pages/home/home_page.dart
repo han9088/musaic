@@ -320,7 +320,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await _artworkMode.apply(
         enabled: enabled,
         requests: requests,
-        visibleCells: visibleSnapshot.cells,
+        visibleCells: albums.isEmpty ? const [] : visibleSnapshot.cells,
         viewport: viewport,
         reduceMotion: _reduceMotion,
         context: context,
@@ -344,6 +344,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _syncMotion() {
+    final pendingLandscape = _pendingLandscape;
+    if (!_artworkMode.preparing &&
+        !_artworkMode.isTransitioning &&
+        pendingLandscape != null) {
+      _pendingLandscape = null;
+      if (pendingLandscape != _landscape) {
+        _updateLayout(pendingLandscape);
+        return;
+      }
+    }
     final animating = _layout.isAnimating;
     unawaited(_haptics.setActive(_landscape && !animating));
     if (_landscape ||
@@ -368,6 +378,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _reduceMotion = false;
   bool _landscape = false;
   bool? _manualLayout;
+  bool? _pendingLandscape;
 
   @override
   void initState() {
@@ -467,6 +478,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   void _updateLayout(bool landscape) {
+    if (_hasOrientation &&
+        (_artworkMode.preparing || _artworkMode.isTransitioning)) {
+      _pendingLandscape = landscape;
+      return;
+    }
     if (!_hasOrientation) {
       _hasOrientation = true;
       _landscape = landscape;
