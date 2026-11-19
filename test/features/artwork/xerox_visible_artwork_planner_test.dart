@@ -1,0 +1,69 @@
+import 'package:flutter/painting.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:musaic/features/artwork/xerox/xerox_visible_artwork_planner.dart';
+
+void main() {
+  test('planner prioritizes visible center tiles and deduplicates artwork', () async {
+    const viewport = Size(200, 200);
+    final cells = [
+      (row: 0, column: 0, rect: const Rect.fromLTWH(10, 10, 40, 40)),
+      (row: 1, column: 1, rect: const Rect.fromLTWH(80, 80, 40, 40)),
+      (row: 2, column: 2, rect: const Rect.fromLTWH(240, 240, 40, 40)),
+      (row: 3, column: 3, rect: const Rect.fromLTWH(100, 100, 40, 40)),
+    ];
+    final assets = {
+      (0, 0): 'far',
+      (1, 1): 'center',
+      (2, 2): 'overscan',
+      (3, 3): 'center',
+    };
+
+    final requests = await const XeroxVisibleArtworkPlanner().build(
+      cells: cells,
+      viewport: viewport,
+      scale: 1,
+      devicePixelRatio: 1,
+      assetAt: (row, column) => assets[(row, column)]!,
+      resolveImageProvider: (asset) async => AssetImage('assets/$asset.png'),
+      selectedAsset: 'selected',
+    );
+
+    expect(
+      requests.map((request) => request.identity).toList(),
+      ['selected', 'center', 'far', 'overscan'],
+    );
+    expect(requests.map((request) => request.key).toSet(), hasLength(4));
+  });
+
+  test('planner stops resolving providers after its owner is disposed', () async {
+    var active = true;
+    var resolved = 0;
+    final cells = [
+      for (var i = 0; i < 8; i++)
+        (
+          row: i,
+          column: 0,
+          rect: Rect.fromLTWH(0, i * 100, 100, 100),
+        ),
+    ];
+
+    await expectLater(
+      const XeroxVisibleArtworkPlanner(maxProviderConcurrency: 1).build(
+        cells: cells,
+        viewport: const Size(100, 100),
+        scale: 1,
+        devicePixelRatio: 1,
+        assetAt: (row, column) => 'asset-$row',
+        resolveImageProvider: (asset) async {
+          resolved++;
+          active = false;
+          return AssetImage('assets/$asset.png');
+        },
+        isActive: () => active,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(resolved, 1);
+  });
+}
