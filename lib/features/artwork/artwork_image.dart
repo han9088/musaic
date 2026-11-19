@@ -73,6 +73,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
     BuildContext context,
     int generation,
   ) async {
+    XeroxRasterTask? task;
     try {
       await precacheImage(
         ResizeImage(request.image, width: request.resolution),
@@ -80,16 +81,16 @@ class _ArtworkImageState extends State<ArtworkImage> {
         size: Size.square(request.resolution.toDouble()),
       );
       if (!mounted || generation != _generation) return;
-      final task = XeroxRasterCache.instance.request(request);
+      task = XeroxRasterCache.instance.request(request);
       _task = task;
       final lease = await task.future;
       lease.release();
-      if (identical(_task, task)) _task = null;
     } catch (_) {
       // Background preparation is opportunistic. A later visible Xerox
       // request retries through the same bounded raster cache.
-      if (identical(_task, task)) _task = null;
       if (mounted && generation == _generation) _preparingKey = null;
+    } finally {
+      if (identical(_task, task)) _task = null;
     }
   }
 

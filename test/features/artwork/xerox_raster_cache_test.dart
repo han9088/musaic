@@ -107,12 +107,11 @@ void main() {
     );
 
     expect(asset, isA<AssetImage>());
-    expect(
-      network,
-      isA<NetworkImage>() == kIsWeb
-          ? isA<NetworkImage>()
-          : isA<CachedNetworkImageProvider>(),
-    );
+    if (kIsWeb) {
+      expect(network, isA<NetworkImage>());
+    } else {
+      expect(network, isA<CachedNetworkImageProvider>());
+    }
   });
 
   test('Xerox PNG disk cache survives a new in-memory cache instance', () async {
