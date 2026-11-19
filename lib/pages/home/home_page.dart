@@ -243,24 +243,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (albums.isEmpty || cells.isEmpty) return const [];
     final scale = _transform.value.getColumn(0).length;
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final requests = <XeroxRasterRequest>[];
-    final seen = <XeroxRasterKey>{};
     final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
+    final specs = <({String asset, double scale})>[];
+    final seenSpecs = <({String asset, double scale})>{};
 
-    Future<void> addArtwork(String asset, double artworkScale) async {
-      final provider = await resolveArtworkImageProvider(
-        asset,
-        directories: _sources.directories,
-      );
-      if (provider == null) return;
-      final request = XeroxRasterRequest(
-        identity: asset,
-        image: provider,
-        resolution: xeroxResolution(100 * artworkScale * dpr),
-        fit: BoxFit.cover,
-        devicePixelRatio: dpr,
-      );
-      if (seen.add(request.key)) requests.add(request);
+    void addSpec(String asset, double artworkScale) {
+      final spec = (asset: asset, scale: artworkScale);
+      if (seenSpecs.add(spec)) specs.add(spec);
     }
 
     final orderedCells = cells.toList()
@@ -279,7 +268,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final album = useLayout
           ? _albumLayout.albumAt(cell.row, cell.column, albums)
           : albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
-      await addArtwork(album['asset'] as String, scale);
+      addSpec(album['asset'] as String, scale);
     }
 
     if (includeSelected && _albumLayout.selectedAlbum case final selected?) {
@@ -288,7 +277,40 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         selected.$2,
         albums,
       );
-      await addArtwork(album['asset'] as String, scale * 1.16);
+      addSpec(album['asset'] as String, scale * 1.16);
+    }
+
+    final resolved = List<XeroxRasterRequest?>.filled(specs.length, null);
+    var cursor = 0;
+    Future<void> resolveWorker() async {
+      while (true) {
+        final index = cursor++;
+        if (index >= specs.length) return;
+        final spec = specs[index];
+        final provider = await resolveArtworkImageProvider(
+          spec.asset,
+          directories: _sources.directories,
+        );
+        if (provider == null) continue;
+        resolved[index] = XeroxRasterRequest(
+          identity: spec.asset,
+          image: provider,
+          resolution: xeroxResolution(100 * spec.scale * dpr),
+          fit: BoxFit.cover,
+          devicePixelRatio: dpr,
+        );
+      }
+    }
+
+    final workerCount = math.min(4, specs.length);
+    await Future.wait([
+      for (var i = 0; i < workerCount; i++) resolveWorker(),
+    ]);
+
+    final requests = <XeroxRasterRequest>[];
+    final seenKeys = <XeroxRasterKey>{};
+    for (final request in resolved.whereType<XeroxRasterRequest>()) {
+      if (seenKeys.add(request.key)) requests.add(request);
     }
     return requests;
   }
