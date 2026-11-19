@@ -5,7 +5,8 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../artwork/album_artwork.dart';
+import '../artwork/artwork_renderer.dart';
+import '../artwork/model/artwork_identity.dart';
 import '../canvas/album_grid_snapshot.dart';
 import '../cover_flow/cover_flow_geometry.dart';
 
@@ -175,8 +176,11 @@ class AlbumLayoutTransition extends StatelessWidget {
           )
         : destination.translate(0, size.height * 0.2);
     final album = albums[index % albums.length];
+    final asset = album['asset'] as String;
+    final rawIdentity = album['id'] as String?;
     Widget image() => albumArtwork(
-      album['asset'] as String,
+      asset,
+      artworkIdentity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
       width: 142,
       height: 142,
       fit: BoxFit.cover,

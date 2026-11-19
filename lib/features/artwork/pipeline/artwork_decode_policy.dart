@@ -1,10 +1,12 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：根据目标物理像素为原始专辑封面选择离散解码尺寸。
 
-/// Discrete source-image decode sizes, in physical pixels.
-/// Keeping this list small avoids creating a new ImageCache entry for every zoom.
+/// 原图只使用有限的解码档位，避免连续缩放产生大量 ImageCache 条目。
 const artworkDecodeResolutions = [256, 512, 1024];
 
-/// 执行当前模块中的封面图解码分辨率操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 选择能够覆盖目标物理尺寸的最小解码档位。
+///
+/// [current] 表示当前正在使用的档位；升级和降级采用不同阈值，
+/// 防止缩放停留在边界附近时反复切换解码尺寸。
 int artworkDecodeResolution(double physicalExtent, {int? current}) {
   if (!physicalExtent.isFinite || physicalExtent <= 0) {
     return current ?? 512;
@@ -16,7 +18,6 @@ int artworkDecodeResolution(double physicalExtent, {int? current}) {
     );
   }
 
-  // 放大超过当前档位的 135% 才升级，缩小低于当前档位的 65% 才降级。
   var resolution = current;
   while (resolution < artworkDecodeResolutions.last &&
       physicalExtent > resolution * 1.35) {

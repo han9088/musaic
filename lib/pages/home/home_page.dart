@@ -18,8 +18,9 @@ import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
 import '../../features/canvas/portrait_tilt.dart';
-import '../../features/artwork/visible_album_preloader.dart';
-import '../../features/artwork/artwork_image_provider.dart';
+import '../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
+import '../../features/artwork/source/artwork_resolver.dart';
+import '../../features/artwork/model/artwork_identity.dart';
 import '../../features/artwork/xerox/home_artwork_mode_controller.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
@@ -168,12 +169,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         );
       } else {
-        await const VisibleAlbumPreloader().warm(
+        await const ArtworkPrefetchScheduler().warm(
           albums: target,
           cells: snapshot.cells,
           directory: _sources.directories,
           context: context,
           isActive: () => mounted,
+          scale: _transform.value.getColumn(0).length,
         );
       }
       if (!mounted) return;
@@ -255,14 +257,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }) async {
     if (albums.isEmpty) return const [];
     String? selectedAsset;
+    ArtworkIdentity? selectedIdentity;
     if (includeSelected) {
       final selected = _albumLayout.selectedAlbum;
       if (selected != null) {
-        selectedAsset = _albumLayout.albumAt(
+        final selectedAlbum = _albumLayout.albumAt(
           selected.$1,
           selected.$2,
           albums,
-        )['asset'] as String;
+        );
+        selectedAsset = selectedAlbum['asset'] as String;
+        final rawIdentity = selectedAlbum['id'] as String?;
+        selectedIdentity = rawIdentity == null
+            ? null
+            : ArtworkIdentity(rawIdentity);
       }
     }
 
@@ -277,11 +285,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             : albums[gridAlbumIndex(row, column, albums.length)];
         return album['asset'] as String;
       },
-      resolveImageProvider: (asset) => resolveArtworkImageProvider(
-        asset,
+      identityAt: (row, column) {
+        final album = useLayout
+            ? _albumLayout.albumAt(row, column, albums)
+            : albums[gridAlbumIndex(row, column, albums.length)];
+        final rawIdentity = album['id'] as String?;
+        return rawIdentity == null ? null : ArtworkIdentity(rawIdentity);
+      },
+      resolveArtwork: (request) => const ArtworkResolver().resolveRequest(
+        request,
         directories: _sources.directories,
       ),
       selectedAsset: selectedAsset,
+      selectedIdentity: selectedIdentity,
       isActive: isActive,
     );
   }

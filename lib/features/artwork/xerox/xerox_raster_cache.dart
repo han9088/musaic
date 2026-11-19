@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:collection';
 import 'dart:ui' as ui;
 
+import '../cache/artwork_memory_policy.dart';
 import 'xerox_disk_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_rasterizer.dart';
@@ -27,10 +28,13 @@ class _RasterWaiter {
 
 /// 封装或定义pending光栅相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _PendingRaster {
-  _PendingRaster(this.request);
+  _PendingRaster(this.request, this.sequence)
+    : priority = request.priority;
 
   final XeroxRasterRequest request;
+  final int sequence;
   final waiters = <_RasterWaiter>{};
+  XeroxRasterPriority priority;
   bool started = false;
 }
 
@@ -40,6 +44,9 @@ class XeroxRasterTask {
 
   factory XeroxRasterTask.completed(XeroxRasterLease lease) =>
       XeroxRasterTask._(Future.value(lease), () {});
+
+  factory XeroxRasterTask.failed(Object error) =>
+      XeroxRasterTask._(Future<XeroxRasterLease>.error(error), () {});
 
   final Future<XeroxRasterLease> future;
   final void Function() _cancel;
@@ -54,6 +61,13 @@ class XeroxRasterTask {
 }
 
 /// 封装或定义Xerox光栅cancelled相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+class XeroxRasterQueueFull implements Exception {
+  const XeroxRasterQueueFull();
+
+  @override
+  String toString() => 'Xerox raster queue is full.';
+}
+
 class XeroxRasterCancelled implements Exception {
   const XeroxRasterCancelled();
 
@@ -64,15 +78,22 @@ class XeroxRasterCancelled implements Exception {
 /// 封装或定义Xerox光栅缓存相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterCache {
   XeroxRasterCache({
-    this.maxBytes = 96 * 1024 * 1024,
+    int? maxBytes,
     this.maxConcurrentJobs = 2,
+    this.maxQueuedJobs = 256,
     XeroxRasterizer? rasterizer,
     XeroxDiskCacheStore? diskCache,
-  }) : _rasterizer = rasterizer ?? XeroxRasterizer(),
+  }) : maxBytes = maxBytes ?? ArtworkMemoryPolicy.defaultXeroxRasterBytes,
+       _rasterizer = rasterizer ?? XeroxRasterizer(),
        _diskCache = diskCache ?? XeroxDiskCache.instance {
-    if (maxBytes <= 0) throw ArgumentError.value(maxBytes, 'maxBytes');
+    if (this.maxBytes <= 0) {
+      throw ArgumentError.value(this.maxBytes, 'maxBytes');
+    }
     if (maxConcurrentJobs <= 0) {
       throw ArgumentError.value(maxConcurrentJobs, 'maxConcurrentJobs');
+    }
+    if (maxQueuedJobs <= 0) {
+      throw ArgumentError.value(maxQueuedJobs, 'maxQueuedJobs');
     }
   }
 
@@ -80,12 +101,14 @@ class XeroxRasterCache {
 
   final int maxBytes;
   final int maxConcurrentJobs;
+  final int maxQueuedJobs;
   final XeroxRasterizer _rasterizer;
   final XeroxDiskCacheStore _diskCache;
   final LinkedHashMap<XeroxRasterKey, _RasterEntry> _entries =
       LinkedHashMap<XeroxRasterKey, _RasterEntry>();
   final Map<XeroxRasterKey, _PendingRaster> _pending = {};
-  final Queue<_PendingRaster> _queue = Queue<_PendingRaster>();
+  final List<_PendingRaster> _queue = [];
+  int _nextSequence = 0;
 
   int _bytes = 0;
   int _activeJobs = 0;
@@ -131,11 +154,25 @@ class XeroxRasterCache {
       return XeroxRasterTask.completed(_lease(key, hit, request.resolution));
     }
 
-    final pending = _pending.putIfAbsent(key, () {
-      final created = _PendingRaster(request);
-      _queue.addLast(created);
-      return created;
-    });
+    var pending = _pending[key];
+    if (pending == null) {
+      if (_queue.length >= maxQueuedJobs) {
+        final lowest = _queue.last;
+        if (request.priority.index <= lowest.priority.index) {
+          return XeroxRasterTask.failed(const XeroxRasterQueueFull());
+        }
+        _discardQueued(lowest);
+      }
+      pending = _PendingRaster(request, _nextSequence++);
+      _pending[key] = pending;
+      _queue.add(pending);
+      _sortQueue();
+    } else if (!pending.started &&
+        request.priority.index > pending.priority.index) {
+      // 相同 Raster 请求合并时允许升级排队优先级，但不改变缓存身份。
+      pending.priority = request.priority;
+      _sortQueue();
+    }
     final waiter = _RasterWaiter();
     pending.waiters.add(waiter);
     _pump();
@@ -223,10 +260,36 @@ class XeroxRasterCache {
     _evict();
   }
 
-  /// 执行当前模块中的pump操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+  /// 队列满时淘汰低优先级且尚未开始的任务，并通知所有等待者。
+  void _discardQueued(_PendingRaster pending) {
+    _queue.remove(pending);
+    _pending.remove(pending.request.key);
+    for (final waiter in pending.waiters.toList()) {
+      if (waiter.cancelled || waiter.completed) continue;
+      waiter.cancelled = true;
+      waiter.completed = true;
+      waiter.completer.completeError(
+        const XeroxRasterCancelled(),
+        StackTrace.current,
+      );
+    }
+    pending.waiters.clear();
+  }
+
+  /// 按优先级从高到低调度；相同优先级仍按进入队列的先后顺序执行。
+  void _sortQueue() {
+    _queue.sort((a, b) {
+      final priorityOrder = b.priority.index.compareTo(a.priority.index);
+      return priorityOrder != 0
+          ? priorityOrder
+          : a.sequence.compareTo(b.sequence);
+    });
+  }
+
+  /// 启动队列中的高优先级任务，并维持 GPU Raster 并发上限。
   void _pump() {
     while (_activeJobs < maxConcurrentJobs && _queue.isNotEmpty) {
-      final pending = _queue.removeFirst();
+      final pending = _queue.removeAt(0);
       if (pending.waiters.isEmpty) {
         _pending.remove(pending.request.key);
         continue;

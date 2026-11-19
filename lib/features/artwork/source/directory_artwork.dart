@@ -1,12 +1,13 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：集中订阅本地音乐媒体库，并将目录封面接入统一图片管线。
 
 import 'package:flutter/widgets.dart';
 
-import '../../services/music/directory_music_library.dart';
-import 'artwork_image.dart';
-import 'source/artwork_image_resolver.dart';
+import '../../../services/music/directory_music_library.dart';
+import '../model/artwork_identity.dart';
+import '../pipeline/artwork_image_pipeline.dart';
+import 'artwork_resolver.dart';
 
-/// 封装或定义本地目录封面图作用域相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 在应用级作用域中维护一份媒体库订阅，避免每张专辑卡片重复监听。
 class DirectoryArtworkScope extends StatefulWidget {
   const DirectoryArtworkScope({
     super.key,
@@ -21,7 +22,6 @@ class DirectoryArtworkScope extends StatefulWidget {
   State<DirectoryArtworkScope> createState() => _DirectoryArtworkScopeState();
 }
 
-/// 封装或定义本地目录封面图作用域状态相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
   VoidCallback? _unsubscribe;
   int _revision = 0;
@@ -38,8 +38,6 @@ class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
     if (oldWidget.library != widget.library) _subscribe();
   }
 
-  // 将媒体库订阅集中放在作用域层，避免每张专辑卡片各自注册监听。
-  /// 注册或添加相关数据与监听关系，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _subscribe() {
     _unsubscribe?.call();
     _unsubscribe = widget.library?.tracks.subscribe((_) {
@@ -61,7 +59,6 @@ class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
   );
 }
 
-/// 封装或定义本地目录封面图inherited相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _DirectoryArtworkInherited extends InheritedWidget {
   const _DirectoryArtworkInherited({
     required this.library,
@@ -77,12 +74,14 @@ class _DirectoryArtworkInherited extends InheritedWidget {
       library != oldWidget.library || revision != oldWidget.revision;
 }
 
-/// 封装或定义本地目录封面图相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 负责将本地曲目封面异步解析为 FileImage，并在媒体库更新后重新解析。
 class DirectoryArtwork extends StatefulWidget {
   const DirectoryArtwork({
     super.key,
     required this.identity,
     required this.placeholder,
+    this.artworkIdentity,
+    this.artworkVersion,
     this.width,
     this.height,
     this.fit,
@@ -94,6 +93,8 @@ class DirectoryArtwork extends StatefulWidget {
   });
 
   final String identity;
+  final ArtworkIdentity? artworkIdentity;
+  final ArtworkVersion? artworkVersion;
   final Widget placeholder;
   final double? width;
   final double? height;
@@ -108,23 +109,21 @@ class DirectoryArtwork extends StatefulWidget {
   State<DirectoryArtwork> createState() => _DirectoryArtworkState();
 }
 
-/// 封装或定义本地目录封面图状态相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _DirectoryArtworkState extends State<DirectoryArtwork> {
   DirectoryMusicLibrary? _library;
   int _revision = -1;
   Future<ResolvedArtwork?>? _resolved;
 
-  // 媒体库版本或曲目身份变化时，重新解析本地封面资源。
-  /// 解析输入并转换为内部数据，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   void _resolve() {
-    _resolved = const ArtworkImageResolver().resolve(
+    _resolved = const ArtworkResolver().resolve(
       widget.identity,
       directories: _library,
+      identity: widget.artworkIdentity,
+      version: widget.artworkVersion,
     );
   }
 
   @override
-  // 继承状态中的版本号用于通知子组件：本地封面数据可能已经变化。
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scope = context.dependOnInheritedWidgetOfExactType<
@@ -141,11 +140,14 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
   @override
   void didUpdateWidget(DirectoryArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.identity != widget.identity) _resolve();
+    if (oldWidget.identity != widget.identity ||
+        oldWidget.artworkIdentity != widget.artworkIdentity ||
+        oldWidget.artworkVersion != widget.artworkVersion) {
+      _resolve();
+    }
   }
 
   @override
-  // 异步图片提供器解析期间继续显示占位内容，避免界面闪烁。
   Widget build(BuildContext context) => FutureBuilder<ResolvedArtwork?>(
     key: ValueKey('${widget.identity}:$_revision'),
     future: _resolved,

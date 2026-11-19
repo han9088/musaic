@@ -9,7 +9,9 @@ import 'package:musaic/features/artwork/xerox/xerox_disk_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
-import 'package:musaic/features/artwork/artwork_image_provider.dart';
+import 'package:musaic/features/artwork/source/artwork_resolver.dart';
+import 'package:musaic/features/artwork/model/artwork_source.dart';
+import 'package:musaic/features/artwork/cache/artwork_memory_policy.dart';
 
 class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
   final values = <String, Uint8List>{};
@@ -67,6 +69,18 @@ class _FakeRasterizer extends XeroxRasterizer {
   }
 }
 
+class _RecordingRasterizer extends _FakeRasterizer {
+  _RecordingRasterizer({super.delay});
+
+  final order = <String>[];
+
+  @override
+  Future<ui.Image> rasterize(XeroxRasterRequest request) {
+    order.add(request.identity);
+    return super.rasterize(request);
+  }
+}
+
 class _FailOnceRasterizer extends _FakeRasterizer {
   int failuresRemaining = 1;
 
@@ -81,13 +95,18 @@ class _FailOnceRasterizer extends _FakeRasterizer {
   }
 }
 
-XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
+XeroxRasterRequest _request(
+  String identity, {
+  int resolution = 4,
+  XeroxRasterPriority priority = XeroxRasterPriority.background,
+}) =>
     XeroxRasterRequest(
       identity: identity,
       image: AssetImage('assets/$identity.png'),
       resolution: resolution,
       fit: BoxFit.cover,
       devicePixelRatio: 1,
+      priority: priority,
     );
 
 void main() {
@@ -95,7 +114,7 @@ void main() {
   test(
     'Artwork resolver keeps assets local and identifies network sources',
     () {
-      const resolver = ArtworkImageResolver();
+      const resolver = ArtworkResolver();
       const assetReference = 'assets/albums/cover.png';
       const networkReference = 'https://example.com/artwork/album-1.jpg';
       final asset = resolver.providerFor(ArtworkSource.parse(assetReference));
@@ -106,6 +125,10 @@ void main() {
       expect(network.identity, networkReference);
     },
   );
+
+  test('platform memory policy provides a non-zero default budget', () {
+    expect(ArtworkMemoryPolicy.defaultXeroxRasterBytes, greaterThan(0));
+  });
 
   test(
     'Xerox PNG disk cache survives a new in-memory cache instance',
@@ -255,6 +278,70 @@ void main() {
       expect(cache.cachedBytes, 0);
     },
   );
+
+  test('visible and selected jobs overtake queued background raster work', () async {
+    final rasterizer = _RecordingRasterizer(
+      delay: const Duration(milliseconds: 5),
+    );
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      maxConcurrentJobs: 1,
+      rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
+    );
+
+    final active = cache.request(_request('active'));
+    final background = cache.request(_request('background'));
+    final visible = cache.request(
+      _request('visible', priority: XeroxRasterPriority.visible),
+    );
+    final selected = cache.request(
+      _request('selected', priority: XeroxRasterPriority.selected),
+    );
+
+    final leases = await Future.wait([
+      active.future,
+      background.future,
+      visible.future,
+      selected.future,
+    ]);
+    expect(rasterizer.order, ['active', 'selected', 'visible', 'background']);
+    for (final lease in leases) {
+      lease.release();
+    }
+  });
+
+  test('bounded queue drops stale background work for a visible request', () async {
+    final rasterizer = _RecordingRasterizer(
+      delay: const Duration(milliseconds: 5),
+    );
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      maxConcurrentJobs: 1,
+      maxQueuedJobs: 1,
+      rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
+    );
+
+    final active = cache.request(_request('active'));
+    final background = cache.request(_request('background'));
+    final backgroundCancelled = expectLater(
+      background.future,
+      throwsA(isA<XeroxRasterCancelled>()),
+    );
+    final visible = cache.request(
+      _request('visible', priority: XeroxRasterPriority.visible),
+    );
+
+    final activeLease = await active.future;
+    await backgroundCancelled;
+    final visibleLease = await visible.future;
+
+    expect(rasterizer.order, ['active', 'visible']);
+    activeLease.release();
+    visibleLease.release();
+    expect(cache.queuedJobs, 0);
+  });
 
   test('the raster cache limits concurrent GPU jobs', () async {
     final rasterizer = _FakeRasterizer(delay: const Duration(milliseconds: 5));

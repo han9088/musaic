@@ -2,7 +2,8 @@
 
 import 'package:material_ui/material_ui.dart';
 
-import '../artwork/album_artwork.dart';
+import '../artwork/artwork_renderer.dart';
+import '../artwork/model/artwork_identity.dart';
 import '../music/playback/album_playback.dart';
 import 'album_canvas.dart';
 import 'album_grid_snapshot.dart';
@@ -37,6 +38,11 @@ class AlbumCanvasViewport extends StatelessWidget {
   final ValueChanged<Size> onViewportSizeChanged;
   final void Function(int row, int column) onTileSelected;
   final Widget Function(int row, int column, Widget child) animateSourceTile;
+
+  ArtworkIdentity? _artworkIdentityFor(Map<String, dynamic> album) {
+    final id = album['id'] as String?;
+    return id == null ? null : ArtworkIdentity(id);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,15 +98,26 @@ class AlbumCanvasViewport extends StatelessWidget {
                                 col,
                                 GestureDetector(
                                   onTap: () => onTileSelected(row, col),
-                                  child: albumArtwork(
-                                    layout.albumAt(row, col, albums)['asset']
-                                        as String,
-                                    fit: BoxFit.cover,
-                                    xerox: xerox,
-                                    scale: scale,
-                                    semanticLabel:
-                                        layout.albumAt(row, col, albums)['title']
-                                            as String,
+                                  child: Builder(
+                                    builder: (context) {
+                                      final album = layout.albumAt(
+                                        row,
+                                        col,
+                                        albums,
+                                      );
+                                      final asset = album['asset'] as String;
+                                      final rawIdentity = album['id'] as String?;
+                                      return albumArtwork(
+                                        asset,
+                                        artworkIdentity: rawIdentity == null
+                                            ? null
+                                            : ArtworkIdentity(rawIdentity),
+                                        fit: BoxFit.cover,
+                                        xerox: xerox,
+                                        scale: scale,
+                                        semanticLabel: album['title'] as String,
+                                      );
+                                    },
                                   ),
                                 ),
                               ),
@@ -124,6 +141,13 @@ class AlbumCanvasViewport extends StatelessWidget {
                                   selected.$2,
                                   albums,
                                 )['asset'] as String,
+                                artworkIdentity: _artworkIdentityFor(
+                                  layout.albumAt(
+                                    selected.$1,
+                                    selected.$2,
+                                    albums,
+                                  ),
+                                ),
                                 title: layout.albumAt(
                                   selected.$1,
                                   selected.$2,

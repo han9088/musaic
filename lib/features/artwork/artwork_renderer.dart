@@ -1,14 +1,18 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：为画布、Cover Flow 和布局过渡提供统一的专辑封面渲染入口。
 
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import 'directory_artwork.dart';
-import 'artwork_image.dart';
-import 'source/artwork_image_resolver.dart';
-import 'source/artwork_source.dart';
+import 'model/artwork_identity.dart';
+import 'model/artwork_source.dart';
+import 'pipeline/artwork_image_pipeline.dart';
+import 'source/artwork_resolver.dart';
+import 'source/directory_artwork.dart';
 
-/// 执行当前模块中的专辑封面图操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 根据来源类型选择占位、本地目录或统一图片管线。
+///
+/// [artworkIdentity] 用于让同一专辑在 Grid、Cover Flow 和过渡动画中共享缓存身份；
+/// [artworkVersion] 在上游能够提供 ETag 或资源版本时用于主动失效旧结果。
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -19,13 +23,20 @@ Widget albumArtwork(
   bool excludeFromSemantics = false,
   bool xerox = false,
   double scale = 1,
+  ArtworkIdentity? artworkIdentity,
+  ArtworkVersion? artworkVersion,
 }) {
-  // 先将来源解析为明确类型，避免后续逻辑反复判断字符串前缀。
-  // 统一解析来源类型，让后续分支直接使用结构化信息。
-  final source = ArtworkSource.parse(asset);
+  final source = ArtworkSource.parse(
+    asset,
+    identity: artworkIdentity,
+    version: artworkVersion,
+  );
+
   if (source.isDirectory) {
     return DirectoryArtwork(
       identity: asset,
+      artworkIdentity: artworkIdentity,
+      artworkVersion: artworkVersion,
       width: width,
       height: height,
       fit: fit,
@@ -43,7 +54,7 @@ Widget albumArtwork(
     );
   }
 
-  // 占位内容只负责界面兜底，不是真实图片来源，因此不参与图片解码或 Xerox 光栅化。
+  // 占位内容只负责界面兜底，不是真实图片来源，因此不进入图片管线。
   if (source.isPlaceholder) {
     return Semantics(
       label: excludeFromSemantics ? null : semanticLabel,
@@ -65,12 +76,13 @@ Widget albumArtwork(
     );
   }
 
-  final image = const ArtworkImageResolver().providerFor(source);
+  const resolver = ArtworkResolver();
+  final image = resolver.providerFor(source);
   if (image == null) return const SizedBox.shrink();
 
   return ArtworkImage(
     identity: source.identity,
-    sourceKey: image.toString(),
+    sourceKey: resolver.sourceKeyFor(source, image),
     image: image,
     width: width,
     height: height,

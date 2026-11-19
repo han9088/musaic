@@ -1,16 +1,16 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：统一展示原始封面或已缓存的 Xerox 位图，并管理两套 LOD。
 
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-import 'pipeline/artwork_decode_policy.dart';
-import 'pipeline/xerox_background_processor.dart';
-import 'xerox/xerox_artwork.dart';
-import 'xerox/xerox_raster_cache.dart';
-import 'xerox/xerox_raster_request.dart';
+import 'artwork_decode_policy.dart';
+import 'xerox_background_processor.dart';
+import '../xerox/xerox_artwork.dart';
+import '../xerox/xerox_raster_cache.dart';
+import '../xerox/xerox_raster_request.dart';
 
-/// 封装或定义封面图图片相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 原图与 Xerox 资源的统一展示入口；两种模式使用不同的渲染路径。
 class ArtworkImage extends StatefulWidget {
   const ArtworkImage({
     super.key,
@@ -31,8 +31,6 @@ class ArtworkImage extends StatefulWidget {
   });
 
   final String identity;
-
-  /// Source revision used to invalidate stale Xerox cache entries.
   final String? sourceKey;
   final ImageProvider<Object> image;
   final double? width;
@@ -51,9 +49,7 @@ class ArtworkImage extends StatefulWidget {
   State<ArtworkImage> createState() => _ArtworkImageState();
 }
 
-/// 封装或定义封面图图片状态相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _ArtworkImageState extends State<ArtworkImage> {
-  // 在组件重建之间保留当前 LOD，以便缩放时应用滞回阈值。
   int? _decodeResolution;
   int? _xeroxResolution;
   XeroxRasterKey? _lastBackgroundKey;
@@ -61,7 +57,6 @@ class _ArtworkImageState extends State<ArtworkImage> {
   String get _sourceKey => widget.sourceKey ?? widget.image.toString();
 
   @override
-  // 图片来源或显示模式变化时，重置当前组件的 LOD 与后台预处理状态。
   void didUpdateWidget(ArtworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
@@ -77,6 +72,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
   @override
   Widget build(BuildContext context) {
     if (widget.xerox) {
+      // Xerox 模式只挂载处理后的位图，不在底层保留原图 Image。
       return XeroxArtwork(
         identity: widget.identity,
         sourceKey: _sourceKey,
@@ -102,7 +98,6 @@ class _ArtworkImageState extends State<ArtworkImage> {
           height.isFinite ? height : 100,
         );
         final dpr = MediaQuery.devicePixelRatioOf(context);
-        // 选择解码档位前，先将卡片逻辑尺寸换算为物理像素。
         final physicalExtent = extent * widget.scale * dpr;
         final decodeResolution = artworkDecodeResolution(
           physicalExtent,
@@ -115,7 +110,6 @@ class _ArtworkImageState extends State<ArtworkImage> {
           current: _xeroxResolution,
         );
         _xeroxResolution = rasterResolution;
-        // Xerox 输出尺寸与原图解码尺寸分别计算，避免混用两套分辨率策略。
         final rasterRequest = XeroxRasterRequest(
           identity: widget.identity,
           sourceKey: _sourceKey,
@@ -123,6 +117,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           resolution: rasterResolution,
           fit: widget.fit ?? BoxFit.scaleDown,
           devicePixelRatio: dpr,
+          priority: XeroxRasterPriority.background,
         );
 
         return Image(
@@ -139,7 +134,6 @@ class _ArtworkImageState extends State<ArtworkImage> {
           excludeFromSemantics: widget.excludeFromSemantics,
           gaplessPlayback: true,
           errorBuilder: widget.errorBuilder,
-          // 原图成功解码并产生可显示帧后，再启动开销较大的后台处理。
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if ((frame != null || wasSynchronouslyLoaded) &&
                 _lastBackgroundKey != rasterRequest.key) {

@@ -1,47 +1,85 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：规划 Xerox 模式切换所需的可视封面，并为任务分配处理优先级。
 
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/album_grid_snapshot.dart';
+import '../model/artwork_identity.dart';
+import '../model/artwork_request.dart';
+import '../source/artwork_resolver.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
 
-/// 封装或定义Xeroxvisible专辑封面规划器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 根据画布快照选择需要处理的图片，并限制并发解析 Provider 的数量。
 class XeroxVisibleArtworkPlanner {
   const XeroxVisibleArtworkPlanner({this.maxProviderConcurrency = 4})
     : assert(maxProviderConcurrency > 0);
 
   final int maxProviderConcurrency;
 
-  /// 构建并返回当前组件的界面，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<List<XeroxRasterRequest>> build({
     required List<({int row, int column, Rect rect})> cells,
     required Size viewport,
     required double scale,
     required double devicePixelRatio,
     required String Function(int row, int column) assetAt,
-    required Future<ImageProvider<Object>?> Function(String asset)
-    resolveImageProvider,
+    required Future<ResolvedArtwork?> Function(ArtworkRequest request)
+    resolveArtwork,
+    ArtworkIdentity? Function(int row, int column)? identityAt,
     String? selectedAsset,
+    ArtworkIdentity? selectedIdentity,
     double selectedScale = 1.16,
     bool Function()? isActive,
   }) async {
     if (cells.isEmpty && selectedAsset == null) return const [];
 
-    final specs = <({String asset, double scale})>[];
-    final seenSpecs = <({String asset, double scale})>{};
+    final specs = <({
+      String asset,
+      double scale,
+      ArtworkIdentity? identity,
+      XeroxRasterPriority priority,
+    })>[];
+    final specIndexes = <({
+      String asset,
+      double scale,
+      ArtworkIdentity? identity,
+    }), int>{};
 
-    void addSpec(String asset, double artworkScale) {
-      final spec = (asset: asset, scale: artworkScale);
-      if (seenSpecs.add(spec)) specs.add(spec);
+    void addSpec(
+      String asset,
+      double artworkScale,
+      ArtworkIdentity? identity,
+      XeroxRasterPriority priority,
+    ) {
+      final key = (asset: asset, scale: artworkScale, identity: identity);
+      final existingIndex = specIndexes[key];
+      if (existingIndex != null) {
+        final existing = specs[existingIndex];
+        if (priority.index > existing.priority.index) {
+          specs[existingIndex] = (
+            asset: existing.asset,
+            scale: existing.scale,
+            identity: existing.identity,
+            priority: priority,
+          );
+        }
+        return;
+      }
+      specIndexes[key] = specs.length;
+      specs.add((
+        asset: asset,
+        scale: artworkScale,
+        identity: identity,
+        priority: priority,
+      ));
     }
 
+    final viewportRect = Offset.zero & viewport;
     final orderedCells = cells.toList()
       ..sort((a, b) {
-        final aVisible = a.rect.overlaps(Offset.zero & viewport);
-        final bVisible = b.rect.overlaps(Offset.zero & viewport);
+        final aVisible = a.rect.overlaps(viewportRect);
+        final bVisible = b.rect.overlaps(viewportRect);
         if (aVisible != bVisible) return aVisible ? -1 : 1;
         final aDistance =
             (a.rect.center - viewport.center(Offset.zero)).distanceSquared;
@@ -50,10 +88,23 @@ class XeroxVisibleArtworkPlanner {
         return aDistance.compareTo(bDistance);
       });
 
-    // 当前选中的专辑视觉权重更高，应优先于其他可视项准备。
-    if (selectedAsset != null) addSpec(selectedAsset, scale * selectedScale);
+    if (selectedAsset != null) {
+      addSpec(
+        selectedAsset,
+        scale * selectedScale,
+        selectedIdentity,
+        XeroxRasterPriority.selected,
+      );
+    }
+
     for (final cell in orderedCells) {
-      addSpec(assetAt(cell.row, cell.column), scale);
+      final visible = cell.rect.overlaps(viewportRect);
+      addSpec(
+        assetAt(cell.row, cell.column),
+        scale,
+        identityAt?.call(cell.row, cell.column),
+        visible ? XeroxRasterPriority.visible : XeroxRasterPriority.overscan,
+      );
     }
 
     final resolved = List<XeroxRasterRequest?>.filled(specs.length, null);
@@ -67,16 +118,26 @@ class XeroxVisibleArtworkPlanner {
         final index = cursor++;
         if (index >= specs.length) return;
         final spec = specs[index];
-        final provider = await resolveImageProvider(spec.asset);
-        if (provider == null) continue;
-        resolved[index] = XeroxRasterRequest(
-          identity: spec.asset,
-          image: provider,
-          resolution: xeroxResolution(
-            albumGridExtent * spec.scale * devicePixelRatio,
-          ),
-          fit: BoxFit.cover,
+        final request = ArtworkRequest(
+          source: spec.asset,
+          identity: spec.identity,
+          targetSize: Size.square(albumGridExtent * spec.scale),
           devicePixelRatio: devicePixelRatio,
+          fit: BoxFit.cover,
+        );
+        final artwork = await resolveArtwork(request);
+        if (artwork == null) continue;
+
+        resolved[index] = XeroxRasterRequest(
+          identity: artwork.identity,
+          sourceKey: artwork.sourceKey,
+          image: artwork.image,
+          resolution: xeroxResolution(
+            request.targetSize!.longestSide * request.devicePixelRatio,
+          ),
+          fit: request.fit,
+          devicePixelRatio: request.devicePixelRatio,
+          priority: spec.priority,
         );
       }
     }

@@ -8,6 +8,9 @@ import 'package:flutter/widgets.dart';
 
 import 'xerox_config.dart';
 
+/// Xerox Raster 任务优先级。优先级只影响排队顺序，不参与缓存 Key。
+enum XeroxRasterPriority { background, overscan, visible, selected }
+
 @immutable
 /// 封装或定义Xerox光栅key相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterKey {
@@ -89,6 +92,7 @@ class XeroxRasterRequest {
     this.fit = BoxFit.cover,
     this.devicePixelRatio = 1,
     this.config = xeroxConfig,
+    this.priority = XeroxRasterPriority.background,
     String? sourceKey,
   }) : sourceKey = sourceKey ?? image.toString();
 
@@ -99,6 +103,7 @@ class XeroxRasterRequest {
   final double devicePixelRatio;
   final XeroxConfig config;
   final String sourceKey;
+  final XeroxRasterPriority priority;
 
   /// 执行当前模块中的key操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxRasterKey get key => XeroxRasterKey(

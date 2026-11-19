@@ -1,10 +1,13 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/features/artwork/model/artwork_identity.dart';
+import 'package:musaic/features/artwork/source/artwork_resolver.dart';
+import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_visible_artwork_planner.dart';
 
 void main() {
-  test('planner prioritizes visible center tiles and deduplicates artwork', () async {
+  test('planner prioritizes selected and visible tiles before overscan', () async {
     const viewport = Size(200, 200);
     final cells = [
       (row: 0, column: 0, rect: const Rect.fromLTWH(10, 10, 40, 40)),
@@ -25,18 +28,39 @@ void main() {
       scale: 1,
       devicePixelRatio: 1,
       assetAt: (row, column) => assets[(row, column)]!,
-      resolveImageProvider: (asset) async => AssetImage('assets/$asset.png'),
+      identityAt: (row, column) =>
+          row == 1 ? const ArtworkIdentity('album-center') : null,
+      resolveArtwork: (request) async {
+        final provider = AssetImage('assets/${request.source}.png');
+        return ResolvedArtwork(
+          identity: request.identity?.value ?? request.source,
+          sourceKey: provider.toString(),
+          image: provider,
+        );
+      },
       selectedAsset: 'selected',
+      selectedIdentity: const ArtworkIdentity('album-selected'),
     );
 
+    expect(requests.map((request) => request.identity).toList(), [
+      'album-selected',
+      'album-center',
+      'far',
+      'overscan',
+    ]);
     expect(
-      requests.map((request) => request.identity).toList(),
-      ['selected', 'center', 'far', 'overscan'],
+      requests.map((request) => request.priority).toList(),
+      [
+        XeroxRasterPriority.selected,
+        XeroxRasterPriority.visible,
+        XeroxRasterPriority.visible,
+        XeroxRasterPriority.overscan,
+      ],
     );
     expect(requests.map((request) => request.key).toSet(), hasLength(4));
   });
 
-  test('planner stops resolving providers after its owner is disposed', () async {
+  test('planner stops resolving artwork after its owner is disposed', () async {
     var active = true;
     var resolved = 0;
     final cells = [
@@ -55,10 +79,15 @@ void main() {
         scale: 1,
         devicePixelRatio: 1,
         assetAt: (row, column) => 'asset-$row',
-        resolveImageProvider: (asset) async {
+        resolveArtwork: (request) async {
           resolved++;
           active = false;
-          return AssetImage('assets/$asset.png');
+          final provider = AssetImage('assets/${request.source}.png');
+          return ResolvedArtwork(
+            identity: request.identity?.value ?? request.source,
+            sourceKey: provider.toString(),
+            image: provider,
+          );
         },
         isActive: () => active,
       ),

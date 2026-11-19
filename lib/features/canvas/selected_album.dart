@@ -2,7 +2,8 @@
 
 import 'package:material_ui/material_ui.dart';
 
-import '../artwork/album_artwork.dart';
+import '../artwork/artwork_renderer.dart';
+import '../artwork/model/artwork_identity.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 
@@ -15,10 +16,12 @@ class SelectedAlbum extends StatefulWidget {
     required this.playback,
     this.xerox = false,
     this.scale = 1,
+    this.artworkIdentity,
   });
 
   final String asset;
   final String title;
+  final ArtworkIdentity? artworkIdentity;
   final AlbumPlayback playback;
   final bool xerox;
   final double scale;
@@ -53,6 +56,7 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
         children: [
           albumArtwork(
             widget.asset,
+            artworkIdentity: widget.artworkIdentity,
             fit: BoxFit.cover,
             semanticLabel: widget.title,
             xerox: widget.xerox,

@@ -7,7 +7,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../artwork/album_artwork.dart';
+import '../artwork/artwork_renderer.dart';
+import '../artwork/model/artwork_identity.dart';
 import 'cover_flow_input.dart';
 import 'cover_flow_motion.dart';
 import 'cover_flow_geometry.dart';
@@ -139,8 +140,11 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   }
 
   Widget _image(Map<String, dynamic> album, double size) {
+    final asset = album['asset'] as String;
+    final rawIdentity = album['id'] as String?;
     return albumArtwork(
-      album['asset'] as String,
+      asset,
+      artworkIdentity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
       width: size,
       height: size,
       fit: BoxFit.cover,
