@@ -5,9 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'xerox_raster_request.dart';
+import 'xerox_resolution.dart';
 
 abstract interface class XeroxRasterDiskStore {
   Future<ui.Image?> read(XeroxRasterKey key);
+
+  Future<(XeroxRasterKey, ui.Image)?> readBest(XeroxRasterKey key);
 
   Future<void> write(XeroxRasterKey key, ui.Image image);
 }
@@ -58,6 +61,23 @@ class XeroxDiskCache implements XeroxRasterDiskStore {
       await _removeQuietly(key.cacheKey);
       return null;
     }
+  }
+
+  @override
+  Future<(XeroxRasterKey, ui.Image)?> readBest(XeroxRasterKey key) async {
+    final candidates = [...xeroxResolutions]..sort((a, b) {
+      final aLower = a <= key.resolution;
+      final bLower = b <= key.resolution;
+      if (aLower != bLower) return aLower ? -1 : 1;
+      return aLower ? b.compareTo(a) : a.compareTo(b);
+    });
+
+    for (final resolution in candidates) {
+      final candidateKey = key.withResolution(resolution);
+      final image = await read(candidateKey);
+      if (image != null) return (candidateKey, image);
+    }
+    return null;
   }
 
   @override

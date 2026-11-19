@@ -76,20 +76,50 @@ class _NoopDiskStore implements XeroxRasterDiskStore {
   Future<ui.Image?> read(XeroxRasterKey key) async => null;
 
   @override
+  Future<(XeroxRasterKey, ui.Image)?> readBest(XeroxRasterKey key) async =>
+      null;
+
+  @override
   Future<void> write(XeroxRasterKey key, ui.Image image) async {}
 }
 
 class _MemoryDiskStore implements XeroxRasterDiskStore {
   final Map<String, ui.Image> _images = {};
+  final Map<String, XeroxRasterKey> _keys = {};
 
   @override
   Future<ui.Image?> read(XeroxRasterKey key) async =>
       _images[key.cacheKey]?.clone();
 
   @override
+  Future<(XeroxRasterKey, ui.Image)?> readBest(XeroxRasterKey key) async {
+    final candidates = _images.entries
+        .where((entry) {
+          final candidate = _keys[entry.key];
+          return candidate != null && candidate.sameArtwork(key);
+        })
+        .toList();
+    if (candidates.isEmpty) return null;
+    candidates.sort((a, b) {
+      final aKey = _keys[a.key]!;
+      final bKey = _keys[b.key]!;
+      final aLower = aKey.resolution <= key.resolution;
+      final bLower = bKey.resolution <= key.resolution;
+      if (aLower != bLower) return aLower ? -1 : 1;
+      return aLower
+          ? bKey.resolution.compareTo(aKey.resolution)
+          : aKey.resolution.compareTo(bKey.resolution);
+    });
+    final selected = candidates.first;
+    final selectedKey = _keys[selected.key]!;
+    return (selectedKey, selected.value.clone());
+  }
+
+  @override
   Future<void> write(XeroxRasterKey key, ui.Image image) async {
     _images.remove(key.cacheKey)?.dispose();
     _images[key.cacheKey] = image.clone();
+    _keys[key.cacheKey] = key;
   }
 
   void dispose() {
@@ -97,6 +127,7 @@ class _MemoryDiskStore implements XeroxRasterDiskStore {
       image.dispose();
     }
     _images.clear();
+    _keys.clear();
   }
 }
 

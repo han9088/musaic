@@ -178,7 +178,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       }
       final sameArtwork = currentLease?.key.sameArtwork(request.key) ?? false;
       final canKeepCurrent = sameArtwork &&
-          currentLease!.resolution == resolution;
+          currentLease!.resolution >= resolution;
       if (!canKeepCurrent) {
         _requestedResolution = resolution;
         _scheduleAcquire(

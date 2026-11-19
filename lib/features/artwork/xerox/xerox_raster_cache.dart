@@ -279,11 +279,11 @@ class XeroxRasterCache {
     }
   }
 
-  Future<ui.Image> _rasterizeWithRetry(
+  Future<(XeroxRasterKey, ui.Image)> _rasterizeWithRetry(
     XeroxRasterRequest request,
   ) async {
     try {
-      final cached = await _diskStore.read(request.key);
+      final cached = await _diskStore.readBest(request.key);
       if (cached != null) return cached;
     } catch (_) {
       // A disk-cache failure is treated as a miss; the original remains valid.
@@ -299,7 +299,7 @@ class XeroxRasterCache {
         unawaited(
           _diskStore.write(request.key, image).catchError((Object _) {}),
         );
-        return image;
+        return (request.key, image);
       } catch (error, stack) {
         lastError = error;
         lastStack = stack;
@@ -314,7 +314,7 @@ class XeroxRasterCache {
   Future<void> _rasterize(_PendingRaster pending) async {
     final key = pending.request.key;
     try {
-      final image = await _rasterizeWithRetry(pending.request);
+      final (resolvedKey, image) = await _rasterizeWithRetry(pending.request);
       final activeWaiters = pending.waiters
           .where((waiter) => !waiter.cancelled)
           .toList(growable: false);
@@ -326,15 +326,25 @@ class XeroxRasterCache {
 
       // Reserve all leases before completing any waiter. The cache may exceed
       // its budget while images are pinned, but cannot dispose a live texture.
-      final entry = _RasterEntry(image)
-        ..references = activeWaiters.length;
-      _entries[key] = entry;
-      _bytes += entry.bytes;
+      var entry = _entries[resolvedKey];
+      if (entry != null) {
+        // Another LOD request may have decoded the same persistent raster
+        // concurrently. Reuse the existing texture instead of storing a
+        // duplicate entry under the same key.
+        image.dispose();
+        entry.references += activeWaiters.length;
+        _touch(resolvedKey, entry);
+      } else {
+        entry = _RasterEntry(image)
+          ..references = activeWaiters.length;
+        _entries[resolvedKey] = entry;
+        _bytes += entry.bytes;
+      }
 
       for (final waiter in activeWaiters) {
         waiter.completed = true;
         waiter.completer.complete(
-          _lease(key, entry, pending.request.resolution),
+          _lease(resolvedKey, entry, resolvedKey.resolution),
         );
       }
       pending.waiters.clear();
