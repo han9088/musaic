@@ -54,6 +54,7 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('identical requests share one in-flight raster job', () async {
     final rasterizer = _FakeRasterizer(
       delay: const Duration(milliseconds: 5),
@@ -159,15 +160,18 @@ void main() {
       rasterizer: _FakeRasterizer(),
     );
     final provider = AssetImage('assets/prepared.png');
-    final prepared = await cache.acquire(
-      XeroxRasterRequest(
-        identity: 'prepared',
-        image: provider,
-        resolution: 64,
-        fit: BoxFit.cover,
-        devicePixelRatio: 1,
+    final prepared = await tester.runAsync(
+      () => cache.acquire(
+        XeroxRasterRequest(
+          identity: 'prepared',
+          image: provider,
+          resolution: 64,
+          fit: BoxFit.cover,
+          devicePixelRatio: 1,
+        ),
       ),
     );
+    expect(prepared, isNotNull);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -190,9 +194,15 @@ void main() {
     // so the entrance animation never flies in a temporary placeholder.
     expect(find.byType(RawImage), findsOneWidget);
     expect(find.byType(Image), findsNothing);
-    expect(find.byType(CustomPaint), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byType(XeroxArtwork),
+        matching: find.byType(CustomPaint),
+      ),
+      findsNothing,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
-    prepared.release();
+    prepared!.release();
   });
 }

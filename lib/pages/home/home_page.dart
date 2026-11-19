@@ -296,7 +296,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
 
-      final albums = _catalog ?? const <Map<String, dynamic>>[];
+      // The first Xerox tap may arrive before the bundled demo catalog's
+      // FutureBuilder has published its result. Resolve it before capturing
+      // the viewport so the transition can prepare real visible artwork.
+      final albums = _catalog ?? await _mockCatalogFor(_currentSource);
+      if (!mounted) return;
+      _catalog ??= albums;
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
       final scale = _transform.value.getColumn(0).length;
       final visibleSnapshot = AlbumGridSnapshot.capture(
