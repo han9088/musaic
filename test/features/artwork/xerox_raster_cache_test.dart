@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
@@ -5,9 +6,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/artwork/xerox/xerox_artwork.dart';
 import 'package:musaic/features/artwork/xerox/xerox_job_scheduler.dart';
+import 'package:musaic/features/artwork/xerox/xerox_disk_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
+
+class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
+  final values = <String, Uint8List>{};
+
+  @override
+  Future<ui.Image?> read(String key) async {
+    final bytes = values[key];
+    if (bytes == null) return null;
+    final codec = await ui.instantiateImageCodec(bytes);
+    try {
+      return (await codec.getNextFrame()).image;
+    } finally {
+      codec.dispose();
+    }
+  }
+
+  @override
+  Future<void> write(String key, Uint8List bytes) async {
+    values[key] = Uint8List.fromList(bytes);
+  }
+
+  @override
+  Future<void> remove(String key) async {
+    values.remove(key);
+  }
+}
 
 class _FakeRasterizer extends XeroxRasterizer {
   _FakeRasterizer({this.delay = Duration.zero});
@@ -69,6 +97,34 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Xerox PNG disk cache survives a new in-memory cache instance', () async {
+    final disk = _MemoryXeroxDiskCache();
+    final firstRasterizer = _FakeRasterizer();
+    final firstCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: firstRasterizer,
+      diskCache: disk,
+    );
+    final request = _request('persistent');
+    final first = await firstCache.acquire(request);
+    first.release();
+
+    expect(disk.values, contains(request.key.diskCacheKey));
+    expect(firstRasterizer.calls, 1);
+
+    final secondRasterizer = _FakeRasterizer();
+    final secondCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: secondRasterizer,
+      diskCache: disk,
+    );
+    final restored = await secondCache.acquire(request);
+
+    expect(secondRasterizer.calls, 0);
+    expect(restored.image.width, request.resolution);
+    restored.release();
+  });
+
   test('a cache miss rasterizes the source and retries one transient failure', () async {
     final rasterizer = _FailOnceRasterizer();
     final cache = XeroxRasterCache(

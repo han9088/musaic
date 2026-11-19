@@ -66,7 +66,7 @@ class XeroxRasterCache {
     this.maxBytes = 96 * 1024 * 1024,
     this.maxConcurrentJobs = 2,
     XeroxRasterizer? rasterizer,
-    XeroxDiskCache? diskCache,
+    XeroxDiskCacheStore? diskCache,
   }) : _rasterizer = rasterizer ?? XeroxRasterizer(),
        _diskCache = diskCache ?? XeroxDiskCache.instance {
     if (maxBytes <= 0) throw ArgumentError.value(maxBytes, 'maxBytes');
@@ -80,7 +80,7 @@ class XeroxRasterCache {
   final int maxBytes;
   final int maxConcurrentJobs;
   final XeroxRasterizer _rasterizer;
-  final XeroxDiskCache _diskCache;
+  final XeroxDiskCacheStore _diskCache;
   final LinkedHashMap<XeroxRasterKey, _RasterEntry> _entries =
       LinkedHashMap<XeroxRasterKey, _RasterEntry>();
   final Map<XeroxRasterKey, _PendingRaster> _pending = {};

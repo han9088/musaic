@@ -4,7 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// Persistent, versioned PNG cache for processed Xerox artwork.
-class XeroxDiskCache {
+class XeroxDiskCache implements XeroxDiskCacheStore {
   XeroxDiskCache({CacheManager? manager})
     : _manager = manager ?? _defaultManager;
 

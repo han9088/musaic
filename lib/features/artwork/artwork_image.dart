@@ -70,7 +70,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
   ) async {
     try {
       await precacheImage(
-        request.image,
+        ResizeImage(request.image, width: request.resolution),
         context,
         size: Size.square(request.resolution.toDouble()),
       );
