@@ -4,16 +4,18 @@
 <dict>
 	<key>MusaicAlternateIcons</key>
 	<dict>
-		<key>musaic</key>
-		<string>MusaicClassicPreview</string>
+		<key>MusaicText</key>
+		<string>MusaicTextPreview</string>
 		<key>MusaicMosaic</key>
 		<string>MusaicMosaicPreview</string>
 		<key>MusaicVinyl</key>
 		<string>MusaicVinylPreview</string>
 		<key>MusaicVinylWhite</key>
 		<string>MusaicVinylWhitePreview</string>
-		<key>MuasicXerox</key>
-		<string>MusaicXeroxPreview</string>
+		<key>MusaicVinylPrimary</key>
+		<string>MusaicVinylPrimaryPreview</string>
+		<key>MuasicMosaiclXerox</key>
+		<string>MuasicMosaiclXeroxPreview</string>
 	</dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>

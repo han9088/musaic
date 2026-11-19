@@ -21,9 +21,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appIconDefault => '默认';
 
   @override
-  String get appIconPrimaryVinyl => '主黑胶';
-
-  @override
   String get appIconClassic => '经典';
 
   @override

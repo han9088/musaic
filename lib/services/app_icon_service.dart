@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 enum AppIconChoice {
-  primaryVinyl('PrimaryVinyl', 'assets/branding/primary_vinyl.png'),
-  classic('musaic', 'assets/branding/classic.png'),
+  primaryVinyl('MusaicVinylPrimary', 'assets/branding/vinyl_primary.png'),
+  classic('MusaicText', 'assets/branding/text.png'),
   mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
   vinyl('MusaicVinyl', 'assets/branding/vinyl.png'),
   vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png'),
-  xerox('MuasicXerox', 'assets/branding/xerox.png');
+  xerox('MuasicMosaiclXerox', 'assets/branding/mosaic_xerox.png');
 
   const AppIconChoice(this.nativeName, this.previewAsset);
 
@@ -82,9 +82,13 @@ class AppIconService {
     if (choice == AppIconChoice.primaryVinyl) {
       return null;
     }
-    if (choice == AppIconChoice.classic &&
-        defaultTargetPlatform == TargetPlatform.android) {
-      return 'MusaicClassic';
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (choice == AppIconChoice.classic) {
+        return 'MusaicClassic';
+      }
+      if (choice == AppIconChoice.xerox) {
+        return 'MuasicXerox';
+      }
     }
     return choice.nativeName;
   }

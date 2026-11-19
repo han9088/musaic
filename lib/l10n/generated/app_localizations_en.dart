@@ -21,9 +21,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appIconDefault => 'Default';
 
   @override
-  String get appIconPrimaryVinyl => 'Primary Vinyl';
-
-  @override
   String get appIconClassic => 'Classic';
 
   @override

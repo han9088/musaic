@@ -33,11 +33,11 @@ void main() {
               return true;
             case 'mGetAvailableIcons':
               return <String>[
-                'musaic',
+                'MusaicText',
                 'MusaicMosaic',
                 'MusaicVinyl',
                 'MusaicVinylWhite',
-                'MuasicXerox',
+                'MuasicMosaiclXerox',
               ];
             case 'mGetAlternateIconName':
               throw PlatformException(code: code);
@@ -102,11 +102,11 @@ void main() {
             return true;
           case 'mGetAvailableIcons':
             return <String>[
-              'musaic',
+              'MusaicText',
               'MusaicMosaic',
               'MusaicVinyl',
               'MusaicVinylWhite',
-              'MuasicXerox',
+              'MuasicMosaiclXerox',
             ];
           case 'mGetAlternateIconName':
             return null;
@@ -150,14 +150,14 @@ void main() {
                     'MusaicMosaic',
                     'MusaicVinyl',
                     'MusaicVinylWhite',
-                    'MuasicXerox',
+                    'MuasicMosaiclXerox',
                   ]
                 : <String>[
-                    'musaic',
+                    'MusaicText',
                     'MusaicMosaic',
                     'MusaicVinyl',
                     'MusaicVinylWhite',
-                    'MuasicXerox',
+                    'MuasicMosaiclXerox',
                   ];
           case 'mGetAlternateIconName':
             return null;
