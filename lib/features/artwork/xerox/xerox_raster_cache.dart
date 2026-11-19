@@ -219,10 +219,31 @@ class XeroxRasterCache {
     }
   }
 
+  Future<ui.Image> _rasterizeWithRetry(
+    XeroxRasterRequest request,
+  ) async {
+    Object? lastError;
+    StackTrace? lastStack;
+    // One retry covers transient decode/GPU failures without allowing an
+    // unavailable source to keep the mode switch spinning indefinitely.
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await _rasterizer.rasterize(request);
+      } catch (error, stack) {
+        lastError = error;
+        lastStack = stack;
+        if (attempt == 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 120));
+        }
+      }
+    }
+    Error.throwWithStackTrace(lastError!, lastStack!);
+  }
+
   Future<void> _rasterize(_PendingRaster pending) async {
     final key = pending.request.key;
     try {
-      final image = await _rasterizer.rasterize(pending.request);
+      final image = await _rasterizeWithRetry(pending.request);
       final activeWaiters = pending.waiters
           .where((waiter) => !waiter.cancelled)
           .toList(growable: false);

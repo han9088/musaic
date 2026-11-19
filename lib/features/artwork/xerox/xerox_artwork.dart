@@ -54,8 +54,6 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   XeroxRasterKey? _failedKey;
   Object? _error;
 
-  static const _maxRasterAttempts = 2;
-
   @override
   void didUpdateWidget(XeroxArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -94,14 +92,13 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     _scheduledKey = request.key;
     final generation = ++_generation;
 
-    Future<void> acquire({int attempt = 1}) async {
+    Future<void> acquire() async {
       if (!mounted || generation != _generation) return;
       _requestTimer = null;
       final task = _lease == null
           ? _cache.requestBest(request)
           : _cache.request(request);
       _task = task;
-      var retryScheduled = false;
       try {
         final next = await task.future;
         if (!mounted || generation != _generation) {
@@ -118,27 +115,17 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       } catch (error) {
         if (!mounted || generation != _generation) return;
         if (error is! XeroxRasterCancelled) {
-          if (attempt < _maxRasterAttempts) {
-            retryScheduled = true;
-            // A missing/invalid raster is regenerated once. Keep the old
-            // Xerox lease (or neutral placeholder) visible during the retry;
-            // never fall back to the original colour artwork.
-            _requestTimer = Timer(
-              Duration(milliseconds: 250 * attempt),
-              () => unawaited(acquire(attempt: attempt + 1)),
-            );
-          } else {
-            setState(() {
-              _error = error;
-              _failedKey = request.key;
-            });
-          }
+          // The cache owns bounded retries for every caller, including
+          // mode-transition preparation. If they fail, stay on a neutral
+          // Xerox fallback instead of revealing the original artwork.
+          setState(() {
+            _error = error;
+            _failedKey = request.key;
+          });
         }
       } finally {
         if (identical(_task, task)) _task = null;
-        if (!retryScheduled && _scheduledKey == request.key) {
-          _scheduledKey = null;
-        }
+        if (_scheduledKey == request.key) _scheduledKey = null;
       }
     }
 

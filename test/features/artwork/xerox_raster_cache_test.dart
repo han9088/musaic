@@ -69,23 +69,32 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  test('a cache miss rasterizes the original and a failed job can be retried', () async {
+  test('a cache miss rasterizes the source and retries one transient failure', () async {
     final rasterizer = _FailOnceRasterizer();
     final cache = XeroxRasterCache(
       maxBytes: 1024 * 1024,
       rasterizer: rasterizer,
     );
-    final request = _request('fallback');
-
-    await expectLater(
-      cache.acquire(request),
-      throwsA(isA<StateError>()),
-    );
-    final lease = await cache.acquire(request);
+    final lease = await cache.acquire(_request('fallback'));
 
     expect(rasterizer.calls, 2);
-    expect(lease.image.width, request.resolution);
+    expect(lease.image.width, 4);
     lease.release();
+  });
+
+  test('a permanently failing raster is bounded to two attempts', () async {
+    final rasterizer = _FailOnceRasterizer()..failuresRemaining = 2;
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: rasterizer,
+    );
+
+    await expectLater(
+      cache.acquire(_request('unavailable')),
+      throwsA(isA<StateError>()),
+    );
+    expect(rasterizer.calls, 2);
+    expect(cache.queuedJobs, 0);
   });
 
   test('identical requests share one in-flight raster job', () async {
