@@ -149,9 +149,7 @@ class _HomeSheetState extends State<HomeSheet> {
                           try {
                             await onXeroxChanged(enabled);
                             if (context.mounted) {
-                              setSheetState(
-                                () => xeroxEnabled = widget.xeroxEnabled,
-                              );
+                              setSheetState(() => xeroxEnabled = enabled);
                             }
                           } finally {
                             if (context.mounted) {

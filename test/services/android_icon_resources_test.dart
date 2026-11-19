@@ -4,9 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('text and primary vinyl icons use the renamed Android resources', () {
-    final manifest = File(
-      'android/app/src/main/AndroidManifest.xml',
-    ).readAsStringSync();
+    final manifest = File('android/app/src/main/AndroidManifest.xml')
+        .readAsStringSync();
     expect(manifest, contains('@mipmap/ic_launcher_text'));
     expect(manifest, contains('@mipmap/ic_launcher_vinyl_primary'));
 

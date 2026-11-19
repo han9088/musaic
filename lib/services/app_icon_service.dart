@@ -51,9 +51,7 @@ class AppIconService {
     for (final choice in choices) {
       final nativeName = _nativeName(choice);
       if (nativeName != null && !available.contains(nativeName)) {
-        throw StateError(
-          'The $nativeName alternate icon is not configured',
-        );
+        throw StateError('The $nativeName alternate icon is not configured');
       }
     }
     final name = await DynamicAppIconFlutterPlus.getAlternateIconName();

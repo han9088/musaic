@@ -51,12 +51,15 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: AppBottomSheetHost(
-          child: HomeSheet(
-            icons: const _Icons(),
-            xeroxEnabled: xeroxEnabled,
-            onXeroxChanged: (enabled) => xeroxEnabled = enabled,
-            child: const ColoredBox(color: Colors.black),
+        home: StatefulBuilder(
+          builder: (context, setState) => AppBottomSheetHost(
+            child: HomeSheet(
+              icons: const _Icons(),
+              xeroxEnabled: xeroxEnabled,
+              onXeroxChanged: (enabled) =>
+                  setState(() => xeroxEnabled = enabled),
+              child: const ColoredBox(color: Colors.black),
+            ),
           ),
         ),
       ),

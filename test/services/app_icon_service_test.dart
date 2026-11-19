@@ -175,25 +175,28 @@ void main() {
     });
   }
 
-  test('Android switches to the renamed text and mosaic xerox aliases', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    final names = <Object?>[];
-    messenger.setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'mSetAlternateIconName') {
-        names.add((call.arguments as Map)['iconName']);
-        return null;
-      }
-      throw MissingPluginException();
-    });
-    addTearDown(() {
-      messenger.setMockMethodCallHandler(channel, null);
-      debugDefaultTargetPlatformOverride = null;
-    });
+  test(
+    'Android switches to the renamed text and mosaic xerox aliases',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final names = <Object?>[];
+      messenger.setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'mSetAlternateIconName') {
+          names.add((call.arguments as Map)['iconName']);
+          return null;
+        }
+        throw MissingPluginException();
+      });
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(channel, null);
+        debugDefaultTargetPlatformOverride = null;
+      });
 
-    await service.change(AppIconChoice.text);
-    await service.change(AppIconChoice.mosaicXerox);
-    expect(names, ['MusaicText', 'MuasicMosaiclXerox']);
-  });
+      await service.change(AppIconChoice.text);
+      await service.change(AppIconChoice.mosaicXerox);
+      expect(names, ['MusaicText', 'MuasicMosaiclXerox']);
+    },
+  );
 }
