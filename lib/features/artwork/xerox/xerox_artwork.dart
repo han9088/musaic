@@ -51,7 +51,10 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   XeroxRasterKey? _scheduledKey;
   int _generation = 0;
   int _requestedResolution = 0;
+  XeroxRasterKey? _failedKey;
   Object? _error;
+
+  static const _maxRasterAttempts = 2;
 
   @override
   void didUpdateWidget(XeroxArtwork oldWidget) {
@@ -67,6 +70,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       _lease?.release();
       _lease = null;
       _requestedResolution = 0;
+      _failedKey = null;
       _error = null;
     }
   }
@@ -75,19 +79,29 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     XeroxRasterRequest request, {
     required Duration delay,
   }) {
-    if (_lease?.key == request.key || _scheduledKey == request.key) return;
+    if (_lease?.key == request.key ||
+        _scheduledKey == request.key ||
+        _failedKey == request.key) {
+      return;
+    }
+    if (_failedKey != null && _failedKey != request.key) {
+      _failedKey = null;
+      _error = null;
+    }
     _requestTimer?.cancel();
     _task?.cancel();
     _task = null;
     _scheduledKey = request.key;
     final generation = ++_generation;
 
-    Future<void> acquire() async {
+    Future<void> acquire({int attempt = 1}) async {
+      if (!mounted || generation != _generation) return;
       _requestTimer = null;
       final task = _lease == null
           ? _cache.requestBest(request)
           : _cache.request(request);
       _task = task;
+      var retryScheduled = false;
       try {
         final next = await task.future;
         if (!mounted || generation != _generation) {
@@ -98,16 +112,33 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         setState(() {
           _lease = next;
           _error = null;
+          _failedKey = null;
         });
         previous?.release();
       } catch (error) {
         if (!mounted || generation != _generation) return;
         if (error is! XeroxRasterCancelled) {
-          setState(() => _error = error);
+          if (attempt < _maxRasterAttempts) {
+            retryScheduled = true;
+            // A missing/invalid raster is regenerated once. Keep the old
+            // Xerox lease (or neutral placeholder) visible during the retry;
+            // never fall back to the original colour artwork.
+            _requestTimer = Timer(
+              Duration(milliseconds: 250 * attempt),
+              () => unawaited(acquire(attempt: attempt + 1)),
+            );
+          } else {
+            setState(() {
+              _error = error;
+              _failedKey = request.key;
+            });
+          }
         }
       } finally {
         if (identical(_task, task)) _task = null;
-        if (_scheduledKey == request.key) _scheduledKey = null;
+        if (!retryScheduled && _scheduledKey == request.key) {
+          _scheduledKey = null;
+        }
       }
     }
 

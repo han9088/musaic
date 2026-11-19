@@ -44,6 +44,20 @@ class _FakeRasterizer extends XeroxRasterizer {
   }
 }
 
+class _FailOnceRasterizer extends _FakeRasterizer {
+  int failuresRemaining = 1;
+
+  @override
+  Future<ui.Image> rasterize(XeroxRasterRequest request) {
+    if (failuresRemaining > 0) {
+      failuresRemaining--;
+      calls++;
+      return Future.error(StateError('Temporary decode failure.'));
+    }
+    return super.rasterize(request);
+  }
+}
+
 XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
     XeroxRasterRequest(
       identity: identity,
@@ -55,6 +69,25 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('a cache miss rasterizes the original and a failed job can be retried', () async {
+    final rasterizer = _FailOnceRasterizer();
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: rasterizer,
+    );
+    final request = _request('fallback');
+
+    await expectLater(
+      cache.acquire(request),
+      throwsA(isA<StateError>()),
+    );
+    final lease = await cache.acquire(request);
+
+    expect(rasterizer.calls, 2);
+    expect(lease.image.width, request.resolution);
+    lease.release();
+  });
+
   test('identical requests share one in-flight raster job', () async {
     final rasterizer = _FakeRasterizer(
       delay: const Duration(milliseconds: 5),
