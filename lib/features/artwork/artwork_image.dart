@@ -11,6 +11,10 @@ import 'xerox/xerox_raster_request.dart';
 import 'xerox/xerox_resolution.dart';
 
 /// Single display entry point for original and processed artwork.
+/// Displays the original artwork or its cached Xerox raster.
+///
+/// Original decoding and Xerox output use separate resolution policies: the
+/// former controls Flutter's ImageCache, while the latter sizes processed PNGs.
 class ArtworkImage extends StatefulWidget {
   const ArtworkImage({
     super.key,
@@ -31,6 +35,7 @@ class ArtworkImage extends StatefulWidget {
   });
 
   final String identity;
+  /// Source revision used to invalidate stale Xerox cache entries.
   final String? sourceKey;
   final ImageProvider<Object> image;
   final double? width;
@@ -50,6 +55,7 @@ class ArtworkImage extends StatefulWidget {
 }
 
 class _ArtworkImageState extends State<ArtworkImage> {
+  // Retain the current LOD between rebuilds to apply hysteresis during zoom.
   int? _decodeResolution;
   int? _xeroxResolution;
   XeroxRasterKey? _lastBackgroundKey;
@@ -57,6 +63,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
   String get _sourceKey => widget.sourceKey ?? widget.image.toString();
 
   @override
+  // A source or mode change invalidates the per-widget LOD/background state.
   void didUpdateWidget(ArtworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
@@ -97,6 +104,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           height.isFinite ? height : 100,
         );
         final dpr = MediaQuery.devicePixelRatioOf(context);
+        // Convert logical tile size to physical pixels before choosing an LOD.
         final physicalExtent = extent * widget.scale * dpr;
         final decodeResolution = artworkDecodeResolution(
           physicalExtent,
@@ -109,6 +117,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           current: _xeroxResolution,
         );
         _xeroxResolution = rasterResolution;
+        // Prepare the Xerox size independently from the original decode size.
         final rasterRequest = XeroxRasterRequest(
           identity: widget.identity,
           sourceKey: _sourceKey,
@@ -132,6 +141,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           excludeFromSemantics: widget.excludeFromSemantics,
           gaplessPlayback: true,
           errorBuilder: widget.errorBuilder,
+          // Start expensive processing only after the original has a usable frame.
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if ((frame != null || wasSynchronouslyLoaded) &&
                 _lastBackgroundKey != rasterRequest.key) {
