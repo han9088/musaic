@@ -23,6 +23,7 @@ class XeroxVisibleArtworkPlanner {
     resolveImageProvider,
     String? selectedAsset,
     double selectedScale = 1.16,
+    bool Function()? isActive,
   }) async {
     if (cells.isEmpty && selectedAsset == null) return const [];
 
@@ -57,6 +58,9 @@ class XeroxVisibleArtworkPlanner {
 
     Future<void> resolveWorker() async {
       while (true) {
+        if (isActive != null && !isActive()) {
+          throw StateError('Xerox artwork planning was cancelled.');
+        }
         final index = cursor++;
         if (index >= specs.length) return;
         final spec = specs[index];
@@ -78,6 +82,9 @@ class XeroxVisibleArtworkPlanner {
     await Future.wait([
       for (var i = 0; i < workerCount; i++) resolveWorker(),
     ]);
+    if (isActive != null && !isActive()) {
+      throw StateError('Xerox artwork planning was cancelled.');
+    }
 
     final requests = <XeroxRasterRequest>[];
     final seenKeys = <XeroxRasterKey>{};
