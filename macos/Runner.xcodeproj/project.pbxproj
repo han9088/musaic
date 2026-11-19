@@ -29,6 +29,7 @@
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		A11400020000000000000001 /* musaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000002 /* musaic.icon */; };
+		A11800020000000000000001 /* PrimaryVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11800020000000000000002 /* PrimaryVinyl.icon */; };
 		A11400020000000000000003 /* AppIconPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000004 /* AppIconPlugin.swift */; };
 		A11400040000000000000001 /* MusaicMosaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400040000000000000002 /* MusaicMosaic.icon */; };
 		A11500040000000000000001 /* MusaicVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500040000000000000002 /* MusaicVinyl.icon */; };
@@ -87,6 +88,7 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		A11400020000000000000002 /* musaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = musaic.icon; sourceTree = "<group>"; };
+		A11800020000000000000002 /* PrimaryVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = PrimaryVinyl.icon; sourceTree = "<group>"; };
 		A11400020000000000000004 /* AppIconPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconPlugin.swift; sourceTree = "<group>"; };
 		A11400040000000000000002 /* MusaicMosaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicMosaic.icon; sourceTree = "<group>"; };
 		A11500040000000000000002 /* MusaicVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinyl.icon; sourceTree = "<group>"; };
@@ -182,6 +184,7 @@
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				A11400020000000000000004 /* AppIconPlugin.swift */,
 				A11400020000000000000002 /* musaic.icon */,
+				A11800020000000000000002 /* PrimaryVinyl.icon */,
 				A11400040000000000000002 /* MusaicMosaic.icon */,
 				A11500040000000000000002 /* MusaicVinyl.icon */,
 				A11600020000000000000002 /* MuasicXerox.icon */,
@@ -313,6 +316,7 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				A11400020000000000000001 /* musaic.icon in Resources */,
+				A11800020000000000000001 /* PrimaryVinyl.icon in Resources */,
 				A11400040000000000000001 /* MusaicMosaic.icon in Resources */,
 				A11500040000000000000001 /* MusaicVinyl.icon in Resources */,
 				A11600020000000000000001 /* MuasicXerox.icon in Resources */,
@@ -507,8 +511,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox";
+				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -640,8 +644,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox";
+				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -661,8 +665,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = musaic;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox";
+				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;

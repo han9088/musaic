@@ -33,6 +33,7 @@ void main() {
               return true;
             case 'mGetAvailableIcons':
               return <String>[
+                'musaic',
                 'MusaicMosaic',
                 'MusaicVinyl',
                 'MusaicVinylWhite',
@@ -101,6 +102,7 @@ void main() {
             return true;
           case 'mGetAvailableIcons':
             return <String>[
+              'musaic',
               'MusaicMosaic',
               'MusaicVinyl',
               'MusaicVinylWhite',
@@ -123,9 +125,9 @@ void main() {
       });
       expect(await service.read(), (
         supported: true,
-        current: AppIconChoice.classic,
+        current: AppIconChoice.primaryVinyl,
       ));
-      await service.change(AppIconChoice.classic);
+      await service.change(AppIconChoice.primaryVinyl);
       expect(didSetIcon, isTrue);
     },
   );
@@ -142,12 +144,21 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return <String>[
-              'MusaicMosaic',
-              'MusaicVinyl',
-              'MusaicVinylWhite',
-              'MuasicXerox',
-            ];
+            return platform == TargetPlatform.android
+                ? <String>[
+                    'MusaicClassic',
+                    'MusaicMosaic',
+                    'MusaicVinyl',
+                    'MusaicVinylWhite',
+                    'MuasicXerox',
+                  ]
+                : <String>[
+                    'musaic',
+                    'MusaicMosaic',
+                    'MusaicVinyl',
+                    'MusaicVinylWhite',
+                    'MuasicXerox',
+                  ];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
@@ -164,9 +175,9 @@ void main() {
       });
       expect(await service.read(), (
         supported: true,
-        current: AppIconChoice.classic,
+        current: AppIconChoice.primaryVinyl,
       ));
-      await service.change(AppIconChoice.classic);
+      await service.change(AppIconChoice.primaryVinyl);
       expect(calls, contains('mGetAvailableIcons'));
       expect(calls, contains('mSetAlternateIconName'));
     });

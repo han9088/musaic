@@ -3,6 +3,8 @@
   "appTitle": "Musaic",
   "appIcon": "应用图标",
   "appIconDefault": "默认",
+  "appIconPrimaryVinyl": "主黑胶",
+  "appIconClassic": "经典",
   "appIconMosaic": "拼贴",
   "appIconLoadFailed": "无法加载应用图标。",
   "appIconChangeFailed": "图标切换失败，请重试。",

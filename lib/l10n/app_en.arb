@@ -3,6 +3,8 @@
   "appTitle": "Musaic",
   "appIcon": "App icon",
   "appIconDefault": "Default",
+  "appIconPrimaryVinyl": "Primary Vinyl",
+  "appIconClassic": "Classic",
   "appIconMosaic": "Mosaic",
   "appIconLoadFailed": "Could not load app icons.",
   "appIconChangeFailed": "Could not change the app icon. Please try again.",

@@ -3,7 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 enum AppIconChoice {
-  classic(null, 'assets/branding/classic.png'),
+  primaryVinyl('PrimaryVinyl', 'assets/branding/primary_vinyl.png'),
+  classic('musaic', 'assets/branding/classic.png'),
   mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
   vinyl('MusaicVinyl', 'assets/branding/vinyl.png'),
   vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png'),
@@ -38,13 +39,14 @@ class AppIconService {
           TargetPlatform.macOS,
         ].contains(defaultTargetPlatform) ||
         !await DynamicAppIconFlutterPlus.supportsAlternateIcons) {
-      return (supported: false, current: AppIconChoice.classic);
+      return (supported: false, current: AppIconChoice.primaryVinyl);
     }
     final available = await DynamicAppIconFlutterPlus.getAvailableIcons();
     for (final choice in choices) {
-      if (choice.nativeName != null && !available.contains(choice.nativeName)) {
+      final nativeName = _nativeName(choice);
+      if (nativeName != null && !available.contains(nativeName)) {
         throw StateError(
-          'The ${choice.nativeName} alternate icon is not configured',
+          'The $nativeName alternate icon is not configured',
         );
       }
     }
@@ -52,7 +54,7 @@ class AppIconService {
     return (
       supported: true,
       current: AppIconChoice.values.firstWhere(
-        (choice) => choice.nativeName == name,
+        (choice) => _nativeName(choice) == name,
       ),
     );
   }
@@ -60,7 +62,7 @@ class AppIconService {
   Future<void> change(AppIconChoice choice) async {
     try {
       await DynamicAppIconFlutterPlus.setAlternateIconName(
-        choice.nativeName,
+        _nativeName(choice),
         showAlert: true,
         deferUntilBackground: false,
       );
@@ -69,10 +71,21 @@ class AppIconService {
       if (!kIsWeb &&
           defaultTargetPlatform == TargetPlatform.iOS &&
           await DynamicAppIconFlutterPlus.getAlternateIconName() ==
-              choice.nativeName) {
+              _nativeName(choice)) {
         return;
       }
       rethrow;
     }
+  }
+
+  String? _nativeName(AppIconChoice choice) {
+    if (choice == AppIconChoice.primaryVinyl) {
+      return null;
+    }
+    if (choice == AppIconChoice.classic &&
+        defaultTargetPlatform == TargetPlatform.android) {
+      return 'MusaicClassic';
+    }
+    return choice.nativeName;
   }
 }

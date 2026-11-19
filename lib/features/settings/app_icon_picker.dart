@@ -119,7 +119,8 @@ class _AppIconPickerState extends State<AppIconPicker> {
                           ),
                         ),
                         title: Text(switch (choice) {
-                          AppIconChoice.classic => l10n.appIconDefault,
+                          AppIconChoice.primaryVinyl => l10n.appIconPrimaryVinyl,
+                          AppIconChoice.classic => l10n.appIconClassic,
                           AppIconChoice.mosaic => l10n.appIconMosaic,
                           AppIconChoice.vinyl => l10n.appIconVinyl,
                           AppIconChoice.vinylWhite => l10n.appIconVinylWhite,

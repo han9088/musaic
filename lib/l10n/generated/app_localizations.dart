@@ -118,6 +118,18 @@ abstract class AppLocalizations {
   /// **'默认'**
   String get appIconDefault;
 
+  /// No description provided for @appIconPrimaryVinyl.
+  ///
+  /// In zh, this message translates to:
+  /// **'主黑胶'**
+  String get appIconPrimaryVinyl;
+
+  /// No description provided for @appIconClassic.
+  ///
+  /// In zh, this message translates to:
+  /// **'经典'**
+  String get appIconClassic;
+
   /// No description provided for @appIconMosaic.
   ///
   /// In zh, this message translates to:
