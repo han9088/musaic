@@ -58,6 +58,35 @@ class _FailOnceRasterizer extends _FakeRasterizer {
   }
 }
 
+class _NoopDiskStore implements XeroxRasterDiskStore {
+  @override
+  Future<ui.Image?> read(XeroxRasterKey key) async => null;
+
+  @override
+  Future<void> write(XeroxRasterKey key, ui.Image image) async {}
+}
+
+class _MemoryDiskStore implements XeroxRasterDiskStore {
+  final Map<String, ui.Image> _images = {};
+
+  @override
+  Future<ui.Image?> read(XeroxRasterKey key) async =>
+      _images[key.cacheKey]?.clone();
+
+  @override
+  Future<void> write(XeroxRasterKey key, ui.Image image) async {
+    _images.remove(key.cacheKey)?.dispose();
+    _images[key.cacheKey] = image.clone();
+  }
+
+  void dispose() {
+    for (final image in _images.values) {
+      image.dispose();
+    }
+    _images.clear();
+  }
+}
+
 XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
     XeroxRasterRequest(
       identity: identity,
@@ -69,11 +98,64 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('processed rasters survive cache recreation through the disk store', () async {
+    final diskStore = _MemoryDiskStore();
+    final firstRasterizer = _FakeRasterizer();
+    final request = _request('persistent');
+
+    final firstCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: firstRasterizer,
+      diskStore: diskStore,
+    );
+    final firstLease = await firstCache.acquire(request);
+    firstLease.release();
+    await Future<void>.delayed(Duration.zero);
+
+    final secondRasterizer = _FakeRasterizer();
+    final secondCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      rasterizer: secondRasterizer,
+      diskStore: diskStore,
+    );
+    final secondLease = await secondCache.acquire(request);
+
+    expect(firstRasterizer.calls, 1);
+    expect(secondRasterizer.calls, 0);
+    expect(secondLease.image.width, request.resolution);
+    secondLease.release();
+    diskStore.dispose();
+  });
+
+  test('persistent keys are stable and include source, algorithm and LOD', () {
+    final first = _request('same', resolution: 64).key;
+    final same = _request('same', resolution: 64).key;
+    final otherSource = XeroxRasterRequest(
+      identity: 'same',
+      sourceKey: 'new-source-version',
+      image: AssetImage('assets/same.png'),
+      resolution: 64,
+    ).key;
+    final otherLod = _request('same', resolution: 128).key;
+    final otherAlgorithm = XeroxRasterRequest(
+      identity: 'same',
+      image: AssetImage('assets/same.png'),
+      resolution: 64,
+      algorithmVersion: 'xerox-v2',
+    ).key;
+
+    expect(first.cacheKey, same.cacheKey);
+    expect(first.cacheKey, isNot(otherSource.cacheKey));
+    expect(first.cacheKey, isNot(otherLod.cacheKey));
+    expect(first.cacheKey, isNot(otherAlgorithm.cacheKey));
+  });
+
   test('a cache miss rasterizes the source and retries one transient failure', () async {
     final rasterizer = _FailOnceRasterizer();
     final cache = XeroxRasterCache(
       maxBytes: 1024 * 1024,
       rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
     );
     final lease = await cache.acquire(_request('fallback'));
 
@@ -87,6 +169,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 1024 * 1024,
       rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
     );
 
     await expectLater(
@@ -105,6 +188,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 2,
       rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
     );
     final request = _request('same');
     final leases = await Future.wait([
@@ -126,6 +210,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 1,
       rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
     );
     final active = cache.request(_request('active'));
     final queued = cache.request(_request('queued'));
@@ -147,6 +232,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 64,
       rasterizer: _FakeRasterizer(),
+      diskStore: _NoopDiskStore(),
     );
     final first = await cache.acquire(_request('first'));
     final second = await cache.acquire(_request('second'));
@@ -162,6 +248,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 1,
       rasterizer: _FakeRasterizer(),
+      diskStore: _NoopDiskStore(),
     );
     final lease = await cache.acquire(_request('oversized'));
 
@@ -179,6 +266,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 2,
       rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
     );
     final scheduler = XeroxJobScheduler(
       maxConcurrentRequests: 6,
@@ -200,6 +288,7 @@ void main() {
   ) async {
     final cache = XeroxRasterCache(
       rasterizer: _FakeRasterizer(),
+      diskStore: _NoopDiskStore(),
     );
     final provider = AssetImage('assets/prepared.png');
     final prepared = await tester.runAsync(
