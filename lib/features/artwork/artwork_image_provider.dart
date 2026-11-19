@@ -1,10 +1,10 @@
-import 'dart:io';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../services/music/directory_music_library.dart';
-import 'artwork_network_cache_manager.dart';
+import 'artwork_file_provider_stub.dart'
+    if (dart.library.io) 'artwork_file_provider_io.dart' as file_provider;
+import 'artwork_network_provider_stub.dart'
+    if (dart.library.io) 'artwork_network_provider_io.dart' as network_provider;
 
 /// Resolves Demo assets, Apple Music URLs and local-file providers consistently.
 class ArtworkImageResolver {
@@ -15,11 +15,7 @@ class ArtworkImageResolver {
     if (uri != null &&
         (uri.scheme == 'https' || uri.scheme == 'http') &&
         uri.host.isNotEmpty) {
-      return CachedNetworkImageProvider(
-        source,
-        cacheManager: ArtworkNetworkCacheManager.instance,
-        cacheKey: source,
-      );
+      return network_provider.networkArtworkProvider(source);
     }
 
     if (source.startsWith('local:') || source.startsWith('directory:')) {
@@ -44,7 +40,7 @@ Future<ImageProvider<Object>?> resolveArtworkImageProvider(
     if (directories == null || track == null) return null;
     final uri = await directories.artwork(track);
     if (uri == null || uri.isEmpty) return null;
-    return FileImage(File.fromUri(Uri.parse(uri)));
+    return file_provider.fileArtworkProvider(uri);
   }
   return ArtworkImageResolver.resolve(identity);
 }

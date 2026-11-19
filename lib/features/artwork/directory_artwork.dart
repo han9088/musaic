@@ -1,9 +1,10 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../services/music/directory_music_library.dart';
 import 'artwork_image.dart';
+import 'artwork_image_provider.dart';
+import 'artwork_file_provider_stub.dart'
+    if (dart.library.io) 'artwork_file_provider_io.dart' as file_provider;
 
 class DirectoryArtworkScope extends InheritedWidget {
   const DirectoryArtworkScope({
@@ -90,11 +91,12 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
     builder: (context, snapshot) {
       final uri = snapshot.data;
       if (uri == null) return widget.placeholder;
-      final file = File.fromUri(Uri.parse(uri));
+      final provider = file_provider.fileArtworkProvider(uri);
+      if (provider == null) return widget.placeholder;
       return ArtworkImage(
         key: ValueKey(widget.identity),
         identity: widget.identity,
-        image: FileImage(file),
+        image: provider,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
