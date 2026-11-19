@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -10,6 +11,7 @@ import 'package:musaic/features/artwork/xerox/xerox_disk_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
+import 'package:musaic/features/artwork/artwork_image_provider.dart';
 
 class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
   final values = <String, Uint8List>{};
@@ -97,6 +99,16 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Artwork resolver keeps Demo assets local and routes URLs to disk cache', () {
+    final asset = ArtworkImageResolver.resolve('assets/albums/cover.png');
+    final network = ArtworkImageResolver.resolve(
+      'https://example.com/artwork/album-1.jpg',
+    );
+
+    expect(asset, isA<AssetImage>());
+    expect(network, isA<CachedNetworkImageProvider>());
+  });
+
   test('Xerox PNG disk cache survives a new in-memory cache instance', () async {
     final disk = _MemoryXeroxDiskCache();
     final firstRasterizer = _FakeRasterizer();
@@ -130,6 +142,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 1024 * 1024,
       rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final lease = await cache.acquire(_request('fallback'));
 
@@ -143,6 +156,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 1024 * 1024,
       rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
     );
 
     await expectLater(
@@ -161,6 +175,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 2,
       rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final request = _request('same');
     final leases = await Future.wait([
@@ -182,6 +197,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 1,
       rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final active = cache.request(_request('active'));
     final queued = cache.request(_request('queued'));
@@ -203,6 +219,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 64,
       rasterizer: _FakeRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final first = await cache.acquire(_request('first'));
     final second = await cache.acquire(_request('second'));
@@ -218,6 +235,7 @@ void main() {
     final cache = XeroxRasterCache(
       maxBytes: 1,
       rasterizer: _FakeRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final lease = await cache.acquire(_request('oversized'));
 
@@ -235,6 +253,7 @@ void main() {
       maxBytes: 1024 * 1024,
       maxConcurrentJobs: 2,
       rasterizer: rasterizer,
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final scheduler = XeroxJobScheduler(
       maxConcurrentRequests: 6,
@@ -256,6 +275,7 @@ void main() {
   ) async {
     final cache = XeroxRasterCache(
       rasterizer: _FakeRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
     );
     final provider = AssetImage('assets/prepared.png');
     final prepared = await tester.runAsync(
