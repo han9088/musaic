@@ -7,6 +7,10 @@ import 'source/artwork_image_resolver.dart';
 import 'source/artwork_source.dart';
 
 /// Public artwork entry point. Source resolution is independent from rendering.
+/// Converts a source reference into the appropriate artwork widget.
+///
+/// Directory references are resolved asynchronously; placeholders stay in the
+/// presentation layer and never enter image decoding or Xerox processing.
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -18,6 +22,7 @@ Widget albumArtwork(
   bool xerox = false,
   double scale = 1,
 }) {
+  // Parse once so the routing below does not depend on string-prefix checks.
   final source = ArtworkSource.parse(asset);
   if (source.isDirectory) {
     return DirectoryArtwork(
@@ -39,6 +44,7 @@ Widget albumArtwork(
     );
   }
 
+  // A placeholder is UI, not an image source: do not create an ImageProvider.
   if (source.isPlaceholder) {
     return Semantics(
       label: excludeFromSemantics ? null : semanticLabel,
