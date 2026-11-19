@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -106,7 +107,12 @@ void main() {
     );
 
     expect(asset, isA<AssetImage>());
-    expect(network, isA<CachedNetworkImageProvider>());
+    expect(
+      network,
+      isA<NetworkImage>() == kIsWeb
+          ? isA<NetworkImage>()
+          : isA<CachedNetworkImageProvider>(),
+    );
   });
 
   test('Xerox PNG disk cache survives a new in-memory cache instance', () async {

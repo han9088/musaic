@@ -104,6 +104,7 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
         semanticLabel: widget.semanticLabel,
         xerox: widget.xerox,
         scale: widget.scale,
+        errorBuilder: (_, error, stack) => widget.placeholder,
       );
     },
   );

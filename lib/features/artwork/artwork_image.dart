@@ -22,6 +22,7 @@ class ArtworkImage extends StatefulWidget {
     this.excludeFromSemantics = false,
     this.xerox = false,
     this.scale = 1,
+    this.errorBuilder,
   });
 
   final String identity;
@@ -34,6 +35,7 @@ class ArtworkImage extends StatefulWidget {
   final bool excludeFromSemantics;
   final bool xerox;
   final double scale;
+  final ImageErrorWidgetBuilder? errorBuilder;
 
   @override
   State<ArtworkImage> createState() => _ArtworkImageState();
@@ -42,6 +44,7 @@ class ArtworkImage extends StatefulWidget {
 class _ArtworkImageState extends State<ArtworkImage> {
   XeroxRasterKey? _preparingKey;
   int _generation = 0;
+  XeroxRasterTask? _task;
 
   @override
   void didUpdateWidget(ArtworkImage oldWidget) {
@@ -49,6 +52,8 @@ class _ArtworkImageState extends State<ArtworkImage> {
     if (oldWidget.identity != widget.identity ||
         oldWidget.image.toString() != widget.image.toString()) {
       _generation++;
+      _task?.cancel();
+      _task = null;
       _preparingKey = null;
     }
   }
@@ -75,13 +80,24 @@ class _ArtworkImageState extends State<ArtworkImage> {
         size: Size.square(request.resolution.toDouble()),
       );
       if (!mounted || generation != _generation) return;
-      final lease = await XeroxRasterCache.instance.acquire(request);
+      final task = XeroxRasterCache.instance.request(request);
+      _task = task;
+      final lease = await task.future;
       lease.release();
+      if (identical(_task, task)) _task = null;
     } catch (_) {
       // Background preparation is opportunistic. A later visible Xerox
       // request retries through the same bounded raster cache.
+      if (identical(_task, task)) _task = null;
       if (mounted && generation == _generation) _preparingKey = null;
     }
+  }
+
+  @override
+  void dispose() {
+    _generation++;
+    _task?.cancel();
+    super.dispose();
   }
 
   @override
@@ -97,6 +113,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
         semanticLabel: widget.semanticLabel,
         excludeFromSemantics: widget.excludeFromSemantics,
         scale: widget.scale,
+        errorBuilder: widget.errorBuilder,
       );
     }
 
@@ -135,6 +152,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
               ? null
               : widget.semanticLabel,
           excludeFromSemantics: widget.excludeFromSemantics,
+          errorBuilder: widget.errorBuilder,
         );
       },
     );
