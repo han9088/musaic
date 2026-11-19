@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/artwork/xerox/xerox_artwork.dart';
 import 'package:musaic/features/artwork/xerox/xerox_job_scheduler.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
+import 'package:musaic/features/artwork/xerox/xerox_disk_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
 
@@ -41,6 +42,18 @@ class _FakeRasterizer extends XeroxRasterizer {
     } finally {
       active--;
     }
+  }
+}
+
+class _OrderedRasterizer extends _FakeRasterizer {
+  _OrderedRasterizer(this.order);
+
+  final List<String> order;
+
+  @override
+  Future<ui.Image> rasterize(XeroxRasterRequest request) async {
+    order.add(request.identity);
+    return super.rasterize(request);
   }
 }
 
@@ -98,6 +111,61 @@ XeroxRasterRequest _request(String identity, {int resolution = 4}) =>
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('visible raster requests overtake queued background work', () async {
+    final order = <String>[];
+    final rasterizer = _OrderedRasterizer(order);
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      maxConcurrentJobs: 1,
+      maxQueuedJobs: 4,
+      rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
+    );
+
+    final active = cache.request(_request('active'), priority: 0);
+    await Future<void>.delayed(Duration.zero);
+    final background = cache.request(_request('background'), priority: 10);
+    final visible = cache.request(_request('visible'), priority: 100);
+
+    final leases = await Future.wait([
+      active.future,
+      background.future,
+      visible.future,
+    ]);
+    expect(order, ['active', 'visible', 'background']);
+    for (final lease in leases) {
+      lease.release();
+    }
+  });
+
+  test('the queue rejects excess background jobs without growing unbounded', () async {
+    final rasterizer = _FakeRasterizer(
+      delay: const Duration(milliseconds: 5),
+    );
+    final cache = XeroxRasterCache(
+      maxBytes: 1024 * 1024,
+      maxConcurrentJobs: 1,
+      maxQueuedJobs: 1,
+      rasterizer: rasterizer,
+      diskStore: _NoopDiskStore(),
+    );
+
+    final active = cache.request(_request('active'));
+    await Future<void>.delayed(Duration.zero);
+    final queued = cache.request(_request('queued'), priority: 1);
+    final rejected = cache.request(_request('rejected'), priority: 0);
+    await expectLater(
+      rejected.future,
+      throwsA(isA<XeroxRasterQueueFull>()),
+    );
+
+    final activeLease = await active.future;
+    final queuedLease = await queued.future;
+    expect(cache.queuedJobs, 0);
+    activeLease.release();
+    queuedLease.release();
+  });
+
   test('processed rasters survive cache recreation through the disk store', () async {
     final diskStore = _MemoryDiskStore();
     final firstRasterizer = _FakeRasterizer();
