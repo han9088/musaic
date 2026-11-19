@@ -32,7 +32,7 @@ class HomeSheet extends StatefulWidget {
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final bool xeroxEnabled;
-  final Future<void> Function(bool enabled)? onXeroxChanged;
+  final FutureOr<void> Function(bool enabled)? onXeroxChanged;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();

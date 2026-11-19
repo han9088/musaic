@@ -145,9 +145,13 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
 
       final image = canKeepCurrent
           ? currentLease.image
-          : currentLease?.image ?? _cache.peekBest(request);
+          : sameArtwork
+          ? currentLease?.image ?? _cache.peekBest(request)
+          : _cache.peekBest(request);
       if (image != null) {
-        _scheduleAcquire(request, delay: Duration.zero);
+        if (_lease == null) {
+          _scheduleAcquire(request, delay: Duration.zero);
+        }
         return Semantics(
           image: true,
           label: widget.excludeFromSemantics ? null : widget.semanticLabel,

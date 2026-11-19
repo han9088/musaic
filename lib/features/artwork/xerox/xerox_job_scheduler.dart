@@ -5,10 +5,10 @@ import 'xerox_raster_request.dart';
 
 /// Prepares a finite set of artwork requests while the cache caps GPU work.
 class XeroxJobScheduler {
-  const XeroxJobScheduler({
+  XeroxJobScheduler({
     this.maxConcurrentRequests = 2,
-    this.cache = XeroxRasterCache.instance,
-  });
+    XeroxRasterCache? cache,
+  }) : cache = cache ?? XeroxRasterCache.instance;
 
   final int maxConcurrentRequests;
   final XeroxRasterCache cache;
