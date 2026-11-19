@@ -197,6 +197,34 @@ void main() {
     queuedLease.release();
   });
 
+  test('disk cache reuses a higher LOD when the requested LOD is missing', () async {
+    final diskStore = _MemoryDiskStore();
+    final highRequest = _request('lod-fallback', resolution: 512);
+    final firstCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024 * 8,
+      rasterizer: _FakeRasterizer(),
+      diskStore: diskStore,
+    );
+    final highLease = await firstCache.acquire(highRequest);
+    highLease.release();
+    await Future<void>.delayed(Duration.zero);
+
+    final secondRasterizer = _FakeRasterizer();
+    final secondCache = XeroxRasterCache(
+      maxBytes: 1024 * 1024 * 8,
+      rasterizer: secondRasterizer,
+      diskStore: diskStore,
+    );
+    final lowLease = await secondCache.acquire(
+      _request('lod-fallback', resolution: 256),
+    );
+
+    expect(secondRasterizer.calls, 0);
+    expect(lowLease.resolution, 512);
+    lowLease.release();
+    diskStore.dispose();
+  });
+
   test('processed rasters survive cache recreation through the disk store', () async {
     final diskStore = _MemoryDiskStore();
     final firstRasterizer = _FakeRasterizer();

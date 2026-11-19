@@ -34,6 +34,10 @@ class _NoopStore implements XeroxRasterDiskStore {
   Future<ui.Image?> read(XeroxRasterKey key) async => null;
 
   @override
+  Future<(XeroxRasterKey, ui.Image)?> readBest(XeroxRasterKey key) async =>
+      null;
+
+  @override
   Future<void> write(XeroxRasterKey key, ui.Image image) async {}
 }
 
