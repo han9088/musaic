@@ -21,10 +21,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appIconDefault => '默认';
 
   @override
-  String get appIconPrimaryVinyl => '主黑胶';
-
-  @override
-  String get appIconClassic => '经典';
+  String get appIconText => '文字';
 
   @override
   String get appIconMosaic => '拼贴';
@@ -48,7 +45,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appIconVinylWhite => '白标黑胶';
 
   @override
-  String get appIconXerox => '拼贴复印';
+  String get appIconMosaicXerox => '拼贴复印';
 
   @override
   String get musicSource => '音乐源';

@@ -25,7 +25,7 @@ void main() {
 
           final selected = tester.widget<ListTile>(
             find.byKey(
-              ValueKey(fails ? 'app-icon-classic' : 'app-icon-${choice.name}'),
+              ValueKey(fails ? 'app-icon-text' : 'app-icon-${choice.name}'),
             ),
           );
           expect(selected.trailing, isNotNull);
@@ -45,7 +45,7 @@ class _Icons extends AppIconService {
   _Icons({required this.fails});
 
   final bool fails;
-  AppIconChoice current = AppIconChoice.classic;
+  AppIconChoice current = AppIconChoice.text;
   int changes = 0;
 
   @override

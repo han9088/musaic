@@ -28,12 +28,12 @@
 		33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 33CC10F42044A3C60003C045 /* MainMenu.xib */; };
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
-		A11400020000000000000001 /* musaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000002 /* musaic.icon */; };
-		A11800020000000000000001 /* PrimaryVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11800020000000000000002 /* PrimaryVinyl.icon */; };
+		A11400020000000000000001 /* MusaicText.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000002 /* MusaicText.icon */; };
+		A11800020000000000000001 /* MusaicVinylPrimary.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11800020000000000000002 /* MusaicVinylPrimary.icon */; };
 		A11400020000000000000003 /* AppIconPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000004 /* AppIconPlugin.swift */; };
 		A11400040000000000000001 /* MusaicMosaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400040000000000000002 /* MusaicMosaic.icon */; };
 		A11500040000000000000001 /* MusaicVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500040000000000000002 /* MusaicVinyl.icon */; };
-		A11600020000000000000001 /* MuasicXerox.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11600020000000000000002 /* MuasicXerox.icon */; };
+		A11600020000000000000001 /* MuasicMosaiclXerox.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11600020000000000000002 /* MuasicMosaiclXerox.icon */; };
 		A11700010000000000000001 /* MusaicVinylWhite.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11700010000000000000002 /* MusaicVinylWhite.icon */; };
 /* End PBXBuildFile section */
 
@@ -87,12 +87,12 @@
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
-		A11400020000000000000002 /* musaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = musaic.icon; sourceTree = "<group>"; };
-		A11800020000000000000002 /* PrimaryVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = PrimaryVinyl.icon; sourceTree = "<group>"; };
+		A11400020000000000000002 /* MusaicText.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicText.icon; sourceTree = "<group>"; };
+		A11800020000000000000002 /* MusaicVinylPrimary.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinylPrimary.icon; sourceTree = "<group>"; };
 		A11400020000000000000004 /* AppIconPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconPlugin.swift; sourceTree = "<group>"; };
 		A11400040000000000000002 /* MusaicMosaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicMosaic.icon; sourceTree = "<group>"; };
 		A11500040000000000000002 /* MusaicVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinyl.icon; sourceTree = "<group>"; };
-		A11600020000000000000002 /* MuasicXerox.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MuasicXerox.icon; sourceTree = "<group>"; };
+		A11600020000000000000002 /* MuasicMosaiclXerox.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MuasicMosaiclXerox.icon; sourceTree = "<group>"; };
 		A11700010000000000000002 /* MusaicVinylWhite.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinylWhite.icon; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -183,11 +183,11 @@
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				A11400020000000000000004 /* AppIconPlugin.swift */,
-				A11400020000000000000002 /* musaic.icon */,
-				A11800020000000000000002 /* PrimaryVinyl.icon */,
+				A11400020000000000000002 /* MusaicText.icon */,
+				A11800020000000000000002 /* MusaicVinylPrimary.icon */,
 				A11400040000000000000002 /* MusaicMosaic.icon */,
 				A11500040000000000000002 /* MusaicVinyl.icon */,
-				A11600020000000000000002 /* MuasicXerox.icon */,
+				A11600020000000000000002 /* MuasicMosaiclXerox.icon */,
 				A11700010000000000000002 /* MusaicVinylWhite.icon */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
@@ -315,11 +315,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
-				A11400020000000000000001 /* musaic.icon in Resources */,
-				A11800020000000000000001 /* PrimaryVinyl.icon in Resources */,
+				A11400020000000000000001 /* MusaicText.icon in Resources */,
+				A11800020000000000000001 /* MusaicVinylPrimary.icon in Resources */,
 				A11400040000000000000001 /* MusaicMosaic.icon in Resources */,
 				A11500040000000000000001 /* MusaicVinyl.icon in Resources */,
-				A11600020000000000000001 /* MuasicXerox.icon in Resources */,
+				A11600020000000000000001 /* MuasicMosaiclXerox.icon in Resources */,
 				A11700010000000000000001 /* MusaicVinylWhite.icon in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
 			);
@@ -511,8 +511,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
+				ASSETCATALOG_COMPILER_APPICON_NAME = MusaicVinylPrimary;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicMosaiclXerox MusaicText";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -644,8 +644,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
+				ASSETCATALOG_COMPILER_APPICON_NAME = MusaicVinylPrimary;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicMosaiclXerox MusaicText";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/DebugProfile.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -665,8 +665,8 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 33E5194F232828860026EE4D /* AppInfo.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = PrimaryVinyl;
-                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicXerox musaic";
+				ASSETCATALOG_COMPILER_APPICON_NAME = MusaicVinylPrimary;
+                ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "MusaicMosaic MusaicVinyl MusaicVinylWhite MuasicMosaiclXerox MusaicText";
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;

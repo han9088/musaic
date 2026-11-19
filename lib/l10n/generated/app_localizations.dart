@@ -118,17 +118,11 @@ abstract class AppLocalizations {
   /// **'默认'**
   String get appIconDefault;
 
-  /// No description provided for @appIconPrimaryVinyl.
+  /// No description provided for @appIconText.
   ///
   /// In zh, this message translates to:
-  /// **'主黑胶'**
-  String get appIconPrimaryVinyl;
-
-  /// No description provided for @appIconClassic.
-  ///
-  /// In zh, this message translates to:
-  /// **'经典'**
-  String get appIconClassic;
+  /// **'文字'**
+  String get appIconText;
 
   /// No description provided for @appIconMosaic.
   ///
@@ -172,11 +166,11 @@ abstract class AppLocalizations {
   /// **'白标黑胶'**
   String get appIconVinylWhite;
 
-  /// No description provided for @appIconXerox.
+  /// No description provided for @appIconMosaicXerox.
   ///
   /// In zh, this message translates to:
   /// **'拼贴复印'**
-  String get appIconXerox;
+  String get appIconMosaicXerox;
 
   /// No description provided for @musicSource.
   ///

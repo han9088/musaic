@@ -3,6 +3,45 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('text and primary vinyl icons use the renamed Android resources', () {
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
+    expect(manifest, contains('@mipmap/ic_launcher_text'));
+    expect(manifest, contains('@mipmap/ic_launcher_vinyl_primary'));
+
+    final text = File(
+      'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_text.xml',
+    ).readAsStringSync();
+    expect(text, contains('@mipmap/ic_launcher_text_foreground'));
+    expect(text, contains('@mipmap/ic_launcher_text_background'));
+
+    final vinylPrimary = File(
+      'android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_vinyl_primary.xml',
+    ).readAsStringSync();
+    expect(
+      vinylPrimary,
+      contains('@mipmap/ic_launcher_vinyl_primary_foreground'),
+    );
+    expect(
+      vinylPrimary,
+      contains('@mipmap/ic_launcher_vinyl_primary_background'),
+    );
+
+    for (final density in ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
+      for (final name in ['text', 'vinyl_primary']) {
+        for (final suffix in ['', '_background', '_foreground', '_round']) {
+          expect(
+            File(
+              'android/app/src/main/res/mipmap-$density/ic_launcher_$name$suffix.webp',
+            ).existsSync(),
+            isTrue,
+          );
+        }
+      }
+    }
+  });
+
   for (final name in ['mosaic', 'vinyl']) {
     test('adaptive $name layers reference a bitmap, not the adaptive icon itself', () {
       final icon = File(

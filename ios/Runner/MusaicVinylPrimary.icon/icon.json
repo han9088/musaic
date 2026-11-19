@@ -20,8 +20,8 @@
               "value": false
             }
           ],
-          "image-name": "Vinyl.png",
-          "name": "Vinyl",
+          "image-name": "vinyl_primary.png",
+          "name": "Vinyl Primary",
           "position-specializations": [
             {
               "idiom": "square",

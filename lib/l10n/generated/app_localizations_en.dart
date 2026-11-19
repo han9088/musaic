@@ -21,10 +21,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appIconDefault => 'Default';
 
   @override
-  String get appIconPrimaryVinyl => 'Primary Vinyl';
-
-  @override
-  String get appIconClassic => 'Classic';
+  String get appIconText => 'Text';
 
   @override
   String get appIconMosaic => 'Mosaic';
@@ -49,7 +46,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appIconVinylWhite => 'White Label Vinyl';
 
   @override
-  String get appIconXerox => 'Mosaic Xerox';
+  String get appIconMosaicXerox => 'Mosaic Xerox';
 
   @override
   String get musicSource => 'Music source';

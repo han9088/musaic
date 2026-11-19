@@ -119,12 +119,12 @@ class _AppIconPickerState extends State<AppIconPicker> {
                           ),
                         ),
                         title: Text(switch (choice) {
-                          AppIconChoice.primaryVinyl => l10n.appIconPrimaryVinyl,
-                          AppIconChoice.classic => l10n.appIconClassic,
+                          AppIconChoice.vinylPrimary => l10n.appIconDefault,
+                          AppIconChoice.text => l10n.appIconText,
                           AppIconChoice.mosaic => l10n.appIconMosaic,
                           AppIconChoice.vinyl => l10n.appIconVinyl,
                           AppIconChoice.vinylWhite => l10n.appIconVinylWhite,
-                          AppIconChoice.xerox => l10n.appIconXerox,
+                          AppIconChoice.mosaicXerox => l10n.appIconMosaicXerox,
                         }, style: const TextStyle(color: Colors.white)),
                         trailing: choice == state.current
                             ? const Icon(
