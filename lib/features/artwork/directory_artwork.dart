@@ -35,6 +35,7 @@ class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
     if (oldWidget.library != widget.library) _subscribe();
   }
 
+  // Keep one library subscription at the scope level instead of one per tile.
   void _subscribe() {
     _unsubscribe?.call();
     _unsubscribe = widget.library?.tracks.subscribe((_) {
@@ -56,6 +57,7 @@ class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
   );
 }
 
+/// Publishes a lightweight revision so dependent directory covers re-resolve.
 class _DirectoryArtworkInherited extends InheritedWidget {
   const _DirectoryArtworkInherited({
     required this.library,
@@ -106,6 +108,7 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
   int _revision = -1;
   Future<ResolvedArtwork?>? _resolved;
 
+  // Resolve again when the library revision or track identity changes.
   void _resolve() {
     _resolved = const ArtworkImageResolver().resolve(
       widget.identity,
@@ -114,6 +117,7 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
   }
 
   @override
+  // The inherited revision is the signal that directory artwork may have changed.
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scope = context.dependOnInheritedWidgetOfExactType<
@@ -134,6 +138,7 @@ class _DirectoryArtworkState extends State<DirectoryArtwork> {
   }
 
   @override
+  // Keep the previous placeholder visible while the async provider is resolving.
   Widget build(BuildContext context) => FutureBuilder<ResolvedArtwork?>(
     key: ValueKey('${widget.identity}:$_revision'),
     future: _resolved,
