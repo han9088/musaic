@@ -158,7 +158,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           await _artworkMode.scheduler.prepare(
             requests,
             isActive: () => mounted,
-            allowFailures: true,
           ),
         );
       } else {
