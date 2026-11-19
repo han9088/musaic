@@ -90,6 +90,19 @@ void main() {
     second.release();
   });
 
+  test('an oversized result stays pinned until its lease is released', () async {
+    final cache = XeroxRasterCache(
+      maxBytes: 1,
+      rasterizer: _FakeRasterizer(),
+    );
+    final lease = await cache.acquire(_request('oversized'));
+
+    expect(lease.image.width, 4);
+    expect(cache.cachedBytes, 64);
+    lease.release();
+    expect(cache.cachedBytes, 0);
+  });
+
   test('the raster cache limits concurrent GPU jobs', () async {
     final rasterizer = _FakeRasterizer(
       delay: const Duration(milliseconds: 5),

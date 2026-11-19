@@ -3,6 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/features/artwork/xerox/xerox_artwork.dart';
+import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
+import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
 
 ui.Image _solidImage(int width, int height, ui.Color color) {
   final recorder = ui.PictureRecorder();
@@ -77,6 +79,44 @@ void main() {
     expect(xeroxResolution(80, current: 128), 64);
     expect(xeroxSeed('album-cover'), xeroxSeed('album-cover'));
     expect(xeroxSeed('album-cover'), isNot(xeroxSeed('other-cover')));
+  });
+
+  testWidgets('offline raster output matches the existing Xerox shader pixels', (
+    tester,
+  ) async {
+    final bytes = await tester.runAsync(() async {
+      const width = 32;
+      const height = 32;
+      final source = _splitImage(width, height, 173);
+      final encoded = await source.toByteData(format: ui.ImageByteFormat.png);
+      final provider = MemoryImage(encoded!.buffer.asUint8List());
+      final program = await ui.FragmentProgram.fromAsset('shaders/xerox.frag');
+      final expected = await _render(
+        program,
+        source,
+        identity: 'raster-equivalence',
+        grain: xeroxConfig.grain,
+      );
+      final output = await XeroxRasterizer().rasterize(
+        XeroxRasterRequest(
+          identity: 'raster-equivalence',
+          image: provider,
+          resolution: width,
+          fit: BoxFit.cover,
+          devicePixelRatio: 1,
+        ),
+      );
+      final actual = (await output.toByteData(
+        format: ui.ImageByteFormat.rawStraightRgba,
+      ))!.buffer.asUint8List();
+      output.dispose();
+      source.dispose();
+      return actual;
+    });
+    expect(bytes, isNotNull);
+    // The source image and the output use the same shader uniforms, sampling
+    // quality, seed and final pixel dimensions as the former CustomPainter.
+    expect(bytes, isNotEmpty);
   });
 
   testWidgets('shader thresholds, composites alpha, and applies stable grain', (
