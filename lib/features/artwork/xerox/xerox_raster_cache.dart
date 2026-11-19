@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:collection';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'xerox_disk_cache.dart';
@@ -230,17 +229,31 @@ class XeroxRasterCache {
     final key = request.key.diskCacheKey;
     try {
       final cached = await _diskCache.read(key);
-      if (cached != null) return cached;
+      if (cached != null) {
+        if (cached.width == request.resolution &&
+            cached.height == request.resolution) {
+          return cached;
+        }
+        cached.dispose();
+        await _diskCache.remove(key);
+      }
     } catch (_) {
       // A corrupt or obsolete disk entry is a cache miss, not a fatal error.
-      await _diskCache.remove(key);
+      try {
+        await _diskCache.remove(key);
+      } catch (_) {
+        // A failed cache cleanup must not prevent regeneration from source.
+      }
     }
 
     final image = await _rasterizeWithRetry(request);
     try {
       final data = await image.toByteData(format: ui.ImageByteFormat.png);
       if (data != null) {
-        await _diskCache.write(key, data.buffer.asUint8List());
+        await _diskCache.write(
+          key,
+          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+        );
       }
     } catch (_) {
       // Persistence is opportunistic. The in-memory raster remains usable.
