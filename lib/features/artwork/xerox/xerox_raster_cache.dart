@@ -30,7 +30,10 @@ class XeroxRasterCache {
     this.maxBytes = 96 * 1024 * 1024,
     this.maxConcurrentJobs = 2,
     XeroxRasterizer? rasterizer,
-  }) : _rasterizer = rasterizer ?? XeroxRasterizer();
+  }) : _rasterizer = rasterizer ?? XeroxRasterizer() {
+    assert(maxBytes > 0);
+    assert(maxConcurrentJobs > 0);
+  }
 
   static final instance = XeroxRasterCache();
 

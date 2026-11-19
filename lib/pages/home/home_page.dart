@@ -61,7 +61,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Size? _portraitSize;
   final _albumLayout = HomeAlbumLayoutState();
   List<Map<String, dynamic>>? _catalog;
-  bool _xeroxEnabled = false;
 
   _HomeMusicSource get _currentSource => _sources.catalog.value == null
       ? _sources.mock2Selected.value
@@ -157,6 +156,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           await _xeroxMode.scheduler.prepare(
             requests,
             isActive: () => mounted,
+            allowFailures: true,
           ),
         );
       } else {
@@ -241,6 +241,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required bool useLayout,
     bool includeSelected = false,
   }) async {
+    if (albums.isEmpty || cells.isEmpty) return const [];
     final scale = _transform.value.getColumn(0).length;
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final requests = <XeroxRasterRequest>[];

@@ -24,6 +24,7 @@ class XeroxArtwork extends StatefulWidget {
     this.excludeFromSemantics = false,
     this.scale = 1,
     this.errorBuilder,
+    this.cache,
   });
 
   final String identity;
@@ -36,13 +37,14 @@ class XeroxArtwork extends StatefulWidget {
   final bool excludeFromSemantics;
   final double scale;
   final ImageErrorWidgetBuilder? errorBuilder;
+  final XeroxRasterCache? cache;
 
   @override
   State<XeroxArtwork> createState() => _XeroxArtworkState();
 }
 
 class _XeroxArtworkState extends State<XeroxArtwork> {
-  final _cache = XeroxRasterCache.instance;
+  XeroxRasterCache get _cache => widget.cache ?? XeroxRasterCache.instance;
   XeroxRasterLease? _lease;
   Timer? _requestTimer;
   XeroxRasterKey? _scheduledKey;
@@ -54,7 +56,8 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   void didUpdateWidget(XeroxArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
-        oldWidget.image.toString() != widget.image.toString()) {
+        oldWidget.image.toString() != widget.image.toString() ||
+        oldWidget.cache != widget.cache) {
       _generation++;
       _requestTimer?.cancel();
       _scheduledKey = null;
