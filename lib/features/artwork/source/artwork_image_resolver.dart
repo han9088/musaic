@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
 import 'artwork_network_cache.dart';
+import 'artwork_file_provider_stub.dart'
+    if (dart.library.io) 'artwork_file_provider_io.dart' as file_provider;
 import 'artwork_source.dart';
 
 class ResolvedArtwork {
@@ -62,9 +62,9 @@ class ArtworkImageResolver {
     final uri = await directories.artwork(track);
     if (uri == null || uri.isEmpty) return null;
 
-    final file = File.fromUri(Uri.parse(uri));
+    final provider = file_provider.createArtworkFileProvider(uri);
+    if (provider == null) return null;
     final version = jsonEncode(track.file.data);
-    final provider = FileImage(file);
     return ResolvedArtwork(
       identity: source.identity,
       sourceKey: '${provider.toString()}:$version:$uri',
