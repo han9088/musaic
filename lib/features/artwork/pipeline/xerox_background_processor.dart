@@ -15,9 +15,9 @@ class XeroxBackgroundProcessor {
 
   int get pendingCount => _pending.length;
 
-  void enqueue(XeroxRasterRequest request, {int priority = 10}) {
+  void enqueue(XeroxRasterRequest request) {
     if (!_pending.add(request.key)) return;
-    final task = _cache.request(request, priority: priority);
+    final task = _cache.request(request);
     unawaited(_consume(task, request.key));
   }
 
