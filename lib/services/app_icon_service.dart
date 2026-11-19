@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 enum AppIconChoice {
-  primaryVinyl('MusaicVinylPrimary', 'assets/branding/vinyl_primary.png'),
-  classic('MusaicText', 'assets/branding/text.png'),
+  vinylPrimary('MusaicVinylPrimary', 'assets/branding/vinyl_primary.png'),
+  text('MusaicText', 'assets/branding/text.png'),
   mosaic('MusaicMosaic', 'assets/branding/mosaic.png'),
   vinyl('MusaicVinyl', 'assets/branding/vinyl.png'),
   vinylWhite('MusaicVinylWhite', 'assets/branding/vinyl_white.png'),
-  xerox('MuasicMosaiclXerox', 'assets/branding/mosaic_xerox.png');
+  mosaicXerox('MuasicMosaiclXerox', 'assets/branding/mosaic_xerox.png');
 
   const AppIconChoice(this.nativeName, this.previewAsset);
 
@@ -39,7 +39,7 @@ class AppIconService {
           TargetPlatform.macOS,
         ].contains(defaultTargetPlatform) ||
         !await DynamicAppIconFlutterPlus.supportsAlternateIcons) {
-      return (supported: false, current: AppIconChoice.primaryVinyl);
+      return (supported: false, current: AppIconChoice.vinylPrimary);
     }
     final available = await DynamicAppIconFlutterPlus.getAvailableIcons();
     for (final choice in choices) {
@@ -79,16 +79,11 @@ class AppIconService {
   }
 
   String? _nativeName(AppIconChoice choice) {
-    if (choice == AppIconChoice.primaryVinyl) {
+    if (choice == AppIconChoice.vinylPrimary) {
       return null;
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
-      if (choice == AppIconChoice.classic) {
-        return 'MusaicClassic';
-      }
-      if (choice == AppIconChoice.xerox) {
-        return 'MuasicXerox';
-      }
+      return choice.nativeName;
     }
     return choice.nativeName;
   }

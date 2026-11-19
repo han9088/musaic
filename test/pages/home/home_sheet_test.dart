@@ -128,5 +128,5 @@ class _Icons extends AppIconService {
 
   @override
   Future<AppIconSnapshot> read() async =>
-      (supported: true, current: AppIconChoice.classic);
+      (supported: true, current: AppIconChoice.text);
 }

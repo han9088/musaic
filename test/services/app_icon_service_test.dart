@@ -17,7 +17,7 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     expect(service.choices, contains(AppIconChoice.vinylWhite));
     expect(service.choices, contains(AppIconChoice.vinyl));
-    expect(service.choices, contains(AppIconChoice.xerox));
+    expect(service.choices, contains(AppIconChoice.mosaicXerox));
   });
 
   for (final code in ['ICON_CHANGE_PENDING', 'ICON_WRITE_FAILED']) {
@@ -78,7 +78,7 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
     await expectLater(
-      service.change(AppIconChoice.classic),
+      service.change(AppIconChoice.text),
       throwsA(
         isA<PlatformException>().having(
           (error) => error.code,
@@ -125,9 +125,9 @@ void main() {
       });
       expect(await service.read(), (
         supported: true,
-        current: AppIconChoice.primaryVinyl,
+        current: AppIconChoice.vinylPrimary,
       ));
-      await service.change(AppIconChoice.primaryVinyl);
+      await service.change(AppIconChoice.vinylPrimary);
       expect(didSetIcon, isTrue);
     },
   );
@@ -144,21 +144,13 @@ void main() {
           case 'mSupportsAlternateIcons':
             return true;
           case 'mGetAvailableIcons':
-            return platform == TargetPlatform.android
-                ? <String>[
-                    'MusaicClassic',
-                    'MusaicMosaic',
-                    'MusaicVinyl',
-                    'MusaicVinylWhite',
-                    'MuasicMosaiclXerox',
-                  ]
-                : <String>[
-                    'MusaicText',
-                    'MusaicMosaic',
-                    'MusaicVinyl',
-                    'MusaicVinylWhite',
-                    'MuasicMosaiclXerox',
-                  ];
+            return <String>[
+              'MusaicText',
+              'MusaicMosaic',
+              'MusaicVinyl',
+              'MusaicVinylWhite',
+              'MuasicMosaiclXerox',
+            ];
           case 'mGetAlternateIconName':
             return null;
           case 'mSetAlternateIconName':
@@ -175,11 +167,33 @@ void main() {
       });
       expect(await service.read(), (
         supported: true,
-        current: AppIconChoice.primaryVinyl,
+        current: AppIconChoice.vinylPrimary,
       ));
-      await service.change(AppIconChoice.primaryVinyl);
+      await service.change(AppIconChoice.vinylPrimary);
       expect(calls, contains('mGetAvailableIcons'));
       expect(calls, contains('mSetAlternateIconName'));
     });
   }
+
+  test('Android switches to the renamed text and mosaic xerox aliases', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final names = <Object?>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'mSetAlternateIconName') {
+        names.add((call.arguments as Map)['iconName']);
+        return null;
+      }
+      throw MissingPluginException();
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    await service.change(AppIconChoice.text);
+    await service.change(AppIconChoice.mosaicXerox);
+    expect(names, ['MusaicText', 'MuasicMosaiclXerox']);
+  });
 }
