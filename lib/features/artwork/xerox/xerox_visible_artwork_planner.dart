@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/widgets.dart';
 
 import '../../canvas/album_grid_snapshot.dart';
+import '../source/artwork_image_resolver.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
 
@@ -19,8 +20,8 @@ class XeroxVisibleArtworkPlanner {
     required double scale,
     required double devicePixelRatio,
     required String Function(int row, int column) assetAt,
-    required Future<ImageProvider<Object>?> Function(String asset)
-    resolveImageProvider,
+    Future<ImageProvider<Object>?> Function(String asset)? resolveImageProvider,
+    Future<ResolvedArtwork?> Function(String asset)? resolveArtwork,
     String? selectedAsset,
     double selectedScale = 1.16,
     bool Function()? isActive,
@@ -64,10 +65,15 @@ class XeroxVisibleArtworkPlanner {
         final index = cursor++;
         if (index >= specs.length) return;
         final spec = specs[index];
-        final provider = await resolveImageProvider(spec.asset);
+        final artwork = resolveArtwork == null
+            ? null
+            : await resolveArtwork(spec.asset);
+        final provider = artwork?.image ??
+            await resolveImageProvider?.call(spec.asset);
         if (provider == null) continue;
         resolved[index] = XeroxRasterRequest(
-          identity: spec.asset,
+          identity: artwork?.identity ?? spec.asset,
+          sourceKey: artwork?.sourceKey ?? provider.toString(),
           image: provider,
           resolution: xeroxResolution(
             albumGridExtent * spec.scale * devicePixelRatio,

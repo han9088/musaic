@@ -66,7 +66,7 @@ Widget albumArtwork(
 
   return ArtworkImage(
     identity: source.identity,
-    sourceKey: source.cacheKey,
+    sourceKey: image.toString(),
     image: image,
     width: width,
     height: height,

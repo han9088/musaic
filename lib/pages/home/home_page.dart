@@ -18,6 +18,7 @@ import '../../features/canvas/album_canvas_viewport.dart';
 import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/visible_album_preloader.dart';
 import '../../features/artwork/artwork_image_provider.dart';
+import '../../features/artwork/source/artwork_image_resolver.dart';
 import '../../features/artwork/xerox/home_artwork_mode_controller.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
@@ -271,7 +272,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             : albums[gridAlbumIndex(row, column, albums.length)];
         return album['asset'] as String;
       },
-      resolveImageProvider: (asset) => resolveArtworkImageProvider(
+      resolveArtwork: (asset) => const ArtworkImageResolver().resolve(
         asset,
         directories: _sources.directories,
       ),

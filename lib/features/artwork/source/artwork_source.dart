@@ -31,7 +31,11 @@ class ArtworkSource {
   final ArtworkSourceType type;
   final String value;
 
-  String get identity => '${type.name}:$value';
+  String get identity => switch (type) {
+    ArtworkSourceType.asset || ArtworkSourceType.network => value,
+    ArtworkSourceType.directory => 'directory:$value',
+    ArtworkSourceType.placeholder => 'local:$value',
+  };
 
   /// Provider and disk-cache identity. Network URL changes naturally invalidate
   /// the old artwork; local source revisions are added by the resolver.

@@ -49,7 +49,7 @@ class ArtworkImageResolver {
     if (provider != null) {
       return ResolvedArtwork(
         identity: source.identity,
-        sourceKey: source.cacheKey,
+        sourceKey: provider.toString(),
         image: provider,
       );
     }
@@ -64,10 +64,11 @@ class ArtworkImageResolver {
 
     final file = File.fromUri(Uri.parse(uri));
     final version = jsonEncode(track.file.data);
+    final provider = FileImage(file);
     return ResolvedArtwork(
       identity: source.identity,
-      sourceKey: '${source.cacheKey}:$version:$uri',
-      image: FileImage(file),
+      sourceKey: '${provider.toString()}:$version:$uri',
+      image: provider,
     );
   }
 }
