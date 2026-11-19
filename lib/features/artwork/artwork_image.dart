@@ -2,7 +2,6 @@
 
 import 'dart:math' as math;
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 
 import 'pipeline/artwork_decode_policy.dart';
@@ -10,7 +9,6 @@ import 'pipeline/xerox_background_processor.dart';
 import 'xerox/xerox_artwork.dart';
 import 'xerox/xerox_raster_cache.dart';
 import 'xerox/xerox_raster_request.dart';
-import 'xerox/xerox_resolution.dart';
 
 /// 封装或定义封面图图片相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class ArtworkImage extends StatefulWidget {
@@ -33,6 +31,7 @@ class ArtworkImage extends StatefulWidget {
   });
 
   final String identity;
+
   /// Source revision used to invalidate stale Xerox cache entries.
   final String? sourceKey;
   final ImageProvider<Object> image;
