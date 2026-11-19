@@ -1,21 +1,74 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 
 import '../../services/music/directory_music_library.dart';
 import 'artwork_image.dart';
-import 'artwork_image_provider.dart';
-import 'artwork_file_provider_stub.dart'
-    if (dart.library.io) 'artwork_file_provider_io.dart' as file_provider;
+import 'source/artwork_image_resolver.dart';
 
-class DirectoryArtworkScope extends InheritedWidget {
+/// Subscribes once to directory track changes and fans revisions out to artwork.
+class DirectoryArtworkScope extends StatefulWidget {
   const DirectoryArtworkScope({
     super.key,
     required this.library,
+    required this.child,
+  });
+
+  final DirectoryMusicLibrary? library;
+  final Widget child;
+
+  @override
+  State<DirectoryArtworkScope> createState() => _DirectoryArtworkScopeState();
+}
+
+class _DirectoryArtworkScopeState extends State<DirectoryArtworkScope> {
+  VoidCallback? _unsubscribe;
+  int _revision = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(DirectoryArtworkScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.library != widget.library) _subscribe();
+  }
+
+  void _subscribe() {
+    _unsubscribe?.call();
+    _unsubscribe = widget.library?.tracks.subscribe((_) {
+      if (mounted) setState(() => _revision++);
+    });
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe?.call();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _DirectoryArtworkInherited(
+    library: widget.library,
+    revision: _revision,
+    child: widget.child,
+  );
+}
+
+class _DirectoryArtworkInherited extends InheritedWidget {
+  const _DirectoryArtworkInherited({
+    required this.library,
+    required this.revision,
     required super.child,
   });
+
   final DirectoryMusicLibrary? library;
+  final int revision;
+
   @override
-  bool updateShouldNotify(DirectoryArtworkScope oldWidget) =>
-      library != oldWidget.library;
+  bool updateShouldNotify(_DirectoryArtworkInherited oldWidget) =>
+      library != oldWidget.library || revision != oldWidget.revision;
 }
 
 class DirectoryArtwork extends StatefulWidget {
@@ -26,82 +79,77 @@ class DirectoryArtwork extends StatefulWidget {
     this.width,
     this.height,
     this.fit,
+    this.filterQuality = FilterQuality.medium,
     this.semanticLabel,
+    this.excludeFromSemantics = false,
     this.xerox = false,
     this.scale = 1,
-    this.filterQuality = FilterQuality.medium,
   });
+
   final String identity;
   final Widget placeholder;
-  final double? width, height;
+  final double? width;
+  final double? height;
   final BoxFit? fit;
+  final FilterQuality filterQuality;
   final String? semanticLabel;
+  final bool excludeFromSemantics;
   final bool xerox;
   final double scale;
-  final FilterQuality filterQuality;
+
   @override
   State<DirectoryArtwork> createState() => _DirectoryArtworkState();
 }
 
 class _DirectoryArtworkState extends State<DirectoryArtwork> {
-  Future<String?>? _image;
   DirectoryMusicLibrary? _library;
-  void Function()? _unsubscribe;
-  void _load() {
-    final library = _library;
-    final id = Uri.decodeComponent(
-      widget.identity.substring('directory:'.length),
+  int _revision = -1;
+  Future<ResolvedArtwork?>? _resolved;
+
+  void _resolve() {
+    _resolved = const ArtworkImageResolver().resolve(
+      widget.identity,
+      directories: _library,
     );
-    final track = library?.track(id);
-    _image = track == null ? Future.value() : library!.artwork(track);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final library = context
-        .dependOnInheritedWidgetOfExactType<DirectoryArtworkScope>()
-        ?.library;
-    if (library != _library || _image == null) {
-      _unsubscribe?.call();
+    final scope = context.dependOnInheritedWidgetOfExactType<
+        _DirectoryArtworkInherited>();
+    final library = scope?.library;
+    final revision = scope?.revision ?? 0;
+    if (library != _library || revision != _revision || _resolved == null) {
       _library = library;
-      _unsubscribe = library?.tracks.subscribe((_) {
-        if (mounted) setState(_load);
-      });
-      _load();
+      _revision = revision;
+      _resolve();
     }
   }
 
   @override
   void didUpdateWidget(DirectoryArtwork oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.identity != oldWidget.identity) _load();
+    if (oldWidget.identity != widget.identity) _resolve();
   }
 
   @override
-  void dispose() {
-    _unsubscribe?.call();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => FutureBuilder<String?>(
-    key: ValueKey(widget.identity),
-    future: _image,
+  Widget build(BuildContext context) => FutureBuilder<ResolvedArtwork?>(
+    key: ValueKey('${widget.identity}:$_revision'),
+    future: _resolved,
     builder: (context, snapshot) {
-      final uri = snapshot.data;
-      if (uri == null) return widget.placeholder;
-      final provider = file_provider.fileArtworkProvider(uri);
-      if (provider == null) return widget.placeholder;
+      final resolved = snapshot.data;
+      if (resolved == null) return widget.placeholder;
       return ArtworkImage(
-        key: ValueKey(widget.identity),
-        identity: widget.identity,
-        image: provider,
+        identity: resolved.identity,
+        sourceKey: resolved.sourceKey,
+        image: resolved.image,
         width: widget.width,
         height: widget.height,
         fit: widget.fit,
         filterQuality: widget.filterQuality,
         semanticLabel: widget.semanticLabel,
+        excludeFromSemantics: widget.excludeFromSemantics,
         xerox: widget.xerox,
         scale: widget.scale,
         errorBuilder: (_, error, stack) => widget.placeholder,

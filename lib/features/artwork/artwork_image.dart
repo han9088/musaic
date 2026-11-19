@@ -1,19 +1,22 @@
-import 'dart:async';
+import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart';
+import 'package:flutter/widgets.dart';
 
+import 'pipeline/artwork_decode_policy.dart';
+import 'pipeline/xerox_background_processor.dart';
+import 'xerox/xerox_artwork.dart';
 import 'xerox/xerox_raster_cache.dart';
 import 'xerox/xerox_raster_request.dart';
 import 'xerox/xerox_resolution.dart';
-import 'xerox/xerox_artwork.dart';
 
-/// Displays the original provider and opportunistically prepares its Xerox
-/// raster after the original has decoded successfully.
+/// Single display entry point for original and processed artwork.
 class ArtworkImage extends StatefulWidget {
   const ArtworkImage({
     super.key,
     required this.identity,
     required this.image,
+    this.sourceKey,
     this.width,
     this.height,
     this.fit,
@@ -23,9 +26,12 @@ class ArtworkImage extends StatefulWidget {
     this.xerox = false,
     this.scale = 1,
     this.errorBuilder,
+    this.xeroxCache,
+    this.backgroundProcessor,
   });
 
   final String identity;
+  final String? sourceKey;
   final ImageProvider<Object> image;
   final double? width;
   final double? height;
@@ -36,71 +42,31 @@ class ArtworkImage extends StatefulWidget {
   final bool xerox;
   final double scale;
   final ImageErrorWidgetBuilder? errorBuilder;
+  final XeroxRasterCache? xeroxCache;
+  final XeroxBackgroundProcessor? backgroundProcessor;
 
   @override
   State<ArtworkImage> createState() => _ArtworkImageState();
 }
 
 class _ArtworkImageState extends State<ArtworkImage> {
-  XeroxRasterKey? _preparingKey;
-  int _generation = 0;
-  XeroxRasterTask? _task;
+  int? _decodeResolution;
+  int? _xeroxResolution;
+  XeroxRasterKey? _lastBackgroundKey;
+
+  String get _sourceKey => widget.sourceKey ?? widget.image.toString();
 
   @override
   void didUpdateWidget(ArtworkImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
-        oldWidget.image.toString() != widget.image.toString()) {
-      _generation++;
-      _task?.cancel();
-      _task = null;
-      _preparingKey = null;
+        oldWidget.sourceKey != widget.sourceKey ||
+        oldWidget.image.toString() != widget.image.toString() ||
+        (oldWidget.xerox && !widget.xerox)) {
+      _decodeResolution = null;
+      _xeroxResolution = null;
+      _lastBackgroundKey = null;
     }
-  }
-
-  void _prepareInBackground(
-    XeroxRasterRequest request,
-    BuildContext context,
-  ) {
-    if (widget.xerox || _preparingKey == request.key) return;
-    _task?.cancel();
-    _task = null;
-    _preparingKey = request.key;
-    final generation = ++_generation;
-    unawaited(_prepare(request, context, generation));
-  }
-
-  Future<void> _prepare(
-    XeroxRasterRequest request,
-    BuildContext context,
-    int generation,
-  ) async {
-    XeroxRasterTask? task;
-    try {
-      await precacheImage(
-        ResizeImage(request.image, width: request.resolution),
-        context,
-        size: Size.square(request.resolution.toDouble()),
-      );
-      if (!mounted || generation != _generation) return;
-      task = XeroxRasterCache.instance.request(request);
-      _task = task;
-      final lease = await task.future;
-      lease.release();
-    } catch (_) {
-      // Background preparation is opportunistic. A later visible Xerox
-      // request retries through the same bounded raster cache.
-      if (mounted && generation == _generation) _preparingKey = null;
-    } finally {
-      if (identical(_task, task)) _task = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _generation++;
-    _task?.cancel();
-    super.dispose();
   }
 
   @override
@@ -108,6 +74,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
     if (widget.xerox) {
       return XeroxArtwork(
         identity: widget.identity,
+        sourceKey: _sourceKey,
         image: widget.image,
         width: widget.width,
         height: widget.height,
@@ -117,6 +84,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
         excludeFromSemantics: widget.excludeFromSemantics,
         scale: widget.scale,
         errorBuilder: widget.errorBuilder,
+        cache: widget.xeroxCache,
       );
     }
 
@@ -124,38 +92,59 @@ class _ArtworkImageState extends State<ArtworkImage> {
       builder: (context, constraints) {
         final width = widget.width ?? constraints.maxWidth;
         final height = widget.height ?? constraints.maxHeight;
-        final extent = width.isFinite && height.isFinite
-            ? (width > height ? width : height)
-            : width.isFinite
-            ? width
-            : height.isFinite
-            ? height
-            : 0.0;
+        final extent = math.max(
+          width.isFinite ? width : 100,
+          height.isFinite ? height : 100,
+        );
         final dpr = MediaQuery.devicePixelRatioOf(context);
-        final resolution = xeroxResolution(extent * widget.scale * dpr);
-        final request = XeroxRasterRequest(
+        final physicalExtent = extent * widget.scale * dpr;
+        final decodeResolution = artworkDecodeResolution(
+          physicalExtent,
+          current: _decodeResolution,
+        );
+        _decodeResolution = decodeResolution;
+
+        final rasterResolution = xeroxResolution(
+          physicalExtent,
+          current: _xeroxResolution,
+        );
+        _xeroxResolution = rasterResolution;
+        final rasterRequest = XeroxRasterRequest(
           identity: widget.identity,
+          sourceKey: _sourceKey,
           image: widget.image,
-          resolution: resolution,
-          fit: widget.fit ?? BoxFit.cover,
+          resolution: rasterResolution,
+          fit: widget.fit ?? BoxFit.scaleDown,
           devicePixelRatio: dpr,
         );
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _prepareInBackground(request, context);
-        });
 
         return Image(
-          image: ResizeImage(widget.image, width: resolution),
+          image: ResizeImage(
+            widget.image,
+            width: decodeResolution,
+            height: decodeResolution,
+          ),
           width: widget.width,
           height: widget.height,
           fit: widget.fit,
           filterQuality: widget.filterQuality,
-          gaplessPlayback: true,
-          semanticLabel: widget.excludeFromSemantics
-              ? null
-              : widget.semanticLabel,
+          semanticLabel: widget.semanticLabel,
           excludeFromSemantics: widget.excludeFromSemantics,
+          gaplessPlayback: true,
           errorBuilder: widget.errorBuilder,
+          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+            if ((frame != null || wasSynchronouslyLoaded) &&
+                _lastBackgroundKey != rasterRequest.key) {
+              _lastBackgroundKey = rasterRequest.key;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (!mounted || widget.xerox) return;
+                (widget.backgroundProcessor ??
+                        XeroxBackgroundProcessor.instance)
+                    .enqueue(rasterRequest);
+              });
+            }
+            return child;
+          },
         );
       },
     );

@@ -1,11 +1,12 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import 'artwork_image.dart';
-import 'artwork_image_provider.dart';
 import 'directory_artwork.dart';
+import 'artwork_image.dart';
+import 'source/artwork_image_resolver.dart';
+import 'source/artwork_source.dart';
 
-/// Artwork entry point. Source resolution is independent from presentation.
+/// Public artwork entry point. Source resolution is independent from rendering.
 Widget albumArtwork(
   String asset, {
   double? width,
@@ -17,13 +18,15 @@ Widget albumArtwork(
   bool xerox = false,
   double scale = 1,
 }) {
-  if (asset.startsWith('directory:')) {
+  final source = ArtworkSource.parse(asset);
+  if (source.isDirectory) {
     return DirectoryArtwork(
       identity: asset,
       width: width,
       height: height,
       fit: fit,
-      semanticLabel: excludeFromSemantics ? null : semanticLabel,
+      semanticLabel: semanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
       xerox: xerox,
       scale: scale,
       filterQuality: filterQuality,
@@ -36,8 +39,7 @@ Widget albumArtwork(
     );
   }
 
-  final image = ArtworkImageResolver.resolve(asset);
-  if (image == null) {
+  if (source.isPlaceholder) {
     return Semantics(
       label: excludeFromSemantics ? null : semanticLabel,
       excludeSemantics: excludeFromSemantics,
@@ -58,8 +60,12 @@ Widget albumArtwork(
     );
   }
 
+  final image = const ArtworkImageResolver().providerFor(source);
+  if (image == null) return const SizedBox.shrink();
+
   return ArtworkImage(
-    identity: asset,
+    identity: source.identity,
+    sourceKey: image.toString(),
     image: image,
     width: width,
     height: height,

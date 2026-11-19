@@ -16,6 +16,7 @@ class XeroxArtwork extends StatefulWidget {
     super.key,
     required this.identity,
     required this.image,
+    this.sourceKey,
     this.width,
     this.height,
     this.fit,
@@ -29,6 +30,7 @@ class XeroxArtwork extends StatefulWidget {
 
   final String identity;
   final ImageProvider<Object> image;
+  final String? sourceKey;
   final double? width;
   final double? height;
   final BoxFit? fit;
@@ -59,6 +61,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.identity != widget.identity ||
         oldWidget.image.toString() != widget.image.toString() ||
+        oldWidget.sourceKey != widget.sourceKey ||
         oldWidget.cache != widget.cache) {
       _generation++;
       _requestTimer?.cancel();
@@ -162,6 +165,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       final request = XeroxRasterRequest(
         identity: widget.identity,
         image: widget.image,
+        sourceKey: widget.sourceKey,
         resolution: resolution,
         fit: widget.fit ?? BoxFit.scaleDown,
         devicePixelRatio: dpr,
