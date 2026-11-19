@@ -149,7 +149,11 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         devicePixelRatio: dpr,
       );
 
-      final currentLease = _lease;
+      var currentLease = _lease;
+      if (currentLease == null) {
+        currentLease = _cache.tryAcquireBest(request);
+        if (currentLease != null) _lease = currentLease;
+      }
       final sameArtwork = currentLease?.key.sameArtwork(request.key) ?? false;
       final canKeepCurrent = sameArtwork &&
           currentLease!.resolution >= resolution;

@@ -89,17 +89,21 @@ class XeroxRasterCache {
   int get activeJobs => _activeJobs;
   int get queuedJobs => _queue.length;
 
-  XeroxRasterTask requestBest(XeroxRasterRequest request) {
+  /// Synchronously pins the best cached raster, if one is already available.
+  XeroxRasterLease? tryAcquireBest(XeroxRasterRequest request) {
     final best = _findBest(request);
-    if (best != null) {
-      final (key, entry) = best;
-      entry.references++;
-      _touch(key, entry);
-      return XeroxRasterTask.completed(
-        _lease(key, entry, key.resolution),
-      );
-    }
-    return this.request(request);
+    if (best == null) return null;
+    final (key, entry) = best;
+    entry.references++;
+    _touch(key, entry);
+    return _lease(key, entry, key.resolution);
+  }
+
+  XeroxRasterTask requestBest(XeroxRasterRequest request) {
+    final lease = tryAcquireBest(request);
+    return lease == null
+        ? this.request(request)
+        : XeroxRasterTask.completed(lease);
   }
 
   Future<XeroxRasterLease> acquireBest(XeroxRasterRequest request) =>
