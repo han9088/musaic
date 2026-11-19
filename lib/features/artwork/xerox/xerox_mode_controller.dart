@@ -7,7 +7,7 @@ import 'xerox_raster_request.dart';
 /// Owns the global Original/Xerox display mode and transition-time image pins.
 class XeroxModeController {
   XeroxModeController({XeroxJobScheduler? scheduler})
-    : scheduler = scheduler ?? const XeroxJobScheduler();
+    : scheduler = scheduler ?? XeroxJobScheduler();
 
   final XeroxJobScheduler scheduler;
   final _preparedLeases = <XeroxRasterLease>[];
