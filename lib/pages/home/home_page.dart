@@ -19,7 +19,6 @@ import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/visible_album_preloader.dart';
 import '../../features/artwork/artwork_image_provider.dart';
 import '../../features/artwork/xerox/home_artwork_mode_transition.dart';
-import '../../features/artwork/xerox/xerox_job_scheduler.dart';
 import '../../features/artwork/xerox/xerox_mode_controller.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';

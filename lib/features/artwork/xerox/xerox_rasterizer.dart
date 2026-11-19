@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/painting.dart';
 
 import 'xerox_raster_request.dart';
 import 'xerox_shader_renderer.dart';
