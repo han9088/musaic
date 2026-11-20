@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/features/cover_flow/cover_flow_motion.dart';
+import 'package:musaic/features/coverflow/coverflow_motion.dart';
 
 void main() {
   test('Cover Flow motion keeps settled position and tilt', () {

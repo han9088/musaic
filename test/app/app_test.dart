@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
-import 'package:musaic/features/cover_flow/album_cover_flow.dart';
+import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/canvas/selected_album.dart';
 

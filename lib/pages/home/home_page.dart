@@ -28,7 +28,7 @@ import '../../features/artwork/presentation/xerox_palette_picker.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
-import '../../features/cover_flow/album_cover_flow.dart';
+import '../../features/coverflow/album_coverflow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
 import '../../ui/transitions/source_tile_motion.dart';

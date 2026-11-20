@@ -8,7 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
 import '../canvas/album_grid_snapshot.dart';
-import '../cover_flow/cover_flow_geometry.dart';
+import '../coverflow/coverflow_geometry.dart';
 
 /// 封装或定义专辑布局过渡相关类型与行为，负责专辑墙布局切换及过渡效果。
 class AlbumLayoutTransition extends StatelessWidget {

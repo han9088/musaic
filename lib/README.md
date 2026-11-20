@@ -11,7 +11,7 @@ This is a map of ownership, not an additional runtime layer.
 ## Feature modules
 
 - `features/canvas/`: visible grid construction (`AlbumCanvasViewport`), touch state (`CanvasInteractionState`), pure drift update (`CanvasDrift`), grid snapshots, layout handoff state, and portrait tilt.
-- `features/cover_flow/`: the Cover Flow presentation, input adapters, swipe/settling numerical state (`CoverFlowMotion`), and shared cover geometry (`CoverFlowGeometry`).
+- `features/coverflow/`: the Cover Flow presentation, input adapters, swipe/settling numerical state (`CoverFlowMotion`), and shared cover geometry (`CoverFlowGeometry`).
 - `features/layout/`: temporary grid-to-Cover-Flow interpolation, presentation overlay, and layout switch affordance.
 - `features/artwork/`: asset/directory artwork dispatch, Xerox artwork widget, shader parameters/LOD/seed, and bounded visible-artwork preloading.
 - `features/music/catalog/`: provider-album mapping into existing presentation maps.

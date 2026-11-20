@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/features/cover_flow/album_cover_flow.dart';
+import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/services/album_haptics.dart';
 import 'package:musaic/services/album_tick_sound.dart';
 

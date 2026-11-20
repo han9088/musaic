@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/features/cover_flow/cover_flow_geometry.dart';
+import 'package:musaic/features/coverflow/coverflow_geometry.dart';
 
 void main() {
   test('geometry preserves selected-cover width and neighboring spacing', () {

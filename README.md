@@ -142,7 +142,7 @@ lib/
     home_sheet.dart            # Bottom handle and icon picker
     glass_icon_button.dart     # Button shared within the home page
     canvas/                    # Album grid, selection, sensor tilt, snapshots
-    cover_flow/                # CoverFlow rendering and scroll physics
+    coverflow/                # CoverFlow rendering and scroll physics
     playback/                  # Mock playback state and playback button
     layout/                    # Canvas/CoverFlow transitions and switch overlay
   services/                    # Album cache, haptics, tick audio, logging

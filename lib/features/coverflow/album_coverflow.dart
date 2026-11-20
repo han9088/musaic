@@ -9,9 +9,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
-import 'cover_flow_input.dart';
-import 'cover_flow_motion.dart';
-import 'cover_flow_geometry.dart';
+import 'coverflow_input.dart';
+import 'coverflow_motion.dart';
+import 'coverflow_geometry.dart';
 import '../../services/album_haptics.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
