@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/features/artwork/cache/artwork_network_cache_manager.dart';
+import 'package:musaic/features/artwork/cache/original_artwork_cache.dart';
 import 'package:musaic/features/artwork/model/artwork_identity.dart';
 import 'package:musaic/features/artwork/model/artwork_source.dart';
 
@@ -46,12 +46,12 @@ void main() {
   });
 
   test('network cache keys change when an explicit artwork version changes', () {
-    final first = ArtworkNetworkCacheManager.cacheKeyFor(
+    final first = OriginalArtworkCache.cacheKeyFor(
       url: 'https://example.com/cover.jpg',
       identity: 'apple:album:123',
       version: const ArtworkVersion('v1'),
     );
-    final second = ArtworkNetworkCacheManager.cacheKeyFor(
+    final second = OriginalArtworkCache.cacheKeyFor(
       url: 'https://example.com/cover.jpg',
       identity: 'apple:album:123',
       version: const ArtworkVersion('v2'),
@@ -59,7 +59,7 @@ void main() {
 
     expect(first, isNot(second));
     expect(
-      ArtworkNetworkCacheManager.cacheKeyFor(
+      OriginalArtworkCache.cacheKeyFor(
         url: 'https://example.com/cover.jpg',
         identity: 'https://example.com/cover.jpg',
       ),

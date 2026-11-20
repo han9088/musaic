@@ -3,7 +3,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/features/artwork/xerox/xerox_artwork.dart';
+import 'package:musaic/features/artwork/xerox/xerox_config.dart';
+import 'package:musaic/features/artwork/xerox/xerox_seed.dart';
+import 'package:musaic/features/artwork/pipeline/artwork_lod_manager.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
 

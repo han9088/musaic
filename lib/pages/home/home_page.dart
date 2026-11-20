@@ -19,7 +19,7 @@ import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
 import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
-import '../../features/artwork/source/artwork_resolver.dart';
+import '../../features/artwork/pipeline/artwork_pipeline.dart';
 import '../../features/artwork/model/artwork_identity.dart';
 import '../../features/artwork/model/artwork_request.dart';
 import '../../features/artwork/mode/artwork_mode_controller.dart';
@@ -346,7 +346,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final rawVersion = album['artworkVersion'] as String?;
         return rawVersion == null ? null : ArtworkVersion(rawVersion);
       },
-      resolveArtwork: (request) => const ArtworkResolver().resolveRequest(
+      resolveArtwork: (request) => ArtworkPipeline.instance.resolve(
         request,
         directories: _sources.directories,
       ),

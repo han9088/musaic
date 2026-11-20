@@ -3,7 +3,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/features/artwork/xerox/xerox_artwork.dart';
+import 'package:musaic/features/artwork/pipeline/artwork_pipeline.dart';
+import 'package:musaic/features/artwork/pipeline/xerox_raster_resource.dart';
 import 'package:musaic/features/artwork/xerox/xerox_job_scheduler.dart';
 import 'package:musaic/features/artwork/xerox/xerox_disk_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
@@ -11,6 +12,7 @@ import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
 import 'package:musaic/features/artwork/source/artwork_resolver.dart';
 import 'package:musaic/features/artwork/model/artwork_source.dart';
+import 'package:musaic/features/artwork/model/artwork_request.dart';
 import 'package:musaic/features/artwork/cache/artwork_memory_policy.dart';
 
 class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
@@ -112,15 +114,18 @@ XeroxRasterRequest _request(
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
-    'Artwork resolver keeps assets local and identifies network sources',
-    () {
+    'Artwork resolver resolves assets and identifies network sources',
+    () async {
       const resolver = ArtworkResolver();
       const assetReference = 'assets/albums/cover.png';
       const networkReference = 'https://example.com/artwork/album-1.jpg';
-      final asset = resolver.providerFor(ArtworkSource.parse(assetReference));
+      final asset = await resolver.resolveRequest(
+        const ArtworkRequest(source: assetReference),
+        directories: null,
+      );
       final network = ArtworkSource.parse(networkReference);
 
-      expect(asset, isA<AssetImage>());
+      expect(asset?.image, isA<AssetImage>());
       expect(network.type, ArtworkSourceType.network);
       expect(network.identity, networkReference);
     },
@@ -364,26 +369,23 @@ void main() {
   });
 
   testWidgets(
-    'XeroxArtwork displays the cached bitmap without an Image layer',
+    'Xerox resource exposes the cached bitmap without an Image layer',
     (tester) async {
       final cache = XeroxRasterCache(
         rasterizer: _FakeRasterizer(),
         diskCache: _MemoryXeroxDiskCache(),
       );
-      final provider = AssetImage('assets/prepared.png');
-      final prepared = await tester.runAsync(
-        () => cache.acquire(
-          XeroxRasterRequest(
-            identity: 'prepared',
-            image: provider,
-            resolution: 64,
-            fit: BoxFit.cover,
-            devicePixelRatio: 1,
-          ),
-        ),
+      final request = XeroxRasterRequest(
+        identity: 'prepared',
+        image: AssetImage('assets/prepared.png'),
+        resolution: 64,
+        fit: BoxFit.cover,
+        devicePixelRatio: 1,
       );
+      final prepared = await tester.runAsync(() => cache.acquire(request));
       expect(prepared, isNotNull);
 
+      final pipeline = ArtworkPipeline(rasterCache: cache);
       await tester.pumpWidget(
         MaterialApp(
           home: MediaQuery(
@@ -391,13 +393,17 @@ void main() {
             child: Center(
               child: SizedBox.square(
                 dimension: 64,
-                child: XeroxArtwork(
-                  identity: 'prepared',
-                  image: provider,
-                  width: 64,
-                  height: 64,
-                  fit: BoxFit.cover,
-                  cache: cache,
+                child: XeroxRasterResource(
+                  request: request,
+                  pipeline: pipeline,
+                  builder: (image, _) => image == null
+                      ? const SizedBox.shrink()
+                      : RawImage(
+                          image: image,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                        ),
                 ),
               ),
             ),
@@ -410,7 +416,7 @@ void main() {
       expect(find.byType(Image), findsNothing);
       expect(
         find.descendant(
-          of: find.byType(XeroxArtwork),
+          of: find.byType(XeroxRasterResource),
           matching: find.byType(CustomPaint),
         ),
         findsNothing,

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musaic/features/artwork/pipeline/artwork_decode_policy.dart';
+import 'package:musaic/features/artwork/pipeline/artwork_lod_manager.dart';
 
 void main() {
   test('selects discrete original-image decode sizes', () {

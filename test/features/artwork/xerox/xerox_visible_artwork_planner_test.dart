@@ -2,7 +2,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/artwork/model/artwork_identity.dart';
-import 'package:musaic/features/artwork/source/artwork_resolver.dart';
+import 'package:musaic/features/artwork/model/artwork_resource.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_visible_artwork_planner.dart';
 
@@ -33,7 +33,7 @@ void main() {
           row == 1 ? const ArtworkIdentity('album-center') : null,
       resolveArtwork: (request) async {
         final provider = AssetImage('assets/${request.source}.png');
-        return ResolvedArtwork(
+        return ArtworkResource(
           identity: request.identity?.value ?? request.source,
           sourceKey: provider.toString(),
           image: provider,
@@ -85,7 +85,7 @@ void main() {
           resolved++;
           active = false;
           final provider = AssetImage('assets/${request.source}.png');
-          return ResolvedArtwork(
+          return ArtworkResource(
             identity: request.identity?.value ?? request.source,
             sourceKey: provider.toString(),
             image: provider,

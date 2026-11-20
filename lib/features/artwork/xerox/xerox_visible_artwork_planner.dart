@@ -1,4 +1,4 @@
-// 文件职责：根据视口中的封面信息规划 Xerox 请求，并分配任务优先级。
+// 文件职责：根据视口中的封面请求生成 Xerox Raster 任务，并分配优先级。
 
 import 'dart:math' as math;
 
@@ -6,12 +6,11 @@ import 'package:flutter/widgets.dart';
 
 import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
-import '../pipeline/artwork_decode_policy.dart';
-import '../source/artwork_resolver.dart';
+import '../model/artwork_resource.dart';
+import '../pipeline/artwork_pipeline.dart';
 import 'xerox_raster_request.dart';
-import 'xerox_resolution.dart';
 
-/// 调用方提供可视 Tile、尺寸与封面映射，规划器不依赖页面或画布实现。
+/// 调用方提供可视 Tile、尺寸与封面映射；规划器不依赖页面或画布实现。
 class XeroxVisibleArtworkPlanner {
   const XeroxVisibleArtworkPlanner({this.maxProviderConcurrency = 4})
     : assert(maxProviderConcurrency > 0);
@@ -25,7 +24,7 @@ class XeroxVisibleArtworkPlanner {
     required double tileExtent,
     required double devicePixelRatio,
     required String Function(int row, int column) assetAt,
-    required Future<ResolvedArtwork?> Function(ArtworkRequest request)
+    required Future<ArtworkResource?> Function(ArtworkRequest request)
     resolveArtwork,
     ArtworkIdentity? Function(int row, int column)? identityAt,
     ArtworkVersion? Function(int row, int column)? versionAt,
@@ -141,21 +140,17 @@ class XeroxVisibleArtworkPlanner {
           devicePixelRatio: devicePixelRatio,
           fit: BoxFit.cover,
         );
-        final artwork = await resolveArtwork(request);
-        if (artwork == null) continue;
+        final resource = await resolveArtwork(request);
+        if (resource == null) continue;
 
-        final physicalExtent =
-            request.targetSize!.longestSide * request.devicePixelRatio;
-        resolved[index] = XeroxRasterRequest(
-          identity: artwork.identity,
-          sourceKey: artwork.sourceKey,
-          image: artwork.image,
-          resolution: xeroxResolution(physicalExtent),
-          originalDecodeResolution: artworkDecodeResolution(physicalExtent),
-          fit: request.fit,
+        final plan = ArtworkPipeline.instance.createDisplayPlan(
+          resource: resource,
+          targetSize: request.targetSize!,
           devicePixelRatio: request.devicePixelRatio,
+          fit: request.fit,
           priority: spec.priority,
         );
+        resolved[index] = plan.xeroxRequest;
       }
     }
 
