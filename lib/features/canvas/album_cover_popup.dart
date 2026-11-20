@@ -76,12 +76,15 @@ class _AlbumCoverPopup extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      final safe = MediaQuery.viewPaddingOf(context)
-          .deflateRect(Offset.zero & constraints.biggest);
-      final side = math.min(safe.shortestSide * 0.88, 440.0);
+      final size = constraints.biggest;
+      final padding = MediaQuery.viewPaddingOf(context);
+      final safeWidth = size.width - 2 * math.max(padding.left, padding.right);
+      final safeHeight =
+          size.height - 2 * math.max(padding.top, padding.bottom);
+      final side = math.min(math.min(safeWidth, safeHeight) * 0.88, 440.0);
       if (side <= 0) return const SizedBox.shrink();
       final square = Rect.fromCenter(
-        center: safe.center,
+        center: size.center(Offset.zero),
         width: side,
         height: side,
       );

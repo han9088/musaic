@@ -15,7 +15,7 @@ import 'portrait_tilt.dart';
 import 'selected_album.dart';
 
 /// 封装或定义专辑画布视口相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
-class AlbumCanvasViewport extends StatelessWidget {
+class AlbumCanvasViewport extends StatefulWidget {
   const AlbumCanvasViewport({
     super.key,
     required this.albums,
@@ -41,35 +41,49 @@ class AlbumCanvasViewport extends StatelessWidget {
   final void Function(int row, int column) onTileSelected;
   final Widget Function(int row, int column, Widget child) animateSourceTile;
 
+  @override
+  State<AlbumCanvasViewport> createState() => _AlbumCanvasViewportState();
+}
+
+class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
+  (int, int)? _popupCell;
+
   ArtworkIdentity? _artworkIdentityFor(Map<String, dynamic> album) {
     final id = album['id'] as String?;
     return id == null ? null : ArtworkIdentity(id);
   }
 
-  Future<void> _openAlbum(BuildContext source, int row, int col) {
-    final album = layout.albumAt(row, col, albums);
+  Future<void> _openAlbum(BuildContext source, int row, int col) async {
+    if (_popupCell != null) return;
+    final album = widget.layout.albumAt(row, col, widget.albums);
     final asset = album['asset'] as String;
     final title = album['title'] as String;
-    interaction.selectionPaused = true;
-    return showAlbumCoverPopup(
-      source: source,
-      artwork: albumArtwork(
-        asset,
-        artworkIdentity: _artworkIdentityFor(album),
-        fit: BoxFit.cover,
-        semanticLabel: title,
-        xerox: xerox,
-      ),
-      playButton: AlbumPlayButton(
-        asset: asset,
-        title: title,
-        playback: playback,
-      ),
-    );
+    widget.interaction.selectionPaused = true;
+    setState(() => _popupCell = (row, col));
+    try {
+      await showAlbumCoverPopup(
+        source: source,
+        artwork: albumArtwork(
+          asset,
+          artworkIdentity: _artworkIdentityFor(album),
+          fit: BoxFit.cover,
+          semanticLabel: title,
+          xerox: widget.xerox,
+        ),
+        playButton: AlbumPlayButton(
+          asset: asset,
+          title: title,
+          playback: widget.playback,
+          diameter: 64,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _popupCell = null);
+    }
   }
 
   Widget _tile(int row, int column) {
-    final album = layout.albumAt(row, column, albums);
+    final album = widget.layout.albumAt(row, column, widget.albums);
     final identity = _artworkIdentityFor(album);
     final asset = album['asset'] as String;
     final title = album['title'] as String;
@@ -79,17 +93,17 @@ class AlbumCanvasViewport extends StatelessWidget {
       top: row * albumGridExtent,
       width: albumGridExtent,
       height: albumGridExtent,
-      child: animateSourceTile(
+      child: widget.animateSourceTile(
         row,
         column,
         GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => onTileSelected(row, column),
+          onTap: () => widget.onTileSelected(row, column),
           child: albumArtwork(
             asset,
             artworkIdentity: identity,
             fit: BoxFit.cover,
-            xerox: xerox,
+            xerox: widget.xerox,
             fixedResolution: albumCanvasArtworkResolution,
             semanticLabel: title,
           ),
@@ -99,20 +113,20 @@ class AlbumCanvasViewport extends StatelessWidget {
   }
 
   Widget _selectedTile(int row, int column) {
-    final album = layout.albumAt(row, column, albums);
+    final album = widget.layout.albumAt(row, column, widget.albums);
     return Positioned(
       key: ValueKey(('selected', (row, column))),
       left: column * albumGridExtent,
       top: row * albumGridExtent,
       width: albumGridExtent,
       height: albumGridExtent,
-      child: animateSourceTile(
+      child: widget.animateSourceTile(
         row,
         column,
         SelectedAlbum(
           onOpen: (context) => _openAlbum(context, row, column),
-          playback: playback,
-          xerox: xerox,
+          playback: widget.playback,
+          xerox: widget.xerox,
           asset: album['asset'] as String,
           artworkIdentity: _artworkIdentityFor(album),
           title: album['title'] as String,
@@ -123,10 +137,16 @@ class AlbumCanvasViewport extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final interaction = widget.interaction;
+    final transform = widget.transform;
+    final popup = _popupCell;
+    final hiddenOffset = popup == null
+        ? null
+        : Offset(popup.$2 * albumGridExtent, popup.$1 * albumGridExtent);
     return PortraitTilt(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          onViewportSizeChanged(constraints.biggest);
+          widget.onViewportSizeChanged(constraints.biggest);
           final tiltPadding = PortraitTilt.viewportPadding(constraints.biggest);
           var tiles = const <(int, int), Widget>{};
           ({int left, int right, int top, int bottom})? previousBounds;
@@ -137,7 +157,7 @@ class AlbumCanvasViewport extends StatelessWidget {
             onPointerUp: (event) => interaction.pointerUp(event.pointer),
             onPointerCancel: (event) => interaction.pointerUp(event.pointer),
             child: IgnorePointer(
-              ignoring: interactionBlocked,
+              ignoring: widget.interactionBlocked || popup != null,
               child: InteractiveViewer.builder(
                 clipBehavior: Clip.none,
                 transformationController: transform,
@@ -170,7 +190,7 @@ class AlbumCanvasViewport extends StatelessWidget {
                     top: top,
                     bottom: bottom,
                   );
-                  final selected = layout.selectedAlbum;
+                  final selected = widget.layout.selectedAlbum;
                   if (bounds == previousBounds &&
                       selected == previousSelection) {
                     return previousCanvas!;
@@ -188,7 +208,8 @@ class AlbumCanvasViewport extends StatelessWidget {
                     size: constraints.biggest,
                     transform: transform,
                     tiltPadding: tiltPadding,
-                    isTransitioning: interactionBlocked,
+                    isTransitioning: widget.interactionBlocked,
+                    hiddenTileOffset: hiddenOffset,
                     tiles: tiles.values,
                     selected: selected == null
                         ? null

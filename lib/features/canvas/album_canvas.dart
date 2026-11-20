@@ -14,6 +14,7 @@ class AlbumCanvas extends Stack {
     required this.isTransitioning,
     required Iterable<Widget> tiles,
     Widget? selected,
+    this.hiddenTileOffset,
   }) : hasSelected = selected != null,
        super(
          clipBehavior: Clip.none,
@@ -28,28 +29,27 @@ class AlbumCanvas extends Stack {
   final TransformationController transform;
   final bool isTransitioning;
   final bool hasSelected;
+  final Offset? hiddenTileOffset;
 
   @override
-  RenderStack createRenderObject(BuildContext context) =>
-      _RenderAlbumCanvas(
-        textDirection: Directionality.maybeOf(context),
-        tiltPadding: tiltPadding,
-        transform: transform,
-        isTransitioning: isTransitioning,
-        hasSelected: hasSelected,
-      );
+  RenderStack createRenderObject(BuildContext context) => _RenderAlbumCanvas(
+    textDirection: Directionality.maybeOf(context),
+    tiltPadding: tiltPadding,
+    transform: transform,
+    isTransitioning: isTransitioning,
+    hasSelected: hasSelected,
+    hiddenTileOffset: hiddenTileOffset,
+  );
 
   @override
-  void updateRenderObject(
-    BuildContext context,
-    RenderStack renderObject,
-  ) {
+  void updateRenderObject(BuildContext context, RenderStack renderObject) {
     super.updateRenderObject(context, renderObject);
     (renderObject as _RenderAlbumCanvas)
       ..tiltPadding = tiltPadding
       ..transform = transform
       ..isTransitioning = isTransitioning
       ..hasSelected = hasSelected
+      ..hiddenTileOffset = hiddenTileOffset
       ..markNeedsPaint();
   }
 }
@@ -61,16 +61,18 @@ class _RenderAlbumCanvas extends RenderStack {
     required this.transform,
     required this.isTransitioning,
     required this.hasSelected,
+    required this.hiddenTileOffset,
   }) : super(clipBehavior: Clip.none);
 
   Offset tiltPadding;
   TransformationController transform;
   bool isTransitioning;
   bool hasSelected;
+  Offset? hiddenTileOffset;
 
   @override
   void paintStack(PaintingContext context, Offset offset) {
-    if (isTransitioning) {
+    if (isTransitioning && hiddenTileOffset == null) {
       super.paintStack(context, offset);
       return;
     }
@@ -88,8 +90,11 @@ class _RenderAlbumCanvas extends RenderStack {
     var tile = childAfter(firstChild!);
     while (tile != null) {
       final data = tile.parentData! as StackParentData;
-      if ((hasSelected && tile == lastChild) ||
-          viewport.overlaps(data.offset & tile.size)) {
+      // Both the grid tile and its lifted copy share this offset.
+      if (data.offset != hiddenTileOffset &&
+          (isTransitioning ||
+              (hasSelected && tile == lastChild) ||
+              viewport.overlaps(data.offset & tile.size))) {
         context.paintChild(tile, offset + data.offset);
       }
       tile = data.nextSibling;

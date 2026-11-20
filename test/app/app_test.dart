@@ -3,6 +3,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
 import 'package:musaic/features/coverflow/album_coverflow.dart';
+import 'package:musaic/features/canvas/album_canvas.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/canvas/selected_album.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
@@ -11,8 +12,10 @@ void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
+    tester.view.viewPadding = const FakeViewPadding(top: 62, bottom: 34);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetViewPadding);
     app.main();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -27,9 +30,12 @@ void main() {
     expect(controller.value.entry(0, 0), 1);
     expect(controller.value.entry(1, 1), 1);
     final popup = find.byKey(const ValueKey('album-cover-popup'));
-    Future<void> dismissAlbum() async {
+    AlbumCanvas canvas() =>
+        tester.widget<AlbumCanvas>(find.byType(AlbumCanvas));
+    Future<void> dismissAlbum(Offset hiddenOffset) async {
       await tester.tapAt(const Offset(16, 20));
       await tester.pump();
+      expect(canvas().hiddenTileOffset, hiddenOffset);
       await tester.pump(const Duration(milliseconds: 500));
       await tester.pump();
       expect(popup, findsNothing);
@@ -77,8 +83,12 @@ void main() {
     expect(liftedBounds.width, closeTo(originalWidth * 1.16, 0.001));
     expect(popup, findsNothing);
 
+    final sourceTile = tester.widget<Positioned>(source);
+    final hiddenOffset = Offset(sourceTile.left!, sourceTile.top!);
+    expect(canvas().hiddenTileOffset, isNull);
     await tester.tapAt(liftedBounds.topLeft + const Offset(12, 12));
     await tester.pump();
+    expect(canvas().hiddenTileOffset, hiddenOffset);
     expect(
       (tester.getTopLeft(popup) - liftedBounds.topLeft).distance,
       lessThan(0.001),
@@ -103,8 +113,22 @@ void main() {
     expect(tester.getSize(popup), const Size.square(352));
     expect(tester.getCenter(popup), const Offset(200, 400));
     expect(controller.value, selectedPosition);
-    await dismissAlbum();
+    final popupPlay = find.descendant(
+      of: popup,
+      matching: find.byIcon(PhosphorIcons.playFill),
+    );
+    expect(tester.getSize(popupPlay).width, greaterThan(32));
+    await tester.tap(popupPlay);
+    await tester.pump();
+    final popupPause = find.descendant(
+      of: popup,
+      matching: find.byIcon(PhosphorIcons.pauseFill),
+    );
+    await tester.tap(popupPause);
+    await tester.pump();
+    await dismissAlbum(hiddenOffset);
     expect(find.byType(SelectedAlbum), findsOneWidget);
+    expect(canvas().hiddenTileOffset, isNull);
     await tester.tap(
       find.descendant(
         of: find.byType(SelectedAlbum),
