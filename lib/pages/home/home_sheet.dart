@@ -26,6 +26,7 @@ class HomeSheet extends StatefulWidget {
     this.onSourceSelection,
     this.xeroxEnabled = false,
     this.onXeroxChanged,
+    this.xeroxPalettePicker,
   });
 
   final Widget child;
@@ -36,6 +37,7 @@ class HomeSheet extends StatefulWidget {
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final bool xeroxEnabled;
   final FutureOr<void> Function(bool enabled)? onXeroxChanged;
+  final Widget? xeroxPalettePicker;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -121,43 +123,50 @@ class _HomeSheetState extends State<HomeSheet> {
             if (kIsWeb) const FullscreenControl(),
             if (onXeroxChanged != null)
               StatefulBuilder(
-                builder: (context, setSheetState) => ListTile(
-                  key: const ValueKey('xerox-toggle'),
-                  selected: xeroxEnabled,
-                  leading: const Icon(
-                    PhosphorIcons.printer,
-                    color: Colors.white70,
-                  ),
-                  title: Text(
-                    AppLocalizations.of(context).xeroxMode,
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  trailing: xeroxPending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : xeroxEnabled
-                      ? const Icon(PhosphorIcons.check, color: Colors.white)
-                      : null,
-                  onTap: xeroxPending
-                      ? null
-                      : () async {
-                          final enabled = !xeroxEnabled;
-                          setSheetState(() => xeroxPending = true);
-                          try {
-                            await onXeroxChanged(enabled);
-                            if (context.mounted) {
-                              setSheetState(() => xeroxEnabled = enabled);
+                builder: (context, setSheetState) {
+                  final toggle = ListTile(
+                    key: const ValueKey('xerox-toggle'),
+                    selected: xeroxEnabled,
+                    leading: const Icon(
+                      PhosphorIcons.printer,
+                      color: Colors.white70,
+                    ),
+                    title: Text(
+                      AppLocalizations.of(context).xeroxMode,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    trailing: xeroxPending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : xeroxEnabled
+                        ? const Icon(PhosphorIcons.check, color: Colors.white)
+                        : null,
+                    onTap: xeroxPending
+                        ? null
+                        : () async {
+                            final enabled = !xeroxEnabled;
+                            setSheetState(() => xeroxPending = true);
+                            try {
+                              await onXeroxChanged(enabled);
+                              if (context.mounted) {
+                                setSheetState(() => xeroxEnabled = enabled);
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                setSheetState(() => xeroxPending = false);
+                              }
                             }
-                          } finally {
-                            if (context.mounted) {
-                              setSheetState(() => xeroxPending = false);
-                            }
-                          }
-                        },
-                ),
+                          },
+                  );
+                  final picker = widget.xeroxPalettePicker;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [toggle, if (xeroxEnabled && picker != null) picker],
+                  );
+                },
               ),
             AppIconPicker(icons: widget.icons),
           ],

@@ -75,5 +75,11 @@
   "enterFullscreen": "Enter fullscreen",
   "exitFullscreen": "Exit fullscreen",
   "fullscreenFailed": "Could not change fullscreen mode. Try again.",
-  "xeroxMode": "Xerox mode"
+  "xeroxMode": "Xerox mode",
+  "xeroxPaperColor": "Paper color",
+  "xeroxPaperOriginal": "Black and white",
+  "xeroxPaperIvory": "Warm ivory",
+  "xeroxPaperSand": "Light sand",
+  "xeroxPaperSage": "Sage",
+  "xeroxPaperMist": "Mist blue"
 }

@@ -345,6 +345,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Xerox 化'**
   String get xeroxMode;
+
+  /// No description provided for @xeroxPaperColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'纸色'**
+  String get xeroxPaperColor;
+
+  /// No description provided for @xeroxPaperOriginal.
+  ///
+  /// In zh, this message translates to:
+  /// **'黑白'**
+  String get xeroxPaperOriginal;
+
+  /// No description provided for @xeroxPaperIvory.
+  ///
+  /// In zh, this message translates to:
+  /// **'暖米白'**
+  String get xeroxPaperIvory;
+
+  /// No description provided for @xeroxPaperSand.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅沙色'**
+  String get xeroxPaperSand;
+
+  /// No description provided for @xeroxPaperSage.
+  ///
+  /// In zh, this message translates to:
+  /// **'灰绿'**
+  String get xeroxPaperSage;
+
+  /// No description provided for @xeroxPaperMist.
+  ///
+  /// In zh, this message translates to:
+  /// **'雾蓝'**
+  String get xeroxPaperMist;
 }
 
 class _AppLocalizationsDelegate

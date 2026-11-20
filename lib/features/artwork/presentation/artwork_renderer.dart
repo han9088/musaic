@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 
 import '../model/artwork_resource.dart';
 import '../pipeline/artwork_pipeline.dart';
+import 'xerox_palette.dart';
 
 /// 纯渲染组件：只消费原图资源、LOD 计划或已处理位图，不操作缓存和任务队列。
 class ArtworkRenderer extends StatelessWidget {
@@ -41,17 +42,21 @@ class ArtworkRenderer extends StatelessWidget {
     if (xerox) {
       final image = processedImage;
       if (image == null) return placeholder;
+      final bitmap = RawImage(
+        image: image,
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: filterQuality,
+      );
+      final filter = XeroxPaletteScope.of(context).filter;
       return Semantics(
         image: true,
         label: excludeFromSemantics ? null : semanticLabel,
         excludeSemantics: excludeFromSemantics,
-        child: RawImage(
-          image: image,
-          width: width,
-          height: height,
-          fit: fit,
-          filterQuality: filterQuality,
-        ),
+        child: filter == null
+            ? bitmap
+            : ColorFiltered(colorFilter: filter, child: bitmap),
       );
     }
 

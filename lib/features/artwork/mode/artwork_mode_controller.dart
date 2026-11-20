@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../ui/transitions/source_tile_motion.dart';
 import '../pipeline/artwork_prefetch_scheduler.dart';
+import '../presentation/xerox_palette.dart';
 import '../xerox/xerox_job_scheduler.dart';
 import '../xerox/xerox_raster_cache.dart';
 import '../xerox/xerox_raster_request.dart';
@@ -41,6 +42,7 @@ class ArtworkModeController {
   final XeroxJobScheduler scheduler;
   final ArtworkPrefetchScheduler _prefetchScheduler;
   final _preparedLeases = <XeroxRasterLease>[];
+  final palette = ValueNotifier(XeroxPalette.original);
   late final ArtworkModeTransition _transition;
 
   bool enabled = false;
@@ -176,6 +178,7 @@ class ArtworkModeController {
   }
 
   void dispose() {
+    palette.dispose();
     _transition.dispose();
     _releasePrepared();
   }

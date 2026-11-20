@@ -142,4 +142,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get xeroxMode => 'Xerox 化';
+
+  @override
+  String get xeroxPaperColor => '纸色';
+
+  @override
+  String get xeroxPaperOriginal => '黑白';
+
+  @override
+  String get xeroxPaperIvory => '暖米白';
+
+  @override
+  String get xeroxPaperSand => '浅沙色';
+
+  @override
+  String get xeroxPaperSage => '灰绿';
+
+  @override
+  String get xeroxPaperMist => '雾蓝';
 }

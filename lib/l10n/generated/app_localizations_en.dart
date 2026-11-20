@@ -150,4 +150,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get xeroxMode => 'Xerox mode';
+
+  @override
+  String get xeroxPaperColor => 'Paper color';
+
+  @override
+  String get xeroxPaperOriginal => 'Black and white';
+
+  @override
+  String get xeroxPaperIvory => 'Warm ivory';
+
+  @override
+  String get xeroxPaperSand => 'Light sand';
+
+  @override
+  String get xeroxPaperSage => 'Sage';
+
+  @override
+  String get xeroxPaperMist => 'Mist blue';
 }

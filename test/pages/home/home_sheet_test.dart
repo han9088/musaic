@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
+import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
+import 'package:musaic/features/artwork/presentation/xerox_palette_picker.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/app_icon_service.dart';
@@ -47,6 +49,8 @@ void main() {
     tester,
   ) async {
     var xeroxEnabled = false;
+    final palette = ValueNotifier(XeroxPalette.original);
+    addTearDown(palette.dispose);
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -56,6 +60,7 @@ void main() {
             child: HomeSheet(
               icons: const _Icons(),
               xeroxEnabled: xeroxEnabled,
+              xeroxPalettePicker: XeroxPalettePicker(selection: palette),
               onXeroxChanged: (enabled) =>
                   setState(() => xeroxEnabled = enabled),
               child: const ColoredBox(color: Colors.black),
@@ -79,14 +84,22 @@ void main() {
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
     expect(toggle, findsOneWidget);
     expect(tester.widget<ListTile>(toggle).selected, isFalse);
+    final ivory = find.byKey(const ValueKey(XeroxPalette.ivory));
+    expect(ivory, findsNothing);
     await tester.tap(toggle);
     await tester.pump();
     expect(xeroxEnabled, isTrue);
     expect(tester.widget<ListTile>(toggle).selected, isTrue);
+    await tester.ensureVisible(ivory);
+    await tester.tap(ivory);
+    await tester.pump();
+    expect(palette.value, XeroxPalette.ivory);
+    await tester.ensureVisible(toggle);
     await tester.tap(toggle);
     await tester.pump();
     expect(xeroxEnabled, isFalse);
     expect(tester.widget<ListTile>(toggle).selected, isFalse);
+    expect(ivory, findsNothing);
 
     sheet.dismiss();
     await tester.pumpAndSettle();

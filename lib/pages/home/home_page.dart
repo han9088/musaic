@@ -23,6 +23,8 @@ import '../../features/artwork/pipeline/artwork_pipeline.dart';
 import '../../features/artwork/model/artwork_identity.dart';
 import '../../features/artwork/model/artwork_request.dart';
 import '../../features/artwork/mode/artwork_mode_controller.dart';
+import '../../features/artwork/presentation/xerox_palette.dart';
+import '../../features/artwork/presentation/xerox_palette_picker.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
@@ -633,27 +635,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       onSourceSelection: _selectMusicSource,
       xeroxEnabled: _artworkMode.enabled,
       onXeroxChanged: _setXeroxMode,
+      xeroxPalettePicker: XeroxPalettePicker(selection: _artworkMode.palette),
       child: Scaffold(
         backgroundColor: const Color(0xff000000),
-        body: Builder(
-          builder: (context) {
-            final content = _buildAlbums();
-            if (defaultTargetPlatform != TargetPlatform.iOS &&
-                defaultTargetPlatform != TargetPlatform.macOS) {
-              return content;
-            }
-            return LayoutSwitchOverlay(
-              coverFlow: _landscape,
-              onSwitch: () {
-                if (_catalog == null || _catalog!.isEmpty) return;
-                setState(() {
-                  _manualLayout = !_landscape;
-                  _updateLayout(_manualLayout!);
-                });
-              },
-              child: content,
-            );
-          },
+        body: XeroxPaletteScope(
+          notifier: _artworkMode.palette,
+          child: Builder(
+            builder: (context) {
+              final content = _buildAlbums();
+              if (defaultTargetPlatform != TargetPlatform.iOS &&
+                  defaultTargetPlatform != TargetPlatform.macOS) {
+                return content;
+              }
+              return LayoutSwitchOverlay(
+                coverFlow: _landscape,
+                onSwitch: () {
+                  if (_catalog == null || _catalog!.isEmpty) return;
+                  setState(() {
+                    _manualLayout = !_landscape;
+                    _updateLayout(_manualLayout!);
+                  });
+                },
+                child: content,
+              );
+            },
+          ),
         ),
       ),
     );
