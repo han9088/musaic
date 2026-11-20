@@ -42,6 +42,106 @@ class _ControlledSensors extends SensorsPlatform {
 }
 
 void main() {
+  testWidgets('the entire visible tilted canvas accepts pans at minimum zoom', (
+    tester,
+  ) async {
+    final events = StreamController<AccelerometerEvent>.broadcast();
+    final oldSensors = SensorsPlatform.instance;
+    SensorsPlatform.instance = _ControlledSensors(events.stream);
+    final transform = TransformationController();
+    final interaction = CanvasInteractionState(CanvasDrift());
+    final playback = AlbumPlayback();
+    final selected = <(int, int)>[];
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() async {
+      SensorsPlatform.instance = oldSensors;
+      await events.close();
+      transform.dispose();
+      playback.dispose();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AlbumCanvasViewport(
+          albums: const [
+            {'asset': 'local:placeholder', 'title': 'Album'},
+          ],
+          layout: HomeAlbumLayoutState(),
+          transform: transform,
+          interaction: interaction,
+          playback: playback,
+          xerox: false,
+          interactionBlocked: false,
+          onViewportSizeChanged: (_) {},
+          onTileSelected: (row, column) => selected.add((row, column)),
+          animateSourceTile: (_, _, child) => child,
+        ),
+      ),
+    );
+    events.add(AccelerometerEvent(0, 0, 9.81, DateTime(2026)));
+    await tester.pump();
+    for (var i = 0; i < 20; i++) {
+      events.add(AccelerometerEvent(6.4, 2.5, 7, DateTime(2026)));
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    await tester.pump(const Duration(milliseconds: 180));
+
+    final missed = <String>[];
+    for (final x in [5.0, 18.0, 200.0, 382.0, 395.0]) {
+      for (final y in [11.0, 400.0, 722.0]) {
+        transform.value = Matrix4.diagonal3Values(0.4, 0.4, 0.4);
+        await tester.pump(const Duration(milliseconds: 16));
+        final touch = await tester.startGesture(Offset(x, y));
+        final pointerArrived = interaction.pressedPointers.isNotEmpty;
+        final inward = Offset(x > 200 ? -1 : 1, y > 400 ? -1 : 1);
+        await touch.moveBy(inward * 24);
+        await tester.pump(const Duration(milliseconds: 12));
+        await touch.moveBy(inward * 44);
+        await tester.pump(const Duration(milliseconds: 12));
+        final shift = transform.value.getTranslation().length;
+        if (shift < 4) missed.add('$x,$y pointer=$pointerArrived');
+        await touch.up();
+        await tester.pump();
+      }
+    }
+    expect(missed, isEmpty);
+
+    const edge = Offset(395, 722);
+    final projection = tester
+        .widget<Transform>(find.byKey(const ValueKey('portrait-sensor-plane')))
+        .transform;
+    final centered = Matrix4.translationValues(200, 400, 0)
+      ..multiply(projection)
+      ..translateByDouble(-200, -400, 0, 1);
+    final local = MatrixUtils.transformPoint(
+      Matrix4.inverted(PointerEvent.removePerspectiveTransform(centered)),
+      edge,
+    );
+    expect(local.dx, greaterThan(400));
+    // Put a cell boundary between the nominal viewport and the actual tap.
+    final shift = ((local.dx + 400) / 2) % 40;
+    transform.value = Matrix4.diagonal3Values(0.4, 0.4, 0.4)
+      ..setEntry(0, 3, shift);
+    await tester.pump();
+    await tester.tapAt(edge);
+    expect(selected, [
+      ((local.dy / 40).floor(), ((local.dx - shift) / 40).floor()),
+    ]);
+
+    final inner = await tester.startGesture(const Offset(205, 722));
+    final outer = await tester.startGesture(edge);
+    expect(interaction.pressedPointers, hasLength(2));
+    await inner.moveBy(const Offset(-35, 0));
+    await inner.moveBy(const Offset(-40, 0));
+    await tester.pump();
+    expect(transform.value.getColumn(0).length, greaterThan(0.45));
+    await outer.up();
+    await inner.up();
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   testWidgets(
     'the canvas retains overlapping covers while panning at minimum zoom',
     (tester) async {
@@ -96,7 +196,7 @@ void main() {
         reason: 'the tile window and decode tiers are stable',
       );
 
-      moveTo(0.4001, -34);
+      moveTo(0.4001, -120);
       await tester.pump();
       expect(coverBuilds, inExclusiveRange(0, initialBuilds ~/ 4));
       await tester.pumpWidget(const SizedBox.shrink());

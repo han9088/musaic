@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -57,9 +58,29 @@ class PortraitTilt extends StatefulWidget {
   /// 执行当前模块中的overscan操作，用于专辑墙无限画布的布局、视口与交互状态。
   static double overscan(Size size) => size.longestSide * 0.15 + 16;
 
+  static double _perspective(Size size) =>
+      math.min(0.0007, 0.6 / size.longestSide);
+
+  /// Bounds the inverse projection for every supported tilt angle.
+  static Offset viewportPadding(Size size) {
+    if (size.isEmpty) return Offset.zero;
+    final half = size.center(Offset.zero);
+    final maxAngle = PortraitTiltMotion.maxAngle;
+    final inverseCosine = 1 / math.cos(maxAngle);
+    final tangent = math.tan(maxAngle);
+    // Inverse projection divides by 1 minus a linear function of screen x/y.
+    final depth = Offset(half.dx * inverseCosine, half.dy).distance * tangent;
+    final inverseW = 1 / (1 - _perspective(size) * depth);
+    return Offset(
+      half.dx * inverseCosine * inverseW - half.dx,
+      (half.dy * inverseCosine + half.dx * tangent * tangent / 2) * inverseW -
+          half.dy,
+    );
+  }
+
   /// 执行当前模块中的projection操作，用于专辑墙无限画布的布局、视口与交互状态。
   static Matrix4 projection(Offset angle, Size size) => Matrix4.identity()
-    ..setEntry(3, 2, math.min(0.0007, 0.6 / size.longestSide))
+    ..setEntry(3, 2, _perspective(size))
     ..rotateX(angle.dx)
     ..rotateY(angle.dy);
 
@@ -179,7 +200,7 @@ class _PortraitTiltState extends State<PortraitTilt>
               ? const Duration(milliseconds: 160)
               : Duration.zero,
           curve: Curves.easeOutCubic,
-          child: RepaintBoundary(child: widget.child),
+          child: _TiltHitArea(child: RepaintBoundary(child: widget.child)),
           builder: (context, angle, child) => Transform(
             key: const ValueKey('portrait-sensor-plane'),
             alignment: Alignment.center,
@@ -190,4 +211,37 @@ class _PortraitTiltState extends State<PortraitTilt>
       ),
     );
   }
+}
+
+class _TiltHitArea extends SingleChildRenderObjectWidget {
+  const _TiltHitArea({required super.child});
+
+  @override
+  RenderProxyBox createRenderObject(BuildContext context) =>
+      _RenderTiltHitArea();
+}
+
+class _RenderTiltHitArea extends RenderProxyBox {
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (size.contains(position)) {
+      return super.hitTest(result, position: position);
+    }
+    if (size.shortestSide <= precisionErrorTolerance) return false;
+    final inside = Offset(
+      position.dx.clamp(0.0, size.width - precisionErrorTolerance),
+      position.dy.clamp(0.0, size.height - precisionErrorTolerance),
+    );
+    // Enter the viewport's gesture recognizer without changing event coordinates.
+    return super.hitTest(
+      TiltEdgeHitTestResult(result, position - inside),
+      position: inside,
+    );
+  }
+}
+
+class TiltEdgeHitTestResult extends BoxHitTestResult {
+  TiltEdgeHitTestResult(super.result, this.viewportDelta) : super.wrap();
+
+  final Offset viewportDelta;
 }

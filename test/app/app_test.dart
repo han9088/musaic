@@ -170,31 +170,31 @@ void main() {
           )
           .where((cell) => cell.width == 100)
           .toList();
-      final margin = PortraitTilt.overscan(const Size(400, 800));
+      final padding = PortraitTilt.viewportPadding(const Size(400, 800));
       final translation = controller.value.getTranslation();
       expect(
         covers
             .map((cell) => cell.left! * scale + translation.x)
             .reduce((a, b) => a < b ? a : b),
-        lessThanOrEqualTo(-margin),
+        lessThanOrEqualTo(-padding.dx),
       );
       expect(
         covers
             .map((cell) => (cell.left! + 100) * scale + translation.x)
             .reduce((a, b) => a > b ? a : b),
-        greaterThanOrEqualTo(400 + margin),
+        greaterThanOrEqualTo(400 + padding.dx),
       );
       expect(
         covers
             .map((cell) => cell.top! * scale + translation.y)
             .reduce((a, b) => a < b ? a : b),
-        lessThanOrEqualTo(-margin),
+        lessThanOrEqualTo(-padding.dy),
       );
       expect(
         covers
             .map((cell) => (cell.top! + 100) * scale + translation.y)
             .reduce((a, b) => a > b ? a : b),
-        greaterThanOrEqualTo(800 + margin),
+        greaterThanOrEqualTo(800 + padding.dy),
       );
       await tester.fling(viewer, const Offset(30, 0), 1800);
       final start = controller.value.entry(0, 3);

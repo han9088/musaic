@@ -10,12 +10,20 @@ void main() {
   test('overscanned album plane covers every screen corner at every tilt', () {
     for (final size in [
       const Size(390, 844),
+      const Size(400, 1800),
       const Size(768, 1024),
       const Size(1024, 2200),
+      const Size(2200, 1024),
     ]) {
       final center = size.center(Offset.zero);
       final screen = Offset.zero & size;
-      final painted = screen.inflate(PortraitTilt.overscan(size));
+      final padding = PortraitTilt.viewportPadding(size);
+      final painted = Rect.fromLTRB(
+        -padding.dx,
+        -padding.dy,
+        size.width + padding.dx,
+        size.height + padding.dy,
+      ).inflate(1e-6);
       for (var direction = 0; direction < 360; direction += 5) {
         final angle = Offset.fromDirection(
           direction * math.pi / 180,

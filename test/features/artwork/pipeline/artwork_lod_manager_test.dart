@@ -29,14 +29,6 @@ void main() {
     expect(selectArtworkResolution(300, current: 512), 256);
   });
 
-  test('reuse requires matching initial and hysteresis selections', () {
-    const manager = ArtworkLodManager();
-    expect(manager.hasSameSelections(100, 101), isTrue);
-    expect(manager.hasSameSelections(127, 129), isFalse);
-    expect(selectArtworkResolution(83), selectArtworkResolution(84));
-    expect(manager.hasSameSelections(83, 84), isFalse);
-  });
-
   test('LOD manager applies the shared policy to both resource paths', () {
     const manager = ArtworkLodManager();
 

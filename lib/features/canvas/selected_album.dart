@@ -6,6 +6,7 @@ import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
+import 'album_grid_snapshot.dart';
 
 /// 封装或定义选中专辑相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class SelectedAlbum extends StatefulWidget {
@@ -16,7 +17,6 @@ class SelectedAlbum extends StatefulWidget {
     required this.playback,
     required this.onOpen,
     this.xerox = false,
-    this.scale = 1,
     this.artworkIdentity,
   });
 
@@ -26,7 +26,6 @@ class SelectedAlbum extends StatefulWidget {
   final AlbumPlayback playback;
   final ValueChanged<BuildContext> onOpen;
   final bool xerox;
-  final double scale;
 
   @override
   State<SelectedAlbum> createState() => _SelectedAlbumState();
@@ -66,7 +65,7 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
                 fit: BoxFit.cover,
                 semanticLabel: widget.title,
                 xerox: widget.xerox,
-                scale: widget.scale * 1.16,
+                fixedResolution: albumCanvasArtworkResolution,
               ),
             ),
           ),

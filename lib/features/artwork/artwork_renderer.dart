@@ -20,6 +20,7 @@ Widget albumArtwork(
   bool excludeFromSemantics = false,
   bool xerox = false,
   double scale = 1,
+  int? fixedResolution,
   ArtworkIdentity? artworkIdentity,
   ArtworkVersion? artworkVersion,
 }) {
@@ -49,6 +50,7 @@ Widget albumArtwork(
       source: asset,
       identity: artworkIdentity,
       version: artworkVersion,
+      fixedResolution: fixedResolution,
     ),
     placeholder: placeholder,
     width: width,

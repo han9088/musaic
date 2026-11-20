@@ -13,6 +13,7 @@ class ArtworkRequest {
     this.identity,
     this.version,
     this.targetSize,
+    this.fixedResolution,
     this.devicePixelRatio = 1,
     this.fit = BoxFit.cover,
   });
@@ -29,6 +30,9 @@ class ArtworkRequest {
   /// 目标逻辑尺寸；解码层会结合 DPR 选择离散 LOD。
   final Size? targetSize;
 
+  /// 固定解码和 Xerox 位图的像素尺寸，适用于可连续缩放的专辑墙。
+  final int? fixedResolution;
+
   final double devicePixelRatio;
   final BoxFit fit;
 
@@ -39,6 +43,7 @@ class ArtworkRequest {
       identity == other.identity &&
       version == other.version &&
       targetSize == other.targetSize &&
+      fixedResolution == other.fixedResolution &&
       devicePixelRatio == other.devicePixelRatio &&
       fit == other.fit;
 
@@ -48,6 +53,7 @@ class ArtworkRequest {
     identity,
     version,
     targetSize,
+    fixedResolution,
     devicePixelRatio,
     fit,
   );

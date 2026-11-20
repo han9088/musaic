@@ -98,6 +98,34 @@ void main() {
     expect(resolved, 1);
   });
 
+  test('fixed-tier preparation shares the selected and grid cover key', () async {
+    var resolved = 0;
+    final requests = await const XeroxVisibleArtworkPlanner().build(
+      cells: [
+        (row: 0, column: 0, rect: const Rect.fromLTWH(0, 0, 100, 100)),
+      ],
+      viewport: const Size.square(200),
+      scale: 2.5,
+      tileExtent: 100,
+      devicePixelRatio: 3,
+      fixedResolution: 256,
+      assetAt: (_, _) => 'cover',
+      selectedAsset: 'cover',
+      resolveArtwork: (request) async {
+        resolved++;
+        return ArtworkResource(
+          identity: request.source,
+          sourceKey: request.source,
+          image: const AssetImage('cover'),
+        );
+      },
+    );
+    expect(resolved, 1);
+    expect(requests.single.priority, XeroxRasterPriority.selected);
+    expect(requests.single.originalDecodeResolution, 256);
+    expect(requests.single.resolution, 256);
+  });
+
   for (final brokenRow in [0, 1]) {
     test(
       'planner tolerates only offscreen resolution failure: $brokenRow',

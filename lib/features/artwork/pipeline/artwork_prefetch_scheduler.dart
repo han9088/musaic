@@ -119,11 +119,9 @@ class ArtworkPrefetchScheduler {
       );
       if (!context.mounted || !isActive() || resource == null) return;
 
-      final physicalExtent =
-          targetSize.longestSide * request.devicePixelRatio;
-      final resolution = ArtworkLodManager.instance
-          .select(physicalExtent)
-          .originalDecodeResolution;
+      final physicalExtent = targetSize.longestSide * request.devicePixelRatio;
+      final resolution =
+          request.fixedResolution ?? selectArtworkResolution(physicalExtent);
       await precacheImage(
         ResizeImage(
           resource.image,

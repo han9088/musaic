@@ -4,7 +4,6 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
-import '../artwork/pipeline/artwork_lod_manager.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 import 'album_canvas.dart';
@@ -69,34 +68,58 @@ class AlbumCanvasViewport extends StatelessWidget {
     );
   }
 
-  Widget _tile(int row, int column, double scale) => Positioned(
-    key: ValueKey((row, column)),
-    left: column * albumGridExtent,
-    top: row * albumGridExtent,
-    width: albumGridExtent,
-    height: albumGridExtent,
-    child: animateSourceTile(
-      row,
-      column,
-      Builder(
-        builder: (context) {
-          final album = layout.albumAt(row, column, albums);
-          return GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => onTileSelected(row, column),
-            child: albumArtwork(
-              album['asset'] as String,
-              artworkIdentity: _artworkIdentityFor(album),
-              fit: BoxFit.cover,
-              xerox: xerox,
-              scale: scale,
-              semanticLabel: album['title'] as String,
-            ),
-          );
-        },
+  Widget _tile(int row, int column) {
+    final album = layout.albumAt(row, column, albums);
+    final identity = _artworkIdentityFor(album);
+    final asset = album['asset'] as String;
+    final title = album['title'] as String;
+    return Positioned(
+      key: ValueKey((row, column)),
+      left: column * albumGridExtent,
+      top: row * albumGridExtent,
+      width: albumGridExtent,
+      height: albumGridExtent,
+      child: animateSourceTile(
+        row,
+        column,
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => onTileSelected(row, column),
+          child: albumArtwork(
+            asset,
+            artworkIdentity: identity,
+            fit: BoxFit.cover,
+            xerox: xerox,
+            fixedResolution: albumCanvasArtworkResolution,
+            semanticLabel: title,
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _selectedTile(int row, int column) {
+    final album = layout.albumAt(row, column, albums);
+    return Positioned(
+      key: ValueKey(('selected', (row, column))),
+      left: column * albumGridExtent,
+      top: row * albumGridExtent,
+      width: albumGridExtent,
+      height: albumGridExtent,
+      child: animateSourceTile(
+        row,
+        column,
+        SelectedAlbum(
+          onOpen: (context) => _openAlbum(context, row, column),
+          playback: playback,
+          xerox: xerox,
+          asset: album['asset'] as String,
+          artworkIdentity: _artworkIdentityFor(album),
+          title: album['title'] as String,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,12 +127,10 @@ class AlbumCanvasViewport extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           onViewportSizeChanged(constraints.biggest);
-          final dpr = MediaQuery.devicePixelRatioOf(context);
+          final tiltPadding = PortraitTilt.viewportPadding(constraints.biggest);
           var tiles = const <(int, int), Widget>{};
           ({int left, int right, int top, int bottom})? previousBounds;
-          double? previousExtent;
           (int, int)? previousSelection;
-          double? previousSelectionScale;
           AlbumCanvas? previousCanvas;
           return Listener(
             onPointerDown: (event) => interaction.pointerDown(event.pointer),
@@ -131,102 +152,47 @@ class AlbumCanvasViewport extends StatelessWidget {
                 builder: (context, viewport) {
                   final rect = viewport;
                   final scale = transform.value.getColumn(0).length;
-                  final margin =
-                      PortraitTilt.overscan(constraints.biggest) / scale;
-                  final left =
-                      ((rect.point0.x - margin) / albumGridExtent).floor() - 1;
-                  final right =
-                      ((rect.point2.x + margin) / albumGridExtent).ceil() + 1;
-                  final top =
-                      ((rect.point0.y - margin) / albumGridExtent).floor() - 1;
-                  final bottom =
-                      ((rect.point2.y + margin) / albumGridExtent).ceil() + 1;
+                  final padding = tiltPadding / scale;
+                  final previous = previousBounds;
+                  final (left, right) = _mountedRange(
+                    ((rect.point0.x - padding.dx) / albumGridExtent).floor(),
+                    ((rect.point2.x + padding.dx) / albumGridExtent).floor(),
+                    previous == null ? null : (previous.left, previous.right),
+                  );
+                  final (top, bottom) = _mountedRange(
+                    ((rect.point0.y - padding.dy) / albumGridExtent).floor(),
+                    ((rect.point2.y + padding.dy) / albumGridExtent).floor(),
+                    previous == null ? null : (previous.top, previous.bottom),
+                  );
                   final bounds = (
                     left: left,
                     right: right,
                     top: top,
                     bottom: bottom,
                   );
-                  final extent = albumGridExtent * scale * dpr;
-                  final lastExtent = previousExtent;
-                  final sameLod =
-                      lastExtent != null &&
-                      ArtworkLodManager.instance.hasSameSelections(
-                        lastExtent,
-                        extent,
-                      );
                   final selected = layout.selectedAlbum;
-                  if (sameLod &&
-                      bounds == previousBounds &&
-                      selected == previousSelection &&
-                      (selected == null || previousSelectionScale == scale)) {
+                  if (bounds == previousBounds &&
+                      selected == previousSelection) {
                     return previousCanvas!;
                   }
-
-                  final retained = sameLod
-                      ? tiles
-                      : const <(int, int), Widget>{};
-                  tiles = {
-                    for (var row = top; row <= bottom; row++)
-                      for (var col = left; col <= right; col++)
-                        (row, col):
-                            retained[(row, col)] ?? _tile(row, col, scale),
-                  };
+                  if (bounds != previousBounds) {
+                    tiles = {
+                      for (var row = bounds.top; row <= bounds.bottom; row++)
+                        for (var col = bounds.left; col <= bounds.right; col++)
+                          (row, col): tiles[(row, col)] ?? _tile(row, col),
+                    };
+                  }
                   previousBounds = bounds;
-                  previousExtent = extent;
                   previousSelection = selected;
-                  previousSelectionScale = scale;
                   return previousCanvas = AlbumCanvas(
                     size: constraints.biggest,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ...tiles.values,
-                        if (selected != null)
-                          Positioned(
-                            key: ValueKey(('selected', selected)),
-                            left: selected.$2 * albumGridExtent,
-                            top: selected.$1 * albumGridExtent,
-                            width: albumGridExtent,
-                            height: albumGridExtent,
-                            child: animateSourceTile(
-                              selected.$1,
-                              selected.$2,
-                              SelectedAlbum(
-                                onOpen: (context) => _openAlbum(
-                                  context,
-                                  selected.$1,
-                                  selected.$2,
-                                ),
-                                playback: playback,
-                                xerox: xerox,
-                                scale: scale,
-                                asset:
-                                    layout.albumAt(
-                                          selected.$1,
-                                          selected.$2,
-                                          albums,
-                                        )['asset']
-                                        as String,
-                                artworkIdentity: _artworkIdentityFor(
-                                  layout.albumAt(
-                                    selected.$1,
-                                    selected.$2,
-                                    albums,
-                                  ),
-                                ),
-                                title:
-                                    layout.albumAt(
-                                          selected.$1,
-                                          selected.$2,
-                                          albums,
-                                        )['title']
-                                        as String,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
+                    transform: transform,
+                    tiltPadding: tiltPadding,
+                    isTransitioning: interactionBlocked,
+                    tiles: tiles.values,
+                    selected: selected == null
+                        ? null
+                        : _selectedTile(selected.$1, selected.$2),
                   );
                 },
               ),
@@ -236,4 +202,20 @@ class AlbumCanvasViewport extends StatelessWidget {
       ),
     );
   }
+}
+
+// Moving past one guard ring edge does not reload the other axis.
+(int, int) _mountedRange(int first, int last, (int, int)? previous) {
+  const guard = 2;
+  final span = last - first + guard * 2;
+  if (previous != null) {
+    final (start, end) = previous;
+    if (end - start <= span + 1) {
+      if (start < first && end > last) return previous;
+      // Add the approaching row or column while the last buffered one is ready.
+      if (start < first) return (last + 1 - span, last + 1);
+      if (end > last) return (first - 1, first - 1 + span);
+    }
+  }
+  return (first - guard, last + guard);
 }

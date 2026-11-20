@@ -119,6 +119,13 @@ class XeroxRasterCache {
   /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get cachedEntries => _entries.length;
 
+  bool refreshIfCached(XeroxRasterKey key) {
+    final entry = _entries[key];
+    if (entry == null) return false;
+    _touch(key, entry);
+    return true;
+  }
+
   /// 执行当前模块中的activejobs操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get activeJobs => _activeJobs;
 

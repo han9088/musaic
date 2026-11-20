@@ -180,7 +180,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           albums: target,
           cells: snapshot.cells,
           isActive: () => mounted,
-          scale: _transform.value.getColumn(0).length,
         );
       }
       if (!mounted) return;
@@ -259,7 +258,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     required List<Map<String, dynamic>> albums,
     required List<({int row, int column, Rect rect})> cells,
     required bool Function() isActive,
-    required double scale,
   }) async {
     if (albums.isEmpty || cells.isEmpty) return;
     final dpr = MediaQuery.devicePixelRatioOf(context);
@@ -276,7 +274,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           source: source,
           identity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
           version: rawVersion == null ? null : ArtworkVersion(rawVersion),
-          targetSize: Size.square(albumGridExtent * scale),
+          targetSize: const Size.square(albumGridExtent),
+          fixedResolution: albumCanvasArtworkResolution,
           devicePixelRatio: dpr,
           fit: BoxFit.cover,
         ),
@@ -327,6 +326,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       viewport: _portraitSize ?? MediaQuery.sizeOf(context),
       scale: _transform.value.getColumn(0).length,
       tileExtent: albumGridExtent,
+      fixedResolution: albumCanvasArtworkResolution,
       devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       assetAt: (row, column) {
         final album = useLayout

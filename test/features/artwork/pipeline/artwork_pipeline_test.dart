@@ -62,6 +62,30 @@ void main() {
     expect(plan.xeroxRequest.resolution, 512);
   });
 
+  test('a fixed cover tier keeps one decode and Xerox key between zooms', () {
+    final plans = [
+      for (final zoom in [0.4, 1.0, 2.5])
+        ArtworkPipeline.instance.createDisplayPlan(
+          resource: resource,
+          targetSize: const Size.square(100),
+          devicePixelRatio: 3,
+          scale: zoom,
+          currentOriginalDecodeResolution: 128,
+          currentXeroxResolution: 512,
+          fixedResolution: 256,
+        ),
+    ];
+    expect(
+      plans.map((plan) => plan.originalDecodeResolution),
+      everyElement(256),
+    );
+    expect(
+      plans.map((plan) => plan.xeroxRequest.resolution),
+      everyElement(256),
+    );
+    expect(plans.map((plan) => plan.xeroxRequest.key).toSet(), hasLength(1));
+  });
+
   test('Xerox can use a 1024px source decode and produce a 512px raster', () {
     final plan = ArtworkPipeline.instance.createDisplayPlan(
       resource: resource,

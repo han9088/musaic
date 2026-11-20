@@ -135,22 +135,8 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
     processedImage: processedImage,
   );
 
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final width = widget.width ?? constraints.maxWidth;
-      final height = widget.height ?? constraints.maxHeight;
-      final extent = width.isFinite && height.isFinite
-          ? (width > height ? width : height)
-          : width.isFinite
-          ? width
-          : height.isFinite
-          ? height
-          : 100.0;
-      final targetSize = Size.square(extent > 0 ? extent : 100);
-      final dpr = MediaQuery.devicePixelRatioOf(context);
-
-      return FutureBuilder<ArtworkResource?>(
+  Widget _resourceView(double dpr, Size targetSize) =>
+      FutureBuilder<ArtworkResource?>(
         key: ValueKey(_resourceRevision),
         future: _resourceLease?.future,
         builder: (context, snapshot) {
@@ -165,6 +151,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
             fit: widget.fit ?? BoxFit.scaleDown,
             currentOriginalDecodeResolution: _originalDecodeResolution,
             currentXeroxResolution: _xeroxResolution,
+            fixedResolution: widget.request.fixedResolution,
             priority: widget.xerox
                 ? XeroxRasterPriority.visible
                 : XeroxRasterPriority.background,
@@ -183,6 +170,26 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
           );
         },
       );
-    },
-  );
+
+  @override
+  Widget build(BuildContext context) {
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    if (widget.request.fixedResolution != null) {
+      return _resourceView(dpr, Size.zero);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = widget.width ?? constraints.maxWidth;
+        final height = widget.height ?? constraints.maxHeight;
+        final extent = width.isFinite && height.isFinite
+            ? (width > height ? width : height)
+            : width.isFinite
+            ? width
+            : height.isFinite
+            ? height
+            : 100.0;
+        return _resourceView(dpr, Size.square(extent > 0 ? extent : 100));
+      },
+    );
+  }
 }

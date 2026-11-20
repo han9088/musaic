@@ -95,18 +95,20 @@ class ArtworkPipeline {
     final key = (request, directories, directoryRevision);
     var entry = _displayed[key];
     if (entry == null || (entry.completed && entry.resource == null)) {
-      final resolution = resolve(request, directories: directories);
-      if (resolution is SynchronousFuture<ArtworkResource?>) {
-        return ArtworkResourceLease._(resolution);
+      entry = _DisplayedArtwork(resolve(request, directories: directories));
+      if (entry.completed && entry.resource == null) {
+        return ArtworkResourceLease._(entry.pending);
       }
-      entry = _DisplayedArtwork(resolution);
       _displayed[key] = entry;
     }
     final displayed = entry;
     displayed.references++;
     final resource = displayed.resource;
     return ArtworkResourceLease._(
-      resource == null ? displayed.pending : SynchronousFuture(resource),
+      resource == null ||
+              displayed.pending is SynchronousFuture<ArtworkResource?>
+          ? displayed.pending
+          : SynchronousFuture(resource),
       () {
         if (--displayed.references == 0 &&
             identical(_displayed[key], displayed)) {
@@ -165,15 +167,21 @@ class ArtworkPipeline {
     BoxFit fit = BoxFit.cover,
     int? currentOriginalDecodeResolution,
     int? currentXeroxResolution,
+    int? fixedResolution,
     XeroxRasterPriority priority = XeroxRasterPriority.background,
   }) {
     final extent = math.max(targetSize.width, targetSize.height).toDouble();
     final physicalExtent = extent * scale * devicePixelRatio;
-    final lod = _lodManager.select(
-      physicalExtent,
-      currentOriginalDecodeResolution: currentOriginalDecodeResolution,
-      currentXeroxResolution: currentXeroxResolution,
-    );
+    final lod = fixedResolution == null
+        ? _lodManager.select(
+            physicalExtent,
+            currentOriginalDecodeResolution: currentOriginalDecodeResolution,
+            currentXeroxResolution: currentXeroxResolution,
+          )
+        : ArtworkLodSelection(
+            originalDecodeResolution: fixedResolution,
+            xeroxResolution: fixedResolution,
+          );
     return ArtworkDisplayPlan(
       originalDecodeResolution: lod.originalDecodeResolution,
       xeroxRequest: XeroxRasterRequest(

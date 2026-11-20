@@ -19,7 +19,7 @@ class XeroxBackgroundProcessor {
 
   /// 相同请求只入队一次；默认后台优先级不会挤占当前可视区域的准备任务。
   void enqueue(XeroxRasterRequest request) {
-    if (!_pending.add(request.key)) return;
+    if (_cache.refreshIfCached(request.key) || !_pending.add(request.key)) return;
     final task = _cache.request(request);
     unawaited(_consume(task, request.key));
   }

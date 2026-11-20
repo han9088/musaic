@@ -23,6 +23,7 @@ class XeroxVisibleArtworkPlanner {
     required double scale,
     required double tileExtent,
     required double devicePixelRatio,
+    int? fixedResolution,
     required String Function(int row, int column) assetAt,
     required Future<ArtworkResource?> Function(ArtworkRequest request)
     resolveArtwork,
@@ -59,7 +60,7 @@ class XeroxVisibleArtworkPlanner {
     ) {
       final key = (
         asset: asset,
-        scale: artworkScale,
+        scale: fixedResolution == null ? artworkScale : 1.0,
         identity: identity,
         version: version,
       );
@@ -80,7 +81,7 @@ class XeroxVisibleArtworkPlanner {
       specIndexes[key] = specs.length;
       specs.add((
         asset: asset,
-        scale: artworkScale,
+        scale: key.scale,
         identity: identity,
         version: version,
         priority: priority,
@@ -138,6 +139,7 @@ class XeroxVisibleArtworkPlanner {
           version: spec.version,
           targetSize: Size.square(tileExtent * spec.scale),
           devicePixelRatio: devicePixelRatio,
+          fixedResolution: fixedResolution,
           fit: BoxFit.cover,
         );
         ArtworkResource? resource;
@@ -155,6 +157,7 @@ class XeroxVisibleArtworkPlanner {
           devicePixelRatio: request.devicePixelRatio,
           fit: request.fit,
           priority: spec.priority,
+          fixedResolution: request.fixedResolution,
         );
         resolved[index] = plan.xeroxRequest;
       }

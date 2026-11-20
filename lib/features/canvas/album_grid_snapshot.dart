@@ -3,6 +3,7 @@
 import 'package:material_ui/material_ui.dart';
 
 const albumGridExtent = 100.0;
+const albumCanvasArtworkResolution = 256;
 
 /// 执行当前模块中的网格专辑索引操作，用于专辑墙无限画布的布局、视口与交互状态。
 int gridAlbumIndex(int row, int column, int count) =>
