@@ -11,12 +11,10 @@ enum ArtworkModeTransitionPhase { exit, handoff, enter }
 class ArtworkModeTransition {
   ArtworkModeTransition({
     required TickerProvider vsync,
-    required bool Function() isMounted,
-    required VoidCallback notifyChanged,
-    required VoidCallback onMotionChanged,
-  }) : _isMounted = isMounted,
-       _notifyChanged = notifyChanged,
-       _onMotionChanged = onMotionChanged {
+    required this._isMounted,
+    required this._notifyChanged,
+    required this._onMotionChanged,
+  }) {
     timeline = AnimationController(vsync: vsync)
       ..addListener(_advance)
       ..addStatusListener(_handleStatus);
@@ -39,16 +37,18 @@ class ArtworkModeTransition {
   bool get isActive => phase != null || _completer != null;
 
   Future<void> start({
-    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) exit,
-    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) enter,
+    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs})
+    exit,
+    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs})
+    enter,
     required VoidCallback onHandoff,
     VoidCallback? onCompleted,
   }) {
     _exit = exit.tiles;
     _enter = enter.tiles;
     _exitDurationMs = exit.durationMs;
-    _durationMs =
-        (exit.durationMs + sourceHandoffMs + enter.durationMs).ceilToDouble();
+    _durationMs = (exit.durationMs + sourceHandoffMs + enter.durationMs)
+        .ceilToDouble();
     _onHandoff = onHandoff;
     _onCompleted = onCompleted;
     _completer = Completer<void>();

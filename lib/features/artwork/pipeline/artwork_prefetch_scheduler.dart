@@ -48,11 +48,22 @@ class ArtworkPrefetchScheduler {
 
   /// 预热已解析的 Provider，供关闭 Xerox 模式前复用原图解码结果。
   Future<void> warmProviders(
-    Iterable<({ImageProvider<Object> image, String sourceKey, int decodeResolution})> sources,
+    Iterable<
+      ({ImageProvider<Object> image, String sourceKey, int decodeResolution})
+    >
+    sources,
     BuildContext context, {
     bool Function()? isActive,
   }) async {
-    final unique = <String, ({ImageProvider<Object> image, String sourceKey, int decodeResolution})>{};
+    final unique =
+        <
+          String,
+          ({
+            ImageProvider<Object> image,
+            String sourceKey,
+            int decodeResolution,
+          })
+        >{};
     for (final source in sources) {
       unique.putIfAbsent(
         '${source.sourceKey}:${source.decodeResolution}',
@@ -71,7 +82,8 @@ class ArtworkPrefetchScheduler {
   }
 
   Future<void> _precacheProvider(
-    ({ImageProvider<Object> image, String sourceKey, int decodeResolution}) source,
+    ({ImageProvider<Object> image, String sourceKey, int decodeResolution})
+    source,
     BuildContext context,
   ) async {
     try {
@@ -104,16 +116,12 @@ class ArtworkPrefetchScheduler {
         request,
         directories: directory,
       );
-      if (!isActive() || resolved == null) return;
+      if (!context.mounted || !isActive() || resolved == null) return;
       final resolution = artworkDecodeResolution(
         targetSize.longestSide * request.devicePixelRatio,
       );
       await precacheImage(
-        ResizeImage(
-          resolved.image,
-          width: resolution,
-          height: resolution,
-        ),
+        ResizeImage(resolved.image, width: resolution, height: resolution),
         context,
         size: targetSize,
         onError: (error, stackTrace) {},

@@ -11,8 +11,7 @@ import 'xerox_rasterizer.dart';
 
 /// 封装或定义光栅entry相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _RasterEntry {
-  _RasterEntry(this.image)
-    : bytes = image.width * image.height * 4;
+  _RasterEntry(this.image) : bytes = image.width * image.height * 4;
 
   final ui.Image image;
   final int bytes;
@@ -28,8 +27,7 @@ class _RasterWaiter {
 
 /// 封装或定义pending光栅相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class _PendingRaster {
-  _PendingRaster(this.request, this.sequence)
-    : priority = request.priority;
+  _PendingRaster(this.request, this.sequence) : priority = request.priority;
 
   final XeroxRasterRequest request;
   final int sequence;
@@ -115,10 +113,13 @@ class XeroxRasterCache {
 
   /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get cachedBytes => _bytes;
+
   /// 管理缓存写入、命中或失效过程，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get cachedEntries => _entries.length;
+
   /// 执行当前模块中的activejobs操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get activeJobs => _activeJobs;
+
   /// 执行当前模块中的queuedjobs操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get queuedJobs => _queue.length;
 
@@ -170,8 +171,7 @@ class XeroxRasterCache {
       _sortQueue();
     } else {
       pending = existing;
-      if (!pending.started &&
-          request.priority.index > pending.priority.index) {
+      if (!pending.started && request.priority.index > pending.priority.index) {
         // 相同 Raster 请求合并时允许升级排队优先级，但不改变缓存身份。
         pending.priority = request.priority;
         _sortQueue();
@@ -191,9 +191,7 @@ class XeroxRasterCache {
   Future<XeroxRasterLease> acquire(XeroxRasterRequest request) =>
       this.request(request).future;
 
-  (XeroxRasterKey, _RasterEntry)? _findBest(
-    XeroxRasterRequest request,
-  ) {
+  (XeroxRasterKey, _RasterEntry)? _findBest(XeroxRasterRequest request) {
     XeroxRasterKey? bestKey;
     _RasterEntry? bestEntry;
     var bestLowerResolution = 0;
@@ -309,9 +307,7 @@ class XeroxRasterCache {
   }
 
   /// 读取并恢复所需数据或资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
-  Future<ui.Image> _loadOrRasterize(
-    XeroxRasterRequest request,
-  ) async {
+  Future<ui.Image> _loadOrRasterize(XeroxRasterRequest request) async {
     final key = request.key.diskCacheKey;
     try {
       final cached = await _diskCache.read(key);
@@ -348,9 +344,7 @@ class XeroxRasterCache {
   }
 
   /// 执行当前模块中的rasterizewithretry操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
-  Future<ui.Image> _rasterizeWithRetry(
-    XeroxRasterRequest request,
-  ) async {
+  Future<ui.Image> _rasterizeWithRetry(XeroxRasterRequest request) async {
     Object? lastError;
     StackTrace? lastStack;
     // 仅重试一次以覆盖短暂的解码或 GPU 故障，同时避免
@@ -385,8 +379,7 @@ class XeroxRasterCache {
 
       // 在完成任何等待者之前先统一预留资源租约。缓存占用可能暂时超过
       // 预算，但仍被租约固定的图片不能被释放。
-      final entry = _RasterEntry(image)
-        ..references = activeWaiters.length;
+      final entry = _RasterEntry(image)..references = activeWaiters.length;
       _entries[key] = entry;
       _bytes += entry.bytes;
 
@@ -438,8 +431,8 @@ class XeroxRasterLease {
     required this.image,
     required this.resolution,
     required this.key,
-    required void Function() release,
-  }) : _release = release;
+    required this._release,
+  });
 
   final ui.Image image;
   final int resolution;

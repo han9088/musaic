@@ -2,8 +2,6 @@
 
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 
 import 'xerox_config.dart';

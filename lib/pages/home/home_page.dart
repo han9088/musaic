@@ -90,7 +90,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted ||
         _sourceTransition.switching.value ||
         _artworkMode.preparing ||
-        _artworkMode.isTransitioning) return;
+        _artworkMode.isTransitioning) {
+      return;
+    }
     _playback.bind(_sources.provider, sourceAlbums);
     setState(() {
       _catalog = albums;
@@ -103,7 +105,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (_sourceTransition.switching.value ||
         _sourceTransition.phase != null ||
         _artworkMode.preparing ||
-        _artworkMode.isTransitioning) return;
+        _artworkMode.isTransitioning) {
+      return;
+    }
     final sourceXeroxLeases = <XeroxRasterLease>[];
     final previousCatalog = _sources.catalog.value;
     _sourceTransition.switching.value = true;
@@ -259,7 +263,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     final requests = <ArtworkRequest>[];
     for (final cell in cells) {
-      final album = albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
+      final album =
+          albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
       final source = album['asset'] as String;
       if (source.startsWith('local:')) continue;
       final rawIdentity = album['id'] as String?;
@@ -309,7 +314,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ? null
             : ArtworkIdentity(rawIdentity);
         final rawVersion = selectedAlbum['artworkVersion'] as String?;
-        selectedVersion = rawVersion == null ? null : ArtworkVersion(rawVersion);
+        selectedVersion = rawVersion == null
+            ? null
+            : ArtworkVersion(rawVersion);
       }
     }
 
@@ -410,9 +417,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     } finally {
-      if (mounted &&
-          _artworkMode.preparing &&
-          !_artworkMode.isTransitioning) {
+      if (mounted && _artworkMode.preparing && !_artworkMode.isTransitioning) {
         _artworkMode.cancelPreparation();
       }
     }
@@ -544,7 +549,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _landscape = landscape;
       _interaction.resetForLayoutChange();
       if (landscape && !reversing) {
-        _albumLayout.prepareExpansion(_catalog, _portraitSize, _transform.value);
+        _albumLayout.prepareExpansion(
+          _catalog,
+          _portraitSize,
+          _transform.value,
+        );
       }
       if (!landscape && !reversing) {
         _albumLayout.prepareCollapse(
@@ -572,7 +581,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _advance(Duration elapsed) => _drift.advance(
     elapsed,
     _transform,
-    enabled: !_interaction.touching &&
+    enabled:
+        !_interaction.touching &&
         _interaction.pressedPointers.isEmpty &&
         !_interaction.selectionPaused &&
         !_sourceTransition.preparing &&
@@ -719,7 +729,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       interaction: _interaction,
       playback: _playback,
       xerox: _artworkMode.enabled,
-      interactionBlocked: _sourceTransition.preparing ||
+      interactionBlocked:
+          _sourceTransition.preparing ||
           _sourceTransition.phase != null ||
           _artworkMode.preparing ||
           _artworkMode.phase != null,

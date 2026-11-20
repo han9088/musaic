@@ -13,14 +13,11 @@ enum SourceTransitionPhase { exit, handoff, enter }
 class HomeSourceTransition {
   HomeSourceTransition({
     required TickerProvider vsync,
-    required bool Function() isMounted,
-    required VoidCallback notifyChanged,
-    required void Function(List<Map<String, dynamic>>) onHandoff,
-    required VoidCallback onMotionChanged,
-  }) : _isMounted = isMounted,
-       _notifyChanged = notifyChanged,
-       _onHandoff = onHandoff,
-       _onMotionChanged = onMotionChanged {
+    required this._isMounted,
+    required this._notifyChanged,
+    required this._onHandoff,
+    required this._onMotionChanged,
+  }) {
     timeline = AnimationController(vsync: vsync)
       ..addListener(_advance)
       ..addStatusListener(_handleStatus);
@@ -45,14 +42,16 @@ class HomeSourceTransition {
   /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   Future<void> start({
     required List<Map<String, dynamic>> targetAlbums,
-    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) exit,
-    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) enter,
+    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs})
+    exit,
+    required ({Map<(int, int), SourceTileMotion> tiles, double durationMs})
+    enter,
   }) {
     exitMotions = exit.tiles;
     enterMotions = enter.tiles;
     exitDurationMs = exit.durationMs;
-    sourceDurationMs =
-        (exit.durationMs + sourceHandoffMs + enter.durationMs).ceilToDouble();
+    sourceDurationMs = (exit.durationMs + sourceHandoffMs + enter.durationMs)
+        .ceilToDouble();
     this.targetAlbums = targetAlbums;
     _completer = Completer<void>();
     timeline.duration = Duration(milliseconds: sourceDurationMs.ceil());
