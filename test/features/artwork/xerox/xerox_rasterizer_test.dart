@@ -70,16 +70,16 @@ Future<Uint8List> _render(
 }
 
 void main() {
-  test('Xerox LOD uses stable buckets with hysteresis and identity seeds', () {
+  test('Xerox uses the shared artwork LOD policy and stable identity seeds', () {
     expect(xeroxConfig.edge, 0.9);
     expect(xeroxConfig.contrast, 32);
     expect(xeroxConfig.smooth, 0);
     expect(xeroxConfig.grain, 0.5);
     expect(xeroxConfig.invert, isFalse);
-    expect(xeroxResolution(100), 128);
-    expect(xeroxResolution(90, current: 64), 128);
-    expect(xeroxResolution(90, current: 128), 128);
-    expect(xeroxResolution(80, current: 128), 64);
+    expect(selectArtworkResolution(100), 128);
+    expect(selectArtworkResolution(90, current: 64), 128);
+    expect(selectArtworkResolution(90, current: 128), 128);
+    expect(selectArtworkResolution(80, current: 128), 64);
     expect(xeroxSeed('album-cover'), xeroxSeed('album-cover'));
     expect(xeroxSeed('album-cover'), isNot(xeroxSeed('other-cover')));
   });
@@ -94,21 +94,27 @@ void main() {
       final encoded = await source.toByteData(format: ui.ImageByteFormat.png);
       final provider = MemoryImage(encoded!.buffer.asUint8List());
       final program = await ui.FragmentProgram.fromAsset('shaders/xerox.frag');
+      const outputResolution = 16;
       final expected = await _render(
         program,
         source,
         identity: 'raster-equivalence',
         grain: xeroxConfig.grain,
+        outputWidth: outputResolution,
+        outputHeight: outputResolution,
       );
       final output = await XeroxRasterizer().rasterize(
         XeroxRasterRequest(
           identity: 'raster-equivalence',
           image: provider,
-          resolution: width,
+          resolution: outputResolution,
+          originalDecodeResolution: width,
           fit: BoxFit.cover,
           devicePixelRatio: 1,
         ),
       );
+      expect(output.width, outputResolution);
+      expect(output.height, outputResolution);
       final actual = (await output.toByteData(
         format: ui.ImageByteFormat.rawStraightRgba,
       ))!.buffer.asUint8List();

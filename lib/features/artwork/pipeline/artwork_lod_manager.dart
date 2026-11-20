@@ -1,60 +1,59 @@
-// 文件职责：独立管理原图解码与 Xerox 输出的细节层级选择。
+// 文件职责：统一管理原图解码与 Xerox 输出共用的分辨率档位和 LOD 选择策略。
 
-/// 原图解码档位。使用离散档位，避免连续缩放制造大量 ImageCache 条目。
-const artworkDecodeResolutions = [256, 512, 1024];
+/// 原图解码和 Xerox 输出共用同一套离散分辨率档位。
+///
+/// 使用统一档位可以让相同物理显示尺寸在相同 LOD 状态下得到相同分辨率，
+/// 同时避免连续缩放产生大量不同尺寸的 ImageCache 和 Raster Cache 条目。
+const artworkResolutions = <int>[64, 128, 256, 512, 1024];
 
-/// Xerox 输出档位，与原图解码档位独立。
-const xeroxResolutions = [64, 128, 256, 512];
+/// 物理尺寸无效且没有可沿用档位时，统一回退到中间档位。
+const defaultArtworkResolution = 256;
 
-/// 选择覆盖目标物理像素的最小原图解码档位。
-int artworkDecodeResolution(double physicalExtent, {int? current}) {
+/// 根据目标物理像素和当前档位选择分辨率。
+///
+/// 首次选择时取能够覆盖目标尺寸的最小档位；
+/// 已有档位时使用统一的升级和降级迟滞阈值，减少缩放边界附近的反复切换。
+///
+/// 原图解码和 Xerox 输出分别保存自己的 current，但都必须调用本策略，
+/// 因此策略规则一致，资源状态仍然可以独立管理。
+int selectArtworkResolution(double physicalExtent, {int? current}) {
   if (!physicalExtent.isFinite || physicalExtent <= 0) {
-    return current ?? 512;
+    if (current != null && artworkResolutions.contains(current)) {
+      return current;
+    }
+    return defaultArtworkResolution;
   }
-  if (current == null || !artworkDecodeResolutions.contains(current)) {
-    return artworkDecodeResolutions.firstWhere(
-      (value) => physicalExtent <= value,
-      orElse: () => artworkDecodeResolutions.last,
+
+  if (current == null || !artworkResolutions.contains(current)) {
+    return artworkResolutions.firstWhere(
+      (resolution) => physicalExtent <= resolution,
+      orElse: () => artworkResolutions.last,
     );
   }
 
   var resolution = current;
-  while (resolution < artworkDecodeResolutions.last &&
+  var index = artworkResolutions.indexOf(resolution);
+
+  // 放大超过当前档位的 1.35 倍才升级。
+  while (index < artworkResolutions.length - 1 &&
       physicalExtent > resolution * 1.35) {
-    resolution = artworkDecodeResolutions[
-        artworkDecodeResolutions.indexOf(resolution) + 1];
+    index++;
+    resolution = artworkResolutions[index];
   }
-  while (resolution > artworkDecodeResolutions.first &&
-      physicalExtent < resolution * 0.65) {
-    resolution = artworkDecodeResolutions[
-        artworkDecodeResolutions.indexOf(resolution) - 1];
+
+  // 缩小到当前档位的 0.65 倍以下才降级。
+  while (index > 0 && physicalExtent < resolution * 0.65) {
+    index--;
+    resolution = artworkResolutions[index];
   }
+
   return resolution;
 }
 
-/// 选择 Xerox 光栅输出档位。与原图解码采用相同的迟滞策略，但拥有独立档位。
-int xeroxResolution(double physicalExtent, {int? current}) {
-  if (!physicalExtent.isFinite || physicalExtent <= 0) return current ?? 128;
-  if (current == null || !xeroxResolutions.contains(current)) {
-    return xeroxResolutions.firstWhere(
-      (value) => physicalExtent <= value,
-      orElse: () => xeroxResolutions.last,
-    );
-  }
-
-  var resolution = current;
-  while (resolution < xeroxResolutions.last &&
-      physicalExtent > resolution * 1.35) {
-    resolution = xeroxResolutions[xeroxResolutions.indexOf(resolution) + 1];
-  }
-  while (resolution > xeroxResolutions.first &&
-      physicalExtent < resolution * 0.65) {
-    resolution = xeroxResolutions[xeroxResolutions.indexOf(resolution) - 1];
-  }
-  return resolution;
-}
-
-/// 一次布局测量得到的两种独立 LOD 结果。
+/// 一次布局测量得到的原图解码与 Xerox 输出分辨率。
+///
+/// 两个值由同一策略计算，但保留独立字段，避免把原图输入尺寸与 Xerox
+/// 最终输出尺寸混为一谈。
 class ArtworkLodSelection {
   const ArtworkLodSelection({
     required this.originalDecodeResolution,
@@ -65,7 +64,7 @@ class ArtworkLodSelection {
   final int xeroxResolution;
 }
 
-/// LOD 策略是纯计算层，不读取缓存、不持有图片，也不发起任务。
+/// 纯 LOD 策略入口，不读取缓存、不持有图片，也不发起处理任务。
 class ArtworkLodManager {
   const ArtworkLodManager();
 
@@ -76,11 +75,11 @@ class ArtworkLodManager {
     int? currentOriginalDecodeResolution,
     int? currentXeroxResolution,
   }) => ArtworkLodSelection(
-    originalDecodeResolution: artworkDecodeResolution(
+    originalDecodeResolution: selectArtworkResolution(
       physicalExtent,
       current: currentOriginalDecodeResolution,
     ),
-    xeroxResolution: xeroxResolution(
+    xeroxResolution: selectArtworkResolution(
       physicalExtent,
       current: currentXeroxResolution,
     ),
