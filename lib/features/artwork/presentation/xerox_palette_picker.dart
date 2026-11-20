@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
@@ -5,9 +6,14 @@ import '../../../l10n/generated/app_localizations.dart';
 import 'xerox_palette.dart';
 
 class XeroxPalettePicker extends StatelessWidget {
-  const XeroxPalettePicker({super.key, required this.selection});
+  const XeroxPalettePicker({
+    super.key,
+    required this.selection,
+    required this.onChanged,
+  });
 
-  final ValueNotifier<XeroxPalette> selection;
+  final ValueListenable<XeroxPalette> selection;
+  final ValueChanged<XeroxPalette> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +42,13 @@ class XeroxPalettePicker extends StatelessWidget {
                         XeroxPalette.sand => l10n.xeroxPaperSand,
                         XeroxPalette.sage => l10n.xeroxPaperSage,
                         XeroxPalette.mist => l10n.xeroxPaperMist,
+                        XeroxPalette.dustyRose => l10n.xeroxPaperDustyRose,
+                        XeroxPalette.ochre => l10n.xeroxPaperOchre,
+                        XeroxPalette.terracotta => l10n.xeroxPaperTerracotta,
+                        XeroxPalette.indigo => l10n.xeroxPaperIndigo,
+                        XeroxPalette.celadon => l10n.xeroxPaperCeladon,
                       },
-                      onPressed: () => selection.value = palette,
+                      onPressed: () => onChanged(palette),
                       icon: Container(
                         width: 28,
                         height: 28,

@@ -1,4 +1,4 @@
-// 文件职责：Artwork 模式切换、资源准备、动画交接和 Lease 生命周期。
+// 文件职责：Artwork 模式和配色切换、资源准备、动画交接和 Lease 生命周期。
 
 import 'package:material_ui/material_ui.dart';
 
@@ -84,21 +84,10 @@ class ArtworkModeController {
       }
       if (!_isMounted()) return;
 
-      final exit = SourceTileMotion.exit(visibleCells, viewport);
-      final enter = SourceTileMotion.enter(visibleCells);
-      if (visibleCells.isEmpty || reduceMotion || exit.tiles.isEmpty) {
-        _commit(enabled);
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!_isMounted()) return;
-          _finishTransition();
-        });
-        return;
-      }
-
-      preparing = false;
-      await _transition.start(
-        exit: exit,
-        enter: enter,
+      await _animateChange(
+        visibleCells: visibleCells,
+        viewport: viewport,
+        reduceMotion: reduceMotion,
         onHandoff: () => _commit(enabled),
         onCompleted: _finishTransition,
       );
@@ -110,6 +99,52 @@ class ArtworkModeController {
         cancelPreparation();
       }
     }
+  }
+
+  Future<void> applyPalette({
+    required XeroxPalette selection,
+    required List<({int row, int column, Rect rect})> visibleCells,
+    required Size viewport,
+    required bool reduceMotion,
+  }) async {
+    if (!enabled ||
+        preparing ||
+        isTransitioning ||
+        selection == palette.value) {
+      return;
+    }
+    await _animateChange(
+      visibleCells: visibleCells,
+      viewport: viewport,
+      reduceMotion: reduceMotion,
+      onHandoff: () => palette.value = selection,
+    );
+  }
+
+  Future<void> _animateChange({
+    required List<({int row, int column, Rect rect})> visibleCells,
+    required Size viewport,
+    required bool reduceMotion,
+    required VoidCallback onHandoff,
+    VoidCallback? onCompleted,
+  }) async {
+    if (reduceMotion || visibleCells.isEmpty) {
+      onHandoff();
+      if (onCompleted != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_isMounted()) onCompleted();
+        });
+      }
+      return;
+    }
+
+    preparing = false;
+    await _transition.start(
+      exit: SourceTileMotion.exit(visibleCells, viewport),
+      enter: SourceTileMotion.enter(visibleCells),
+      onHandoff: onHandoff,
+      onCompleted: onCompleted,
+    );
   }
 
   Future<void> _prepareXerox(List<XeroxRasterRequest> requests) async {

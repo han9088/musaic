@@ -227,12 +227,7 @@ void main() {
     final artwork = find.byWidgetPredicate((widget) => widget is RawImage);
     final renderObject = tester.renderObject(artwork);
 
-    for (final palette in [
-      XeroxPalette.original,
-      XeroxPalette.ivory,
-      XeroxPalette.sage,
-      XeroxPalette.original,
-    ]) {
+    for (final palette in [...XeroxPalette.values, XeroxPalette.original]) {
       selection.value = palette;
       await tester.pump();
       expect(tester.renderObject(artwork), same(renderObject));

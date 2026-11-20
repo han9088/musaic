@@ -81,5 +81,10 @@
   "xeroxPaperIvory": "Warm ivory",
   "xeroxPaperSand": "Light sand",
   "xeroxPaperSage": "Sage",
-  "xeroxPaperMist": "Mist blue"
+  "xeroxPaperMist": "Mist blue",
+  "xeroxPaperDustyRose": "Dusty rose",
+  "xeroxPaperOchre": "Ochre",
+  "xeroxPaperTerracotta": "Terracotta",
+  "xeroxPaperIndigo": "Indigo",
+  "xeroxPaperCeladon": "Celadon"
 }

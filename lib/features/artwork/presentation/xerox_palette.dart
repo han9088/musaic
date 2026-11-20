@@ -6,7 +6,12 @@ enum XeroxPalette {
   ivory(Color(0xffe8e4cf), Color(0xff393933)),
   sand(Color(0xffe7d7b5), Color(0xff45341f)),
   sage(Color(0xffd9ded3), Color(0xff3d453a)),
-  mist(Color(0xffd9e2e7), Color(0xff34444d));
+  mist(Color(0xffd9e2e7), Color(0xff34444d)),
+  dustyRose(Color(0xffe8c6d0), Color(0xff592536)),
+  ochre(Color(0xffe8ce82), Color(0xff513811)),
+  terracotta(Color(0xffe8ba9f), Color(0xff692e22)),
+  indigo(Color(0xffbec8e9), Color(0xff252955)),
+  celadon(Color(0xffb5dbd0), Color(0xff194841));
 
   const XeroxPalette(this.paper, this.ink);
 

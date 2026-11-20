@@ -48,7 +48,10 @@ void main() {
   testWidgets('Xerox mode toggles from the existing bottom sheet', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     var xeroxEnabled = false;
+    var allowModeChange = true;
     final palette = ValueNotifier(XeroxPalette.original);
     addTearDown(palette.dispose);
     await tester.pumpWidget(
@@ -60,9 +63,14 @@ void main() {
             child: HomeSheet(
               icons: const _Icons(),
               xeroxEnabled: xeroxEnabled,
-              xeroxPalettePicker: XeroxPalettePicker(selection: palette),
-              onXeroxChanged: (enabled) =>
-                  setState(() => xeroxEnabled = enabled),
+              xeroxPalettePicker: XeroxPalettePicker(
+                selection: palette,
+                onChanged: (value) => palette.value = value,
+              ),
+              onXeroxChanged: (enabled) {
+                if (allowModeChange) setState(() => xeroxEnabled = enabled);
+                return xeroxEnabled;
+              },
               child: const ColoredBox(color: Colors.black),
             ),
           ),
@@ -84,22 +92,32 @@ void main() {
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
     expect(toggle, findsOneWidget);
     expect(tester.widget<ListTile>(toggle).selected, isFalse);
-    final ivory = find.byKey(const ValueKey(XeroxPalette.ivory));
-    expect(ivory, findsNothing);
+    final picker = find.byType(XeroxPalettePicker);
+    expect(picker, findsNothing);
     await tester.tap(toggle);
     await tester.pump();
     expect(xeroxEnabled, isTrue);
     expect(tester.widget<ListTile>(toggle).selected, isTrue);
-    await tester.ensureVisible(ivory);
-    await tester.tap(ivory);
-    await tester.pump();
-    expect(palette.value, XeroxPalette.ivory);
+    for (final preset in XeroxPalette.values) {
+      final swatch = find.byKey(ValueKey(preset));
+      await tester.ensureVisible(swatch);
+      await tester.tap(swatch);
+      await tester.pump();
+      expect(palette.value, preset);
+    }
     await tester.ensureVisible(toggle);
+    allowModeChange = false;
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(tester.widget<ListTile>(toggle).selected, isTrue);
+    expect(picker, findsOneWidget);
+
+    allowModeChange = true;
     await tester.tap(toggle);
     await tester.pump();
     expect(xeroxEnabled, isFalse);
     expect(tester.widget<ListTile>(toggle).selected, isFalse);
-    expect(ivory, findsNothing);
+    expect(picker, findsNothing);
 
     sheet.dismiss();
     await tester.pumpAndSettle();

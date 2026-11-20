@@ -381,6 +381,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'雾蓝'**
   String get xeroxPaperMist;
+
+  /// No description provided for @xeroxPaperDustyRose.
+  ///
+  /// In zh, this message translates to:
+  /// **'藕粉'**
+  String get xeroxPaperDustyRose;
+
+  /// No description provided for @xeroxPaperOchre.
+  ///
+  /// In zh, this message translates to:
+  /// **'赭黄'**
+  String get xeroxPaperOchre;
+
+  /// No description provided for @xeroxPaperTerracotta.
+  ///
+  /// In zh, this message translates to:
+  /// **'陶土'**
+  String get xeroxPaperTerracotta;
+
+  /// No description provided for @xeroxPaperIndigo.
+  ///
+  /// In zh, this message translates to:
+  /// **'靛蓝'**
+  String get xeroxPaperIndigo;
+
+  /// No description provided for @xeroxPaperCeladon.
+  ///
+  /// In zh, this message translates to:
+  /// **'青瓷'**
+  String get xeroxPaperCeladon;
 }
 
 class _AppLocalizationsDelegate

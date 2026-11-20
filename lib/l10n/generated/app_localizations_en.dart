@@ -168,4 +168,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get xeroxPaperMist => 'Mist blue';
+
+  @override
+  String get xeroxPaperDustyRose => 'Dusty rose';
+
+  @override
+  String get xeroxPaperOchre => 'Ochre';
+
+  @override
+  String get xeroxPaperTerracotta => 'Terracotta';
+
+  @override
+  String get xeroxPaperIndigo => 'Indigo';
+
+  @override
+  String get xeroxPaperCeladon => 'Celadon';
 }

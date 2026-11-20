@@ -160,4 +160,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get xeroxPaperMist => '雾蓝';
+
+  @override
+  String get xeroxPaperDustyRose => '藕粉';
+
+  @override
+  String get xeroxPaperOchre => '赭黄';
+
+  @override
+  String get xeroxPaperTerracotta => '陶土';
+
+  @override
+  String get xeroxPaperIndigo => '靛蓝';
+
+  @override
+  String get xeroxPaperCeladon => '青瓷';
 }

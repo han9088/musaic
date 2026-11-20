@@ -36,7 +36,7 @@ class HomeSheet extends StatefulWidget {
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final bool xeroxEnabled;
-  final FutureOr<void> Function(bool enabled)? onXeroxChanged;
+  final FutureOr<bool> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
 
   @override
@@ -150,9 +150,9 @@ class _HomeSheetState extends State<HomeSheet> {
                             final enabled = !xeroxEnabled;
                             setSheetState(() => xeroxPending = true);
                             try {
-                              await onXeroxChanged(enabled);
+                              final applied = await onXeroxChanged(enabled);
                               if (context.mounted) {
-                                setSheetState(() => xeroxEnabled = enabled);
+                                setSheetState(() => xeroxEnabled = applied);
                               }
                             } finally {
                               if (context.mounted) {
@@ -164,7 +164,10 @@ class _HomeSheetState extends State<HomeSheet> {
                   final picker = widget.xeroxPalettePicker;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [toggle, if (xeroxEnabled && picker != null) picker],
+                    children: [
+                      toggle,
+                      if (xeroxEnabled && picker != null) picker,
+                    ],
                   );
                 },
               ),

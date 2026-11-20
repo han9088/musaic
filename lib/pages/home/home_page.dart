@@ -359,27 +359,43 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _setXeroxMode(bool enabled) async {
-    if (enabled == _artworkMode.enabled ||
-        _artworkMode.preparing ||
-        _artworkMode.isTransitioning ||
-        _sourceTransition.switching.value ||
-        _sourceTransition.phase != null ||
-        _layout.isAnimating ||
-        _landscape) {
-      return;
+  bool get _artworkChangeBlocked =>
+      _artworkMode.preparing ||
+      _artworkMode.isTransitioning ||
+      _sourceTransition.switching.value ||
+      _sourceTransition.phase != null ||
+      _layout.isAnimating ||
+      _landscape;
+
+  Future<void> _setXeroxPalette(XeroxPalette palette) async {
+    if (_artworkChangeBlocked || palette == _artworkMode.palette.value) return;
+    final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
+    final visibleCells = _catalog?.isNotEmpty == true
+        ? AlbumGridSnapshot.capture(viewport, _transform.value).cells
+        : const <({int row, int column, Rect rect})>[];
+    await _artworkMode.applyPalette(
+      selection: palette,
+      visibleCells: visibleCells,
+      viewport: viewport,
+      reduceMotion: _reduceMotion,
+    );
+  }
+
+  Future<bool> _setXeroxMode(bool enabled) async {
+    if (enabled == _artworkMode.enabled || _artworkChangeBlocked) {
+      return _artworkMode.enabled;
     }
 
     _artworkMode.beginPreparation();
     try {
       await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return;
+      if (!mounted) return _artworkMode.enabled;
 
       // 用户第一次点击 Xerox 时，内置演示专辑目录可能尚未
       // 通过 FutureBuilder 发布加载结果；因此需要先解析目录，再捕获
       // 当前视口，确保过渡流程能为真正可见的封面准备资源。
       final albums = _catalog ?? await _mockCatalogFor(_currentSource);
-      if (!mounted) return;
+      if (!mounted) return _artworkMode.enabled;
       _catalog ??= albums;
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
       final scale = _transform.value.getColumn(0).length;
@@ -399,7 +415,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         includeSelected: true,
         isActive: () => mounted,
       );
-      if (!mounted) return;
+      if (!mounted) return _artworkMode.enabled;
 
       await _artworkMode.apply(
         enabled: enabled,
@@ -423,6 +439,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _artworkMode.cancelPreparation();
       }
     }
+    return _artworkMode.enabled;
   }
 
   void _syncMotion() {
@@ -635,7 +652,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       onSourceSelection: _selectMusicSource,
       xeroxEnabled: _artworkMode.enabled,
       onXeroxChanged: _setXeroxMode,
-      xeroxPalettePicker: XeroxPalettePicker(selection: _artworkMode.palette),
+      xeroxPalettePicker: XeroxPalettePicker(
+        selection: _artworkMode.palette,
+        onChanged: _setXeroxPalette,
+      ),
       child: Scaffold(
         backgroundColor: const Color(0xff000000),
         body: XeroxPaletteScope(
