@@ -310,16 +310,22 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     SizedBox(
                       height: size * 0.36,
                       child: ClipRect(
-                        child: ShaderMask(
-                          blendMode: BlendMode.dstIn,
-                          shaderCallback: (rect) => const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0x70ffffff), Color(0x00ffffff)],
-                          ).createShader(rect),
-                          child: OverflowBox(
-                            alignment: Alignment.topCenter,
-                            maxHeight: size,
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          maxHeight: size,
+                          // Keep the mask edge outside the cropped reflection.
+                          child: ShaderMask(
+                            blendMode: BlendMode.dstIn,
+                            shaderCallback: (rect) => const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0x70ffffff),
+                                Color(0x00ffffff),
+                                Color(0x00ffffff),
+                              ],
+                              stops: [0, 0.36, 1],
+                            ).createShader(rect),
                             child: Transform.flip(
                               flipY: true,
                               child: _image(album, size),
