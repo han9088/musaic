@@ -29,6 +29,20 @@ float stableNoise(vec2 pixel) {
   return fract((hash.x + hash.y) * hash.z);
 }
 
+float paperFiber(vec2 uv) {
+  vec2 grid = uv * 60.0;
+  vec2 cell = floor(grid);
+  float seed = stableNoise(cell + vec2(123.0, 491.0));
+  float jitter = stableNoise(cell + vec2(713.0, 237.0));
+  vec2 point = fract(grid) - (0.30 + 0.40 * vec2(seed, jitter));
+  vec2 local = seed < 0.5 ? point : point.yx;
+  float across = local.y - local.x * (jitter - 0.5) * 1.3 -
+      local.x * local.x * (seed - 0.5);
+  float taper = 1.0 - smoothstep(0.10, 0.27, abs(local.x));
+  float width = 1.0 - smoothstep(0.008, 0.075, abs(across));
+  return taper * width;
+}
+
 void main() {
   vec2 destinationUv =
       (FlutterFragCoord().xy - uDestinationRect.xy) / uDestinationRect.zw;
@@ -50,10 +64,18 @@ void main() {
       : 1.0;
   if (uInvert > 0.5) value = 1.0 - value;
 
+  bool isPaper = value > 0.5;
   vec2 localPixel = floor(uv * uImageSize - uSourceRect.xy);
   value = clamp(
       value + (stableNoise(localPixel) - 0.5) * uGrain * 150.0 / 255.0,
       0.0,
       1.0);
+
+  // Thin paper fibers are only visible once the raster can resolve them.
+  float detail = smoothstep(96.0, 256.0, min(uDestinationRect.z, uDestinationRect.w));
+  if (isPaper && uGrain > 0.0 && detail > 0.0) {
+    float fiber = paperFiber(destinationUv) * detail * uGrain * 26.0 / 255.0;
+    value = min(value, 1.0 - fiber);
+  }
   fragColor = vec4(vec3(value), 1.0);
 }

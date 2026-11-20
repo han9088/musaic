@@ -47,7 +47,7 @@ class XeroxRasterKey {
       config.smooth,
       config.grain,
       config.invert,
-      'xerox-raster-v3',
+      'xerox-raster-v4',
     ]);
     return base64Url.encode(utf8.encode(value)).replaceAll('=', '');
   }

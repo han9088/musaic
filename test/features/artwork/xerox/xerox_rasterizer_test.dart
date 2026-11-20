@@ -171,6 +171,47 @@ void main() {
     expect(pixels[(32 * 64 + 56) * 4], 255);
   });
 
+  testWidgets('paper fibers add fine detail to highlights at larger LODs', (
+    tester,
+  ) async {
+    final rendered = await tester.runAsync(() async {
+      final program = await ui.FragmentProgram.fromAsset('shaders/xerox.frag');
+      Future<Set<int>> tones(ui.Color color, int size) async {
+        final source = _solidImage(1, 1, color);
+        try {
+          final pixels = await _render(
+            program,
+            source,
+            identity: 'test-cover',
+            grain: xeroxConfig.grain,
+            outputWidth: size,
+            outputHeight: size,
+          );
+          return {
+            for (var offset = 0; offset < pixels.length; offset += 4)
+              pixels[offset],
+          };
+        } finally {
+          source.dispose();
+        }
+      }
+
+      const paper = ui.Color(0xffffffff);
+      const ink = ui.Color(0xff000000);
+      return (
+        smallPaper: await tones(paper, 64),
+        largePaper: await tones(paper, 384),
+        smallInk: await tones(ink, 64),
+        largeInk: await tones(ink, 384),
+      );
+    });
+    expect(rendered!.smallPaper, {255});
+    expect(rendered.largePaper, contains(255));
+    expect(rendered.largePaper.length, greaterThan(4));
+    expect(rendered.largePaper, everyElement(inInclusiveRange(242, 255)));
+    expect(rendered.largeInk, rendered.smallInk);
+  });
+
   testWidgets('shader thresholds, composites alpha, and applies stable grain', (
     tester,
   ) async {
