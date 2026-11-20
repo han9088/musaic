@@ -36,6 +36,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
 
   XeroxRasterLease? _lease;
   XeroxRasterTask? _task;
+  XeroxRasterTask? _priorityTask;
   Timer? _requestTimer;
   XeroxRasterKey? _scheduledKey;
   XeroxRasterKey? _failedKey;
@@ -45,17 +46,56 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
   @override
   void didUpdateWidget(XeroxRasterResource oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.request.key != widget.request.key ||
-        oldWidget.pipeline != widget.pipeline) {
-      _generation++;
-      _requestTimer?.cancel();
-      _task?.cancel();
-      _task = null;
-      _scheduledKey = null;
+    final pipelineChanged = oldWidget.pipeline != widget.pipeline;
+    final requestChanged = oldWidget.request.key != widget.request.key;
+    final sameArtwork = oldWidget.request.key.sameArtwork(
+      widget.request.key,
+    );
+
+    if (pipelineChanged || (requestChanged && !sameArtwork)) {
+      _resetRequest(releaseLease: true);
+    } else if (requestChanged) {
+      // LOD 档位变化时保留同一封面的旧 Raster，直到新档位准备好。
+      _resetRequest(releaseLease: false);
+    }
+
+    if (!requestChanged &&
+        !pipelineChanged &&
+        oldWidget.request.priority.index < widget.request.priority.index) {
+      _upgradePriority(widget.request);
+    }
+  }
+
+  void _resetRequest({required bool releaseLease}) {
+    _generation++;
+    _requestTimer?.cancel();
+    _task?.cancel();
+    _priorityTask?.cancel();
+    _task = null;
+    _priorityTask = null;
+    _scheduledKey = null;
+    _failedKey = null;
+    _error = null;
+    if (releaseLease) {
       _lease?.release();
       _lease = null;
-      _failedKey = null;
-      _error = null;
+    }
+  }
+
+  void _upgradePriority(XeroxRasterRequest request) {
+    final task = _pipeline.requestXerox(request, exactOnly: true);
+    _priorityTask = task;
+    unawaited(_releasePriorityLease(task));
+  }
+
+  Future<void> _releasePriorityLease(XeroxRasterTask task) async {
+    try {
+      final lease = await task.future;
+      lease.release();
+    } catch (_) {
+      // 优先级提升只影响排队顺序，不应影响当前图片显示。
+    } finally {
+      if (identical(_priorityTask, task)) _priorityTask = null;
     }
   }
 
@@ -100,7 +140,11 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
           _error = null;
           _failedKey = null;
         });
-        previous?.release();
+        if (previous != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            previous.release();
+          });
+        }
       } catch (error) {
         if (!mounted || generation != _generation) return;
         if (error is! XeroxRasterCancelled) {
@@ -130,6 +174,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
     _generation++;
     _requestTimer?.cancel();
     _task?.cancel();
+    _priorityTask?.cancel();
     _lease?.release();
     super.dispose();
   }

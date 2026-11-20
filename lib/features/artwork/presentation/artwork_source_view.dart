@@ -154,7 +154,9 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
             fit: widget.fit ?? BoxFit.scaleDown,
             currentOriginalDecodeResolution: _originalDecodeResolution,
             currentXeroxResolution: _xeroxResolution,
-            priority: XeroxRasterPriority.background,
+            priority: widget.xerox
+                ? XeroxRasterPriority.visible
+                : XeroxRasterPriority.background,
           );
           _originalDecodeResolution = plan.originalDecodeResolution;
           _xeroxResolution = plan.xeroxRequest.resolution;
