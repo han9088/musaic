@@ -23,7 +23,10 @@ class XeroxRasterKey {
 
   final String identity;
   final String sourceKey;
+  /// 最终 Xerox 位图的边长，决定 Shader 光栅化输出尺寸。
   final int resolution;
+
+  /// Shader 输入原图的解码边长，与最终输出尺寸独立。
   final int originalDecodeResolution;
   final BoxFit fit;
   final double devicePixelRatio;
@@ -100,7 +103,11 @@ class XeroxRasterRequest {
 
   final String identity;
   final ImageProvider<Object> image;
+
+  /// 最终 Xerox 位图的边长，决定 Shader 光栅化输出尺寸。
   final int resolution;
+
+  /// Shader 输入原图的解码边长，与最终输出尺寸独立。
   final int originalDecodeResolution;
   final BoxFit fit;
   final double devicePixelRatio;

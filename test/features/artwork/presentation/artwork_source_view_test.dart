@@ -252,7 +252,7 @@ void main() {
       expect(rgbAt(48), rgb(palette.paper));
       expect(tester.widget<RawImage>(artwork).image, same(lease.image));
     }
-    expect(rasterizer.resolutions, [256]);
+    expect(rasterizer.resolutions, [prepared.xeroxRequest.resolution]);
     expect(cache.cachedEntries, 1);
     expect(disk.writes, 1);
     await tester.pumpWidget(const SizedBox.shrink());
