@@ -36,6 +36,10 @@ void main() {
     expect(initial.originalDecodeResolution, 512);
     expect(initial.xeroxResolution, 512);
 
+    final invalid = manager.select(double.nan);
+    expect(invalid.originalDecodeResolution, defaultArtworkResolution);
+    expect(invalid.xeroxResolution, defaultArtworkResolution);
+
     // 两条资源路径保留各自当前档位，但使用完全相同的选择规则。
     // 处于滞回区间时允许暂时保留不同的历史档位。
     final hysteresis = manager.select(
