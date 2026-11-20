@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/pages/home/artwork_mode/home_artwork_mode_transition.dart';
-import 'package:musaic/features/transitions/source_tile_motion.dart';
+import 'package:musaic/features/artwork/mode/artwork_mode_transition.dart';
+import 'package:musaic/ui/transitions/source_tile_motion.dart';
 
 void main() {
   testWidgets('Xerox mode flies originals out before processed covers enter', (
@@ -17,8 +17,8 @@ void main() {
     final phases = <ArtworkModeTransitionPhase?>[];
     var xeroxEnabled = false;
     var completed = false;
-    late final HomeArtworkModeTransition transition;
-    transition = HomeArtworkModeTransition(
+    late final ArtworkModeTransition transition;
+    transition = ArtworkModeTransition(
       vsync: tester,
       isMounted: () => true,
       notifyChanged: () => phases.add(transition.phase),

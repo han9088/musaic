@@ -364,6 +364,10 @@ Xerox 模式不再采用原图 + `CustomPainter`
 
 ## 11. 推荐模块职责
 
+采用 feature-first：`lib/pages/home/` 只保留 `home_page.dart` 与
+`home_sheet.dart`，负责页面入口、布局装配和事件接线。Artwork 模式的状态、
+资源准备、过渡时间线和请求规划归属 Artwork 功能，不能因首页使用它们就放入页面目录。
+
 ``` text
 lib/features/artwork/
 ├── model/
@@ -374,24 +378,34 @@ lib/features/artwork/
 │   └── artwork_resolver.dart
 ├── pipeline/
 │   ├── artwork_image_pipeline.dart
-│   ├── artwork_decode_manager.dart
-│   └── artwork_prefetch_scheduler.dart
+│   ├── artwork_decode_policy.dart
+│   ├── artwork_prefetch_scheduler.dart
+│   └── xerox_background_processor.dart
 ├── cache/
 │   ├── artwork_network_cache_manager.dart
 │   └── artwork_memory_policy.dart
+├── mode/
+│   ├── artwork_mode_controller.dart
+│   └── artwork_mode_transition.dart
+├── presentation/
+│   └── directory_artwork.dart
 ├── xerox/
 │   ├── xerox_config.dart
 │   ├── xerox_shader_renderer.dart
 │   ├── xerox_rasterizer.dart
 │   ├── xerox_raster_request.dart
 │   ├── xerox_raster_cache.dart
-│   ├── xerox_disk_cache_manager.dart
+│   ├── xerox_disk_cache.dart
 │   ├── xerox_job_scheduler.dart
-│   ├── xerox_mode_controller.dart
-│   ├── home_artwork_mode_transition.dart
+│   ├── xerox_visible_artwork_planner.dart
 │   └── xerox_artwork.dart
 └── artwork_renderer.dart
 ```
+
+`mode/` 拥有 Original 与 Xerox 的切换流程及临时 Lease；`xerox/` 负责
+Xerox 请求规划、处理、缓存和显示。视口尺寸与封面映射由调用方传入，功能层不依赖页面。
+音乐源与 Artwork 模式共用的 `SourceTileMotion` 位于
+`lib/ui/transitions/source_tile_motion.dart`；各功能保留自己的过渡状态机。
 
 文件可按项目实际复杂度合并，不要机械增加
 Manager/Controller。核心是职责清晰、依赖方向明确、资源所有权唯一。

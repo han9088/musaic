@@ -1,20 +1,20 @@
-// 文件职责：首页 Artwork 模式切换、资源准备、动画交接和 Lease 生命周期。
+// 文件职责：Artwork 模式切换、资源准备、动画交接和 Lease 生命周期。
 
 import 'package:material_ui/material_ui.dart';
 
-import '../../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
-import '../../../features/artwork/xerox/xerox_job_scheduler.dart';
-import '../../../features/artwork/xerox/xerox_raster_cache.dart';
-import '../../../features/artwork/xerox/xerox_raster_request.dart';
-import '../../../features/transitions/source_tile_motion.dart';
-import 'home_artwork_mode_transition.dart';
+import '../../../ui/transitions/source_tile_motion.dart';
+import '../pipeline/artwork_prefetch_scheduler.dart';
+import '../xerox/xerox_job_scheduler.dart';
+import '../xerox/xerox_raster_cache.dart';
+import '../xerox/xerox_raster_request.dart';
+import 'artwork_mode_transition.dart';
 
 /// 统一协调 Original 与 Xerox 两种显示模式。
 ///
-/// 这里只管理 Home 的模式状态和切换过程；具体 Raster 处理由 XeroxJobScheduler
+/// 这里只管理 Artwork 的模式状态和切换过程；具体 Raster 处理由 XeroxJobScheduler
 /// 负责，原图预热由 ArtworkPrefetchScheduler 负责。
-class HomeArtworkModeController {
-  HomeArtworkModeController({
+class ArtworkModeController {
+  ArtworkModeController({
     required TickerProvider vsync,
     required bool Function() isMounted,
     required VoidCallback notifyChanged,
@@ -27,7 +27,7 @@ class HomeArtworkModeController {
        scheduler = scheduler ?? XeroxJobScheduler(),
        _prefetchScheduler =
            prefetchScheduler ?? const ArtworkPrefetchScheduler() {
-    _transition = HomeArtworkModeTransition(
+    _transition = ArtworkModeTransition(
       vsync: vsync,
       isMounted: isMounted,
       notifyChanged: notifyChanged,
@@ -41,7 +41,7 @@ class HomeArtworkModeController {
   final XeroxJobScheduler scheduler;
   final ArtworkPrefetchScheduler _prefetchScheduler;
   final _preparedLeases = <XeroxRasterLease>[];
-  late final HomeArtworkModeTransition _transition;
+  late final ArtworkModeTransition _transition;
 
   bool enabled = false;
   bool preparing = false;

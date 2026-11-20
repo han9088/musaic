@@ -4,7 +4,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import '../../transitions/source_tile_motion.dart';
+import '../../../ui/transitions/source_tile_motion.dart';
 
 /// 封装或定义来源过渡phase相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 enum SourceTransitionPhase { exit, handoff, enter }

@@ -1,17 +1,17 @@
-// 文件职责：根据 Home 视口快照规划需要处理的 Xerox 封面，并分配任务优先级。
+// 文件职责：根据视口中的封面信息规划 Xerox 请求，并分配任务优先级。
 
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
-import '../../../features/artwork/model/artwork_identity.dart';
-import '../../../features/artwork/model/artwork_request.dart';
-import '../../../features/artwork/pipeline/artwork_decode_policy.dart';
-import '../../../features/artwork/source/artwork_resolver.dart';
-import '../../../features/artwork/xerox/xerox_raster_request.dart';
-import '../../../features/artwork/xerox/xerox_resolution.dart';
+import '../model/artwork_identity.dart';
+import '../model/artwork_request.dart';
+import '../pipeline/artwork_decode_policy.dart';
+import '../source/artwork_resolver.dart';
+import 'xerox_raster_request.dart';
+import 'xerox_resolution.dart';
 
-/// 只接收 Home 提供的可视 Tile 与封面映射，不依赖 Canvas 的布局常量。
+/// 调用方提供可视 Tile、尺寸与封面映射，规划器不依赖页面或画布实现。
 class XeroxVisibleArtworkPlanner {
   const XeroxVisibleArtworkPlanner({this.maxProviderConcurrency = 4})
     : assert(maxProviderConcurrency > 0);

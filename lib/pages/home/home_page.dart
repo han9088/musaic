@@ -22,14 +22,14 @@ import '../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
 import '../../features/artwork/source/artwork_resolver.dart';
 import '../../features/artwork/model/artwork_identity.dart';
 import '../../features/artwork/model/artwork_request.dart';
-import 'artwork_mode/home_artwork_mode_controller.dart';
-import 'artwork_mode/xerox_visible_artwork_planner.dart';
+import '../../features/artwork/mode/artwork_mode_controller.dart';
+import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
-import '../../features/transitions/source_tile_motion.dart';
+import '../../ui/transitions/source_tile_motion.dart';
 import '../../features/music/transition/home_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/catalog/album_catalog_mapper.dart';
@@ -58,7 +58,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AnimationController _layout;
   late final Animation<double> _layoutProgress;
   late final HomeSourceTransition _sourceTransition;
-  late final HomeArtworkModeController _artworkMode;
+  late final ArtworkModeController _artworkMode;
   _HomeMusicSource _renderedSource = _HomeMusicSource.mock;
   bool _hasOrientation = false;
   Size? _portraitSize;
@@ -464,7 +464,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 520),
     );
     _layoutProgress = _layout.drive(CurveTween(curve: Curves.easeInOutCubic));
-    _artworkMode = HomeArtworkModeController(
+    _artworkMode = ArtworkModeController(
       vsync: this,
       isMounted: () => mounted,
       notifyChanged: () => setState(() {}),

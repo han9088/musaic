@@ -1,15 +1,15 @@
-// 文件职责：首页 Original 与 Xerox 模式切换的 Exit、Handoff、Enter 动画时间线。
+// 文件职责：Original 与 Xerox 模式切换的 Exit、Handoff、Enter 动画时间线。
 
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import '../../../features/transitions/source_tile_motion.dart';
+import '../../../ui/transitions/source_tile_motion.dart';
 
 enum ArtworkModeTransitionPhase { exit, handoff, enter }
 
-class HomeArtworkModeTransition {
-  HomeArtworkModeTransition({
+class ArtworkModeTransition {
+  ArtworkModeTransition({
     required TickerProvider vsync,
     required bool Function() isMounted,
     required VoidCallback notifyChanged,

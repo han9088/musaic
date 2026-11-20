@@ -4,7 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/artwork/model/artwork_identity.dart';
 import 'package:musaic/features/artwork/source/artwork_resolver.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
-import 'package:musaic/pages/home/artwork_mode/xerox_visible_artwork_planner.dart';
+import 'package:musaic/features/artwork/xerox/xerox_visible_artwork_planner.dart';
 
 void main() {
   test('planner prioritizes selected and visible tiles before overscan', () async {

@@ -1,4 +1,4 @@
-// 文件职责：提供音乐源切换与首页 Artwork 模式共用的 Tile 透视过渡动效。
+// 文件职责：提供音乐源切换与 Artwork 模式共用的 Tile 透视过渡动效。
 
 import 'dart:math' as math;
 
