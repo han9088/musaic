@@ -8,7 +8,7 @@ import 'package:musaic_query/musaic_query.dart';
 import '../storage/music/music_index.dart';
 import '../services/music/directory_music_library.dart';
 import '../services/music/music_source_controller.dart';
-import '../features/artwork/source/directory_artwork.dart';
+import '../features/artwork/presentation/directory_artwork.dart';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';

@@ -4,8 +4,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 
-import '../../canvas/album_grid_snapshot.dart';
-import 'music_source_transition.dart';
+import '../../transitions/source_tile_motion.dart';
 
 /// 封装或定义来源过渡phase相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 enum SourceTransitionPhase { exit, handoff, enter }
@@ -108,6 +107,7 @@ class HomeSourceTransition {
     Widget child, {
     required double Function() scale,
     required Size Function(BuildContext) viewport,
+    required double tileSize,
   }) {
     final current = phase;
     if (current == null) return child;
@@ -127,13 +127,13 @@ class HomeSourceTransition {
                 elapsedMs: elapsed - exitDurationMs - sourceHandoffMs,
                 viewport: window,
                 scale: zoom,
-                tileSize: albumGridExtent,
+                tileSize: tileSize,
               )
             : motion.exitTransform(
                 elapsedMs: elapsed,
                 viewport: window,
                 scale: zoom,
-                tileSize: albumGridExtent,
+                tileSize: tileSize,
               );
         return Transform(
           alignment: Alignment.center,

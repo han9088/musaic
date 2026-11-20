@@ -1,12 +1,11 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：按有限并发准备 Xerox Raster 任务，并统一收集或释放图片 Lease。
 
-import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart';
 
 import 'xerox_raster_cache.dart';
 import 'xerox_raster_request.dart';
 
-/// 封装或定义Xeroxjob调度器相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+/// 只调度 Xerox Raster 任务，不负责原图预热或模式状态。
 class XeroxJobScheduler {
   XeroxJobScheduler({
     this.maxConcurrentRequests = 2,
@@ -20,7 +19,6 @@ class XeroxJobScheduler {
   final int maxConcurrentRequests;
   final XeroxRasterCache cache;
 
-  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   Future<List<XeroxRasterLease>> prepare(
     Iterable<XeroxRasterRequest> requests, {
     bool Function()? isActive,
@@ -88,34 +86,6 @@ class XeroxJobScheduler {
         lease.release();
       }
       rethrow;
-    }
-  }
-
-  /// 准备并调度后续任务，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
-  Future<void> precacheOriginals(
-    Iterable<XeroxRasterRequest> requests,
-    BuildContext context, {
-    bool Function()? isActive,
-  }) async {
-    final unique = <String, XeroxRasterRequest>{};
-    for (final request in requests) {
-      unique.putIfAbsent(request.sourceKey, () => request);
-    }
-    final values = unique.values.toList(growable: false);
-    for (var start = 0; start < values.length; start += maxConcurrentRequests * 2) {
-      if (isActive != null && !isActive()) {
-        throw StateError('Original artwork preparation was cancelled.');
-      }
-      final end = (start + maxConcurrentRequests * 2).clamp(0, values.length);
-      await Future.wait([
-        for (final request in values.sublist(start, end))
-          precacheImage(
-            request.image,
-            context,
-            size: Size.square(request.resolution.toDouble()),
-            onError: (error, stack) {},
-          ),
-      ]);
     }
   }
 }

@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import '../../../services/music/directory_music_library.dart';
 import '../model/artwork_identity.dart';
 import '../pipeline/artwork_image_pipeline.dart';
-import 'artwork_resolver.dart';
+import '../source/artwork_resolver.dart';
 
 /// 在应用级作用域中维护一份媒体库订阅，避免每张专辑卡片重复监听。
 class DirectoryArtworkScope extends StatefulWidget {

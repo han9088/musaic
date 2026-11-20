@@ -1,4 +1,4 @@
-// 文件职责：音乐源、媒体库、播放及切换流程。
+// 文件职责：提供音乐源切换与首页 Artwork 模式共用的 Tile 透视过渡动效。
 
 import 'dart:math' as math;
 
@@ -12,7 +12,7 @@ const enterStaggerMs = 28.0;
 const enterRowMs = 190.0;
 const enterHoldMs = 60.0;
 
-/// 封装或定义来源tile动效相关类型与行为，负责音乐源、媒体库、播放及切换流程。
+/// 描述单张 Tile 在过渡动画中的屏幕位置和起始时间。
 class SourceTileMotion {
   const SourceTileMotion({required this.rect, required this.startMs});
 

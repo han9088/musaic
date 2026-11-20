@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../pipeline/artwork_decode_policy.dart';
 import 'xerox_raster_cache.dart';
 import 'xerox_raster_request.dart';
 import 'xerox_resolution.dart';
@@ -57,6 +58,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
   XeroxRasterKey? _scheduledKey;
   int _generation = 0;
   int _requestedResolution = 0;
+  int _requestedOriginalDecodeResolution = 0;
   XeroxRasterKey? _failedKey;
   Object? _error;
 
@@ -75,6 +77,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       _lease?.release();
       _lease = null;
       _requestedResolution = 0;
+      _requestedOriginalDecodeResolution = 0;
       _failedKey = null;
       _error = null;
     }
@@ -163,15 +166,23 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
         height.isFinite ? height : 0,
       );
       final dpr = MediaQuery.devicePixelRatioOf(context);
+      final physicalExtent = extent * widget.scale * dpr;
       final resolution = xeroxResolution(
-        extent * widget.scale * dpr,
+        physicalExtent,
         current: _requestedResolution == 0 ? null : _requestedResolution,
+      );
+      final originalDecodeResolution = artworkDecodeResolution(
+        physicalExtent,
+        current: _requestedOriginalDecodeResolution == 0
+            ? null
+            : _requestedOriginalDecodeResolution,
       );
       final request = XeroxRasterRequest(
         identity: widget.identity,
         image: widget.image,
         sourceKey: widget.sourceKey,
         resolution: resolution,
+        originalDecodeResolution: originalDecodeResolution,
         fit: widget.fit ?? BoxFit.scaleDown,
         devicePixelRatio: dpr,
       );
@@ -183,9 +194,11 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
       }
       final sameArtwork = currentLease?.key.sameArtwork(request.key) ?? false;
       final canKeepCurrent = sameArtwork &&
-          currentLease!.resolution == resolution;
+          currentLease!.resolution == resolution &&
+          currentLease.key.originalDecodeResolution == originalDecodeResolution;
       if (!canKeepCurrent) {
         _requestedResolution = resolution;
+        _requestedOriginalDecodeResolution = originalDecodeResolution;
         _scheduleAcquire(
           request,
           delay: currentLease == null
@@ -202,6 +215,7 @@ class _XeroxArtworkState extends State<XeroxArtwork> {
           _scheduledKey = null;
         }
         _requestedResolution = currentLease.resolution;
+        _requestedOriginalDecodeResolution = currentLease.key.originalDecodeResolution;
       }
 
       final image = sameArtwork ? currentLease!.image : null;

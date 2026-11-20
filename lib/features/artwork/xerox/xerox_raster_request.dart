@@ -1,4 +1,4 @@
-// 文件职责：专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+// 文件职责：描述 Xerox Raster 输入资源、原图解码 LOD、输出 LOD 和处理优先级。
 
 import 'dart:convert';
 
@@ -8,16 +8,16 @@ import 'package:flutter/widgets.dart';
 
 import 'xerox_config.dart';
 
-/// Xerox Raster 任务优先级。优先级只影响排队顺序，不参与缓存 Key。
+/// 优先级只影响任务排队顺序，不参与缓存身份。
 enum XeroxRasterPriority { background, overscan, visible, selected }
 
 @immutable
-/// 封装或定义Xerox光栅key相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterKey {
   const XeroxRasterKey({
     required this.identity,
     required this.sourceKey,
     required this.resolution,
+    required this.originalDecodeResolution,
     required this.fit,
     required this.devicePixelRatio,
     required this.config,
@@ -26,15 +26,17 @@ class XeroxRasterKey {
   final String identity;
   final String sourceKey;
   final int resolution;
+  final int originalDecodeResolution;
   final BoxFit fit;
   final double devicePixelRatio;
   final XeroxConfig config;
 
-  /// 执行当前模块中的磁盘缓存key操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+  /// 磁盘缓存身份包含输入和输出分辨率，避免不同原图 LOD 互相命中。
   String get diskCacheKey {
     final value = jsonEncode([
       identity,
       sourceKey,
+      originalDecodeResolution,
       resolution,
       fit.name,
       devicePixelRatio,
@@ -43,12 +45,12 @@ class XeroxRasterKey {
       config.smooth,
       config.grain,
       config.invert,
-      'xerox-raster-v1',
+      'xerox-raster-v2',
     ]);
     return base64Url.encode(utf8.encode(value)).replaceAll('=', '');
   }
 
-  /// 执行当前模块中的same专辑封面操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
+  /// 比较同一封面、同一原图解码档位和处理参数；输出 LOD 可以不同。
   bool sameArtwork(XeroxRasterKey other) =>
       identity == other.identity &&
       sourceKey == other.sourceKey &&
@@ -64,14 +66,15 @@ class XeroxRasterKey {
   bool operator ==(Object other) =>
       other is XeroxRasterKey &&
       sameArtwork(other) &&
-      resolution == other.resolution;
+      resolution == other.resolution &&
+      originalDecodeResolution == other.originalDecodeResolution;
 
   @override
-  /// 判断当前状态是否满足指定条件，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   int get hashCode => Object.hash(
     identity,
     sourceKey,
     resolution,
+    originalDecodeResolution,
     fit,
     devicePixelRatio,
     config.edge,
@@ -83,33 +86,35 @@ class XeroxRasterKey {
 }
 
 @immutable
-/// 封装或定义Xerox光栅request相关类型与行为，负责专辑封面来源解析、图片解码、缓存及 Xerox 处理。
 class XeroxRasterRequest {
   XeroxRasterRequest({
     required this.identity,
     required this.image,
     required this.resolution,
+    int? originalDecodeResolution,
     this.fit = BoxFit.cover,
     this.devicePixelRatio = 1,
     this.config = xeroxConfig,
     this.priority = XeroxRasterPriority.background,
     String? sourceKey,
-  }) : sourceKey = sourceKey ?? image.toString();
+  }) : originalDecodeResolution = originalDecodeResolution ?? resolution,
+       sourceKey = sourceKey ?? image.toString();
 
   final String identity;
   final ImageProvider<Object> image;
   final int resolution;
+  final int originalDecodeResolution;
   final BoxFit fit;
   final double devicePixelRatio;
   final XeroxConfig config;
   final String sourceKey;
   final XeroxRasterPriority priority;
 
-  /// 执行当前模块中的key操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
   XeroxRasterKey get key => XeroxRasterKey(
     identity: identity,
     sourceKey: sourceKey,
     resolution: resolution,
+    originalDecodeResolution: originalDecodeResolution,
     fit: fit,
     devicePixelRatio: devicePixelRatio,
     config: config,

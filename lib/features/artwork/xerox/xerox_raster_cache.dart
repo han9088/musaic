@@ -200,7 +200,11 @@ class XeroxRasterCache {
     var bestHigherResolution = 1 << 30;
 
     for (final item in _entries.entries) {
-      if (!item.key.sameArtwork(request.key)) continue;
+      if (!item.key.sameArtwork(request.key) ||
+          item.key.originalDecodeResolution !=
+              request.key.originalDecodeResolution) {
+        continue;
+      }
       final resolution = item.key.resolution;
       if (resolution <= request.resolution &&
           resolution > bestLowerResolution) {

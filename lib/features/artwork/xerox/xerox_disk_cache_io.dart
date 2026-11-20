@@ -15,7 +15,7 @@ XeroxDiskCacheStore createXeroxDiskCacheStore() =>
 class _IoXeroxDiskCacheStore implements XeroxDiskCacheStore {
   static final CacheManager _manager = CacheManager(
     Config(
-      'musaic_xerox_rasters_v1',
+      'musaic_xerox_rasters_v2',
       stalePeriod: const Duration(days: 365),
       maxNrOfCacheObjects: 1200,
     ),

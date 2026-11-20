@@ -115,6 +115,7 @@ class _ArtworkImageState extends State<ArtworkImage> {
           sourceKey: _sourceKey,
           image: widget.image,
           resolution: rasterResolution,
+          originalDecodeResolution: decodeResolution,
           fit: widget.fit ?? BoxFit.scaleDown,
           devicePixelRatio: dpr,
           priority: XeroxRasterPriority.background,

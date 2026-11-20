@@ -1,109 +1,125 @@
-// 文件职责：按当前视口预热原始封面，避免音乐源切换时临时等待图片加载。
+// 文件职责：统一预热 Artwork 原图资源，不负责视口计算或专辑目录映射。
 
 import 'package:flutter/widgets.dart';
 
 import '../../../services/music/directory_music_library.dart';
-import '../../canvas/album_grid_snapshot.dart';
-import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
 import '../source/artwork_resolver.dart';
 import 'artwork_decode_policy.dart';
 
-/// 只预热已进入视口的原图，不扫描或请求无限画布远处的图片。
+/// 只接收完整的 ArtworkRequest；视口筛选和专辑数据转换由调用方负责。
 class ArtworkPrefetchScheduler {
   const ArtworkPrefetchScheduler({this.maxConcurrent = 4})
     : assert(maxConcurrent > 0);
 
   final int maxConcurrent;
 
-  /// 根据网格快照生成有序且去重的可见封面引用，保留音乐源提供的稳定身份。
-  List<({String source, ArtworkIdentity? identity})> visibleArtwork(
-    List<Map<String, dynamic>> albums,
-    List<({int row, int column, Rect rect})> cells,
-  ) {
-    if (albums.isEmpty) return const [];
-    final seen = <({String source, ArtworkIdentity? identity})>{};
-    final sources = <({String source, ArtworkIdentity? identity})>[];
-    for (final cell in cells) {
-      final album = albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
-      final source = album['asset'] as String;
-      if (source.startsWith('local:')) continue;
-      final rawIdentity = album['id'] as String?;
-      final request = (
-        source: source,
-        identity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
-      );
-      if (seen.add(request)) sources.add(request);
+  List<ArtworkRequest> deduplicate(Iterable<ArtworkRequest> requests) {
+    final seen = <ArtworkRequest>{};
+    final result = <ArtworkRequest>[];
+    for (final request in requests) {
+      if (request.source.startsWith('local:')) continue;
+      if (seen.add(request)) result.add(request);
     }
-    return sources;
+    return result;
   }
 
-  /// 分批解析并预热可见原图；网络、Asset 与本地目录统一经过 ArtworkResolver。
   Future<void> warm({
-    required List<Map<String, dynamic>> albums,
-    required List<({int row, int column, Rect rect})> cells,
+    required Iterable<ArtworkRequest> requests,
     required DirectoryMusicLibrary? directory,
     required BuildContext context,
     required bool Function() isActive,
-    double scale = 1,
   }) async {
-    final sources = visibleArtwork(albums, cells);
-    for (var start = 0; start < sources.length; start += maxConcurrent) {
+    final unique = deduplicate(requests);
+    for (var start = 0; start < unique.length; start += maxConcurrent) {
       if (!isActive()) return;
-      final end = (start + maxConcurrent).clamp(0, sources.length);
+      final end = (start + maxConcurrent).clamp(0, unique.length);
       await Future.wait([
         for (var index = start; index < end; index++)
-          _warmSource(
-            sources[index].source,
-            identity: sources[index].identity,
+          _warmRequest(
+            unique[index],
             directory: directory,
             context: context,
             isActive: isActive,
-            scale: scale,
           ),
       ]);
     }
   }
 
-  Future<void> _warmSource(
-    String reference, {
-    required ArtworkIdentity? identity,
+  /// 预热已解析的 Provider，供关闭 Xerox 模式前复用原图解码结果。
+  Future<void> warmProviders(
+    Iterable<({ImageProvider<Object> image, String sourceKey, int decodeResolution})> sources,
+    BuildContext context, {
+    bool Function()? isActive,
+  }) async {
+    final unique = <String, ({ImageProvider<Object> image, String sourceKey, int decodeResolution})>{};
+    for (final source in sources) {
+      unique.putIfAbsent(
+        '${source.sourceKey}:${source.decodeResolution}',
+        () => source,
+      );
+    }
+    final values = unique.values.toList(growable: false);
+    for (var start = 0; start < values.length; start += maxConcurrent) {
+      if (isActive != null && !isActive()) return;
+      final end = (start + maxConcurrent).clamp(0, values.length);
+      await Future.wait([
+        for (final source in values.sublist(start, end))
+          _precacheProvider(source, context),
+      ]);
+    }
+  }
+
+  Future<void> _precacheProvider(
+    ({ImageProvider<Object> image, String sourceKey, int decodeResolution}) source,
+    BuildContext context,
+  ) async {
+    try {
+      final provider = ResizeImage(
+        source.image,
+        width: source.decodeResolution,
+        height: source.decodeResolution,
+      );
+      await precacheImage(
+        provider,
+        context,
+        size: Size.square(source.decodeResolution.toDouble()),
+        onError: (error, stackTrace) {},
+      );
+    } catch (_) {
+      // 预热失败不应阻断模式切换或音乐源切换。
+    }
+  }
+
+  Future<void> _warmRequest(
+    ArtworkRequest request, {
     required DirectoryMusicLibrary? directory,
     required BuildContext context,
     required bool Function() isActive,
-    required double scale,
   }) async {
+    final targetSize = request.targetSize;
+    if (targetSize == null) return;
     try {
-      final dpr = MediaQuery.devicePixelRatioOf(context);
-      final request = ArtworkRequest(
-        source: reference,
-        identity: identity,
-        targetSize: Size.square(albumGridExtent * scale),
-        devicePixelRatio: dpr,
-        fit: BoxFit.cover,
-      );
       final resolved = await const ArtworkResolver().resolveRequest(
         request,
         directories: directory,
       );
       if (!isActive() || resolved == null) return;
-
       final resolution = artworkDecodeResolution(
-        request.targetSize!.longestSide * request.devicePixelRatio,
-      );
-      final provider = ResizeImage(
-        resolved.image,
-        width: resolution,
-        height: resolution,
+        targetSize.longestSide * request.devicePixelRatio,
       );
       await precacheImage(
-        provider,
+        ResizeImage(
+          resolved.image,
+          width: resolution,
+          height: resolution,
+        ),
         context,
-        size: request.targetSize,
+        size: targetSize,
         onError: (error, stackTrace) {},
       );
     } catch (_) {
-      // 预热失败只影响切换时的缓存命中率，不应阻断音乐源切换。
+      // 预热失败只影响缓存命中率，不应阻断音乐源切换。
     }
   }
 }

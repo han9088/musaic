@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musaic/features/artwork/xerox/home_artwork_mode_transition.dart';
-import 'package:musaic/features/music/transition/music_source_transition.dart';
+import 'package:musaic/pages/home/artwork_mode/home_artwork_mode_transition.dart';
+import 'package:musaic/features/transitions/source_tile_motion.dart';
 
 void main() {
   testWidgets('Xerox mode flies originals out before processed covers enter', (

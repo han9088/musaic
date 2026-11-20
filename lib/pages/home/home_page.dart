@@ -21,14 +21,15 @@ import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
 import '../../features/artwork/source/artwork_resolver.dart';
 import '../../features/artwork/model/artwork_identity.dart';
-import '../../features/artwork/xerox/home_artwork_mode_controller.dart';
-import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
+import '../../features/artwork/model/artwork_request.dart';
+import 'artwork_mode/home_artwork_mode_controller.dart';
+import 'artwork_mode/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
 import '../../features/cover_flow/album_cover_flow.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
-import '../../features/music/transition/music_source_transition.dart';
+import '../../features/transitions/source_tile_motion.dart';
 import '../../features/music/transition/home_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/catalog/album_catalog_mapper.dart';
@@ -169,11 +170,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         );
       } else {
-        await const ArtworkPrefetchScheduler().warm(
+        await _warmOriginalArtwork(
           albums: target,
           cells: snapshot.cells,
-          directory: _sources.directories,
-          context: context,
           isActive: () => mounted,
           scale: _transform.value.getColumn(0).length,
         );
@@ -231,6 +230,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child,
         scale: () => _transform.value.getColumn(0).length,
         viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
+        tileSize: albumGridExtent,
       );
 
   /// 协调动画进度与状态过渡，用于页面状态组织与业务流程协调。
@@ -244,6 +244,42 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child,
       scale: () => _transform.value.getColumn(0).length,
       viewport: (context) => _portraitSize ?? MediaQuery.sizeOf(context),
+      tileSize: albumGridExtent,
+    );
+  }
+
+  /// 将视口中的专辑映射为通用 ArtworkRequest，再交给资源层预热。
+  Future<void> _warmOriginalArtwork({
+    required List<Map<String, dynamic>> albums,
+    required List<({int row, int column, Rect rect})> cells,
+    required bool Function() isActive,
+    required double scale,
+  }) async {
+    if (albums.isEmpty || cells.isEmpty) return;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final requests = <ArtworkRequest>[];
+    for (final cell in cells) {
+      final album = albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
+      final source = album['asset'] as String;
+      if (source.startsWith('local:')) continue;
+      final rawIdentity = album['id'] as String?;
+      final rawVersion = album['artworkVersion'] as String?;
+      requests.add(
+        ArtworkRequest(
+          source: source,
+          identity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
+          version: rawVersion == null ? null : ArtworkVersion(rawVersion),
+          targetSize: Size.square(albumGridExtent * scale),
+          devicePixelRatio: dpr,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+    await const ArtworkPrefetchScheduler().warm(
+      requests: requests,
+      directory: _sources.directories,
+      context: context,
+      isActive: isActive,
     );
   }
 
@@ -258,6 +294,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (albums.isEmpty) return const [];
     String? selectedAsset;
     ArtworkIdentity? selectedIdentity;
+    ArtworkVersion? selectedVersion;
     if (includeSelected) {
       final selected = _albumLayout.selectedAlbum;
       if (selected != null) {
@@ -271,6 +308,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         selectedIdentity = rawIdentity == null
             ? null
             : ArtworkIdentity(rawIdentity);
+        final rawVersion = selectedAlbum['artworkVersion'] as String?;
+        selectedVersion = rawVersion == null ? null : ArtworkVersion(rawVersion);
       }
     }
 
@@ -278,6 +317,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       cells: cells,
       viewport: _portraitSize ?? MediaQuery.sizeOf(context),
       scale: _transform.value.getColumn(0).length,
+      tileExtent: albumGridExtent,
       devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
       assetAt: (row, column) {
         final album = useLayout
@@ -292,12 +332,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         final rawIdentity = album['id'] as String?;
         return rawIdentity == null ? null : ArtworkIdentity(rawIdentity);
       },
+      versionAt: (row, column) {
+        final album = useLayout
+            ? _albumLayout.albumAt(row, column, albums)
+            : albums[gridAlbumIndex(row, column, albums.length)];
+        final rawVersion = album['artworkVersion'] as String?;
+        return rawVersion == null ? null : ArtworkVersion(rawVersion);
+      },
       resolveArtwork: (request) => const ArtworkResolver().resolveRequest(
         request,
         directories: _sources.directories,
       ),
       selectedAsset: selectedAsset,
       selectedIdentity: selectedIdentity,
+      selectedVersion: selectedVersion,
       isActive: isActive,
     );
   }

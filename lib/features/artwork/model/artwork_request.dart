@@ -31,4 +31,24 @@ class ArtworkRequest {
 
   final double devicePixelRatio;
   final BoxFit fit;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ArtworkRequest &&
+      source == other.source &&
+      identity == other.identity &&
+      version == other.version &&
+      targetSize == other.targetSize &&
+      devicePixelRatio == other.devicePixelRatio &&
+      fit == other.fit;
+
+  @override
+  int get hashCode => Object.hash(
+    source,
+    identity,
+    version,
+    targetSize,
+    devicePixelRatio,
+    fit,
+  );
 }

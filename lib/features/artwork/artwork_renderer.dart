@@ -7,7 +7,7 @@ import 'model/artwork_identity.dart';
 import 'model/artwork_source.dart';
 import 'pipeline/artwork_image_pipeline.dart';
 import 'source/artwork_resolver.dart';
-import 'source/directory_artwork.dart';
+import 'presentation/directory_artwork.dart';
 
 /// 根据来源类型选择占位、本地目录或统一图片管线。
 ///
