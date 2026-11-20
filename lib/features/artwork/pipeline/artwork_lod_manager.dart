@@ -70,6 +70,16 @@ class ArtworkLodManager {
 
   static const instance = ArtworkLodManager();
 
+  /// Both existing covers and newly visible covers keep their original LOD.
+  bool hasSameSelections(double first, double second) =>
+      first == second ||
+      (selectArtworkResolution(first) == selectArtworkResolution(second) &&
+          artworkResolutions.every(
+            (current) =>
+                selectArtworkResolution(first, current: current) ==
+                selectArtworkResolution(second, current: current),
+          ));
+
   ArtworkLodSelection select(
     double physicalExtent, {
     int? currentOriginalDecodeResolution,

@@ -42,6 +42,67 @@ class _ControlledSensors extends SensorsPlatform {
 }
 
 void main() {
+  testWidgets(
+    'the canvas retains overlapping covers while panning at minimum zoom',
+    (tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final transform = TransformationController();
+      final playback = AlbumPlayback();
+      addTearDown(transform.dispose);
+      addTearDown(playback.dispose);
+      var coverBuilds = 0;
+      void moveTo(double zoom, double x) {
+        transform.value = Matrix4.diagonal3Values(zoom, zoom, 1)
+          ..setEntry(0, 3, x)
+          ..setEntry(1, 3, 17);
+      }
+
+      moveTo(0.4, 13);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AlbumCanvasViewport(
+            albums: const [
+              {'asset': 'local:placeholder', 'title': 'Album'},
+            ],
+            layout: HomeAlbumLayoutState(),
+            transform: transform,
+            interaction: CanvasInteractionState(CanvasDrift()),
+            playback: playback,
+            xerox: false,
+            interactionBlocked: false,
+            onViewportSizeChanged: (_) {},
+            onTileSelected: (_, _) {},
+            animateSourceTile: (_, _, child) {
+              coverBuilds++;
+              return child;
+            },
+          ),
+        ),
+      );
+      final initialBuilds = coverBuilds;
+      expect(initialBuilds, greaterThan(300));
+
+      coverBuilds = 0;
+      moveTo(0.4, 14);
+      await tester.pump();
+      moveTo(0.4001, 14);
+      await tester.pump();
+      expect(
+        coverBuilds,
+        0,
+        reason: 'the tile window and decode tiers are stable',
+      );
+
+      moveTo(0.4001, -34);
+      await tester.pump();
+      expect(coverBuilds, inExclusiveRange(0, initialBuilds ~/ 4));
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   for (final transition in ['BottomSheet', 'Cover Flow']) {
     testWidgets('tilt responds after returning from $transition', (
       tester,

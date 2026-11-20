@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
+import '../artwork/pipeline/artwork_lod_manager.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 import 'album_canvas.dart';
@@ -68,12 +69,48 @@ class AlbumCanvasViewport extends StatelessWidget {
     );
   }
 
+  Widget _tile(int row, int column, double scale) => Positioned(
+    key: ValueKey((row, column)),
+    left: column * albumGridExtent,
+    top: row * albumGridExtent,
+    width: albumGridExtent,
+    height: albumGridExtent,
+    child: animateSourceTile(
+      row,
+      column,
+      Builder(
+        builder: (context) {
+          final album = layout.albumAt(row, column, albums);
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onTileSelected(row, column),
+            child: albumArtwork(
+              album['asset'] as String,
+              artworkIdentity: _artworkIdentityFor(album),
+              fit: BoxFit.cover,
+              xerox: xerox,
+              scale: scale,
+              semanticLabel: album['title'] as String,
+            ),
+          );
+        },
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
     return PortraitTilt(
       child: LayoutBuilder(
         builder: (context, constraints) {
           onViewportSizeChanged(constraints.biggest);
+          final dpr = MediaQuery.devicePixelRatioOf(context);
+          var tiles = const <(int, int), Widget>{};
+          ({int left, int right, int top, int bottom})? previousBounds;
+          double? previousExtent;
+          (int, int)? previousSelection;
+          double? previousSelectionScale;
+          AlbumCanvas? previousCanvas;
           return Listener(
             onPointerDown: (event) => interaction.pointerDown(event.pointer),
             onPointerUp: (event) => interaction.pointerUp(event.pointer),
@@ -104,50 +141,48 @@ class AlbumCanvasViewport extends StatelessWidget {
                       ((rect.point0.y - margin) / albumGridExtent).floor() - 1;
                   final bottom =
                       ((rect.point2.y + margin) / albumGridExtent).ceil() + 1;
-                  return AlbumCanvas(
+                  final bounds = (
+                    left: left,
+                    right: right,
+                    top: top,
+                    bottom: bottom,
+                  );
+                  final extent = albumGridExtent * scale * dpr;
+                  final lastExtent = previousExtent;
+                  final sameLod =
+                      lastExtent != null &&
+                      ArtworkLodManager.instance.hasSameSelections(
+                        lastExtent,
+                        extent,
+                      );
+                  final selected = layout.selectedAlbum;
+                  if (sameLod &&
+                      bounds == previousBounds &&
+                      selected == previousSelection &&
+                      (selected == null || previousSelectionScale == scale)) {
+                    return previousCanvas!;
+                  }
+
+                  final retained = sameLod
+                      ? tiles
+                      : const <(int, int), Widget>{};
+                  tiles = {
+                    for (var row = top; row <= bottom; row++)
+                      for (var col = left; col <= right; col++)
+                        (row, col):
+                            retained[(row, col)] ?? _tile(row, col, scale),
+                  };
+                  previousBounds = bounds;
+                  previousExtent = extent;
+                  previousSelection = selected;
+                  previousSelectionScale = scale;
+                  return previousCanvas = AlbumCanvas(
                     size: constraints.biggest,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
-                        for (var row = top; row <= bottom; row++)
-                          for (var col = left; col <= right; col++)
-                            Positioned(
-                              key: ValueKey((row, col)),
-                              left: col * albumGridExtent,
-                              top: row * albumGridExtent,
-                              width: albumGridExtent,
-                              height: albumGridExtent,
-                              child: animateSourceTile(
-                                row,
-                                col,
-                                Builder(
-                                  builder: (context) {
-                                    final album = layout.albumAt(
-                                      row,
-                                      col,
-                                      albums,
-                                    );
-                                    final asset = album['asset'] as String;
-                                    final rawIdentity = album['id'] as String?;
-                                    return GestureDetector(
-                                      behavior: HitTestBehavior.opaque,
-                                      onTap: () => onTileSelected(row, col),
-                                      child: albumArtwork(
-                                        asset,
-                                        artworkIdentity: rawIdentity == null
-                                            ? null
-                                            : ArtworkIdentity(rawIdentity),
-                                        fit: BoxFit.cover,
-                                        xerox: xerox,
-                                        scale: scale,
-                                        semanticLabel: album['title'] as String,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                        if (layout.selectedAlbum case final selected?)
+                        ...tiles.values,
+                        if (selected != null)
                           Positioned(
                             key: ValueKey(('selected', selected)),
                             left: selected.$2 * albumGridExtent,

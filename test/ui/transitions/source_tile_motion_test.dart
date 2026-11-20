@@ -1,9 +1,78 @@
 import 'dart:ui';
 
+import 'package:flutter/rendering.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/ui/transitions/source_tile_motion.dart';
 
 void main() {
+  testWidgets('tile opacity matches Flutter through layer changes', (
+    tester,
+  ) async {
+    final standardKey = GlobalKey();
+    final tileKey = GlobalKey();
+    Widget layers() => const Stack(
+      children: [
+        SizedBox(
+          width: 16,
+          height: 16,
+          child: ColoredBox(color: Color(0xffff8800)),
+        ),
+        Positioned(
+          left: 5,
+          child: SizedBox(
+            width: 11,
+            height: 16,
+            child: ColoredBox(color: Color(0xff0088ff)),
+          ),
+        ),
+      ],
+    );
+    Future<List<int>> pixels(GlobalKey key) async {
+      final boundary =
+          key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+      final image = boundary.toImageSync();
+      try {
+        final bytes = await image.toByteData(format: ImageByteFormat.rawRgba);
+        return bytes!.buffer.asUint8List();
+      } finally {
+        image.dispose();
+      }
+    }
+
+    for (final alpha in [1.0, 0.45, 0.0, 1.0]) {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            children: [
+              RepaintBoundary(
+                key: standardKey,
+                child: Opacity(opacity: alpha, child: layers()),
+              ),
+              RepaintBoundary(
+                key: tileKey,
+                child: SourceTileMotion.wrap(
+                  timeline: const AlwaysStoppedAnimation(0),
+                  frame: (_) => (transform: Matrix4.identity(), alpha: alpha),
+                  child: layers(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      final rendered = await tester.runAsync(
+        () => Future.wait([pixels(tileKey), pixels(standardKey)]),
+      );
+      expect(rendered![0], rendered[1]);
+      final opacities = tester.allRenderObjects
+          .whereType<RenderOpacity>()
+          .toList();
+      expect(opacities.last.isRepaintBoundary, alpha > 0 && alpha < 1);
+    }
+  });
+
   const viewport = Size(400, 800);
   final cells = [
     (row: 4, column: 0, rect: const Rect.fromLTWH(0, 700, 100, 100)),

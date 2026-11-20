@@ -2,6 +2,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 
 const tileOutDurationMs = 85.0;
@@ -34,7 +35,7 @@ class SourceTileMotion {
       return Transform(
         alignment: Alignment.center,
         transform: value?.transform ?? _identityTransform,
-        child: Opacity(opacity: value?.alpha ?? 1, child: child),
+        child: _TileOpacity(opacity: value?.alpha ?? 1, child: child),
       );
     },
   );
@@ -154,4 +155,31 @@ class SourceTileMotion {
     ..translateByDouble(hinge, 0, 0, 1)
     ..rotateY(angle)
     ..translateByDouble(-hinge, 0, 0, 1);
+}
+
+class _TileOpacity extends SingleChildRenderObjectWidget {
+  const _TileOpacity({required this.opacity, super.child});
+
+  final double opacity;
+
+  @override
+  _RenderTileOpacity createRenderObject(BuildContext context) =>
+      _RenderTileOpacity(opacity: opacity);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderTileOpacity renderObject,
+  ) {
+    renderObject.opacity = opacity;
+  }
+}
+
+class _RenderTileOpacity extends RenderOpacity {
+  _RenderTileOpacity({required super.opacity});
+
+  // Keep the mounted cover without a compositing layer when it's fully opaque.
+  @override
+  bool get alwaysNeedsCompositing =>
+      super.alwaysNeedsCompositing && Color.getAlphaFromOpacity(opacity) < 255;
 }

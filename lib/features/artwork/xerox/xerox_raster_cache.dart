@@ -204,13 +204,17 @@ class XeroxRasterCache {
     XeroxRasterRequest request, {
     bool requireSameDecodeResolution = true,
   }) {
+    final requestKey = request.key;
+    final exact = _entries[requestKey];
+    if (exact != null) return (requestKey, exact);
+
     XeroxRasterKey? bestKey;
     _RasterEntry? bestEntry;
     var bestLowerResolution = 0;
     var bestHigherResolution = 1 << 30;
 
     for (final item in _entries.entries) {
-      if (!item.key.sameArtwork(request.key) ||
+      if (!item.key.sameArtwork(requestKey) ||
           (requireSameDecodeResolution &&
               item.key.originalDecodeResolution !=
                   request.originalDecodeResolution)) {
