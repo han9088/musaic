@@ -62,6 +62,20 @@ void main() {
     expect(plan.xeroxRequest.resolution, 512);
   });
 
+  test('Xerox can use a 1024px source decode and produce a 512px raster', () {
+    final plan = ArtworkPipeline.instance.createDisplayPlan(
+      resource: resource,
+      targetSize: const Size.square(680),
+      devicePixelRatio: 1,
+      currentOriginalDecodeResolution: 1024,
+      currentXeroxResolution: 512,
+    );
+
+    expect(plan.originalDecodeResolution, 1024);
+    expect(plan.xeroxRequest.originalDecodeResolution, 1024);
+    expect(plan.xeroxRequest.resolution, 512);
+  });
+
   test('Xerox cache identity includes both input and output resolutions', () {
     final input256 = XeroxRasterRequest(
       identity: resource.identity,
