@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
@@ -10,9 +11,11 @@ import '../model/artwork_request.dart';
 import '../model/artwork_resource.dart';
 import '../model/artwork_source.dart';
 import 'artwork_file_provider_stub.dart'
-    if (dart.library.io) 'artwork_file_provider_io.dart' as file_provider;
+    if (dart.library.io) 'artwork_file_provider_io.dart'
+    as file_provider;
 import 'artwork_network_provider_stub.dart'
-    if (dart.library.io) 'artwork_network_provider_io.dart' as network_provider;
+    if (dart.library.io) 'artwork_network_provider_io.dart'
+    as network_provider;
 
 /// 兼容现有调用方的类型名称；新代码统一使用 ArtworkResource。
 typedef ResolvedArtwork = ArtworkResource;
@@ -27,19 +30,17 @@ class ArtworkResolver {
     ArtworkIdentity? identity,
     ArtworkVersion? version,
   }) => resolveRequest(
-    ArtworkRequest(
-      source: reference,
-      identity: identity,
-      version: version,
-    ),
+    ArtworkRequest(source: reference, identity: identity, version: version),
     directories: directories,
   );
 
   Future<ArtworkResource?> resolveRequest(
     ArtworkRequest request, {
     required DirectoryMusicLibrary? directories,
-  }) async {
-    if (request.source.startsWith('local:')) return null;
+  }) {
+    if (request.source.startsWith('local:')) {
+      return SynchronousFuture(null);
+    }
 
     final source = ArtworkSource.parse(
       request.source,
@@ -50,15 +51,16 @@ class ArtworkResolver {
     switch (source.type) {
       case ArtworkSourceType.asset:
         final provider = AssetImage(source.value);
-        return _resource(source, provider);
+        return SynchronousFuture(_resource(source, provider));
 
       case ArtworkSourceType.network:
-        final provider = await network_provider.networkArtworkProvider(
-          source.value,
-          identity: source.identity,
-          version: source.version,
-        );
-        return _resource(source, provider);
+        return network_provider
+            .networkArtworkProvider(
+              source.value,
+              identity: source.identity,
+              version: source.version,
+            )
+            .then((provider) => _resource(source, provider));
 
       case ArtworkSourceType.directory:
         return _resolveDirectory(source, request.version, directories);
@@ -70,10 +72,7 @@ class ArtworkResolver {
     ImageProvider<Object> provider,
   ) => ArtworkResource(
     identity: source.identity,
-    sourceKey: jsonEncode([
-      source.cacheKey,
-      provider.toString(),
-    ]),
+    sourceKey: jsonEncode([source.cacheKey, provider.toString()]),
     image: provider,
   );
 
@@ -98,7 +97,12 @@ class ArtworkResolver {
     final fileVersion = jsonEncode([track.file.data, requestedVersion?.value]);
     return ArtworkResource(
       identity: source.identity,
-      sourceKey: jsonEncode([source.cacheKey, provider.toString(), fileVersion, uri]),
+      sourceKey: jsonEncode([
+        source.cacheKey,
+        provider.toString(),
+        fileVersion,
+        uri,
+      ]),
       image: provider,
     );
   }

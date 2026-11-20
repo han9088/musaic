@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -25,6 +27,66 @@ class RotationAlbumCache extends MockAlbumCache {
 }
 
 void main() {
+  testWidgets('warmed covers remain visible during rotation and handoff', (
+    tester,
+  ) async {
+    final messenger = tester.binding.defaultBinaryMessenger;
+    for (final name in [
+      'dev.fluttercommunity.plus/sensors/method',
+      'dev.fluttercommunity.plus/sensors/accelerometer',
+      'pulsar',
+    ]) {
+      final channel = MethodChannel(name);
+      messenger.setMockMethodCallHandler(channel, (_) async => 0);
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    }
+    const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+    final cache = Directory.systemTemp.createTempSync('musaic-rotation-');
+    messenger.setMockMethodCallHandler(pathChannel, (_) async => cache.path);
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(pathChannel, null);
+      cache.deleteSync(recursive: true);
+    });
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(home: HomePage(albumCache: RotationAlbumCache())),
+    );
+    await tester.pump();
+    final context = tester.element(find.byType(HomePage));
+    await tester.runAsync(
+      () => precacheImage(
+        const ResizeImage(
+          AssetImage('assets/albums/0.jpg'),
+          width: 128,
+          height: 128,
+          policy: ResizeImagePolicy.fit,
+        ),
+        context,
+      ),
+    );
+    final covers = find.byWidgetPredicate(
+      (widget) => widget is RawImage && widget.image != null,
+    );
+    await tester.pump();
+    expect(covers, findsWidgets);
+
+    final blankFrames = <String>[];
+    for (final size in [const Size(800, 400), const Size(400, 800)]) {
+      tester.view.physicalSize = size;
+      for (var frame = 0; frame < 35; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (covers.evaluate().isEmpty) {
+          blankFrames.add('${size.width}×${size.height}, frame $frame');
+        }
+      }
+    }
+    expect(blankFrames, isEmpty);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
   testWidgets('macOS opens the canvas even in a wide window', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1000, 700);

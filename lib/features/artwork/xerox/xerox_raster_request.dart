@@ -23,6 +23,7 @@ class XeroxRasterKey {
 
   final String identity;
   final String sourceKey;
+
   /// 最终 Xerox 位图的边长，决定 Shader 光栅化输出尺寸。
   final int resolution;
 
@@ -51,7 +52,7 @@ class XeroxRasterKey {
     return base64Url.encode(utf8.encode(value)).replaceAll('=', '');
   }
 
-  /// 比较同一封面、同一原图解码档位和处理参数；输出 LOD 可以不同。
+  /// 比较同一封面和处理参数，忽略输入与输出的分辨率档位。
   bool sameArtwork(XeroxRasterKey other) =>
       identity == other.identity &&
       sourceKey == other.sourceKey &&

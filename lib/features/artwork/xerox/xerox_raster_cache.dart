@@ -126,8 +126,15 @@ class XeroxRasterCache {
   int get queuedJobs => _queue.length;
 
   /// 执行当前模块中的tryacquirebest操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
-  XeroxRasterLease? tryAcquireBest(XeroxRasterRequest request) {
-    final best = _findBest(request);
+  XeroxRasterLease? tryAcquireBest(
+    XeroxRasterRequest request, {
+    bool allowDifferentDecodeResolution = false,
+  }) {
+    final best =
+        _findBest(request) ??
+        (allowDifferentDecodeResolution
+            ? _findBest(request, requireSameDecodeResolution: false)
+            : null);
     if (best == null) return null;
     final (key, entry) = best;
     entry.references++;
@@ -193,7 +200,10 @@ class XeroxRasterCache {
   Future<XeroxRasterLease> acquire(XeroxRasterRequest request) =>
       this.request(request).future;
 
-  (XeroxRasterKey, _RasterEntry)? _findBest(XeroxRasterRequest request) {
+  (XeroxRasterKey, _RasterEntry)? _findBest(
+    XeroxRasterRequest request, {
+    bool requireSameDecodeResolution = true,
+  }) {
     XeroxRasterKey? bestKey;
     _RasterEntry? bestEntry;
     var bestLowerResolution = 0;
@@ -201,8 +211,9 @@ class XeroxRasterCache {
 
     for (final item in _entries.entries) {
       if (!item.key.sameArtwork(request.key) ||
-          item.key.originalDecodeResolution !=
-              request.key.originalDecodeResolution) {
+          (requireSameDecodeResolution &&
+              item.key.originalDecodeResolution !=
+                  request.originalDecodeResolution)) {
         continue;
       }
       final resolution = item.key.resolution;

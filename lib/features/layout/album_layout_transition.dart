@@ -39,16 +39,8 @@ class AlbumLayoutTransition extends StatelessWidget {
       child: ExcludeSemantics(
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light,
-          child: AnimatedBuilder(
-            animation: progress,
-            builder: (context, child) => ColoredBox(
-              color: Color.lerp(
-                const Color(0xff171715),
-                Colors.black,
-                progress.value,
-              )!,
-              child: child,
-            ),
+          child: ColoredBox(
+            color: Colors.black,
             child: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
@@ -180,7 +172,9 @@ class AlbumLayoutTransition extends StatelessWidget {
     final rawIdentity = album['id'] as String?;
     Widget image() => albumArtwork(
       asset,
-      artworkIdentity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
+      artworkIdentity: rawIdentity == null
+          ? null
+          : ArtworkIdentity(rawIdentity),
       width: 142,
       height: 142,
       fit: BoxFit.cover,

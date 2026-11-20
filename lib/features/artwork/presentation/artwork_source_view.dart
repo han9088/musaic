@@ -52,7 +52,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
   DirectoryMusicLibrary? _directories;
   int _directoryRevision = -1;
   int _resourceRevision = 0;
-  Future<ArtworkResource?>? _resourceFuture;
+  ArtworkResourceLease? _resourceLease;
   int? _originalDecodeResolution;
   int? _xeroxResolution;
   XeroxRasterKey? _lastBackgroundKey;
@@ -62,26 +62,34 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
     _originalDecodeResolution = null;
     _xeroxResolution = null;
     _lastBackgroundKey = null;
-    _resourceFuture = _pipeline.resolve(
+    final previous = _resourceLease;
+    _resourceLease = _pipeline.acquireForDisplay(
       widget.request,
       directories: _directories,
+      directoryRevision: _directoryRevision,
     );
+    previous?.release();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scope = DirectoryArtworkScope.watch(context);
-    final directoryChanged = scope.library != _directories ||
-        scope.revision != _directoryRevision;
+    final directoryChanged =
+        scope.library != _directories || scope.revision != _directoryRevision;
     final usesDirectorySource = widget.request.source.startsWith('directory:');
 
     _directories = scope.library;
     _directoryRevision = scope.revision;
-    if (_resourceFuture == null ||
-        (usesDirectorySource && directoryChanged)) {
+    if (_resourceLease == null || (usesDirectorySource && directoryChanged)) {
       _resolve();
     }
+  }
+
+  @override
+  void dispose() {
+    _resourceLease?.release();
+    super.dispose();
   }
 
   @override
@@ -144,7 +152,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
 
       return FutureBuilder<ArtworkResource?>(
         key: ValueKey(_resourceRevision),
-        future: _resourceFuture,
+        future: _resourceLease?.future,
         builder: (context, snapshot) {
           final resource = snapshot.data;
           if (resource == null) return widget.placeholder;
@@ -170,11 +178,8 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
           return XeroxRasterResource(
             request: plan.xeroxRequest,
             pipeline: _pipeline,
-            builder: (image, _) => _render(
-              resource,
-              plan,
-              processedImage: image,
-            ),
+            builder: (image, _) =>
+                _render(resource, plan, processedImage: image),
           );
         },
       );

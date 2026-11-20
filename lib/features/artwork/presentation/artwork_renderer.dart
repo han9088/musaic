@@ -2,10 +2,12 @@
 
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../model/artwork_resource.dart';
+import '../pipeline/artwork_lod_manager.dart';
 import '../pipeline/artwork_pipeline.dart';
 import 'xerox_palette.dart';
 
@@ -58,23 +60,61 @@ class ArtworkRenderer extends StatelessWidget {
       );
     }
 
-    return Image(
-      image: ResizeImage(
-        resource.image,
-        width: plan.originalDecodeResolution,
-        height: plan.originalDecodeResolution,
-        policy: ResizeImagePolicy.fit,
-      ),
-      width: width,
-      height: height,
-      fit: fit,
-      filterQuality: filterQuality,
-      semanticLabel: semanticLabel,
-      excludeFromSemantics: excludeFromSemantics,
-      gaplessPlayback: true,
-      errorBuilder: (_, _, _) => placeholder,
+    return _originalImage(
+      _resize(plan.originalDecodeResolution),
+      frameBuilder: (context, child, frame, _) {
+        if (frame != null) return child;
+        final cached = _cachedOriginal(context);
+        return cached == null ? child : _originalImage(cached);
+      },
     );
   }
+
+  ResizeImage _resize(int resolution) => ResizeImage(
+    resource.image,
+    width: resolution,
+    height: resolution,
+    policy: ResizeImagePolicy.fit,
+  );
+
+  ImageProvider<Object>? _cachedOriginal(BuildContext context) {
+    final config = createLocalImageConfiguration(
+      context,
+      size: width != null && height != null ? Size(width!, height!) : null,
+    );
+    for (final resolution in artworkResolutions.reversed) {
+      if (resolution == plan.originalDecodeResolution) continue;
+      final provider = _resize(resolution);
+      final key = provider.obtainKey(config);
+      if (key is! SynchronousFuture<ResizeImageKey>) {
+        key.ignore();
+        continue;
+      }
+      var ready = false;
+      key.then((value) {
+        final status = PaintingBinding.instance.imageCache.statusForKey(value);
+        ready = !status.pending && (status.keepAlive || status.live);
+      });
+      if (ready) return provider;
+    }
+    return null;
+  }
+
+  Widget _originalImage(
+    ImageProvider<Object> image, {
+    ImageFrameBuilder? frameBuilder,
+  }) => Image(
+    image: image,
+    width: width,
+    height: height,
+    fit: fit,
+    filterQuality: filterQuality,
+    semanticLabel: semanticLabel,
+    excludeFromSemantics: excludeFromSemantics || frameBuilder == null,
+    gaplessPlayback: true,
+    errorBuilder: (_, _, _) => placeholder,
+    frameBuilder: frameBuilder,
+  );
 }
 
 /// Apply paper and ink in the image draw, without replacing the image node.

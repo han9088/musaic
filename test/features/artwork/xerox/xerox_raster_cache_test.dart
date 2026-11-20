@@ -194,6 +194,38 @@ void main() {
   });
 
   test(
+    'Xerox display can borrow a raster from a different decode LOD',
+    () async {
+      final cache = XeroxRasterCache(
+        rasterizer: _FakeRasterizer(),
+        diskCache: _MemoryXeroxDiskCache(),
+      );
+      final pipeline = ArtworkPipeline(rasterCache: cache);
+      final request = _request('layout-handoff');
+      final previous = await cache.acquire(request);
+      addTearDown(previous.release);
+      final target = XeroxRasterRequest(
+        identity: request.identity,
+        image: request.image,
+        resolution: request.resolution,
+        originalDecodeResolution: request.originalDecodeResolution * 2,
+      );
+
+      expect(cache.tryAcquireBest(target), isNull);
+      final fallback = pipeline.tryAcquireXerox(target);
+      expect(fallback?.image, same(previous.image));
+      addTearDown(fallback!.release);
+
+      final upgraded = await pipeline
+          .requestXerox(target, exactOnly: true)
+          .future;
+      expect(upgraded.key, target.key);
+      expect(upgraded.image, isNot(same(previous.image)));
+      upgraded.release();
+    },
+  );
+
+  test(
     'Xerox PNG disk cache survives a new in-memory cache instance',
     () async {
       final disk = _MemoryXeroxDiskCache();

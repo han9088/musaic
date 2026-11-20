@@ -3,6 +3,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
@@ -25,6 +26,38 @@ class ArtworkDisplayPlan {
 
   final int originalDecodeResolution;
   final XeroxRasterRequest xeroxRequest;
+}
+
+class ArtworkResourceLease {
+  ArtworkResourceLease._(this.future, [this._release]);
+
+  final Future<ArtworkResource?> future;
+  VoidCallback? _release;
+
+  void release() {
+    _release?.call();
+    _release = null;
+  }
+}
+
+class _DisplayedArtwork {
+  _DisplayedArtwork(Future<ArtworkResource?> resolution) {
+    pending = resolution.then(
+      (value) {
+        completed = true;
+        return resource = value;
+      },
+      onError: (Object error, StackTrace stack) {
+        completed = true;
+        Error.throwWithStackTrace(error, stack);
+      },
+    );
+  }
+
+  late final Future<ArtworkResource?> pending;
+  ArtworkResource? resource;
+  bool completed = false;
+  int references = 0;
 }
 
 /// Artwork 的唯一资源协调入口。
@@ -50,6 +83,38 @@ class ArtworkPipeline {
   final XeroxRasterCache _rasterCache;
   final XeroxBackgroundProcessor _backgroundProcessor;
   final Map<String, Future<ArtworkResource?>> _resolving = {};
+  final _displayed =
+      <(ArtworkRequest, DirectoryMusicLibrary?, int), _DisplayedArtwork>{};
+
+  /// Allow incoming and outgoing views in the same frame to share the source.
+  ArtworkResourceLease acquireForDisplay(
+    ArtworkRequest request, {
+    required DirectoryMusicLibrary? directories,
+    required int directoryRevision,
+  }) {
+    final key = (request, directories, directoryRevision);
+    var entry = _displayed[key];
+    if (entry == null || (entry.completed && entry.resource == null)) {
+      final resolution = resolve(request, directories: directories);
+      if (resolution is SynchronousFuture<ArtworkResource?>) {
+        return ArtworkResourceLease._(resolution);
+      }
+      entry = _DisplayedArtwork(resolution);
+      _displayed[key] = entry;
+    }
+    final displayed = entry;
+    displayed.references++;
+    final resource = displayed.resource;
+    return ArtworkResourceLease._(
+      resource == null ? displayed.pending : SynchronousFuture(resource),
+      () {
+        if (--displayed.references == 0 &&
+            identical(_displayed[key], displayed)) {
+          _displayed.remove(key);
+        }
+      },
+    );
+  }
 
   static XeroxBackgroundProcessor _createBackgroundProcessor(
     XeroxRasterCache? cache,
@@ -74,12 +139,17 @@ class ArtworkPipeline {
     final existing = _resolving[key];
     if (existing != null) return existing;
 
+    final resolution = _resolver.resolveRequest(
+      request,
+      directories: directories,
+    );
+    // Assets can paint on the first frame when their decoded image is cached.
+    if (resolution is SynchronousFuture<ArtworkResource?>) return resolution;
+
     late final Future<ArtworkResource?> pending;
-    pending = _resolver
-        .resolveRequest(request, directories: directories)
-        .whenComplete(() {
-          if (identical(_resolving[key], pending)) _resolving.remove(key);
-        });
+    pending = resolution.whenComplete(() {
+      if (identical(_resolving[key], pending)) _resolving.remove(key);
+    });
     _resolving[key] = pending;
     return pending;
   }
@@ -119,9 +189,9 @@ class ArtworkPipeline {
     );
   }
 
-  /// 尝试同步取得已经在内存中的最佳 Xerox 结果。
-  XeroxRasterLease? tryAcquireXerox(XeroxRasterRequest request) =>
-      _rasterCache.tryAcquireBest(request);
+  /// 显示时可借用同一封面的其他解码档位，直到目标位图准备好。
+  XeroxRasterLease? tryAcquireXerox(XeroxRasterRequest request) => _rasterCache
+      .tryAcquireBest(request, allowDifferentDecodeResolution: true);
 
   /// 请求 Xerox 结果。exactOnly 用于已有同封面低分辨率 Lease 时继续生成目标档位。
   XeroxRasterTask requestXerox(

@@ -92,6 +92,46 @@ Future<MemoryImage> _wideImage() async {
 }
 
 void main() {
+  testWidgets('a replacement cover can paint an already resolved source', (
+    tester,
+  ) async {
+    final pipeline = ArtworkPipeline(
+      resolver: _Resolver(
+        const ArtworkResource(
+          identity: 'album',
+          sourceKey: 'resolved',
+          image: AssetImage('assets/albums/0.jpg'),
+        ),
+      ),
+      backgroundProcessor: _NoBackgroundProcessing(),
+    );
+    Widget view(String layout) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: MediaQuery(
+        data: const MediaQueryData(devicePixelRatio: 1),
+        child: ArtworkSourceView(
+          key: ValueKey(layout),
+          request: const ArtworkRequest(source: 'cover'),
+          placeholder: const SizedBox.shrink(),
+          pipeline: pipeline,
+        ),
+      ),
+    );
+    await tester.pumpWidget(view('canvas'));
+    await tester.pump();
+    expect(find.byType(ArtworkRenderer), findsOneWidget);
+
+    await tester.pumpWidget(view('flow'));
+    expect(find.byType(ArtworkRenderer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    await tester.pumpWidget(view('canvas'));
+    expect(find.byType(ArtworkRenderer), findsNothing);
+    await tester.pump();
+    expect(find.byType(ArtworkRenderer), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets(
     'a resolved cover stays mounted at both ends of the mode animation',
     (tester) async {
