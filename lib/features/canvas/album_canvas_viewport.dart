@@ -60,9 +60,14 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
     final title = album['title'] as String;
     widget.interaction.selectionPaused = true;
     setState(() => _popupCell = (row, col));
+    void restoreSource() {
+      if (mounted && _popupCell != null) setState(() => _popupCell = null);
+    }
+
     try {
       await showAlbumCoverPopup(
         source: source,
+        onReturned: restoreSource,
         artwork: albumArtwork(
           asset,
           artworkIdentity: _artworkIdentityFor(album),
@@ -78,7 +83,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _popupCell = null);
+      restoreSource();
     }
   }
 

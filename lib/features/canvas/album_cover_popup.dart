@@ -9,6 +9,7 @@ Future<void> showAlbumCoverPopup({
   required BuildContext source,
   required Widget artwork,
   required Widget playButton,
+  required VoidCallback onReturned,
 }) async {
   final navigator = Navigator.of(source, rootNavigator: true);
   final overlay = navigator.overlay!.context.findRenderObject()!;
@@ -58,7 +59,12 @@ Future<void> showAlbumCoverPopup({
       );
     },
   );
-  await navigator.push(route);
+  final popped = navigator.push(route);
+  // Restore the grid in the same frame that removes the popup.
+  route.animation!.addStatusListener((status) {
+    if (status == AnimationStatus.dismissed) onReturned();
+  });
+  await popped;
   await route.completed;
 }
 

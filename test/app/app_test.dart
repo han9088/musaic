@@ -35,9 +35,14 @@ void main() {
     Future<void> dismissAlbum(Offset hiddenOffset) async {
       await tester.tapAt(const Offset(16, 20));
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 459));
       expect(canvas().hiddenTileOffset, hiddenOffset);
-      await tester.pump(const Duration(milliseconds: 500));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 2));
+      expect(
+        canvas().hiddenTileOffset,
+        isNull,
+        reason: 'Paint the source in the frame that ends the reverse animation',
+      );
       expect(popup, findsNothing);
       await tester.pump(const Duration(milliseconds: 250));
     }
