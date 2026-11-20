@@ -15,6 +15,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get coverFlowCameraDenied =>
+      'Allow camera access in system settings to use the live background.';
+
+  @override
+  String get coverFlowCameraFailed =>
+      'Could not open the camera. Please try again.';
+
+  @override
+  String get coverFlowPhotoSaveFailed =>
+      'Could not save the photo. Check photo access and available storage, then try again.';
+
+  @override
+  String get coverFlowPhotoPreview => 'Open captured photo';
+
+  @override
+  String get coverFlowPhotoDelete => 'Delete photo';
+
+  @override
+  String get coverFlowPhotoDeleteFailed =>
+      'Could not delete the photo. Check photo access and try again.';
+
+  @override
   String get appIcon => 'App icon';
 
   @override

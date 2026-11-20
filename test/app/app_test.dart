@@ -5,6 +5,7 @@ import 'package:musaic/main.dart' as app;
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/canvas/selected_album.dart';
+import 'package:musaic/features/music/playback/album_play_button.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
@@ -25,6 +26,16 @@ void main() {
         .transformationController!;
     expect(controller.value.entry(0, 0), 1);
     expect(controller.value.entry(1, 1), 1);
+    final popup = find.byKey(const ValueKey('album-cover-popup'));
+    Future<void> dismissAlbum() async {
+      await tester.tapAt(const Offset(16, 20));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump();
+      expect(popup, findsNothing);
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+
     final hold = await tester.startGesture(
       tester.getCenter(find.byType(InteractiveViewer)),
     );
@@ -45,21 +56,64 @@ void main() {
       reason: 'Holding a drag must not keep moving the canvas',
     );
     await hold.up();
-    await tester.tapAt(const Offset(150, 250));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.byType(SelectedAlbum), findsOneWidget);
+    const tapPoint = Offset(150, 250);
+    final scenePoint = controller.toScene(tapPoint);
+    final source = find.byKey(
+      ValueKey(((scenePoint.dy / 100).floor(), (scenePoint.dx / 100).floor())),
+    );
+    final originalWidth = tester.getRect(source).width;
     final selectedPosition = controller.value.clone();
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tapAt(tapPoint);
+    await tester.pump();
+    expect(popup, findsNothing);
+    await tester.pump(const Duration(milliseconds: 250));
+    final lifted = find
+        .descendant(
+          of: find.byType(SelectedAlbum),
+          matching: find.byType(GestureDetector),
+        )
+        .first;
+    final liftedBounds = tester.getRect(lifted);
+    expect(liftedBounds.width, closeTo(originalWidth * 1.16, 0.001));
+    expect(popup, findsNothing);
+
+    await tester.tapAt(liftedBounds.topLeft + const Offset(12, 12));
+    await tester.pump();
+    expect(
+      (tester.getTopLeft(popup) - liftedBounds.topLeft).distance,
+      lessThan(0.001),
+    );
+    await tester.pump(const Duration(milliseconds: 120));
+    final flip = find.ancestor(of: popup, matching: find.byType(Transform));
+    expect(
+      tester.widget<Transform>(flip).transform.entry(2, 0),
+      greaterThan(0.05),
+    );
+    final fades = find.ancestor(
+      of: popup,
+      matching: find.byType(FadeTransition),
+    );
+    expect(fades, findsNothing);
+    await tester.pump(const Duration(milliseconds: 180));
+    expect(
+      tester.widget<Transform>(flip).transform.entry(2, 0),
+      lessThan(-0.05),
+    );
+    await tester.pump(const Duration(milliseconds: 180));
+    expect(tester.getSize(popup), const Size.square(352));
+    expect(tester.getCenter(popup), const Offset(200, 400));
     expect(controller.value, selectedPosition);
+    await dismissAlbum();
+    expect(find.byType(SelectedAlbum), findsOneWidget);
     await tester.tap(
       find.descendant(
         of: find.byType(SelectedAlbum),
-        matching: find.byType(GestureDetector),
+        matching: find.byType(AlbumPlayButton),
       ),
     );
     await tester.pump();
     expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+    expect(popup, findsNothing);
     await tester.drag(find.byType(InteractiveViewer), const Offset(80, 0));
     await tester.pump();
     expect(find.byType(SelectedAlbum), findsOneWidget);
@@ -88,6 +142,7 @@ void main() {
       await tester.tapAt(tap);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
+      expect(popup, findsNothing);
       expect(
         find.byKey(
           ValueKey((
@@ -99,7 +154,7 @@ void main() {
       );
       final button = find.descendant(
         of: find.byType(SelectedAlbum),
-        matching: find.byType(GestureDetector),
+        matching: find.byType(AlbumPlayButton),
       );
       await tester.tap(button);
       await tester.pump();

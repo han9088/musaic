@@ -15,6 +15,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get coverFlowCameraDenied => '请在系统设置中允许访问相机，以使用实景背景。';
+
+  @override
+  String get coverFlowCameraFailed => '无法打开相机，请重试。';
+
+  @override
+  String get coverFlowPhotoSaveFailed => '照片保存失败，请检查相册权限和剩余空间后重试。';
+
+  @override
+  String get coverFlowPhotoPreview => '打开刚拍的照片';
+
+  @override
+  String get coverFlowPhotoDelete => '删除照片';
+
+  @override
+  String get coverFlowPhotoDeleteFailed => '未能删除照片，请检查相册权限后重试。';
+
+  @override
   String get appIcon => '应用图标';
 
   @override

@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
+import 'camera/coverflow_camera_scene.dart';
 import 'coverflow_input.dart';
 import 'coverflow_motion.dart';
 import 'coverflow_geometry.dart';
@@ -65,7 +66,8 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     _haptics = widget.haptics ?? AlbumHaptics();
     WidgetsBinding.instance.addObserver(this);
     if (widget.haptics == null) unawaited(_haptics.prepare());
-    if (_motion.tilt != 0 || _motion.position != _motion.position.roundToDouble()) {
+    if (_motion.tilt != 0 ||
+        _motion.position != _motion.position.roundToDouble()) {
       _motion.target = _motion.position.roundToDouble();
       _wake();
     }
@@ -144,7 +146,9 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     final rawIdentity = album['id'] as String?;
     return albumArtwork(
       asset,
-      artworkIdentity: rawIdentity == null ? null : ArtworkIdentity(rawIdentity),
+      artworkIdentity: rawIdentity == null
+          ? null
+          : ArtworkIdentity(rawIdentity),
       width: size,
       height: size,
       fit: BoxFit.cover,
@@ -156,12 +160,12 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
 
   @override
   Widget build(BuildContext context) {
-    final selected = widget.albums[_motion.position.round() % widget.albums.length];
+    final selected =
+        widget.albums[_motion.position.round() % widget.albums.length];
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: ColoredBox(
-        color: Colors.black,
-        child: SafeArea(
+      child: CoverFlowCameraScene(
+        builder: (toggleCamera) => SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final size = math.min(
@@ -198,7 +202,10 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   },
                   onStep: (direction) {
                     _motion.velocity = 0;
-                    _settle((_motion.target ?? _motion.position.roundToDouble()) + direction);
+                    _settle(
+                      (_motion.target ?? _motion.position.roundToDouble()) +
+                          direction,
+                    );
                   },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -207,11 +214,13 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                       _wake();
                     },
                     onHorizontalDragUpdate: (details) {
-                      setState(() => _motion.updateDrag(
-                        details.delta.dx,
-                        details.sourceTimeStamp,
-                        stride,
-                      ));
+                      setState(
+                        () => _motion.updateDrag(
+                          details.delta.dx,
+                          details.sourceTimeStamp,
+                          stride,
+                        ),
+                      );
                     },
                     onHorizontalDragEnd: (details) {
                       final shouldSettle = _motion.endDrag(
@@ -253,7 +262,10 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                           top: 6,
                           left: 20,
                           right: 20,
-                          child: IgnorePointer(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onLongPress: toggleCamera,
+                            onTap: toggleCamera == null ? null : () {},
                             child: Column(
                               children: [
                                 Text(

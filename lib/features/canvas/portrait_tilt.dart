@@ -34,7 +34,9 @@ class PortraitTiltMotion {
           -(angles.dy - neutral.dy),
         ) *
         0.32;
-    if (target.distance > maxAngle) target *= maxAngle / target.distance;
+    // Approach the limit smoothly so large tilts still respond to movement.
+    final normalizedAngle = target.distance / maxAngle;
+    target /= math.sqrt(1 + normalizedAngle * normalizedAngle);
     if (target.distance < 0.001) target = Offset.zero;
     _filtered = Offset.lerp(_filtered, target, 0.25)!;
     return _filtered;

@@ -1,6 +1,12 @@
 {
   "@@locale": "zh",
   "appTitle": "Musaic",
+  "coverFlowCameraDenied": "请在系统设置中允许访问相机，以使用实景背景。",
+  "coverFlowCameraFailed": "无法打开相机，请重试。",
+  "coverFlowPhotoSaveFailed": "照片保存失败，请检查相册权限和剩余空间后重试。",
+  "coverFlowPhotoPreview": "打开刚拍的照片",
+  "coverFlowPhotoDelete": "删除照片",
+  "coverFlowPhotoDeleteFailed": "未能删除照片，请检查相册权限后重试。",
   "appIcon": "应用图标",
   "appIconDefault": "默认",
   "appIconText": "文字",

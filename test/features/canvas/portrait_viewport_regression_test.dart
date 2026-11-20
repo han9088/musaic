@@ -1,16 +1,21 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/app/bottom_sheet_host.dart';
 import 'package:musaic/features/canvas/album_canvas_viewport.dart';
 import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
+import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
+import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/services/mock_album_cache.dart';
+import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class _FixedAlbumCache extends MockAlbumCache {
@@ -37,6 +42,98 @@ class _ControlledSensors extends SensorsPlatform {
 }
 
 void main() {
+  for (final transition in ['BottomSheet', 'Cover Flow']) {
+    testWidgets('tilt responds after returning from $transition', (
+      tester,
+    ) async {
+      final events = StreamController<AccelerometerEvent>.broadcast();
+      final originalSensors = SensorsPlatform.instance;
+      SensorsPlatform.instance = _ControlledSensors(events.stream);
+      addTearDown(() {
+        SensorsPlatform.instance = originalSensors;
+        unawaited(events.close());
+      });
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppBottomSheetHost(
+            child: HomePage(albumCache: _FixedAlbumCache()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      Future<void> holdAt(double degrees) async {
+        final radians = degrees * math.pi / 180;
+        for (var i = 0; i < 24; i++) {
+          events.add(
+            AccelerometerEvent(
+              0,
+              9.81 * math.cos(radians),
+              9.81 * math.sin(radians),
+              DateTime(2026),
+            ),
+          );
+          await tester.pump(const Duration(milliseconds: 32));
+        }
+        await tester.pump(const Duration(milliseconds: 160));
+      }
+
+      double pitch() => tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('portrait-sensor-plane')),
+          )
+          .transform
+          .entry(2, 1)
+          .abs();
+
+      if (transition == 'BottomSheet') {
+        await holdAt(0);
+        final sheet = DeskBottomSheet.of(tester.element(find.byType(HomePage)));
+        final gesture = await tester.startGesture(const Offset(200, 768));
+        await gesture.moveBy(const Offset(0, -25));
+        await gesture.moveBy(const Offset(0, -50));
+        await gesture.up();
+        await tester.pump();
+        expect(sheet.isPresented, isTrue);
+        await holdAt(60);
+        sheet.dismiss();
+        await holdAt(60);
+        await tester.pump(const Duration(seconds: 2));
+        expect(sheet.isPresented, isFalse);
+      } else {
+        await tester.tap(find.byKey(const ValueKey('layout-switch-wake')));
+        await tester.pump(const Duration(milliseconds: 200));
+        final switchButton = find.byKey(const ValueKey('layout-switch'));
+        await tester.tap(switchButton);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(events.hasListener, isFalse);
+        await tester.tap(switchButton);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        await holdAt(0);
+        await holdAt(60);
+      }
+
+      expect(events.hasListener, isTrue);
+      final steep = pitch();
+      expect(steep, greaterThan(0.1));
+      await holdAt(45);
+      expect(pitch(), lessThan(steep - 0.005), reason: '60° → 45°');
+      await holdAt(0);
+      expect(pitch(), lessThan(0.001));
+      await tester.pumpWidget(const SizedBox.shrink());
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  }
+
   testWidgets('HomePage keeps the sensor plane inside the infinite viewport', (
     tester,
   ) async {

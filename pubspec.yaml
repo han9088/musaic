@@ -30,6 +30,8 @@ dependencies:
   sqflite: ^2.4.6
   musaic_query:
     path: packages/musaic_query/packages/musaic_query
+  camera: ^0.12.2
+  gal: ^3.0.1
 
 dependency_overrides:
   audioplayers_android:
@@ -42,6 +44,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.7
+  camera_platform_interface: ^2.15.1
 flutter:
   generate: true
   uses-material-design: true

@@ -106,6 +106,42 @@ abstract class AppLocalizations {
   /// **'Musaic'**
   String get appTitle;
 
+  /// No description provided for @coverFlowCameraDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在系统设置中允许访问相机，以使用实景背景。'**
+  String get coverFlowCameraDenied;
+
+  /// No description provided for @coverFlowCameraFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开相机，请重试。'**
+  String get coverFlowCameraFailed;
+
+  /// No description provided for @coverFlowPhotoSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'照片保存失败，请检查相册权限和剩余空间后重试。'**
+  String get coverFlowPhotoSaveFailed;
+
+  /// No description provided for @coverFlowPhotoPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开刚拍的照片'**
+  String get coverFlowPhotoPreview;
+
+  /// No description provided for @coverFlowPhotoDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除照片'**
+  String get coverFlowPhotoDelete;
+
+  /// No description provided for @coverFlowPhotoDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未能删除照片，请检查相册权限后重试。'**
+  String get coverFlowPhotoDeleteFailed;
+
   /// No description provided for @appIcon.
   ///
   /// In zh, this message translates to:

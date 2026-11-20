@@ -1,6 +1,12 @@
 {
   "@@locale": "en",
   "appTitle": "Musaic",
+  "coverFlowCameraDenied": "Allow camera access in system settings to use the live background.",
+  "coverFlowCameraFailed": "Could not open the camera. Please try again.",
+  "coverFlowPhotoSaveFailed": "Could not save the photo. Check photo access and available storage, then try again.",
+  "coverFlowPhotoPreview": "Open captured photo",
+  "coverFlowPhotoDelete": "Delete photo",
+  "coverFlowPhotoDeleteFailed": "Could not delete the photo. Check photo access and try again.",
   "appIcon": "App icon",
   "appIconDefault": "Default",
   "appIconText": "Text",

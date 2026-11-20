@@ -79,6 +79,14 @@ hide the entry. Native Android/iOS do not include this control.
 Click Cover Flow to restore focus after using another control. macOS retains its
 canvas default; switch to Cover Flow using the existing layout button.
 
+On iOS and Android, long-press the Cover Flow title to toggle a rear-camera
+background. Tap empty space while the camera is active to save a photo containing
+the camera view, title, album covers and reflections to Photos/Gallery. Album taps
+and swipes keep their existing behavior. Saving combines a camera photo with the
+current Flutter overlay at screen resolution; it does not capture system UI.
+Camera access is requested on first use and photo-library access when saving.
+The camera closes when leaving Cover Flow or putting the app in the background.
+
 ### Cloudflare deployment
 
 The assets-only Worker is configured in `cloudflare.config.ts` for

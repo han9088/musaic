@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>读取设备音乐资料库，在 Musaic 中浏览和播放本地歌曲。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>使用相机作为 Cover Flow 的实景背景，并拍摄包含专辑的照片。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>将包含实景背景和专辑的 Cover Flow 照片保存到相册。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>从相册删除你在 Cover Flow 预览中选择删除的照片。</string>
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>NSMotionUsageDescription</key>
 	<string>通过设备倾斜为专辑首页提供轻微的透视效果。</string>
 	<key>LSRequiresIPhoneOS</key>

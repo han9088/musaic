@@ -14,6 +14,7 @@ class SelectedAlbum extends StatefulWidget {
     required this.asset,
     required this.title,
     required this.playback,
+    required this.onOpen,
     this.xerox = false,
     this.scale = 1,
     this.artworkIdentity,
@@ -23,6 +24,7 @@ class SelectedAlbum extends StatefulWidget {
   final String title;
   final ArtworkIdentity? artworkIdentity;
   final AlbumPlayback playback;
+  final ValueChanged<BuildContext> onOpen;
   final bool xerox;
   final double scale;
 
@@ -54,13 +56,19 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          albumArtwork(
-            widget.asset,
-            artworkIdentity: widget.artworkIdentity,
-            fit: BoxFit.cover,
-            semanticLabel: widget.title,
-            xerox: widget.xerox,
-            scale: widget.scale * 1.16,
+          Builder(
+            builder: (context) => GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => widget.onOpen(context),
+              child: albumArtwork(
+                widget.asset,
+                artworkIdentity: widget.artworkIdentity,
+                fit: BoxFit.cover,
+                semanticLabel: widget.title,
+                xerox: widget.xerox,
+                scale: widget.scale * 1.16,
+              ),
+            ),
           ),
           AlbumPlayButton(
             asset: widget.asset,
