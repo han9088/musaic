@@ -53,6 +53,7 @@ class XeroxJobScheduler {
           }
           leases.add(lease);
         } catch (error, stack) {
+          if (request.priority == XeroxRasterPriority.overscan) continue;
           failures.add(error);
           FlutterError.reportError(
             FlutterErrorDetails(

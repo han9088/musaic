@@ -106,6 +106,8 @@ class XeroxRasterCache {
       LinkedHashMap<XeroxRasterKey, _RasterEntry>();
   final Map<XeroxRasterKey, _PendingRaster> _pending = {};
   final List<_PendingRaster> _queue = [];
+  final Set<XeroxRasterKey> _diskWriteQueue = {};
+  bool _writingToDisk = false;
   int _nextSequence = 0;
 
   int _bytes = 0;
@@ -307,14 +309,14 @@ class XeroxRasterCache {
   }
 
   /// 读取并恢复所需数据或资源，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
-  Future<ui.Image> _loadOrRasterize(XeroxRasterRequest request) async {
+  Future<(ui.Image, bool)> _loadOrRasterize(XeroxRasterRequest request) async {
     final key = request.key.diskCacheKey;
     try {
       final cached = await _diskCache.read(key);
       if (cached != null) {
         if (cached.width == request.resolution &&
             cached.height == request.resolution) {
-          return cached;
+          return (cached, false);
         }
         cached.dispose();
         await _diskCache.remove(key);
@@ -328,19 +330,43 @@ class XeroxRasterCache {
       }
     }
 
-    final image = await _rasterizeWithRetry(request);
-    try {
-      final data = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (data != null) {
-        await _diskCache.write(
-          key,
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-        );
-      }
-    } catch (_) {
-      // 磁盘持久化属于尽力而为；即使写入失败，内存中的光栅结果仍可继续使用。
+    return (await _rasterizeWithRetry(request), true);
+  }
+
+  void _queueDiskWrite(XeroxRasterKey key) {
+    if (!_diskWriteQueue.add(key)) return;
+    if (_diskWriteQueue.length > maxQueuedJobs) {
+      _diskWriteQueue.remove(_diskWriteQueue.first);
     }
-    return image;
+    if (!_writingToDisk) unawaited(_writeToDisk());
+  }
+
+  Future<void> _writeToDisk() async {
+    _writingToDisk = true;
+    try {
+      while (_diskWriteQueue.isNotEmpty) {
+        final key = _diskWriteQueue.first;
+        _diskWriteQueue.remove(key);
+        // 排队只保留 Key，避免写盘积压额外固定大量图片。
+        final image = _entries[key]?.image.clone();
+        if (image == null) continue;
+        try {
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          if (data != null) {
+            await _diskCache.write(
+              key.diskCacheKey,
+              data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+            );
+          }
+        } catch (_) {
+          // 持久化失败不影响已经交付的内存位图。
+        } finally {
+          image.dispose();
+        }
+      }
+    } finally {
+      _writingToDisk = false;
+    }
   }
 
   /// 执行当前模块中的rasterizewithretry操作，用于专辑封面来源解析、图片解码、缓存及 Xerox 处理。
@@ -367,7 +393,7 @@ class XeroxRasterCache {
   Future<void> _rasterize(_PendingRaster pending) async {
     final key = pending.request.key;
     try {
-      final image = await _loadOrRasterize(pending.request);
+      final (image, needsWrite) = await _loadOrRasterize(pending.request);
       final activeWaiters = pending.waiters
           .where((waiter) => !waiter.cancelled)
           .toList(growable: false);
@@ -390,6 +416,7 @@ class XeroxRasterCache {
         );
       }
       pending.waiters.clear();
+      if (needsWrite) _queueDiskWrite(key);
     } catch (error, stack) {
       for (final waiter in pending.waiters.toList()) {
         if (waiter.cancelled) continue;

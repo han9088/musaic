@@ -1,7 +1,8 @@
 # MUSAIC 专辑墙图片管线与 Xerox 模式技术方案
 
-> **网络缓存选型：`cached_network_image`。不使用
-> `cached_network_image_ce`。**
+> **当前网络缓存实现：** IO 平台直接使用 `flutter_cache_manager`
+> 保存原图，再由 `FileImage` 解码；Web 回退为 `NetworkImage`。
+> 原图与 Xerox PNG 使用独立缓存。
 >
 > **当前 Demo：** Mock 专辑图片使用 `AssetImage`；未来正式接入 Apple
 > Music 后，网络 Artwork URL 才是主要来源。方案必须同时支持
@@ -34,7 +35,7 @@ MUSAIC 需要一套统一 Artwork
   ----------------------- -------------------------- ------------------------------
   `AssetImage`            当前 Demo / Mock 专辑封面  `AssetImage`
 
-  Apple Music Artwork URL 正式接入后的主要图片来源   `CachedNetworkImageProvider`
+  Apple Music Artwork URL 正式接入后的主要图片来源   缓存文件的 `FileImage`
 
   本地音乐封面            本地音乐目录               `FileImage`
 
@@ -54,12 +55,12 @@ MUSAIC 需要一套统一 Artwork
 同一张专辑在 Grid、Cover Flow、倒影和布局过渡中，必须尽量复用相同
 Artwork 身份和底层图片资源。
 
-## 3. 原图缓存：使用 `cached_network_image`
+## 3. 原图缓存：使用 `flutter_cache_manager`
 
 ### 3.1 网络原图
 
-Apple Music 接入后，网络图片使用
-`CachedNetworkImageProvider`，并配置自定义 `CacheManager`：
+IO 平台通过 `OriginalArtworkCache` 下载或读取原图文件，再返回
+`FileImage`；不额外引入网络图片 Widget：
 
 -   磁盘缓存原始下载文件，避免反复下载。
 -   使用稳定 `cacheKey`，建议由 Artwork ID + 图片版本构成。
@@ -67,9 +68,10 @@ Apple Music 接入后，网络图片使用
 -   同一 Artwork 的并发请求去重。
 -   不要为每个 URL 创建一个 CacheManager 实例。
 
-建议独立的 `ArtworkNetworkCacheManager` 管理原图磁盘缓存。
+`OriginalArtworkCache` 管理原图磁盘缓存，目前上限 600 个对象，
+stalePeriod 为 45 天。刷新失败时允许读取仍存在的过期文件。
 
-`cached_network_image` 解决网络图片加载和磁盘文件缓存，不替代 MUSAIC
+`flutter_cache_manager` 解决网络图片加载和磁盘文件缓存，不替代 MUSAIC
 自己的 LOD、解码尺寸、视口预加载、Xerox 处理和资源生命周期管理。
 
 ### 3.2 Asset 与 File
@@ -82,7 +84,7 @@ Apple Music 接入后，网络图片使用
 ### 3.3 两套磁盘缓存
 
 1.  **Original Artwork Disk Cache**：网络原图文件，由
-    `cached_network_image` 使用的 CacheManager 管理。
+    `OriginalArtworkCache` 管理。
 2.  **Xerox Raster Disk Cache**：Shader 生成的处理结果，使用独立
     CacheManager/文件缓存管理。
 
@@ -97,7 +99,7 @@ iOS/Android/桌面不同，需单独验证浏览器缓存和持久化能力。
 
 ### 4.1 解码尺寸
 
-可以在 `CachedNetworkImageProvider`、`AssetImage` 或 `FileImage`
+可以在 缓存文件的 `FileImage`、`AssetImage` 或 `FileImage`
 外层使用 Flutter `ResizeImage`，控制解码阶段的像素尺寸。
 
 目标解码尺寸根据 Tile 逻辑尺寸、画布 scale、设备 DPR
@@ -180,7 +182,9 @@ Shader 的 Uniform。
 
 ### 5.3 Xerox 持久化
 
--   `ui.Image` 生成后编码成 PNG 字节。
+-   内存位图先交付显示，再串行编码和写盘，不占用 Raster 并发名额。
+-   待写队列只保存 Key，长度不超过 Raster 队列上限；已淘汰的图片跳过。
+-   处理中的写盘持有独立图片句柄，缓存淘汰不能提前释放该句柄。
 -   PNG 写入独立 Xerox Disk Cache。
 -   App 重启后优先读取 PNG 并解码成 `ui.Image`。
 -   磁盘命中不应重新运行 Shader。
@@ -206,6 +210,9 @@ Shader 的 Uniform。
 
 -   队列有上限，不能无限堆积。
 -   同一 Artwork + LOD + 参数的任务去重。
+-   队列满或任务被抢占时，仍挂载的组件按 120～960ms 退避重试；
+    请求变化和组件销毁会取消重试，真实解码失败仍有界停止。
+-   overscan 解析或 Raster 失败不取消可视区域准备；可见资源失败仍阻止交接。
 -   可视区域任务优先于预加载。
 -   快速拖动时取消未开始且已过期的低优先级任务。
 -   网络下载、图片解码、GPU Raster 分别限流。
@@ -419,7 +426,7 @@ Manager/Controller。核心是职责清晰、依赖方向明确、资源所有�
 ### 来源与缓存
 
 -   [ ] Mock `AssetImage` 正常显示并触发后台 Xerox。
--   [ ] Apple Music URL 使用 `cached_network_image` 和自定义原图
+-   [ ] Apple Music URL 使用 `flutter_cache_manager` 和自定义原图
     CacheManager。
 -   [ ] 本地 File 正常显示和处理。
 -   [ ] 网络缓存命中不重复下载。
@@ -450,7 +457,7 @@ Manager/Controller。核心是职责清晰、依赖方向明确、资源所有�
 -   [ ] 新 LOD 未完成时保留旧 Xerox。
 -   [ ] 旧请求不能覆盖新请求。
 -   [ ] 缓存 miss 自动处理原图。
--   [ ] 短暂失败最多重试一次。
+-   [ ] 解码或 GPU 短暂失败最多重试一次；队列拥塞按退避机制恢复。
 -   [ ] 永久失败不会无限重试。
 -   [ ] Xerox 模式失败显示中性占位，不显示原图。
 
@@ -471,19 +478,29 @@ Manager/Controller。核心是职责清晰、依赖方向明确、资源所有�
 -   Draft PR：[#2](https://github.com/han9088/musaic/pull/2)
 -   基础分支：`codex/musaic-architecture-performance-gpt6`
 
-此前已提交的内容包括： - Xerox Shader 离屏生成 `ui.Image` 的
-Rasterizer。 - Xerox 内存 LRU、Lease、任务去重和并发限制。 -
-可视区域优先的 Xerox 准备逻辑。 - Original ↔ Xerox 的 exit / handoff /
-enter 动画协调器。 - Xerox 模式使用 `RawImage` 显示处理结果。 - 缓存
-miss 从原图重新生成的基本路径。 - 有界重试和失败兜底的部分实现。 -
-缓存、任务、快照和动效测试代码。
+当前代码已实现：统一 Asset/Network/Directory Resolver、网络原图文件缓存、
+原图与 Xerox 独立 LOD、Xerox 内存 LRU 与 PNG 磁盘缓存、有限并发和优先级调度、
+后台预生成、Original ↔ Xerox 模式过渡，以及资源 Lease 生命周期管理。
 
-仍需完成/验证： - `cached_network_image` 原图磁盘缓存与 Apple Music 网络
-Artwork 的正式接入。 - Xerox PNG 磁盘持久化及 App 重启后的恢复。 -
-原图下载/解码完成后自动后台预处理的完整接线。 - 当前 Mock `AssetImage`
-路径持续可用。 - 在完整 Flutter SDK 环境运行
-`flutter analyze`、`flutter test`。 - 真机验证动画、传感器倾斜、Cover
-Flow、内存峰值和 GPU 性能。
+2026-11-20 修复：
+
+- 队列拥塞或抢占后退避恢复；永久解码失败不无限重试。
+- overscan 坏图不阻止可见资源交接；可见资源失败仍保留原模式。
+- 模式交接时重置 LOD 状态，与本次预热档位一致。
+- 各解码入口保留原始宽高比，再由 BoxFit 执行显示裁切。
+- 位图先交付显示，PNG 编码和写盘通过有界 Key 队列串行执行。
+- Xerox 缓存键升级至 xerox-raster-v3，使旧的拉伸结果失效。
+
+本地验证：flutter analyze 无问题；flutter test 共 242 个测试全部通过，
+其中 12 个新增测试覆盖本次修复。iPhone 18 Pro / iOS 27.2 模拟器的
+两个集成测试通过：开关、拖动、0.4～2.5 倍缩放、Mock 2、Cover Flow，
+以及网络缓存去重、版本失效、断网读取和 PNG 恢复均通过；检查到的
+最多 151 个可见封面全部就绪，Xerox 模式无原图组件残留。
+普通入口启动和热重启检查也已通过。
+
+未验证：真机 60Hz/120Hz 帧耗时、GPU 和内存峰值、跨进程重启恢复，
+以及 Apple Music 真实账号和线上目录的完整验收。PNG 从新缓存实例恢复
+与真实 App 进程重启必须分别报告。
 
 **不要把内存 LRU
 描述成持久化磁盘缓存；不要把新增测试代码描述成测试已通过。未运行的验证必须明确标记为未验证。**
@@ -494,7 +511,7 @@ Flow、内存峰值和 GPU 性能。
 
 MUSAIC 的最终图片系统应做到：
 
--   网络原图使用 `cached_network_image`；Asset/File 继续使用 Flutter
+-   网络原图使用 `flutter_cache_manager` 与 `FileImage`；Asset/File 继续使用 Flutter
     对应 Provider。
 -   Flutter ImageCache + `ResizeImage` 管理解码尺寸与内存复用。
 -   MUSAIC 自己管理 LOD、可视区域优先、预加载和任务调度。

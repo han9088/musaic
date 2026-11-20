@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/features/artwork/model/artwork_request.dart';
 import 'package:musaic/features/artwork/model/artwork_resource.dart';
 import 'package:musaic/features/artwork/pipeline/artwork_pipeline.dart';
+import 'package:musaic/features/artwork/pipeline/xerox_background_processor.dart';
+import 'package:musaic/features/artwork/presentation/artwork_renderer.dart';
 import 'package:musaic/features/artwork/presentation/artwork_source_view.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
 import 'package:musaic/features/artwork/source/artwork_resolver.dart';
@@ -25,6 +27,11 @@ class _Resolver extends ArtworkResolver {
     ArtworkRequest request, {
     required DirectoryMusicLibrary? directories,
   }) async => resource;
+}
+
+class _NoBackgroundProcessing extends XeroxBackgroundProcessor {
+  @override
+  void enqueue(XeroxRasterRequest request) {}
 }
 
 class _NoDisk implements XeroxDiskCacheStore {
@@ -65,6 +72,20 @@ class _Rasterizer extends XeroxRasterizer {
     } finally {
       picture.dispose();
     }
+  }
+}
+
+Future<MemoryImage> _wideImage() async {
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(recorder).drawColor(const ui.Color(0xffffffff), ui.BlendMode.src);
+  final picture = recorder.endRecording();
+  final image = picture.toImageSync(512, 256);
+  picture.dispose();
+  try {
+    final png = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+    return MemoryImage(png.buffer.asUint8List());
+  } finally {
+    image.dispose();
   }
 }
 
@@ -163,6 +184,107 @@ void main() {
     expect(rasterizer.resolutions, [256]);
     expect(cache.cachedEntries, 1);
     expect(disk.writes, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('mode handoff uses the prewarmed LOD after a zoom', (
+    tester,
+  ) async {
+    final image = (await tester.runAsync(_wideImage))!;
+    final resource = ArtworkResource(
+      identity: 'album',
+      sourceKey: 'source',
+      image: image,
+    );
+    final rasterizer = _Rasterizer();
+    final cache = XeroxRasterCache(
+      rasterizer: rasterizer,
+      diskCache: _NoDisk(),
+    );
+    final pipeline = ArtworkPipeline(
+      resolver: _Resolver(resource),
+      rasterCache: cache,
+      backgroundProcessor: _NoBackgroundProcessing(),
+    );
+    final prepared = pipeline.createDisplayPlan(
+      resource: resource,
+      targetSize: const Size.square(300),
+      devicePixelRatio: 1,
+    );
+    final lease = (await tester.runAsync(
+      () => cache.acquire(prepared.xeroxRequest),
+    ))!;
+
+    Widget view(double size, {bool xerox = false}) => Directionality(
+      textDirection: TextDirection.ltr,
+      child: MediaQuery(
+        data: const MediaQueryData(devicePixelRatio: 1),
+        child: Center(
+          child: SizedBox.square(
+            dimension: size,
+            child: ArtworkSourceView(
+              request: const ArtworkRequest(source: 'test'),
+              placeholder: const SizedBox.shrink(),
+              xerox: xerox,
+              fit: BoxFit.cover,
+              pipeline: pipeline,
+            ),
+          ),
+        ),
+      ),
+    );
+    ArtworkRenderer renderer() =>
+        tester.widget<ArtworkRenderer>(find.byType(ArtworkRenderer));
+    await tester.pumpWidget(view(200));
+    await tester.pump();
+    await tester.pumpWidget(view(300));
+    expect(renderer().plan.originalDecodeResolution, 256);
+    await tester.pumpWidget(view(300, xerox: true));
+    expect(renderer().plan.originalDecodeResolution, 512);
+    expect(renderer().processedImage, same(lease.image));
+    expect(rasterizer.resolutions, [512]);
+    await tester.pumpWidget(const SizedBox.shrink());
+    lease.release();
+  });
+
+  testWidgets('original decoding preserves the source aspect ratio', (
+    tester,
+  ) async {
+    final image = (await tester.runAsync(_wideImage))!;
+    final resource = ArtworkResource(
+      identity: 'wide',
+      sourceKey: 'wide',
+      image: image,
+    );
+    final plan = ArtworkPipeline.instance.createDisplayPlan(
+      resource: resource,
+      targetSize: const Size.square(200),
+      devicePixelRatio: 1,
+    );
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: ArtworkRenderer(
+          resource: resource,
+          plan: plan,
+          width: 200,
+          height: 200,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.medium,
+          semanticLabel: null,
+          excludeFromSemantics: false,
+          xerox: false,
+          placeholder: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      final provider = tester.widget<Image>(find.byType(Image)).image;
+      await precacheImage(provider, tester.element(find.byType(Image)));
+    });
+    await tester.pump();
+    final decoded = tester.widget<RawImage>(find.byType(RawImage)).image!;
+    expect(decoded.width / decoded.height, 2);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

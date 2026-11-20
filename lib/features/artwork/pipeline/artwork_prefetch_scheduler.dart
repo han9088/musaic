@@ -91,6 +91,7 @@ class ArtworkPrefetchScheduler {
         source.image,
         width: source.decodeResolution,
         height: source.decodeResolution,
+        policy: ResizeImagePolicy.fit,
       );
       await precacheImage(
         provider,
@@ -124,7 +125,12 @@ class ArtworkPrefetchScheduler {
           .select(physicalExtent)
           .originalDecodeResolution;
       await precacheImage(
-        ResizeImage(resource.image, width: resolution, height: resolution),
+        ResizeImage(
+          resource.image,
+          width: resolution,
+          height: resolution,
+          policy: ResizeImagePolicy.fit,
+        ),
         context,
         size: targetSize,
         onError: (error, stackTrace) {},

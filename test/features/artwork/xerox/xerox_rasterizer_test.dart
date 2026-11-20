@@ -84,41 +84,82 @@ void main() {
     expect(xeroxSeed('album-cover'), isNot(xeroxSeed('other-cover')));
   });
 
-  testWidgets('offline raster output matches the existing Xerox shader pixels', (
+  testWidgets(
+    'offline raster output matches the existing Xerox shader pixels',
+    (tester) async {
+      final bytes = await tester.runAsync(() async {
+        const width = 32;
+        const height = 32;
+        final source = _splitImage(width, height, 173);
+        final encoded = await source.toByteData(format: ui.ImageByteFormat.png);
+        final provider = MemoryImage(encoded!.buffer.asUint8List());
+        final program = await ui.FragmentProgram.fromAsset(
+          'shaders/xerox.frag',
+        );
+        final expected = await _render(
+          program,
+          source,
+          identity: 'raster-equivalence',
+          grain: xeroxConfig.grain,
+        );
+        final output = await XeroxRasterizer().rasterize(
+          XeroxRasterRequest(
+            identity: 'raster-equivalence',
+            image: provider,
+            resolution: width,
+            fit: BoxFit.cover,
+            devicePixelRatio: 1,
+          ),
+        );
+        final actual = (await output.toByteData(
+          format: ui.ImageByteFormat.rawStraightRgba,
+        ))!.buffer.asUint8List();
+        output.dispose();
+        source.dispose();
+        return (actual: actual, expected: expected);
+      });
+      expect(bytes, isNotNull);
+      // The raster path must be pixel-identical to the previous live painter.
+      expect(bytes!.actual, equals(bytes.expected));
+    },
+  );
+
+  testWidgets('non-square sources keep their geometry before cover cropping', (
     tester,
   ) async {
-    final bytes = await tester.runAsync(() async {
-      const width = 32;
-      const height = 32;
-      final source = _splitImage(width, height, 173);
-      final encoded = await source.toByteData(format: ui.ImageByteFormat.png);
-      final provider = MemoryImage(encoded!.buffer.asUint8List());
-      final program = await ui.FragmentProgram.fromAsset('shaders/xerox.frag');
-      final expected = await _render(
-        program,
-        source,
-        identity: 'raster-equivalence',
-        grain: xeroxConfig.grain,
+    final pixels = await tester.runAsync(() async {
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      canvas.drawColor(const ui.Color(0xff000000), ui.BlendMode.src);
+      canvas.drawRect(
+        const ui.Rect.fromLTWH(128, 0, 256, 256),
+        ui.Paint()..color = const ui.Color(0xffffffff),
       );
+      final picture = recorder.endRecording();
+      final source = picture.toImageSync(512, 256);
+      picture.dispose();
+      final png = (await source.toByteData(format: ui.ImageByteFormat.png))!;
+      source.dispose();
       final output = await XeroxRasterizer().rasterize(
         XeroxRasterRequest(
-          identity: 'raster-equivalence',
-          image: provider,
-          resolution: width,
-          fit: BoxFit.cover,
-          devicePixelRatio: 1,
+          identity: 'wide-cover',
+          image: MemoryImage(png.buffer.asUint8List()),
+          originalDecodeResolution: 256,
+          resolution: 64,
+          config: const XeroxConfig(grain: 0),
         ),
       );
-      final actual = (await output.toByteData(
-        format: ui.ImageByteFormat.rawStraightRgba,
-      ))!.buffer.asUint8List();
-      output.dispose();
-      source.dispose();
-      return (actual: actual, expected: expected);
+      try {
+        return (await output.toByteData(format: ui.ImageByteFormat.rawRgba))!
+            .buffer
+            .asUint8List();
+      } finally {
+        output.dispose();
+      }
     });
-    expect(bytes, isNotNull);
-    // The raster path must be pixel-identical to the previous live painter.
-    expect(bytes!.actual, equals(bytes.expected));
+    // Cover cropping takes the white middle square, not the black side bands.
+    expect(pixels![(32 * 64 + 8) * 4], 255);
+    expect(pixels[(32 * 64 + 56) * 4], 255);
   });
 
   testWidgets('shader thresholds, composites alpha, and applies stable grain', (

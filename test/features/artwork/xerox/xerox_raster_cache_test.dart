@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -17,6 +18,12 @@ import 'package:musaic/features/artwork/cache/artwork_memory_policy.dart';
 
 class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
   final values = <String, Uint8List>{};
+  final _written = <String, Completer<void>>{};
+
+  Future<void> written(String key) {
+    if (values.containsKey(key)) return Future.value();
+    return _written.putIfAbsent(key, Completer<void>.new).future;
+  }
 
   @override
   Future<ui.Image?> read(String key) async {
@@ -33,12 +40,63 @@ class _MemoryXeroxDiskCache implements XeroxDiskCacheStore {
   @override
   Future<void> write(String key, Uint8List bytes) async {
     values[key] = Uint8List.fromList(bytes);
+    _written.remove(key)?.complete();
   }
 
   @override
   Future<void> remove(String key) async {
     values.remove(key);
   }
+}
+
+class _SlowDiskCache extends _MemoryXeroxDiskCache {
+  final started = Completer<void>();
+  final resume = Completer<void>();
+  int active = 0;
+  int peakActive = 0;
+
+  @override
+  Future<void> write(String key, Uint8List bytes) async {
+    active++;
+    if (active > peakActive) peakActive = active;
+    if (!started.isCompleted) started.complete();
+    try {
+      await resume.future;
+      await super.write(key, bytes);
+    } finally {
+      active--;
+    }
+  }
+}
+
+class _CongestedPipeline extends ArtworkPipeline {
+  _CongestedPipeline(this.lease, {this.error = const XeroxRasterQueueFull()});
+
+  final XeroxRasterLease lease;
+  final Object error;
+  int attempts = 0;
+
+  @override
+  XeroxRasterLease? tryAcquireXerox(XeroxRasterRequest request) => null;
+
+  @override
+  XeroxRasterTask requestXerox(
+    XeroxRasterRequest request, {
+    bool exactOnly = false,
+  }) {
+    attempts++;
+    return attempts == 1
+        ? XeroxRasterTask.failed(error)
+        : XeroxRasterTask.completed(lease);
+  }
+}
+
+class _SelectiveFailureRasterizer extends _FakeRasterizer {
+  @override
+  Future<ui.Image> rasterize(XeroxRasterRequest request) =>
+      request.identity == 'broken'
+      ? Future.error(StateError('Broken artwork'))
+      : super.rasterize(request);
 }
 
 class _FakeRasterizer extends XeroxRasterizer {
@@ -148,6 +206,7 @@ void main() {
       final request = _request('persistent');
       final first = await firstCache.acquire(request);
       first.release();
+      await disk.written(request.key.diskCacheKey);
 
       expect(disk.values, contains(request.key.diskCacheKey));
       expect(firstRasterizer.calls, 1);
@@ -367,6 +426,137 @@ void main() {
       lease.release();
     }
   });
+
+  test('slow PNG writes do not block display or the next raster job', () async {
+    final disk = _SlowDiskCache();
+    final cache = XeroxRasterCache(
+      maxBytes: 64,
+      maxConcurrentJobs: 1,
+      rasterizer: _FakeRasterizer(),
+      diskCache: disk,
+    );
+    var delivered = false;
+    final first = cache.acquire(_request('first')).then((lease) {
+      delivered = true;
+      return lease;
+    });
+    await disk.started.future;
+    XeroxRasterLease? second;
+    try {
+      await Future<void>.delayed(Duration.zero);
+      expect(delivered, isTrue);
+      expect(cache.activeJobs, 0);
+      (await first).release();
+      second = await cache
+          .acquire(_request('second'))
+          .timeout(const Duration(seconds: 2));
+      expect(cache.cachedBytes, 64);
+      expect(disk.peakActive, 1);
+    } finally {
+      disk.resume.complete();
+      (await first).release();
+      second?.release();
+    }
+    await disk.written(_request('first').key.diskCacheKey);
+    await disk.written(_request('second').key.diskCacheKey);
+    expect(disk.peakActive, 1);
+  });
+
+  test('a broken overscan raster does not fail visible preparation', () async {
+    final cache = XeroxRasterCache(
+      rasterizer: _SelectiveFailureRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
+    );
+    final leases = await XeroxJobScheduler(cache: cache).prepare([
+      _request('visible', priority: XeroxRasterPriority.visible),
+      _request('broken', priority: XeroxRasterPriority.overscan),
+    ]);
+    expect(leases, hasLength(1));
+    leases.single.release();
+  });
+
+  test('a broken visible raster still fails preparation', () async {
+    final errors = <FlutterErrorDetails>[];
+    final originalHandler = FlutterError.onError;
+    FlutterError.onError = errors.add;
+    addTearDown(() => FlutterError.onError = originalHandler);
+    final cache = XeroxRasterCache(
+      rasterizer: _SelectiveFailureRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
+    );
+    await expectLater(
+      XeroxJobScheduler(cache: cache).prepare([
+        _request('broken', priority: XeroxRasterPriority.visible),
+      ]),
+      throwsStateError,
+    );
+    expect(errors, hasLength(1));
+  });
+
+  testWidgets('unmounting cancels congestion recovery', (tester) async {
+    final cache = XeroxRasterCache(
+      rasterizer: _FakeRasterizer(),
+      diskCache: _MemoryXeroxDiskCache(),
+    );
+    final request = _request('disposed');
+    final lease = (await tester.runAsync(() => cache.acquire(request)))!;
+    final pipeline = _CongestedPipeline(lease);
+    await tester.pumpWidget(
+      XeroxRasterResource(
+        request: request,
+        pipeline: pipeline,
+        builder: (_, _) => const SizedBox.shrink(),
+      ),
+    );
+    await tester.pump();
+    expect(pipeline.attempts, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
+    expect(pipeline.attempts, 1);
+    lease.release();
+  });
+
+  for (final error in [
+    const XeroxRasterQueueFull(),
+    const XeroxRasterCancelled(),
+    StateError('Permanent decode failure'),
+  ]) {
+    testWidgets('resource recovers only transient failure: $error', (
+      tester,
+    ) async {
+      final cache = XeroxRasterCache(
+        rasterizer: _FakeRasterizer(),
+        diskCache: _MemoryXeroxDiskCache(),
+      );
+      final request = _request('recovery');
+      final lease = (await tester.runAsync(() => cache.acquire(request)))!;
+      final pipeline = _CongestedPipeline(lease, error: error);
+      Widget view() => Directionality(
+        textDirection: TextDirection.ltr,
+        child: XeroxRasterResource(
+          request: request,
+          pipeline: pipeline,
+          builder: (image, _) => Text(image == null ? 'waiting' : 'ready'),
+        ),
+      );
+      await tester.pumpWidget(view());
+      await tester.pump();
+      expect(find.text('waiting'), findsOneWidget);
+      // Rebuilds while congested must not bypass the retry delay.
+      for (var i = 0; i < 5; i++) {
+        await tester.pumpWidget(view());
+      }
+      expect(pipeline.attempts, 1);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      final transient =
+          error is XeroxRasterQueueFull || error is XeroxRasterCancelled;
+      expect(pipeline.attempts, transient ? 2 : 1);
+      expect(find.text(transient ? 'ready' : 'waiting'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      lease.release();
+    });
+  }
 
   testWidgets(
     'Xerox resource exposes the cached bitmap without an Image layer',

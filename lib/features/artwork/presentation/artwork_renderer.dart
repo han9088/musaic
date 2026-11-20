@@ -65,6 +65,7 @@ class ArtworkRenderer extends StatelessWidget {
         resource.image,
         width: plan.originalDecodeResolution,
         height: plan.originalDecodeResolution,
+        policy: ResizeImagePolicy.fit,
       ),
       width: width,
       height: height,
@@ -73,7 +74,7 @@ class ArtworkRenderer extends StatelessWidget {
       semanticLabel: semanticLabel,
       excludeFromSemantics: excludeFromSemantics,
       gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => placeholder,
+      errorBuilder: (_, _, _) => placeholder,
     );
   }
 }

@@ -33,13 +33,11 @@ class ArtworkDisplayPlan {
 /// 由 Pipeline 统一转发。具体缓存实现仍由各自模块负责。
 class ArtworkPipeline {
   ArtworkPipeline({
-    ArtworkResolver resolver = const ArtworkResolver(),
-    ArtworkLodManager lodManager = ArtworkLodManager.instance,
+    this._resolver = const ArtworkResolver(),
+    this._lodManager = ArtworkLodManager.instance,
     XeroxRasterCache? rasterCache,
     XeroxBackgroundProcessor? backgroundProcessor,
-  }) : _resolver = resolver,
-       _lodManager = lodManager,
-       _rasterCache = rasterCache ?? XeroxRasterCache.instance,
+  }) : _rasterCache = rasterCache ?? XeroxRasterCache.instance,
        _backgroundProcessor = _createBackgroundProcessor(
          rasterCache,
          backgroundProcessor,

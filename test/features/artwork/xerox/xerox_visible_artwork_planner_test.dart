@@ -22,26 +22,26 @@ void main() {
       (3, 3): 'center',
     };
 
-    final requests = await const XeroxVisibleArtworkPlanner().build(
-      cells: cells,
-      viewport: viewport,
-      scale: 1,
-      tileExtent: 100,
-      devicePixelRatio: 1,
-      assetAt: (row, column) => assets[(row, column)]!,
-      identityAt: (row, column) =>
-          row == 1 ? const ArtworkIdentity('album-center') : null,
-      resolveArtwork: (request) async {
-        final provider = AssetImage('assets/${request.source}.png');
-        return ArtworkResource(
-          identity: request.identity?.value ?? request.source,
-          sourceKey: provider.toString(),
-          image: provider,
-        );
-      },
-      selectedAsset: 'selected',
-      selectedIdentity: const ArtworkIdentity('album-selected'),
-    );
+      final requests = await const XeroxVisibleArtworkPlanner().build(
+        cells: cells,
+        viewport: viewport,
+        scale: 1,
+        tileExtent: 100,
+        devicePixelRatio: 1,
+        assetAt: (row, column) => assets[(row, column)]!,
+        identityAt: (row, column) =>
+            row == 1 || row == 3 ? const ArtworkIdentity('album-center') : null,
+        resolveArtwork: (request) async {
+          final provider = AssetImage('assets/${request.source}.png');
+          return ArtworkResource(
+            identity: request.identity?.value ?? request.source,
+            sourceKey: provider.toString(),
+            image: provider,
+          );
+        },
+        selectedAsset: 'selected',
+        selectedIdentity: const ArtworkIdentity('album-selected'),
+      );
 
     expect(requests.map((request) => request.identity).toList(), [
       'album-selected',
@@ -97,4 +97,39 @@ void main() {
     );
     expect(resolved, 1);
   });
+
+  for (final brokenRow in [0, 1]) {
+    test(
+      'planner tolerates only offscreen resolution failure: $brokenRow',
+      () async {
+        final pending = const XeroxVisibleArtworkPlanner().build(
+          cells: [
+            (row: 0, column: 0, rect: const Rect.fromLTWH(0, 0, 100, 100)),
+            (row: 1, column: 0, rect: const Rect.fromLTWH(0, 400, 100, 100)),
+          ],
+          viewport: const Size.square(200),
+          scale: 1,
+          tileExtent: 100,
+          devicePixelRatio: 1,
+          assetAt: (row, _) => '$row',
+          resolveArtwork: (request) async {
+              if (request.source == '$brokenRow') {
+              throw StateError('Broken artwork');
+              }
+            return ArtworkResource(
+              identity: request.source,
+              sourceKey: request.source,
+              image: const AssetImage('unused'),
+            );
+          },
+        );
+        if (brokenRow == 0) {
+          await expectLater(pending, throwsStateError);
+        } else {
+          final requests = await pending;
+          expect(requests.map((request) => request.identity), ['0']);
+        }
+      },
+    );
+  }
 }

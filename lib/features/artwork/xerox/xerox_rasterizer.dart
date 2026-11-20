@@ -54,6 +54,7 @@ class XeroxRasterizer {
       request.image,
       width: decodeResolution,
       height: decodeResolution,
+      policy: ResizeImagePolicy.fit,
     );
     final stream = provider.resolve(
       ImageConfiguration(

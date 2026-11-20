@@ -42,6 +42,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
   XeroxRasterKey? _failedKey;
   Object? _error;
   int _generation = 0;
+  int _queueRetryDelayMs = 120;
 
   @override
   void didUpdateWidget(XeroxRasterResource oldWidget) {
@@ -69,6 +70,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
   void _resetRequest({required bool releaseLease}) {
     _generation++;
     _requestTimer?.cancel();
+    _requestTimer = null;
     _task?.cancel();
     _priorityTask?.cancel();
     _task = null;
@@ -76,6 +78,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
     _scheduledKey = null;
     _failedKey = null;
     _error = null;
+    _queueRetryDelayMs = 120;
     if (releaseLease) {
       _lease?.release();
       _lease = null;
@@ -139,6 +142,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
           _lease = next;
           _error = null;
           _failedKey = null;
+          _queueRetryDelayMs = 120;
         });
         if (previous != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -147,7 +151,17 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
         }
       } catch (error) {
         if (!mounted || generation != _generation) return;
-        if (error is! XeroxRasterCancelled) {
+        if (error is XeroxRasterQueueFull || error is XeroxRasterCancelled) {
+          // 保留 scheduledKey，重建不能绕过拥塞退避。
+          _requestTimer = Timer(Duration(milliseconds: _queueRetryDelayMs), () {
+            if (!mounted || generation != _generation) return;
+            setState(() {
+              _requestTimer = null;
+              _scheduledKey = null;
+            });
+          });
+          if (_queueRetryDelayMs < 960) _queueRetryDelayMs *= 2;
+        } else {
           setState(() {
             _error = error;
             _failedKey = request.key;
@@ -155,7 +169,11 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
         }
       } finally {
         if (identical(_task, task)) _task = null;
-        if (_scheduledKey == request.key) _scheduledKey = null;
+        if (generation == _generation &&
+            _scheduledKey == request.key &&
+            _requestTimer == null) {
+          _scheduledKey = null;
+        }
       }
     }
 

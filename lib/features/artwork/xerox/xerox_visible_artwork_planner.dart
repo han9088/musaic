@@ -140,7 +140,13 @@ class XeroxVisibleArtworkPlanner {
           devicePixelRatio: devicePixelRatio,
           fit: BoxFit.cover,
         );
-        final resource = await resolveArtwork(request);
+        ArtworkResource? resource;
+        try {
+          resource = await resolveArtwork(request);
+        } catch (_) {
+          if (spec.priority != XeroxRasterPriority.overscan) rethrow;
+          continue;
+        }
         if (resource == null) continue;
 
         final plan = ArtworkPipeline.instance.createDisplayPlan(

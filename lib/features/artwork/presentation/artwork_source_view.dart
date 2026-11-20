@@ -91,6 +91,9 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
         oldWidget.pipeline != widget.pipeline) {
       _resolve();
     } else if (oldWidget.xerox != widget.xerox) {
+      // 模式准备按当前尺寸选档，交接时使用同一档位。
+      _originalDecodeResolution = null;
+      _xeroxResolution = null;
       _lastBackgroundKey = null;
     }
   }
