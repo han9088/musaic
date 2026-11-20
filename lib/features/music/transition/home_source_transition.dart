@@ -109,37 +109,32 @@ class HomeSourceTransition {
     required double tileSize,
   }) {
     final current = phase;
-    if (current == null) return child;
     final motion = current == SourceTransitionPhase.enter
         ? enterMotions[(row, column)]
         : exitMotions[(row, column)];
-    if (motion == null) return child;
-    return AnimatedBuilder(
-      animation: timeline,
+    return SourceTileMotion.wrap(
+      timeline: timeline,
       child: child,
-      builder: (context, child) {
-        final zoom = scale();
-        final window = viewport(context);
-        final elapsed = timeline.value * sourceDurationMs;
-        final value = current == SourceTransitionPhase.enter
-            ? motion.enterTransform(
-                elapsedMs: elapsed - exitDurationMs - sourceHandoffMs,
-                viewport: window,
-                scale: zoom,
-                tileSize: tileSize,
-              )
-            : motion.exitTransform(
-                elapsedMs: elapsed,
-                viewport: window,
-                scale: zoom,
-                tileSize: tileSize,
-              );
-        return Transform(
-          alignment: Alignment.center,
-          transform: value.transform,
-          child: Opacity(opacity: value.alpha, child: child),
-        );
-      },
+      frame: motion == null
+          ? null
+          : (context) {
+              final zoom = scale();
+              final window = viewport(context);
+              final elapsed = timeline.value * sourceDurationMs;
+              return current == SourceTransitionPhase.enter
+                  ? motion.enterTransform(
+                      elapsedMs: elapsed - exitDurationMs - sourceHandoffMs,
+                      viewport: window,
+                      scale: zoom,
+                      tileSize: tileSize,
+                    )
+                  : motion.exitTransform(
+                      elapsedMs: elapsed,
+                      viewport: window,
+                      scale: zoom,
+                      tileSize: tileSize,
+                    );
+            },
     );
   }
 

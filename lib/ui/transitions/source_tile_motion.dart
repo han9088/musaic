@@ -19,6 +19,26 @@ class SourceTileMotion {
   final Rect rect;
   final double startMs;
 
+  static final _identityTransform = Matrix4.identity();
+
+  /// Keep the cover mounted when a transition starts or stops.
+  static Widget wrap({
+    required Animation<double> timeline,
+    required Widget child,
+    required ({Matrix4 transform, double alpha}) Function(BuildContext)? frame,
+  }) => AnimatedBuilder(
+    animation: frame == null ? const AlwaysStoppedAnimation(0.0) : timeline,
+    child: child,
+    builder: (context, child) {
+      final value = frame?.call(context);
+      return Transform(
+        alignment: Alignment.center,
+        transform: value?.transform ?? _identityTransform,
+        child: Opacity(opacity: value?.alpha ?? 1, child: child),
+      );
+    },
+  );
+
   static ({Map<(int, int), SourceTileMotion> tiles, double durationMs}) exit(
     List<({int row, int column, Rect rect})> cells,
     Size viewport,

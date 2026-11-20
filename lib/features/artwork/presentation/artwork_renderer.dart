@@ -2,6 +2,7 @@
 
 import 'dart:ui' as ui;
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import '../model/artwork_resource.dart';
@@ -42,21 +43,18 @@ class ArtworkRenderer extends StatelessWidget {
     if (xerox) {
       final image = processedImage;
       if (image == null) return placeholder;
-      final bitmap = RawImage(
-        image: image,
-        width: width,
-        height: height,
-        fit: fit,
-        filterQuality: filterQuality,
-      );
-      final filter = XeroxPaletteScope.of(context).filter;
       return Semantics(
         image: true,
         label: excludeFromSemantics ? null : semanticLabel,
         excludeSemantics: excludeFromSemantics,
-        child: filter == null
-            ? bitmap
-            : ColorFiltered(colorFilter: filter, child: bitmap),
+        child: _XeroxBitmap(
+          image: image,
+          width: width,
+          height: height,
+          fit: fit,
+          filterQuality: filterQuality,
+          filter: XeroxPaletteScope.of(context).filter,
+        ),
       );
     }
 
@@ -75,6 +73,73 @@ class ArtworkRenderer extends StatelessWidget {
       excludeFromSemantics: excludeFromSemantics,
       gaplessPlayback: true,
       errorBuilder: (_, _, _) => placeholder,
+    );
+  }
+}
+
+/// Apply paper and ink in the image draw, without replacing the image node.
+class _XeroxBitmap extends RawImage {
+  const _XeroxBitmap({
+    required super.image,
+    required super.width,
+    required super.height,
+    required super.fit,
+    required super.filterQuality,
+    required this.filter,
+  });
+
+  final ColorFilter? filter;
+
+  @override
+  _RenderXeroxBitmap createRenderObject(BuildContext context) =>
+      _RenderXeroxBitmap(
+        filter,
+        image: image?.clone(),
+        width: width,
+        height: height,
+        fit: fit,
+        filterQuality: filterQuality,
+      );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderXeroxBitmap renderObject,
+  ) {
+    super.updateRenderObject(context, renderObject);
+    renderObject.filter = filter;
+  }
+}
+
+class _RenderXeroxBitmap extends RenderImage {
+  _RenderXeroxBitmap(
+    this._filter, {
+    super.image,
+    super.width,
+    super.height,
+    super.fit,
+    super.filterQuality,
+  });
+
+  ColorFilter? _filter;
+
+  set filter(ColorFilter? value) {
+    if (_filter == value) return;
+    _filter = value;
+    markNeedsPaint();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final bitmap = image;
+    if (bitmap == null) return;
+    paintImage(
+      canvas: context.canvas,
+      rect: offset & size,
+      image: bitmap,
+      colorFilter: _filter,
+      fit: fit,
+      filterQuality: filterQuality,
     );
   }
 }

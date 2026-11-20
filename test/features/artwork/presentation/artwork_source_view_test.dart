@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musaic/features/artwork/mode/artwork_mode_transition.dart';
 import 'package:musaic/features/artwork/model/artwork_request.dart';
 import 'package:musaic/features/artwork/model/artwork_resource.dart';
 import 'package:musaic/features/artwork/pipeline/artwork_pipeline.dart';
@@ -17,6 +18,7 @@ import 'package:musaic/features/artwork/xerox/xerox_raster_cache.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
 import 'package:musaic/features/artwork/xerox/xerox_rasterizer.dart';
 import 'package:musaic/services/music/directory_music_library.dart';
+import 'package:musaic/ui/transitions/source_tile_motion.dart';
 
 class _Resolver extends ArtworkResolver {
   _Resolver(this.resource);
@@ -90,6 +92,80 @@ Future<MemoryImage> _wideImage() async {
 }
 
 void main() {
+  testWidgets(
+    'a resolved cover stays mounted at both ends of the mode animation',
+    (tester) async {
+      const viewport = Size(300, 600);
+      const cells = [(row: 0, column: 0, rect: Rect.fromLTWH(0, 0, 100, 100))];
+      const loading = ValueKey('cover-loading');
+      final pipeline = ArtworkPipeline(
+        resolver: _Resolver(
+          const ArtworkResource(
+            identity: 'album',
+            sourceKey: 'asset',
+            image: AssetImage('assets/albums/0.jpg'),
+          ),
+        ),
+        backgroundProcessor: _NoBackgroundProcessing(),
+      );
+      late StateSetter rebuild;
+      final transition = ArtworkModeTransition(
+        vsync: tester,
+        isMounted: () => true,
+        notifyChanged: () => rebuild(() {}),
+        onMotionChanged: () {},
+      );
+      addTearDown(transition.dispose);
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: MediaQuery(
+            data: const MediaQueryData(devicePixelRatio: 1),
+            child: StatefulBuilder(
+              builder: (_, setState) {
+                rebuild = setState;
+                return transition.animateTile(
+                  0,
+                  0,
+                  ArtworkSourceView(
+                    request: const ArtworkRequest(source: 'test'),
+                    width: 100,
+                    height: 100,
+                    placeholder: const SizedBox(key: loading),
+                    pipeline: pipeline,
+                  ),
+                  scale: () => 1,
+                  viewport: (_) => viewport,
+                  tileSize: 100,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      final cover = tester.element(find.byType(ArtworkSourceView));
+      expect(find.byKey(loading), findsNothing);
+
+      final done = transition.start(
+        exit: SourceTileMotion.exit(cells, viewport),
+        enter: SourceTileMotion.enter(cells),
+        onHandoff: () {},
+      );
+      final flashes = <String>[];
+      for (var frame = 0; frame < 40; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (find.byKey(loading).evaluate().isNotEmpty) {
+          flashes.add('frame $frame (${transition.phase})');
+        }
+      }
+      await done;
+      expect(flashes, isEmpty);
+      expect(tester.element(find.byType(ArtworkSourceView)), same(cover));
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
   testWidgets('changing Xerox paper and ink reuses the same cached bitmap', (
     tester,
   ) async {
@@ -148,6 +224,8 @@ void main() {
       ),
     );
     await tester.pump();
+    final artwork = find.byWidgetPredicate((widget) => widget is RawImage);
+    final renderObject = tester.renderObject(artwork);
 
     for (final palette in [
       XeroxPalette.original,
@@ -157,6 +235,7 @@ void main() {
     ]) {
       selection.value = palette;
       await tester.pump();
+      expect(tester.renderObject(artwork), same(renderObject));
       final boundary =
           boundaryKey.currentContext!.findRenderObject()!
               as RenderRepaintBoundary;
@@ -176,10 +255,7 @@ void main() {
       ].map((value) => (value * 255).round()).toList();
       expect(rgbAt(16), rgb(palette.ink));
       expect(rgbAt(48), rgb(palette.paper));
-      expect(
-        tester.widget<RawImage>(find.byType(RawImage)).image,
-        same(lease.image),
-      );
+      expect(tester.widget<RawImage>(artwork).image, same(lease.image));
     }
     expect(rasterizer.resolutions, [256]);
     expect(cache.cachedEntries, 1);
