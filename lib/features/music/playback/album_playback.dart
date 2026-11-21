@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../services/music/music_provider.dart';
+import '../catalog/album_catalog_mapper.dart';
 
 /// 封装或定义专辑播放相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class AlbumPlayback extends ChangeNotifier {
@@ -35,7 +36,7 @@ class AlbumPlayback extends ChangeNotifier {
     _mock = provider == null && albums == null;
     _albums = {
       for (final album in albums ?? <ProviderAlbum>[])
-        'local:${album.reference.id}': album,
+        albumArtworkSource(album): album,
     };
     _songAlbums = {
       for (final album in albums ?? <ProviderAlbum>[])
@@ -51,7 +52,7 @@ class AlbumPlayback extends ChangeNotifier {
         if (generation != _generation) return;
         final album = _songAlbums[state.currentItem?.id];
         if (album != null) {
-          asset = 'local:${album.reference.id}';
+          asset = albumArtworkSource(album);
           title = album.title;
         }
         playing = state.isPlaying;

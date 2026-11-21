@@ -19,6 +19,9 @@ final class LocalMusicLibrary {
   /// 执行当前模块中的albums操作，用于音乐源、媒体库、播放及切换流程。
   List<ProviderAlbum> get albums => _orderedAlbums;
 
+  static Future<Uint8List?> trackArtwork(int id) =>
+      MusaicQuery().queryArtwork(id, ArtworkType.AUDIO, size: 512, quality: 90);
+
   /// 执行当前模块中的authorizationstatus操作，用于音乐源、媒体库、播放及切换流程。
   Future<MusicAccess> authorizationStatus({bool request = false}) async {
     if (kIsWeb) return MusicAccess.unavailable;
@@ -90,11 +93,13 @@ final class LocalMusicLibrary {
           uri != null &&
           {'content', 'file', 'ipod-library'}.contains(uri.scheme);
       final millis = row.duration;
-      final song = (
+      final ProviderSong song = (
         reference: reference(id, MusicKind.song),
         title: row.title.isEmpty ? 'Unknown song' : row.title,
         artist: row.artist,
-        artworkUrl: null as String?,
+        artworkUrl: uri?.scheme == 'content' && uri?.authority == 'media'
+            ? 'media-store:$id?modified=${row.dateModified ?? 0}'
+            : null,
         duration: millis == null ? null : Duration(milliseconds: millis),
         playable: playable,
       );
@@ -110,7 +115,7 @@ final class LocalMusicLibrary {
         reference: reference(entry.key, MusicKind.album),
         title: titles[entry.key]!,
         artist: entry.value.first.artist,
-        artworkUrl: null,
+        artworkUrl: entry.value.first.artworkUrl,
         trackCount: entry.value.length,
         tracks: List<ProviderSong>.unmodifiable(entry.value),
       );

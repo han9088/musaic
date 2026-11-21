@@ -2,12 +2,15 @@
 
 import '../../../services/music/music_models.dart';
 
+String albumArtworkSource(ProviderAlbum album) =>
+    album.artworkUrl ?? 'local:${album.reference.id}';
+
 /// 转换数据格式并生成目标结构，用于音乐源、媒体库、播放及切换流程。
 List<Map<String, dynamic>> mapProviderAlbums(List<ProviderAlbum> albums) => [
   for (final album in albums)
     <String, dynamic>{
       'id': '${album.reference.provider}:${album.reference.source.name}:${album.reference.id}',
-      'asset': album.artworkUrl ?? 'local:${album.reference.id}',
+      'asset': albumArtworkSource(album),
       'title': album.title,
       'artist': album.artist ?? '',
     },

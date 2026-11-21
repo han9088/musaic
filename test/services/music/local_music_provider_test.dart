@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musaic/features/artwork/source/artwork_resolver.dart';
+import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
 import 'package:musaic/services/music/local_music_provider.dart';
 import 'package:musaic/services/music/local_music_library.dart';
 import 'package:musaic/services/music/music_provider.dart';
@@ -14,6 +17,8 @@ void main() {
   late int requests;
   late int scans;
   late bool failScan;
+  late List<int> artworkQueries;
+  final artworkBytes = Uint8List.fromList([1, 2, 3]);
   final rows = <Map<String, Object?>>[
     {
       '_id': 1,
@@ -49,6 +54,7 @@ void main() {
     requests = 0;
     scans = 0;
     failScan = false;
+    artworkQueries = [];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
           switch (call.method) {
@@ -62,6 +68,11 @@ void main() {
               scans++;
               if (failScan) throw PlatformException(code: 'libraryQueryFailed');
               return rows;
+            case 'queryArtwork':
+              expect(call.arguments['type'], 0);
+              final id = call.arguments['id'] as int;
+              artworkQueries.add(id);
+              return id == 4 ? artworkBytes : null;
             default:
               throw MissingPluginException();
           }
@@ -217,7 +228,7 @@ void main() {
   });
 
   test(
-    'content identities retain metadata without assuming a file path',
+    'MediaStore tracks resolve their own artwork without assuming a file path',
     () async {
       access = 'authorized';
       rows.addAll([
@@ -238,9 +249,10 @@ void main() {
       try {
         final library = LocalMusicLibrary();
         await library.scan();
-        final tracks = library
-            .album(LocalMusicLibrary.reference('30', MusicKind.album))
-            .tracks!;
+        final album = library.album(
+          LocalMusicLibrary.reference('30', MusicKind.album),
+        );
+        final tracks = album.tracks!;
         expect(tracks.first.playable, isTrue);
         expect(
           library.source(tracks.first),
@@ -250,6 +262,17 @@ void main() {
           library.source(tracks.last),
           'content://media/external/audio/media/5',
         );
+        expect(artworkQueries, isEmpty);
+        final asset = mapProviderAlbums([album]).single['asset'] as String;
+        expect(asset, tracks.first.artworkUrl);
+        const resolver = ArtworkResolver();
+        final resource = await resolver.resolve(asset, directories: null);
+        expect((resource?.image as MemoryImage?)?.bytes, artworkBytes);
+        expect(
+          await resolver.resolve(tracks.last.artworkUrl!, directories: null),
+          isNull,
+        );
+        expect(artworkQueries, [4, 5]);
       } finally {
         rows.removeRange(3, rows.length);
       }

@@ -663,8 +663,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: Builder(
             builder: (context) {
               final content = _buildAlbums();
-              if (defaultTargetPlatform != TargetPlatform.iOS &&
-                  defaultTargetPlatform != TargetPlatform.macOS) {
+              final platform = defaultTargetPlatform;
+              if (!kIsWeb && platform == TargetPlatform.android) {
+                // Android samples the outermost pixels for its rotation backdrop.
+                return DecoratedBox(
+                  position: DecorationPosition.foreground,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.black,
+                      width: 4 / MediaQuery.devicePixelRatioOf(context),
+                    ),
+                  ),
+                  child: content,
+                );
+              }
+              if (platform != TargetPlatform.iOS &&
+                  platform != TargetPlatform.macOS) {
                 return content;
               }
               return LayoutSwitchOverlay(

@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'artwork_identity.dart';
 
 /// 专辑封面实际存放或获取的位置；占位 UI 不属于图片来源。
-enum ArtworkSourceType { asset, network, directory }
+enum ArtworkSourceType { asset, network, directory, mediaStore }
 
 /// 将历史字符串引用解析为有明确类型的图片来源。
 @immutable
@@ -41,6 +41,14 @@ class ArtworkSource {
     }
 
     final uri = Uri.tryParse(reference);
+    if (uri != null && uri.scheme == 'media-store') {
+      return ArtworkSource._(
+        type: ArtworkSourceType.mediaStore,
+        value: uri.path,
+        artworkIdentity: identity ?? ArtworkIdentity('media-store:${uri.path}'),
+        version: version ?? ArtworkVersion(uri.query),
+      );
+    }
     if (uri != null &&
         (uri.scheme == 'http' || uri.scheme == 'https') &&
         uri.host.isNotEmpty) {

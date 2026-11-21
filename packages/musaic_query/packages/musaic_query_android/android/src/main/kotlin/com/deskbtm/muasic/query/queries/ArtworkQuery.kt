@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.util.Size
 import com.deskbtm.muasic.query.QueryRequest
+import com.deskbtm.muasic.query.queries.helper.EmbeddedArtwork
 import com.deskbtm.muasic.query.queries.helper.QueryHelper
 import com.deskbtm.muasic.query.types.checkArtworkFormat
 import com.deskbtm.muasic.query.types.checkArtworkType
@@ -93,10 +94,13 @@ internal class ArtworkQuery(private val request: QueryRequest) {
         withContext(Dispatchers.IO) {
             var artData: ByteArray? = null
 
-            // If 'Android' >= 29/Q:
-            //   * Limited access to files/folders. Use 'loadThumbnail'.
-            // If 'Android' < 29/Q:
-            //   * Use the 'embeddedPicture' from 'MediaMetadataRetriever' to get the image.
+            if (type == 0) {
+                val trackUri = ContentUris.withAppendedId(uri, id.toLong())
+                val embedded = EmbeddedArtwork.load(request.context, trackUri) {
+                    convertOrResize(byteArray = it)
+                }
+                if (embedded != null) return@withContext embedded
+            }
             if (Build.VERSION.SDK_INT >= 29) {
                 try {
                     // If 'type' is 2, 3 or 4, Get the first item from playlist or artist.

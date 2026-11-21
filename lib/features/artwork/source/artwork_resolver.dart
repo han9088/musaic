@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
+import '../../../services/music/local_music_library.dart';
 import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
 import '../model/artwork_resource.dart';
@@ -64,6 +65,9 @@ class ArtworkResolver {
 
       case ArtworkSourceType.directory:
         return _resolveDirectory(source, request.version, directories);
+
+      case ArtworkSourceType.mediaStore:
+        return _resolveMediaStore(source);
     }
   }
 
@@ -75,6 +79,18 @@ class ArtworkResolver {
     sourceKey: jsonEncode([source.cacheKey, provider.toString()]),
     image: provider,
   );
+
+  Future<ArtworkResource?> _resolveMediaStore(ArtworkSource source) async {
+    final id = int.tryParse(source.value);
+    if (id == null || id < 0) return null;
+    final bytes = await LocalMusicLibrary.trackArtwork(id);
+    if (bytes == null || bytes.isEmpty) return null;
+    return ArtworkResource(
+      identity: source.identity,
+      sourceKey: source.cacheKey,
+      image: MemoryImage(bytes),
+    );
+  }
 
   Future<ArtworkResource?> _resolveDirectory(
     ArtworkSource source,

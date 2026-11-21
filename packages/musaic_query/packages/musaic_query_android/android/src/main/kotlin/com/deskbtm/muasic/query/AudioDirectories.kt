@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract as Documents
+import com.deskbtm.muasic.query.queries.helper.EmbeddedArtwork
 import io.flutter.plugin.common.*
 import java.io.File
 import java.security.MessageDigest
@@ -454,6 +455,7 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
         cache.mkdirs()
         val key =
             listOf(
+                    "id3-artwork-v1",
                     cacheGeneration,
                     entry["id"],
                     stamp[0],
@@ -482,16 +484,6 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
             target.setLastModified(System.currentTimeMillis())
             return target.toURI().toString()
         }
-        val reader = MediaMetadataRetriever()
-        val embedded =
-            try {
-                reader.setDataSource(context, uri)
-                reader.embeddedPicture
-            } catch (_: RuntimeException) {
-                null
-            } finally {
-                reader.release()
-            }
         fun decode(bytes: ByteArray): Bitmap? {
             val options = imageBounds(bytes) ?: return null
             options.inSampleSize = 1
@@ -501,7 +493,7 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
             return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
         }
         val bitmap =
-            embedded?.let { decode(it) }
+            EmbeddedArtwork.load(context, uri, ::decode)
                 ?: availableCover
                     ?.let {
                         val coverUri = uriFor(source, it["id"] as String)
