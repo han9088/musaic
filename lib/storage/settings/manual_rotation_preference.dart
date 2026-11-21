@@ -5,7 +5,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 class ManualRotationPreference {
   static const _key = 'settings.manual_rotation';
-  final _enabled = signal(false);
+  final _enabled = signal(true);
   Future<void> _pendingWrite = Future<void>.value();
   bool _changed = false;
   bool _disposed = false;

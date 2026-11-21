@@ -20,6 +20,7 @@ class AlbumLayoutTransition extends StatelessWidget {
     required this.tilt,
     required this.gridOffset,
     required this.progress,
+    this.retainLandscapeAlignment = false,
     this.xerox = false,
   });
 
@@ -29,12 +30,16 @@ class AlbumLayoutTransition extends StatelessWidget {
   final double tilt;
   final int gridOffset;
   final Animation<double> progress;
+  final bool retainLandscapeAlignment;
   final bool xerox;
 
   @override
   Widget build(BuildContext context) {
     final padding = MediaQuery.paddingOf(context);
     final selected = albums[position.round() % albums.length];
+    final portrait =
+        !retainLandscapeAlignment &&
+        MediaQuery.orientationOf(context) == Orientation.portrait;
     return IgnorePointer(
       child: ExcludeSemantics(
         child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -44,10 +49,14 @@ class AlbumLayoutTransition extends StatelessWidget {
             child: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final size = math.min(
-                    constraints.maxHeight * 0.65,
-                    constraints.maxWidth * 0.31,
+                  final size = CoverFlowGeometry.coverSize(constraints.biggest);
+                  final alignment = CoverFlowGeometry.alignment(
+                    portrait: portrait,
+                    height: constraints.maxHeight,
+                    coverSize: size,
+                    bottomPadding: padding.bottom,
                   );
+                  final coverCenter = alignment.alongSize(constraints.biggest);
                   final center = position.round();
                   final first = math.min(center - 7, gridOffset);
                   final last = math.max(
@@ -78,7 +87,7 @@ class AlbumLayoutTransition extends StatelessWidget {
                         child: AnimatedBuilder(
                           animation: progress,
                           builder: (context, child) => Transform(
-                            alignment: const Alignment(0, 0.04),
+                            alignment: alignment,
                             transform: Matrix4.identity()
                               ..setEntry(
                                 3,
@@ -94,15 +103,13 @@ class AlbumLayoutTransition extends StatelessWidget {
                               for (final index in paintOrder)
                                 _tile(
                                   index,
-                                  Rect.fromLTWH(
-                                    constraints.maxWidth / 2 +
-                                        centers[index]! -
-                                        anchor -
-                                        widths[index]! / 2,
-                                    constraints.maxHeight * 0.52 -
-                                        widths[index]! / 2,
-                                    widths[index]!,
-                                    widths[index]!,
+                                  Rect.fromCenter(
+                                    center: coverCenter.translate(
+                                      centers[index]! - anchor,
+                                      0,
+                                    ),
+                                    width: widths[index]!,
+                                    height: widths[index]!,
                                   ),
                                   constraints.biggest,
                                   padding,

@@ -59,7 +59,7 @@ class _SettingsPageRoute extends PageRouteBuilder<void> {
     required super.transitionsBuilder,
     required Duration duration,
   }) : super(
-         // Xerox changes wait on the home page's animation ticker.
+         // Keep the sheet visible behind the sliding page.
          opaque: false,
          transitionDuration: duration,
          reverseTransitionDuration: duration,

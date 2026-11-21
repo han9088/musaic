@@ -1,8 +1,142 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
+import 'package:musaic/features/coverflow/coverflow_flip_card.dart';
 
 void main() {
+  testWidgets('portrait anchors the covers above the bottom edge', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetPadding);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AlbumCoverFlow(
+          albums: [
+            {
+              'asset': 'assets/albums/0.jpg',
+              'artist': 'Artist',
+              'title': 'Album',
+            },
+          ],
+        ),
+      ),
+    );
+
+    Rect coverRect() => tester.getRect(find.byKey(const ValueKey('cover-0')));
+
+    double artworkBottomGap() {
+      final cover = coverRect();
+      return 800 - (cover.top + cover.width);
+    }
+
+    expect(artworkBottomGap(), closeTo(85, 0.01));
+    tester.view.padding = const FakeViewPadding(bottom: 34);
+    await tester.pump();
+    expect(artworkBottomGap(), closeTo(85, 0.01));
+    tester.view.padding = const FakeViewPadding(bottom: 92);
+    await tester.pump();
+    expect(artworkBottomGap(), closeTo(92, 0.01));
+
+    tester.view.resetPadding();
+    tester.view.physicalSize = const Size(800, 400);
+    await tester.pump();
+    final cover = coverRect();
+    expect(cover.top + cover.width / 2, closeTo(400 * 0.52, 0.01));
+  });
+
+  testWidgets('portrait flips one cover up and returns it to the same slot', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 800);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AlbumCoverFlow(
+          albums: [
+            {'asset': 'local:first', 'artist': 'Artist', 'title': 'First'},
+            {'asset': 'local:second', 'artist': 'Artist', 'title': 'Second'},
+          ],
+        ),
+      ),
+    );
+
+    final flip = find.byKey(const ValueKey('cover-flow-flipping-card'));
+    final face = find
+        .descendant(of: flip, matching: find.byType(GestureDetector))
+        .first;
+    final artwork = find
+        .descendant(of: face, matching: find.byType(ColoredBox))
+        .first;
+    final center = find.byKey(const ValueKey('cover-0'));
+    final neighbor = find.byKey(const ValueKey('cover-1'));
+    final restingRect = tester.getRect(face);
+    final neighborRect = tester.getRect(neighbor);
+    final touch = restingRect.topCenter + const Offset(0, 38);
+
+    final drag = await tester.startGesture(touch);
+    await drag.moveBy(const Offset(0, -24));
+    await drag.moveBy(const Offset(0, -100));
+    await tester.pump();
+    expect(tester.getRect(face).top, lessThan(restingRect.top));
+    Matrix4 flipTransform() => tester.widget<Transform>(flip).transform;
+    expect(flipTransform().entry(3, 1), lessThan(0));
+    expect(flipTransform().entry(3, 0), 0);
+
+    await drag.moveBy(const Offset(0, -145));
+    await tester.pump();
+    expect(flipTransform().entry(3, 1), greaterThan(0));
+    expect(flipTransform().entry(3, 0), 0);
+
+    final card = tester.widget<CoverFlowFlipCard>(
+      find.byType(CoverFlowFlipCard),
+    );
+    final travel = card.source.center.dy - card.destination.center.dy;
+    await drag.moveBy(Offset(0, -travel * (0.85 - card.progress.value)));
+    await tester.pump();
+    expect(card.progress.value, closeTo(0.85, 0.001));
+    final finishingArtwork = tester.getRect(artwork);
+    expect(finishingArtwork.height, closeTo(finishingArtwork.width, 0.01));
+
+    await drag.up();
+    await tester.pumpAndSettle();
+
+    final expanded = tester.getRect(face);
+    final expandedArtwork = tester.getRect(artwork);
+    expect(expandedArtwork.height, closeTo(expandedArtwork.width, 0.01));
+    expect(expanded.width, greaterThan(restingRect.width * 2));
+    expect(expanded.top + expanded.width, lessThan(restingRect.top));
+    expect(center, findsOneWidget);
+    expect(tester.getRect(neighbor), neighborRect);
+
+    await tester.dragFrom(
+      expanded.topCenter + const Offset(0, 80),
+      const Offset(0, 200),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getRect(face), restingRect);
+    expect(tester.getRect(neighbor), neighborRect);
+
+    await tester.dragFrom(touch, const Offset(0, -200));
+    await tester.pumpAndSettle();
+    tester.view.physicalSize = const Size(800, 400);
+    await tester.pumpAndSettle();
+    expect(flip, findsNothing);
+    final landscapeRect = tester.getRect(center);
+    await tester.dragFrom(
+      landscapeRect.topCenter + const Offset(0, 38),
+      const Offset(0, -160),
+    );
+    await tester.pumpAndSettle();
+    expect(flip, findsNothing);
+    expect(tester.getRect(center), landscapeRect);
+  });
+
   for (final direction in [-1.0, 1.0]) {
     for (final sample in [
       (20.0, 8, false),

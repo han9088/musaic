@@ -1,5 +1,7 @@
 // 文件职责：底部弹层的状态、布局、手势与动画引擎。
 
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 
@@ -46,7 +48,7 @@ class BottomSheetEngine extends ChangeNotifier {
   final Map<String, DismissHandler> dismissHandlers = {};
   final Map<String, BottomSheetControllerApi> controllers = {};
   final Map<String, RegisteredBottomSheetModal> modals = {};
-  bool dismissingAll = false;
+  Completer<void>? _dismissAllCompletion;
 
   /// 更新相关状态并同步依赖方，用于底部弹层的状态、布局、手势与动画引擎。
   void updateTheme(BottomSheetTheme? theme) {
@@ -141,10 +143,12 @@ class BottomSheetEngine extends ChangeNotifier {
   }
 
   /// 执行当前模块中的dismissall操作，用于底部弹层的状态、布局、手势与动画引擎。
-  void dismissAll() {
-    if (sheets.isEmpty) return;
-    dismissingAll = true;
+  Future<void> dismissAll() {
+    if (_dismissAllCompletion case final pending?) return pending.future;
+    if (sheets.isEmpty) return Future<void>.value();
+    final closing = _dismissAllCompletion = Completer<void>();
     dismissTop();
+    return closing.future;
   }
 
   /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
@@ -159,25 +163,29 @@ class BottomSheetEngine extends ChangeNotifier {
     controllers.remove(id);
     sheets.removeWhere((s) => s.id == id);
 
-    final shouldChain = dismissingAll && sheets.isNotEmpty;
-    if (!shouldChain) {
-      dismissingAll = false;
-      if (sheets.isEmpty) {
-        bottomProgress.value = 0;
-        hostSheetTopY.value = screenHeight;
-        pushProgressOpenY.value = screenHeight;
-        pushSheetHeight.value = 0;
-        activeHostMode.value = resolveHostLayoutMode(hostMode);
-      }
+    if (sheets.isEmpty) {
+      bottomProgress.value = 0;
+      hostSheetTopY.value = screenHeight;
+      pushProgressOpenY.value = screenHeight;
+      pushSheetHeight.value = 0;
+      activeHostMode.value = resolveHostLayoutMode(hostMode);
     }
 
     commitSheets();
 
-    if (shouldChain) {
+    if (sheets.isEmpty) {
+      _completeDismissAll();
+    } else if (_dismissAllCompletion != null) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        dismissTop();
+        if (_dismissAllCompletion != null) dismissTop();
       });
     }
+  }
+
+  void _completeDismissAll() {
+    final pending = _dismissAllCompletion;
+    _dismissAllCompletion = null;
+    pending?.complete();
   }
 
   /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
@@ -186,6 +194,9 @@ class BottomSheetEngine extends ChangeNotifier {
       dismissHandlers.remove(id);
     } else {
       dismissHandlers[id] = handler;
+      if (_dismissAllCompletion != null && sheets.lastOrNull?.id == id) {
+        handler();
+      }
     }
   }
 
@@ -211,6 +222,7 @@ class BottomSheetEngine extends ChangeNotifier {
 
   @override
   void dispose() {
+    _completeDismissAll();
     bottomProgress.dispose();
     hostSheetTopY.dispose();
     pushProgressOpenY.dispose();

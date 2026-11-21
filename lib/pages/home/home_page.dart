@@ -68,6 +68,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   _HomeMusicSource _renderedSource = _HomeMusicSource.mock;
   bool _hasOrientation = false;
   Size? _portraitSize;
+  Size? _landscapeFlowViewport;
   final _albumLayout = HomeAlbumLayoutState();
   List<Map<String, dynamic>>? _catalog;
 
@@ -385,21 +386,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Future<bool> _setXeroxMode(bool enabled) async {
+  Future<void> _setXeroxMode(bool enabled) async {
     if (enabled == _artworkMode.enabled || _artworkChangeBlocked) {
-      return _artworkMode.enabled;
+      return;
     }
 
     _artworkMode.beginPreparation();
     try {
       await WidgetsBinding.instance.endOfFrame;
-      if (!mounted) return _artworkMode.enabled;
+      if (!mounted) return;
 
       // 用户第一次点击 Xerox 时，内置演示专辑目录可能尚未
       // 通过 FutureBuilder 发布加载结果；因此需要先解析目录，再捕获
       // 当前视口，确保过渡流程能为真正可见的封面准备资源。
       final albums = _catalog ?? await _mockCatalogFor(_currentSource);
-      if (!mounted) return _artworkMode.enabled;
+      if (!mounted) return;
       _catalog ??= albums;
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
       final scale = _transform.value.getColumn(0).length;
@@ -419,7 +420,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         includeSelected: true,
         isActive: () => mounted,
       );
-      if (!mounted) return _artworkMode.enabled;
+      if (!mounted) return;
 
       await _artworkMode.apply(
         enabled: enabled,
@@ -443,7 +444,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _artworkMode.cancelPreparation();
       }
     }
-    return _artworkMode.enabled;
   }
 
   void _syncMotion() {
@@ -480,6 +480,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final _interaction = CanvasInteractionState(_drift);
   bool _reduceMotion = false;
   bool _landscape = false;
+  bool _lastAutomaticLandscape = false;
   bool? _manualLayout;
   bool? _pendingLandscape;
 
@@ -562,7 +563,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
-    _updateLayout(_manualLayout ?? _automaticLandscape);
+    final automaticLandscape = _automaticLandscape;
+    if (automaticLandscape) {
+      final viewport = MediaQuery.paddingOf(context)
+          .deflateSize(MediaQuery.sizeOf(context));
+      // Keep the landscape strip in place if an artwork effect delays rotation.
+      if (!viewport.isEmpty) _landscapeFlowViewport = viewport;
+    }
+    if (automaticLandscape != _lastAutomaticLandscape) {
+      _lastAutomaticLandscape = automaticLandscape;
+      _manualLayout = null;
+    }
+    _updateLayout(_manualLayout ?? automaticLandscape);
   }
 
   /// 更新相关状态并同步依赖方，用于页面状态组织与业务流程协调。
@@ -686,14 +698,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     Widget homeSheet(({Widget button, bool visible})? layoutSwitch) =>
         HomeSheet(
-          enabled: !_landscape,
+          enabled: !_landscape && !_lastAutomaticLandscape,
+          playbackReady: _landscapeFlowViewport == null || !_layout.isAnimating,
           sources: _sources,
           playback: _playback,
           layoutSwitch: layoutSwitch,
           sourceSwitching: _sourceTransition.switching,
           onSourceSelection: _selectMusicSource,
           manualRotation: _manualRotation,
-          xeroxEnabled: _artworkMode.enabled,
+          xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,
           xeroxPalettePicker: XeroxPalettePicker(
             selection: _artworkMode.palette,
@@ -705,9 +718,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       builder: (context) => LayoutSwitchOverlay(
         enabled: _manualRotation.enabled.value,
         coverFlow: _landscape,
+        screenLandscape: _lastAutomaticLandscape,
         onSwitch: () {
-          if (_catalog == null || _catalog!.isEmpty) return;
+          if (_lastAutomaticLandscape ||
+              _catalog == null ||
+              _catalog!.isEmpty) {
+            return;
+          }
           setState(() {
+            _landscapeFlowViewport = null;
             _manualLayout = !_landscape;
             _updateLayout(_manualLayout!);
           });
@@ -757,6 +776,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
+    final retainedLandscapeViewport = _lastAutomaticLandscape
+        ? null
+        : _landscapeFlowViewport;
     if (_layout.isAnimating && _albumLayout.snapshot != null) {
       return AlbumLayoutTransition(
         albums: _albumLayout.flowAlbums ?? albums,
@@ -765,6 +787,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         tilt: _albumLayout.flowTilt,
         gridOffset: _albumLayout.gridOffset,
         progress: _layoutProgress,
+        retainLandscapeAlignment: retainedLandscapeViewport != null,
         xerox: _artworkMode.enabled,
       );
     }
@@ -776,6 +799,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         xerox: _artworkMode.enabled,
         initialPosition: _albumLayout.flowPosition,
         initialTilt: _albumLayout.flowTilt,
+        retainedLandscapeViewport: retainedLandscapeViewport,
         onMotionChanged: (position, tilt) {
           _albumLayout.flowPosition = position;
           _albumLayout.flowTilt = tilt;

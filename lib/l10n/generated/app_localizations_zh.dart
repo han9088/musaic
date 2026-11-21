@@ -21,7 +21,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAppearance => '外观与显示';
 
   @override
-  String get settingsManualRotation => '手动旋转';
+  String get settingsShowLayoutSwitch => '显示布局切换按钮';
+
+  @override
+  String get settingsShowLayoutSwitchDescription =>
+      '开启后可在竖屏使用 Cover Flow。点按切换布局，手机上长按切换横竖屏。';
 
   @override
   String get coverFlowCameraDenied => '请在系统设置中允许访问相机，以使用实景背景。';

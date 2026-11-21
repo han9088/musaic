@@ -15,6 +15,7 @@ import '../../services/app_icon_service.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../ui/theme/app_spacing.dart';
 import '../../ui/widgets/frosted_control_surface.dart';
 import '../settings/settings_page.dart';
 
@@ -25,13 +26,14 @@ class HomeSheet extends StatefulWidget {
     required this.child,
     this.icons = const AppIconService(),
     this.enabled = true,
+    this.playbackReady = true,
     this.sources,
     this.playback,
     this.layoutSwitch,
     this.sourceSwitching,
     this.onSourceSelection,
     this.manualRotation,
-    this.xeroxEnabled = false,
+    this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
   });
@@ -39,14 +41,15 @@ class HomeSheet extends StatefulWidget {
   final Widget child;
   final AppIconService icons;
   final bool enabled;
+  final bool playbackReady;
   final MusicSourceController? sources;
   final AlbumPlayback? playback;
   final ({Widget button, bool visible})? layoutSwitch;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final ManualRotationPreference? manualRotation;
-  final bool xeroxEnabled;
-  final FutureOr<bool> Function(bool enabled)? onXeroxChanged;
+  final ValueListenable<bool>? xeroxEnabled;
+  final FutureOr<void> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
 
   @override
@@ -56,13 +59,16 @@ class HomeSheet extends StatefulWidget {
 /// 封装或定义首页弹层状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomeSheetState extends State<HomeSheet> {
   bool _open = false;
+  bool _xeroxChangePending = false;
   bool _sourceSelectionPending = false;
   Completer<void>? _sourceSheetDismissed;
   Timer? _hideTimer;
   bool _visible = true;
 
+  bool get _playbackAvailable => widget.enabled && widget.playbackReady;
+
   void _reveal() {
-    if (!widget.enabled || _open) return;
+    if (!_playbackAvailable || _open) return;
     if (!_visible) setState(() => _visible = true);
     _scheduleHide();
   }
@@ -70,7 +76,7 @@ class _HomeSheetState extends State<HomeSheet> {
   /// 准备并调度后续任务，用于页面状态组织与业务流程协调。
   void _scheduleHide() {
     _hideTimer?.cancel();
-    if (!widget.enabled ||
+    if (!_playbackAvailable ||
         _open ||
         MediaQuery.accessibleNavigationOf(context)) {
       return;
@@ -90,10 +96,18 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   void didUpdateWidget(HomeSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.enabled == widget.enabled) return;
-    _visible = widget.enabled;
-    _scheduleHide();
-    if (!widget.enabled && _open) {
+    final wasPlaybackAvailable = oldWidget.enabled && oldWidget.playbackReady;
+    if (wasPlaybackAvailable != _playbackAvailable) {
+      _visible = _playbackAvailable && oldWidget.enabled;
+      _scheduleHide();
+      if (_playbackAvailable && !oldWidget.enabled) {
+        // Mount the surface at zero opacity before fading it back in.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _reveal();
+        });
+      }
+    }
+    if (oldWidget.enabled && !widget.enabled && _open) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && !widget.enabled && _open) {
           DeskBottomSheet.of(context).dismiss();
@@ -111,7 +125,7 @@ class _HomeSheetState extends State<HomeSheet> {
   }
 
   void _present() {
-    if (_open || !widget.enabled) return;
+    if (_open || !_playbackAvailable || _xeroxChangePending) return;
     _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
@@ -121,6 +135,9 @@ class _HomeSheetState extends State<HomeSheet> {
         sourceSwitching: widget.sourceSwitching,
         onSourceSelection: _selectSource,
         onOpenSection: _openSettings,
+        xeroxEnabled: widget.xeroxEnabled,
+        onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
+        xeroxPalettePicker: widget.xeroxPalettePicker,
       ),
       BottomSheetOptions(
         mode: BottomSheetMode.push,
@@ -151,7 +168,7 @@ class _HomeSheetState extends State<HomeSheet> {
   }
 
   void _openSettings(BuildContext source, SettingsSection section) {
-    if (!_open || _sourceSelectionPending) return;
+    if (!_open || _sourceSelectionPending || _xeroxChangePending) return;
     final navigator = Navigator.of(source, rootNavigator: true);
     final l10n = AppLocalizations.of(source);
     late final PageRoute<void> route;
@@ -176,9 +193,6 @@ class _HomeSheetState extends State<HomeSheet> {
         AppearanceSettings(
           icons: widget.icons,
           manualRotation: widget.manualRotation,
-          xeroxEnabled: widget.xeroxEnabled,
-          onXeroxChanged: widget.onXeroxChanged,
-          xeroxPalettePicker: widget.xeroxPalettePicker,
         ),
       ),
     };
@@ -191,8 +205,25 @@ class _HomeSheetState extends State<HomeSheet> {
     );
   }
 
+  Future<void> _changeXerox(bool enabled) async {
+    final onChanged = widget.onXeroxChanged;
+    if (!_open ||
+        _xeroxChangePending ||
+        _sourceSelectionPending ||
+        onChanged == null) {
+      return;
+    }
+    _xeroxChangePending = true;
+    try {
+      if (!enabled) await DeskBottomSheet.of(context).dismissAll();
+      if (mounted) await onChanged(enabled);
+    } finally {
+      _xeroxChangePending = false;
+    }
+  }
+
   Future<void> _selectSource(Future<void> Function() select) async {
-    if (_sourceSelectionPending) return;
+    if (_sourceSelectionPending || _xeroxChangePending) return;
     _sourceSelectionPending = true;
     try {
       if (_open) {
@@ -218,7 +249,7 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   Widget build(BuildContext context) {
     final layoutSwitch = _open ? null : widget.layoutSwitch;
-    final capsuleVisible = !_open && _visible;
+    final capsuleVisible = _playbackAvailable && !_open && _visible;
     return PopScope(
       canPop: !_open,
       onPopInvokedWithResult: (didPop, _) {
@@ -242,7 +273,7 @@ class _HomeSheetState extends State<HomeSheet> {
                 Positioned(
                   left: 16,
                   right: 16,
-                  bottom: 45,
+                  bottom: AppSpacing.playbackBottom,
                   child: Center(
                     child: FrostedControlPair(
                       primaryVisible: capsuleVisible,

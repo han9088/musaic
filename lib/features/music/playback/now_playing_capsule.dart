@@ -65,7 +65,7 @@ class NowPlayingCapsule extends StatelessWidget {
                           shadows: _textShadows,
                         ),
                       ),
-                      if (artist != null && artist.trim().isNotEmpty)
+                      if (artist != null)
                         Text(
                           artist,
                           style: const TextStyle(

@@ -1,5 +1,6 @@
 // 文件职责：Artwork 模式和配色切换、资源准备、动画交接和 Lease 生命周期。
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../ui/transitions/source_tile_motion.dart';
@@ -42,12 +43,15 @@ class ArtworkModeController {
   final XeroxJobScheduler scheduler;
   final ArtworkPrefetchScheduler _prefetchScheduler;
   final _preparedLeases = <XeroxRasterLease>[];
+  final _enabled = ValueNotifier(false);
   final palette = ValueNotifier(XeroxPalette.original);
   late final ArtworkModeTransition _transition;
 
-  bool enabled = false;
   bool preparing = false;
 
+  bool get enabled => _enabled.value;
+  set enabled(bool value) => _enabled.value = value;
+  ValueListenable<bool> get enabledListenable => _enabled;
   bool get isTransitioning => _transition.isActive;
   ArtworkModeTransitionPhase? get phase => _transition.phase;
 
@@ -176,8 +180,8 @@ class ArtworkModeController {
   );
 
   void _commit(bool value) {
-    enabled = value;
     preparing = false;
+    enabled = value;
     _notifyChanged();
   }
 
@@ -213,6 +217,7 @@ class ArtworkModeController {
   }
 
   void dispose() {
+    _enabled.dispose();
     palette.dispose();
     _transition.dispose();
     _releasePrepared();

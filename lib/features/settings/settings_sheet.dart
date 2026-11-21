@@ -16,12 +16,18 @@ class SettingsSheet extends StatelessWidget {
     required this.sourceSwitching,
     required this.onSourceSelection,
     required this.onOpenSection,
+    this.xeroxEnabled,
+    this.onXeroxChanged,
+    this.xeroxPalettePicker,
   });
 
   final MusicSourceController? sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function()) onSourceSelection;
   final void Function(BuildContext, SettingsSection) onOpenSection;
+  final ValueListenable<bool>? xeroxEnabled;
+  final ValueChanged<bool>? onXeroxChanged;
+  final Widget? xeroxPalettePicker;
 
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
@@ -116,6 +122,43 @@ class SettingsSheet extends StatelessWidget {
                                 l10n.settingsAppearance,
                                 SettingsSection.appearance,
                               ),
+                              if ((xeroxEnabled, onXeroxChanged) case (
+                                final mode?,
+                                final onChanged?,
+                              ))
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: mode,
+                                  builder: (context, enabled, picker) => Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      ListTile(
+                                        key: const ValueKey('xerox-toggle'),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: 20,
+                                            ),
+                                        iconColor: Colors.white70,
+                                        textColor: Colors.white,
+                                        leading: const Icon(
+                                          PhosphorIcons.printer,
+                                        ),
+                                        title: Text(l10n.xeroxMode),
+                                        selected: enabled,
+                                        selectedColor: Colors.white,
+                                        trailing: enabled
+                                            ? const Icon(
+                                                PhosphorIcons.check,
+                                                size: 16,
+                                              )
+                                            : null,
+                                        onTap: () => onChanged(!enabled),
+                                      ),
+                                      if (enabled && picker != null) picker,
+                                    ],
+                                  ),
+                                  child: xeroxPalettePicker,
+                                ),
                             ],
                           ),
                         ),

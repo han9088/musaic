@@ -69,6 +69,9 @@ void main() {
       await tester.pump();
       expect(capsule, findsNothing);
       await tester.pumpWidget(app(true));
+      expect(tester.widget<Opacity>(opacity).opacity, 0);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
       expect(tester.widget<Opacity>(opacity).opacity, 1);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -118,16 +121,33 @@ void main() {
     await tester.tap(find.text('Demo'));
     await tester.pumpAndSettle();
     expect(sheet.isPresented, isFalse);
+
+    final labels = find.descendant(of: capsule, matching: find.byType(Text));
+    for (final artist in [
+      null,
+      '  ',
+      ' UnKnOwN ',
+      '<unknown>',
+      'Unknown Artist',
+    ]) {
+      playback.toggle('song', 'Song', artist: artist);
+      await tester.pump();
+      expect(find.text('Song'), findsOneWidget);
+      expect(labels, findsOneWidget);
+    }
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('Xerox mode and paper colors live under appearance settings', (
+  testWidgets('Xerox opens in place and closes the sheet when turned off', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    var xeroxEnabled = false;
-    var allowModeChange = true;
+    final xeroxEnabled = ValueNotifier(false);
+    addTearDown(xeroxEnabled.dispose);
+    final modeChanges = <({bool enabled, bool homeCurrent, int sheets})>[];
+    late final ModalRoute<dynamic> homeRoute;
+    late final DeskBottomSheet sheet;
     final palette = ValueNotifier(XeroxPalette.original);
     addTearDown(palette.dispose);
     await tester.pumpWidget(
@@ -135,27 +155,31 @@ void main() {
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: StatefulBuilder(
-          builder: (context, setState) => AppBottomSheetHost(
-            child: HomeSheet(
-              icons: const _Icons(),
-              xeroxEnabled: xeroxEnabled,
-              xeroxPalettePicker: XeroxPalettePicker(
-                selection: palette,
-                onChanged: (value) => palette.value = value,
-              ),
-              onXeroxChanged: (enabled) {
-                if (allowModeChange) setState(() => xeroxEnabled = enabled);
-                return xeroxEnabled;
-              },
-              child: const ColoredBox(color: Colors.black),
+        home: AppBottomSheetHost(
+          child: HomeSheet(
+            icons: const _Icons(),
+            xeroxEnabled: xeroxEnabled,
+            xeroxPalettePicker: XeroxPalettePicker(
+              selection: palette,
+              onChanged: (value) => palette.value = value,
             ),
+            onXeroxChanged: (enabled) {
+              modeChanges.add((
+                enabled: enabled,
+                homeCurrent: homeRoute.isCurrent,
+                sheets: sheet.presentedSheetCount,
+              ));
+              xeroxEnabled.value = enabled;
+            },
+            child: const ColoredBox(color: Colors.black),
           ),
         ),
       ),
     );
 
-    final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    final home = tester.element(find.byType(HomeSheet));
+    homeRoute = ModalRoute.of(home)!;
+    sheet = DeskBottomSheet.of(home);
     final size = tester.getSize(find.byType(HomeSheet));
     final gesture = await tester.startGesture(tester.getCenter(capsule));
     await gesture.moveBy(const Offset(0, -25));
@@ -173,9 +197,7 @@ void main() {
     final originalContentTop = tester.getTopLeft(find.byType(SettingsSheet)).dy;
 
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
-    expect(toggle, findsNothing);
-    await tester.tap(settingsTab);
-    await tester.pumpAndSettle();
+    expect(toggle, findsOneWidget);
     final appearance = find.widgetWithText(ListTile, 'Appearance & display');
     await tester.tap(appearance);
     expect(sheetPosition.value, originalTop);
@@ -199,36 +221,8 @@ void main() {
     expect(sheetPosition.value, closeTo(-pageDistance, 0.1));
     expect(tester.getRect(page), Offset.zero & size);
 
-    expect(toggle, findsOneWidget);
+    expect(find.descendant(of: page, matching: toggle), findsNothing);
     expect(find.text('App icon'), findsOneWidget);
-    expect(tester.widget<ListTile>(toggle).selected, isFalse);
-    final picker = find.byType(XeroxPalettePicker);
-    expect(picker, findsNothing);
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(xeroxEnabled, isTrue);
-    expect(tester.widget<ListTile>(toggle).selected, isTrue);
-    for (final preset in XeroxPalette.values) {
-      final swatch = find.byKey(ValueKey(preset));
-      await tester.ensureVisible(swatch);
-      await tester.tap(swatch);
-      await tester.pump();
-      expect(palette.value, preset);
-    }
-    await tester.ensureVisible(toggle);
-    await tester.pump();
-    allowModeChange = false;
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(tester.widget<ListTile>(toggle).selected, isTrue);
-    expect(picker, findsOneWidget);
-
-    allowModeChange = true;
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(xeroxEnabled, isFalse);
-    expect(tester.widget<ListTile>(toggle).selected, isFalse);
-    expect(picker, findsNothing);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pump();
@@ -241,11 +235,58 @@ void main() {
     await tester.pumpAndSettle();
     expect(sheetPosition.value, originalTop);
     expect(page, findsNothing);
-    expect(toggle, findsNothing);
-    expect(appearance, findsOneWidget);
     expect(sheet.isPresented, isTrue);
-    sheet.dismiss();
+
+    expect(tester.widget<ListTile>(toggle).selected, isFalse);
+    final picker = find.byType(XeroxPalettePicker);
+    expect(picker, findsNothing);
+    final sheetId = sheet.topSheetId;
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(modeChanges, [(enabled: true, homeCurrent: true, sheets: 1)]);
     await tester.pumpAndSettle();
+    expect(xeroxEnabled.value, isTrue);
+    expect(page, findsNothing);
+    expect(sheet.topSheetId, sheetId);
+    expect(sheetPosition.value, originalTop);
+
+    Future<void> reopenSettings() async {
+      await tester.drag(capsule, const Offset(0, -140));
+      await tester.pumpAndSettle();
+      sheet.topSheetController!.expand();
+      await tester.pumpAndSettle();
+    }
+
+    expect(tester.widget<ListTile>(toggle).selected, isTrue);
+    for (final preset in XeroxPalette.values) {
+      final swatch = find.byKey(ValueKey(preset));
+      await tester.ensureVisible(swatch);
+      await tester.tap(swatch);
+      await tester.pump();
+      expect(palette.value, preset);
+    }
+    await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
+    final switchOff = tester.widget<ListTile>(toggle).onTap!;
+    sheet.present(const SizedBox.expand());
+    await tester.pumpAndSettle();
+    expect(sheet.presentedSheetCount, 2);
+    switchOff();
+    await tester.pump();
+    expect(modeChanges, hasLength(1));
+    await tester.pumpAndSettle();
+    expect(modeChanges, [
+      (enabled: true, homeCurrent: true, sheets: 1),
+      (enabled: false, homeCurrent: true, sheets: 0),
+    ]);
+    expect(xeroxEnabled.value, isFalse);
+    expect(page, findsNothing);
+    expect(sheet.isPresented, isFalse);
+
+    await reopenSettings();
+    expect(tester.widget<ListTile>(toggle).selected, isFalse);
+    expect(picker, findsNothing);
+
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

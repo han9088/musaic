@@ -118,11 +118,17 @@ abstract class AppLocalizations {
   /// **'外观与显示'**
   String get settingsAppearance;
 
-  /// No description provided for @settingsManualRotation.
+  /// No description provided for @settingsShowLayoutSwitch.
   ///
   /// In zh, this message translates to:
-  /// **'手动旋转'**
-  String get settingsManualRotation;
+  /// **'显示布局切换按钮'**
+  String get settingsShowLayoutSwitch;
+
+  /// No description provided for @settingsShowLayoutSwitchDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后可在竖屏使用 Cover Flow。点按切换布局，手机上长按切换横竖屏。'**
+  String get settingsShowLayoutSwitchDescription;
 
   /// No description provided for @coverFlowCameraDenied.
   ///

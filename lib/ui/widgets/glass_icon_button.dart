@@ -11,12 +11,14 @@ class GlassIconButton extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.onPressed,
+    this.onLongPress,
     this.diameter = 30,
     this.iconSize,
   });
   final IconData icon;
   final String label;
   final VoidCallback onPressed;
+  final VoidCallback? onLongPress;
   final double diameter;
   final double? iconSize;
   @override
@@ -36,6 +38,7 @@ class _GlassIconButtonState extends State<GlassIconButton> {
       onTapCancel: () => setState(() => _pressed = false),
       onTapUp: (_) => setState(() => _pressed = false),
       onTap: widget.onPressed,
+      onLongPress: widget.onLongPress,
       child: SizedBox(
         width: widget.diameter < 44 ? 44 : widget.diameter,
         height: widget.diameter < 44 ? 44 : widget.diameter,

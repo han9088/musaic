@@ -56,7 +56,7 @@ class DeskBottomSheet {
   void dismiss([String? sheetId]) => _engine.dismiss(sheetId);
 
   /// 执行当前模块中的dismissall操作，用于底部弹层的状态、布局、手势与动画引擎。
-  void dismissAll() => _engine.dismissAll();
+  Future<void> dismissAll() => _engine.dismissAll();
 
   /// 判断当前状态是否满足指定条件，用于底部弹层的状态、布局、手势与动画引擎。
   bool get isPresented => _engine.sheetStore.snapshot.isPresented;

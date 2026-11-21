@@ -59,6 +59,10 @@ void main() {
           ),
         ),
       );
+      expect(switchButton, findsOneWidget);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(switchButton, findsNothing);
       await tester.tap(find.byKey(const ValueKey('layout-switch-wake')));
       await tester.pump();
       expect(switches, 0);

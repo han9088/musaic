@@ -12,6 +12,8 @@ import 'package:musaic/features/music/playback/album_play_button.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/mock_album_cache.dart';
+import 'package:musaic/services/music/music_models.dart';
+import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
@@ -31,27 +33,31 @@ class RotationAlbumCache extends MockAlbumCache {
   ) async {}
 }
 
+void _mockRotationPlugins(WidgetTester tester) {
+  final messenger = tester.binding.defaultBinaryMessenger;
+  for (final name in [
+    'dev.fluttercommunity.plus/sensors/method',
+    'dev.fluttercommunity.plus/sensors/accelerometer',
+    'pulsar',
+  ]) {
+    final channel = MethodChannel(name);
+    messenger.setMockMethodCallHandler(channel, (_) async => 0);
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+  }
+  const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+  final cache = Directory.systemTemp.createTempSync('musaic-rotation-');
+  messenger.setMockMethodCallHandler(pathChannel, (_) async => cache.path);
+  addTearDown(() {
+    messenger.setMockMethodCallHandler(pathChannel, null);
+    cache.deleteSync(recursive: true);
+  });
+}
+
 void main() {
   testWidgets('warmed covers remain visible during rotation and handoff', (
     tester,
   ) async {
-    final messenger = tester.binding.defaultBinaryMessenger;
-    for (final name in [
-      'dev.fluttercommunity.plus/sensors/method',
-      'dev.fluttercommunity.plus/sensors/accelerometer',
-      'pulsar',
-    ]) {
-      final channel = MethodChannel(name);
-      messenger.setMockMethodCallHandler(channel, (_) async => 0);
-      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
-    }
-    const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
-    final cache = Directory.systemTemp.createTempSync('musaic-rotation-');
-    messenger.setMockMethodCallHandler(pathChannel, (_) async => cache.path);
-    addTearDown(() {
-      messenger.setMockMethodCallHandler(pathChannel, null);
-      cache.deleteSync(recursive: true);
-    });
+    _mockRotationPlugins(tester);
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(400, 800);
     addTearDown(tester.view.resetPhysicalSize);
@@ -97,11 +103,153 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets(
-    'manual rotation exposes both layout switches when enabled',
+    'return to canvas fits the landscape strip to the portrait viewport',
+    (tester) async {
+      _mockRotationPlugins(tester);
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(800, 400);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: HomePage(albumCache: RotationAlbumCache()),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(AlbumCoverFlow), findsOneWidget);
+      final capsule = find.byType(NowPlayingCapsule);
+      final opacity = find.descendant(
+        of: capsule,
+        matching: find.byType(Opacity),
+      );
+      expect(capsule, findsNothing);
+
+      tester.view.physicalSize = const Size(400, 800);
+      await tester.pump();
+      expect(find.byType(AlbumCoverFlow), findsNothing);
+      final transition = find.byType(AlbumLayoutTransition);
+      expect(transition, findsOneWidget);
+      expect(tester.widget<Opacity>(opacity).opacity, 0);
+      final transforms = tester.widgetList<Transform>(
+        find.descendant(of: transition, matching: find.byType(Transform)),
+      );
+      final plane = transforms.singleWhere(
+        (widget) => widget.transform.entry(3, 2) > 0,
+      );
+      expect(plane.alignment, const Alignment(0, 0.04));
+      expect(plane.transform.entry(3, 2), closeTo(0.88 / 400, 0.000001));
+      final coverWidths = transforms
+          .where((widget) => widget.alignment == Alignment.topLeft)
+          .map((widget) => widget.transform.entry(0, 0) * 142);
+      expect(coverWidths, contains(closeTo(124, 0.01)));
+      expect(coverWidths, everyElement(lessThanOrEqualTo(124.01)));
+
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(transition, findsOneWidget);
+      expect(tester.widget<Opacity>(opacity).opacity, 0);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(transition, findsNothing);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(tester.widget<Opacity>(opacity).opacity, 0);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.widget<Opacity>(opacity).opacity, closeTo(0.5, 0.01));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.widget<Opacity>(opacity).opacity, 1);
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
+
+  testWidgets('local covers stay visible when Cover Flow returns to canvas', (
+    tester,
+  ) async {
+    _mockRotationPlugins(tester);
+    final bytes = (await tester.runAsync(
+      () => rootBundle.load('assets/albums/0.jpg'),
+    ))!.buffer.asUint8List();
+    final messenger = tester.binding.defaultBinaryMessenger;
+    var artworkReads = 0;
+    const artwork = MethodChannel('com.deskbtm.muasic.query');
+    messenger.setMockMethodCallHandler(artwork, (call) async {
+      expect(call.method, 'queryArtwork');
+      artworkReads++;
+      await Future<void>.delayed(const Duration(milliseconds: 48));
+      return bytes;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(artwork, null));
+    final sources = MusicSourceController();
+    addTearDown(sources.dispose);
+    sources.catalog.value = const [
+      (
+        reference: (
+          provider: 'local',
+          id: '1',
+          kind: MusicKind.album,
+          source: MusicSource.library,
+          storefront: null,
+        ),
+        title: 'Local album',
+        artist: null,
+        artworkUrl: 'media-store:1?modified=1',
+        trackCount: 1,
+        tracks: null,
+      ),
+    ];
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(800, 400);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: HomePage(albumCache: RotationAlbumCache(), sources: sources),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 48));
+    await tester.pump();
+    final image = tester.widget<Image>(find.byType(Image).first);
+    await tester.runAsync(
+      () => precacheImage(image.image, tester.element(find.byType(HomePage))),
+    );
+    await tester.pump();
+    final covers = find.byWidgetPredicate(
+      (widget) => widget is RawImage && widget.image != null,
+    );
+    expect(covers, findsWidgets);
+    expect(artworkReads, 1);
+
+    tester.view.physicalSize = const Size(400, 800);
+    final blankFrames = <int>[];
+    for (var frame = 0; frame < 35; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      if (covers.evaluate().isEmpty) blankFrames.add(frame);
+    }
+    expect(find.byType(InteractiveViewer), findsOneWidget);
+    expect(blankFrames, isEmpty, reason: '$artworkReads local artwork reads');
+    expect(artworkReads, 1);
+    await tester.pumpWidget(const SizedBox());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets(
+    'layout buttons switch manually and phone rotation resets the layout',
     (tester) async {
       final mobile =
           defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS;
+      final orientationRequests = <List<String>>[];
+      final messenger = tester.binding.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'SystemChrome.setPreferredOrientations') {
+          orientationRequests.add((call.arguments as List).cast<String>());
+        }
+        return null;
+      });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+      );
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = mobile
           ? const Size(400, 800)
@@ -127,7 +275,7 @@ void main() {
       final wakeButton = find.byKey(const ValueKey('layout-switch-wake'));
       final button = find.byKey(const ValueKey('layout-switch'));
       expect(wakeButton, findsNothing);
-      expect(button, findsNothing);
+      expect(button.hitTestable(), findsOneWidget);
 
       Future<void> changeSetting(bool enabled) async {
         final sheet = DeskBottomSheet.of(tester.element(find.byType(HomePage)));
@@ -145,7 +293,14 @@ void main() {
         await tester.tap(find.text('Appearance & display'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 450));
-        final tile = find.widgetWithText(SwitchListTile, 'Manual rotation');
+        final tile = find.widgetWithText(
+          SwitchListTile,
+          'Show layout switch button',
+        );
+        expect(
+          find.textContaining('Use Cover Flow in portrait.'),
+          findsOneWidget,
+        );
         expect(tester.widget<SwitchListTile>(tile).value, !enabled);
         await tester.tap(tile);
         await tester.pump();
@@ -158,26 +313,66 @@ void main() {
         await tester.pump(const Duration(seconds: 1));
       }
 
-      await changeSetting(true);
       final capsule = tester.getRect(find.byType(NowPlayingCapsule));
       final switchButton = tester.getRect(button);
       expect(capsule.center.dx, tester.view.physicalSize.width / 2);
       expect(switchButton.center.dy, capsule.center.dy);
       expect(switchButton.height, capsule.height);
       expect(switchButton.left, greaterThan(capsule.right));
+      if (mobile) {
+        await tester.longPress(button);
+        expect(orientationRequests, [
+          [
+            'DeviceOrientation.landscapeLeft',
+            'DeviceOrientation.landscapeRight',
+          ],
+        ]);
+        tester.view.physicalSize = const Size(800, 400);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(find.byType(InteractiveViewer), findsNothing);
+
+        await tester.tap(button);
+        await tester.pump();
+        expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(orientationRequests, hasLength(1));
+        await tester.longPress(button);
+        expect(orientationRequests.last, ['DeviceOrientation.portraitUp']);
+        tester.view.physicalSize = const Size(400, 800);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+      }
       await tester.tap(button);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 550));
       expect(find.byType(AlbumCoverFlow), findsOneWidget);
       expect(find.byType(NowPlayingCapsule), findsNothing);
+      expect(orientationRequests, hasLength(mobile ? 2 : 0));
       await tester.tap(button);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 550));
       expect(find.byType(InteractiveViewer), findsOneWidget);
+      if (mobile) {
+        tester.view.physicalSize = const Size(800, 400);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(button, findsNothing);
+        expect(wakeButton, findsNothing);
+
+        tester.view.physicalSize = const Size(400, 800);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+      }
       await changeSetting(false);
       expect(wakeButton, findsNothing);
       expect(button, findsNothing);
       if (mobile) {
+        expect(orientationRequests, hasLength(3));
+        expect(orientationRequests.last, isEmpty);
         tester.view.physicalSize = const Size(800, 400);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 550));

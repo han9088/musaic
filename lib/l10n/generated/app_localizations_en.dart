@@ -21,7 +21,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearance => 'Appearance & display';
 
   @override
-  String get settingsManualRotation => 'Manual rotation';
+  String get settingsShowLayoutSwitch => 'Show layout switch button';
+
+  @override
+  String get settingsShowLayoutSwitchDescription =>
+      'Use Cover Flow in portrait. Tap to switch layouts. On phones, press and hold to rotate the screen.';
 
   @override
   String get coverFlowCameraDenied =>

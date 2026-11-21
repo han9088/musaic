@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
+import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
 import '../model/artwork_resource.dart';
 import '../source/artwork_resolver.dart';
@@ -84,15 +85,30 @@ class ArtworkPipeline {
   final XeroxBackgroundProcessor _backgroundProcessor;
   final Map<String, Future<ArtworkResource?>> _resolving = {};
   final _displayed =
-      <(ArtworkRequest, DirectoryMusicLibrary?, int), _DisplayedArtwork>{};
+      <
+        (
+          String,
+          ArtworkIdentity?,
+          ArtworkVersion?,
+          DirectoryMusicLibrary?,
+          int,
+        ),
+        _DisplayedArtwork
+      >{};
 
-  /// Allow incoming and outgoing views in the same frame to share the source.
+  /// Share the resolved source across layouts with different decode sizes.
   ArtworkResourceLease acquireForDisplay(
     ArtworkRequest request, {
     required DirectoryMusicLibrary? directories,
     required int directoryRevision,
   }) {
-    final key = (request, directories, directoryRevision);
+    final key = (
+      request.source,
+      request.identity,
+      request.version,
+      directories,
+      directoryRevision,
+    );
     var entry = _displayed[key];
     if (entry == null || (entry.completed && entry.resource == null)) {
       entry = _DisplayedArtwork(resolve(request, directories: directories));

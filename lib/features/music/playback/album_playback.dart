@@ -27,7 +27,13 @@ class AlbumPlayback extends ChangeNotifier {
   int _generation = 0;
 
   String? get currentTitle => _currentSong?.title ?? title;
-  String? get currentArtist => _currentSong?.artist ?? _albumArtist;
+  String? get currentArtist {
+    final name = (_currentSong?.artist ?? _albumArtist)?.trim();
+    return switch (name?.toLowerCase()) {
+      '' || 'unknown' || '<unknown>' || 'unknown artist' => null,
+      _ => name,
+    };
+  }
 
   /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   bool isPlaying(String asset, String title) =>

@@ -1,7 +1,6 @@
 // 文件职责：Cover Flow 的几何计算、输入处理与动效。
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -10,10 +9,12 @@ import 'package:material_ui/material_ui.dart';
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
 import 'camera/coverflow_camera_scene.dart';
+import 'coverflow_flip_card.dart';
 import 'coverflow_input.dart';
 import 'coverflow_motion.dart';
 import 'coverflow_geometry.dart';
 import '../../services/album_haptics.dart';
+import '../../ui/transitions/rect_flip_transition.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 
@@ -28,11 +29,13 @@ class AlbumCoverFlow extends StatefulWidget {
     this.initialPosition = 0,
     this.initialTilt = 0,
     this.onMotionChanged,
+    this.retainedLandscapeViewport,
   });
 
   final double initialPosition;
   final double initialTilt;
   final void Function(double position, double tilt)? onMotionChanged;
+  final Size? retainedLandscapeViewport;
 
   /// When provided, the caller owns preparation and disposal.
   final AlbumHaptics? haptics;
@@ -47,12 +50,20 @@ class AlbumCoverFlow extends StatefulWidget {
 
 /// 封装或定义专辑封面流动状态相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class _AlbumCoverFlowState extends State<AlbumCoverFlow>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late final Ticker _ticker;
+  late final AnimationController _flip;
   late final AlbumHaptics _haptics;
   late final CoverFlowMotion _motion;
+  Size? _flipViewport;
+  bool _flipCanStart = false;
+  bool _flipDragging = false;
+  double _flipStart = 0;
+  double _flipTarget = 0;
   int _hapticIndex = 0;
   Duration? _lastHapticTime;
+
+  bool get _flipEngaged => _flipDragging || _flip.value > 0;
 
   @override
   void initState() {
@@ -63,6 +74,11 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     );
     _hapticIndex = _motion.position.round();
     _ticker = createTicker(_tick);
+    _flip =
+        AnimationController(vsync: this, duration: RectFlipTransition.duration)
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.dismissed) _resumeStrip();
+          });
     _haptics = widget.haptics ?? AlbumHaptics();
     WidgetsBinding.instance.addObserver(this);
     if (widget.haptics == null) unawaited(_haptics.prepare());
@@ -71,6 +87,63 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       _motion.target = _motion.position.roundToDouble();
       _wake();
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final viewport = MediaQuery.sizeOf(context);
+    if (_flipViewport != viewport && _flipEngaged) {
+      _flipDragging = false;
+      _flipTarget = 0;
+      _flip.reset();
+      _resumeStrip();
+    }
+    _flipViewport = viewport;
+  }
+
+  void _startFlip(DragStartDetails details) {
+    if (!_flipCanStart || _motion.dragging || _flipDragging) return;
+    _flipStart = _flip.value;
+    _flip.stop();
+    _flipDragging = true;
+    _ticker.stop();
+  }
+
+  void _dragFlip(double dy, double travel) {
+    if (!_flipDragging) return;
+    _flip.value = (_flip.value - dy / travel).clamp(0.0, 1.0);
+  }
+
+  void _finishFlip(double travel, {double? velocity}) {
+    if (!_flipDragging) return;
+    _flipDragging = false;
+    final distance = (_flip.value - _flipStart) * travel;
+    final committed =
+        velocity != null &&
+        (distance.abs() >= 52 ||
+            (distance.abs() >= 12 && -velocity * distance.sign >= 450));
+    if (committed) _flipTarget = distance > 0 ? 1 : 0;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _flip.value = _flipTarget;
+    } else if (_flipTarget == 0) {
+      _flip.animateBack(0, curve: RectFlipTransition.curve);
+    } else {
+      _flip.animateTo(1, curve: RectFlipTransition.curve);
+    }
+    _resumeStrip();
+  }
+
+  void _resumeStrip() {
+    if (_flipEngaged || _flipTarget != 0 || _ticker.isActive) return;
+    final center = _motion.position.roundToDouble();
+    if (_motion.position == center &&
+        _motion.tilt == 0 &&
+        _motion.velocity == 0) {
+      return;
+    }
+    _motion.velocity = 0;
+    _settle(center);
   }
 
   void _wake() {
@@ -113,6 +186,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   }
 
   void _settle(double target) {
+    if (_flipEngaged) return;
     _motion.target = target;
     if (MediaQuery.disableAnimationsOf(context)) {
       setState(() {
@@ -137,9 +211,14 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     if (widget.haptics == null) unawaited(_haptics.dispose());
+    _flip.dispose();
     _ticker.dispose();
     super.dispose();
   }
+
+  Matrix4 _planeTransform(double width, double tilt) => Matrix4.identity()
+    ..setEntry(3, 2, 0.88 / width)
+    ..rotateY(tilt);
 
   Widget _image(Map<String, dynamic> album, double size) {
     final asset = album['asset'] as String;
@@ -162,16 +241,26 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   Widget build(BuildContext context) {
     final selected =
         widget.albums[_motion.position.round() % widget.albums.length];
+    final portrait =
+        widget.retainedLandscapeViewport == null &&
+        MediaQuery.orientationOf(context) == Orientation.portrait;
+    final bottomPadding = MediaQuery.paddingOf(context).bottom;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: CoverFlowCameraScene(
         builder: (toggleCamera) => SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final size = math.min(
-                constraints.maxHeight * 0.65,
-                constraints.maxWidth * 0.31,
+              final flowViewport =
+                  widget.retainedLandscapeViewport ?? constraints.biggest;
+              final size = CoverFlowGeometry.coverSize(flowViewport);
+              final alignment = CoverFlowGeometry.alignment(
+                portrait: portrait,
+                height: constraints.maxHeight,
+                coverSize: size,
+                bottomPadding: bottomPadding,
               );
+              final coverCenter = alignment.alongSize(constraints.biggest);
               final stride = size * 0.7 + 6;
               final center = _motion.position.round();
               final indices = List.generate(15, (i) => center + i - 7);
@@ -183,15 +272,26 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
               final widths = geometry.widths;
               final centers = geometry.centers;
               final anchor = geometry.anchor;
-              final plane = Matrix4.identity()
-                ..setEntry(3, 2, 0.88 / constraints.maxWidth)
-                ..rotateY(_motion.tilt);
+              final plane = _planeTransform(flowViewport.width, _motion.tilt);
+              final source = Rect.fromCenter(
+                center: coverCenter.translate(centers[center]! - anchor, 0),
+                width: widths[center]!,
+                height: widths[center]!,
+              );
+              final destination = portrait
+                  ? CoverFlowFlipCard.destinationFor(
+                      constraints.biggest,
+                      source,
+                    )
+                  : null;
+              final flipTravel =
+                  source.center.dy - (destination?.center.dy ?? 0);
               return Semantics(
                 label: '${selected['artist']}, ${selected['title']}',
                 onIncrease: () => _settle(_motion.position.roundToDouble() + 1),
                 onDecrease: () => _settle(_motion.position.roundToDouble() - 1),
                 child: CoverFlowInput(
-                  canStartInput: () => !_motion.dragging,
+                  canStartInput: () => !_motion.dragging && !_flipEngaged,
                   onScroll: (delta, time) {
                     setState(() => _motion.scroll(delta, time, stride));
                     _wake();
@@ -209,11 +309,35 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                   },
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
+                    onVerticalDragDown: destination == null
+                        ? null
+                        : (details) {
+                            _flipCanStart =
+                                _flip.value > 0 ||
+                                source.contains(details.localPosition);
+                          },
+                    onVerticalDragStart: destination == null
+                        ? null
+                        : _startFlip,
+                    onVerticalDragUpdate: destination == null
+                        ? null
+                        : (details) => _dragFlip(details.delta.dy, flipTravel),
+                    onVerticalDragEnd: destination == null
+                        ? null
+                        : (details) => _finishFlip(
+                            flipTravel,
+                            velocity: details.primaryVelocity ?? 0,
+                          ),
+                    onVerticalDragCancel: destination == null
+                        ? null
+                        : () => _finishFlip(flipTravel),
                     onHorizontalDragStart: (details) {
+                      if (_flipEngaged) return;
                       _motion.startDrag(details.sourceTimeStamp);
                       _wake();
                     },
                     onHorizontalDragUpdate: (details) {
+                      if (!_motion.dragging || _flipEngaged) return;
                       setState(
                         () => _motion.updateDrag(
                           details.delta.dx,
@@ -223,6 +347,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                       );
                     },
                     onHorizontalDragEnd: (details) {
+                      if (!_motion.dragging || _flipEngaged) return;
                       final shouldSettle = _motion.endDrag(
                         details.velocity.pixelsPerSecond.dx,
                         stride,
@@ -233,6 +358,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                       _wake();
                     },
                     onHorizontalDragCancel: () {
+                      if (!_motion.dragging || _flipEngaged) return;
                       _motion.cancelDrag();
                       _settle(_motion.position.roundToDouble());
                     },
@@ -242,22 +368,57 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                         Positioned.fill(
                           child: Transform(
                             key: const ValueKey('cover-flow-plane'),
-                            alignment: const Alignment(0, 0.04),
+                            alignment: alignment,
                             transform: plane,
                             child: Stack(
                               clipBehavior: Clip.none,
                               children: [
                                 for (final index in indices)
-                                  _cover(
-                                    index,
-                                    widths[index]!,
-                                    centers[index]! - anchor,
-                                    constraints,
-                                  ),
+                                  if (index != center || destination == null)
+                                    _cover(
+                                      index,
+                                      widths[index]!,
+                                      coverCenter.translate(
+                                        centers[index]! - anchor,
+                                        0,
+                                      ),
+                                    ),
                               ],
                             ),
                           ),
                         ),
+                        if (destination != null)
+                          Positioned.fill(
+                            child: AnimatedBuilder(
+                              animation: _flip,
+                              builder: (context, child) {
+                                final turn = CoverFlowFlipCard.turnCurve
+                                    .transform(_flip.value);
+                                final tilt = _motion.tilt * (1 - turn);
+                                return Transform(
+                                  alignment: alignment,
+                                  transform: tilt == 0
+                                      ? Matrix4.identity()
+                                      : _planeTransform(
+                                          flowViewport.width,
+                                          tilt,
+                                        ),
+                                  child: child,
+                                );
+                              },
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  _cover(
+                                    center,
+                                    source.width,
+                                    source.center,
+                                    destination: destination,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         Positioned(
                           top: 6,
                           left: 20,
@@ -302,80 +463,112 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     );
   }
 
-  Widget _cover(int index, double size, double x, BoxConstraints constraints) {
+  Widget _cover(int index, double size, Offset center, {Rect? destination}) {
     final album = widget.albums[index % widget.albums.length];
-    return Positioned(
-      key: ValueKey('cover-$index'),
-      left: constraints.maxWidth / 2 + x - size / 2,
-      top: constraints.maxHeight * 0.52 - size / 2,
-      width: size,
-      height: size * 1.36,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: () => _settle(index.toDouble()),
-              child: RepaintBoundary(
-                child: Column(
-                  children: [
-                    _image(album, size),
-                    SizedBox(
-                      height: size * 0.36,
-                      child: ClipRect(
-                        child: OverflowBox(
-                          alignment: Alignment.topCenter,
-                          maxHeight: size,
-                          // Keep the mask edge outside the cropped reflection.
-                          child: ShaderMask(
-                            blendMode: BlendMode.dstIn,
-                            shaderCallback: (rect) => const LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Color(0x70ffffff),
-                                Color(0x00ffffff),
-                                Color(0x00ffffff),
-                              ],
-                              stops: [0, 0.36, 1],
-                            ).createShader(rect),
-                            child: Transform.flip(
-                              flipY: true,
-                              child: _image(album, size),
-                            ),
-                          ),
-                        ),
+    final source = Rect.fromCenter(center: center, width: size, height: size);
+    final reflection = SizedBox(
+      height: size * CoverFlowFlipCard.reflectionFraction,
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          maxHeight: size,
+          // Keep the mask edge outside the cropped reflection.
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (rect) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x70ffffff), Color(0x00ffffff), Color(0x00ffffff)],
+              stops: [0, CoverFlowFlipCard.reflectionFraction, 1],
+            ).createShader(rect),
+            child: Transform.flip(flipY: true, child: _image(album, size)),
+          ),
+        ),
+      ),
+    );
+    final playingButton = _playButton(album, destination, size);
+    final card = Stack(
+      children: [
+        Positioned.fill(
+          child: GestureDetector(
+            onTap: () => _settle(index.toDouble()),
+            child: RepaintBoundary(
+              child: Column(
+                children: [
+                  _image(album, size),
+                  if (destination == null)
+                    reflection
+                  else
+                    FadeTransition(
+                      opacity: ReverseAnimation(
+                        _flip.drive(CurveTween(curve: const Interval(0, 0.25))),
                       ),
+                      child: reflection,
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
-          if (widget.playback != null)
-            Positioned(
-              left: 0,
-              top: 0,
-              width: size,
-              height: size,
-              child: IgnorePointer(
-                ignoring: index != _motion.position.round(),
-                child: AnimatedOpacity(
-                  opacity: index == _motion.position.round() ? 1 : 0,
-                  duration: MediaQuery.disableAnimationsOf(context)
-                      ? Duration.zero
-                      : const Duration(milliseconds: 180),
-                  curve: Curves.easeInOut,
-                  child: AlbumPlayButton(
-                    diameter: 48,
-                    asset: album['asset'] as String,
-                    title: album['title'] as String,
-                    artist: album['artist'] as String?,
-                    playback: widget.playback!,
-                  ),
-                ),
+        ),
+        if (playingButton != null)
+          Positioned(
+            left: 0,
+            top: 0,
+            width: size,
+            height: size,
+            child: IgnorePointer(
+              ignoring: index != _motion.position.round(),
+              child: AnimatedOpacity(
+                opacity: index == _motion.position.round() ? 1 : 0,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+                curve: Curves.easeInOut,
+                child: playingButton,
               ),
             ),
-        ],
+          ),
+      ],
+    );
+    return Positioned(
+      key: ValueKey('cover-$index'),
+      left: source.left,
+      top: source.top,
+      width: size,
+      height: size * (1 + CoverFlowFlipCard.reflectionFraction),
+      child: destination == null
+          ? card
+          : CoverFlowFlipCard(
+              progress: _flip,
+              source: source,
+              destination: destination,
+              child: card,
+            ),
+    );
+  }
+
+  Widget? _playButton(
+    Map<String, dynamic> album,
+    Rect? destination,
+    double size,
+  ) {
+    final playback = widget.playback;
+    if (playback == null) return null;
+    final button = AlbumPlayButton(
+      diameter: 48,
+      asset: album['asset'] as String,
+      title: album['title'] as String,
+      artist: album['artist'] as String?,
+      playback: playback,
+    );
+    if (destination == null) return button;
+    return AnimatedBuilder(
+      animation: _flip,
+      child: button,
+      builder: (context, child) => Transform.scale(
+        scale:
+            1 / CoverFlowFlipCard.scaleAt(_flip.value, size, destination.width),
+        child: child,
       ),
     );
   }
