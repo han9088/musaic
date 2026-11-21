@@ -369,6 +369,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                     diameter: 48,
                     asset: album['asset'] as String,
                     title: album['title'] as String,
+                    artist: album['artist'] as String?,
                     playback: widget.playback!,
                   ),
                 ),

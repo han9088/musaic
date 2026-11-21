@@ -19,6 +19,8 @@ class PwaBuildTest(unittest.TestCase):
             (root / 'index.html').write_text('<body></body>')
             (root / 'main.dart.js').write_text('v1')
             (root / 'main.dart.js.map').write_text('excluded')
+            (root / 'assets').mkdir()
+            (root / 'assets' / '.DS_Store').write_text('local Finder metadata')
             for name in ('_headers', '_redirects', '.assetsignore'):
                 (root / name).write_text('deployment configuration')
             template = root.parent / (root.name + '-worker.js')
@@ -29,6 +31,7 @@ class PwaBuildTest(unittest.TestCase):
                 module.package(root, template)
                 self.assertEqual(first, (root / 'service-worker.js').read_text())
                 self.assertNotIn('.map', first)
+                self.assertNotIn('.DS_Store', first)
                 for name in ('_headers', '_redirects', '.assetsignore'):
                     self.assertNotIn(name, first)
                 manifest = json.loads(first.split('const FILES=')[1].rstrip(';'))

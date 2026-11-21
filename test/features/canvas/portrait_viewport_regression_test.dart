@@ -12,8 +12,10 @@ import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
+import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_page.dart';
+import 'package:musaic/pages/home/home_sheet.dart';
 import 'package:musaic/services/mock_album_cache.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -207,7 +209,10 @@ void main() {
     testWidgets('tilt responds after returning from $transition', (
       tester,
     ) async {
-      final events = StreamController<AccelerometerEvent>.broadcast();
+      var listens = 0;
+      final events = StreamController<AccelerometerEvent>.broadcast(
+        onListen: () => listens++,
+      );
       final originalSensors = SensorsPlatform.instance;
       SensorsPlatform.instance = _ControlledSensors(events.stream);
       addTearDown(() {
@@ -257,19 +262,24 @@ void main() {
       if (transition == 'BottomSheet') {
         await holdAt(0);
         final sheet = DeskBottomSheet.of(tester.element(find.byType(HomePage)));
-        final gesture = await tester.startGesture(const Offset(200, 768));
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byType(NowPlayingCapsule)),
+        );
         await gesture.moveBy(const Offset(0, -25));
-        await gesture.moveBy(const Offset(0, -50));
+        await gesture.moveBy(const Offset(0, -125));
         await gesture.up();
         await tester.pump();
         expect(sheet.isPresented, isTrue);
         await holdAt(60);
         sheet.dismiss();
         await holdAt(60);
-        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(milliseconds: 200));
         expect(sheet.isPresented, isFalse);
       } else {
-        await tester.tap(find.byKey(const ValueKey('layout-switch-wake')));
+        tester
+            .widget<HomeSheet>(find.byType(HomeSheet))
+            .manualRotation!
+            .setEnabled(true);
         await tester.pump(const Duration(milliseconds: 200));
         final switchButton = find.byKey(const ValueKey('layout-switch'));
         await tester.tap(switchButton);
@@ -291,6 +301,25 @@ void main() {
       expect(pitch(), lessThan(steep - 0.005), reason: '60° → 45°');
       await holdAt(0);
       expect(pitch(), lessThan(0.001));
+
+      await holdAt(45);
+      expect(pitch(), greaterThan(0.1));
+      final listensBeforeStall = listens;
+      if (transition == 'BottomSheet') {
+        for (var i = 0; i < 40; i++) {
+          events.add(AccelerometerEvent(0, 0, 0, DateTime(2026)));
+          await tester.pump(const Duration(milliseconds: 32));
+        }
+      } else {
+        await tester.pump(const Duration(seconds: 2));
+      }
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(pitch(), 0, reason: 'stale tilt must return to neutral');
+      expect(listens - listensBeforeStall, transition == 'Cover Flow' ? 1 : 0);
+      await holdAt(45);
+      expect(pitch(), 0, reason: 'the first fresh pose becomes neutral');
+      await holdAt(0);
+      expect(pitch(), greaterThan(0.1));
       await tester.pumpWidget(const SizedBox.shrink());
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   }
@@ -304,7 +333,11 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      MaterialApp(home: HomePage(albumCache: _FixedAlbumCache())),
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: HomePage(albumCache: _FixedAlbumCache()),
+      ),
     );
     await tester.pump();
     expect(find.byType(PortraitTilt), findsOneWidget);
@@ -319,85 +352,88 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('the canvas preserves the portrait sensor plane across rebuilds', (
-    tester,
-  ) async {
-    final events = StreamController<AccelerometerEvent>.broadcast();
-    addTearDown(events.close);
-    final originalSensors = SensorsPlatform.instance;
-    final originalPlatformOverride = debugDefaultTargetPlatformOverride;
-    SensorsPlatform.instance = _ControlledSensors(events.stream);
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() {
+  testWidgets(
+    'the canvas preserves the portrait sensor plane across rebuilds',
+    (tester) async {
+      final events = StreamController<AccelerometerEvent>.broadcast();
+      addTearDown(events.close);
+      final originalSensors = SensorsPlatform.instance;
+      final originalPlatformOverride = debugDefaultTargetPlatformOverride;
+      SensorsPlatform.instance = _ControlledSensors(events.stream);
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      addTearDown(() {
+        SensorsPlatform.instance = originalSensors;
+        debugDefaultTargetPlatformOverride = originalPlatformOverride;
+      });
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final transform = TransformationController();
+      final playback = AlbumPlayback();
+      addTearDown(transform.dispose);
+      addTearDown(playback.dispose);
+      final layout = HomeAlbumLayoutState();
+      final interaction = CanvasInteractionState(CanvasDrift());
+
+      Widget canvas({bool xerox = false}) => MaterialApp(
+        home: AlbumCanvasViewport(
+          albums: const [
+            {
+              'asset': 'assets/albums/0.jpg',
+              'title': 'Album',
+              'artist': 'Artist',
+            },
+          ],
+          layout: layout,
+          transform: transform,
+          interaction: interaction,
+          playback: playback,
+          xerox: xerox,
+          interactionBlocked: false,
+          onViewportSizeChanged: (_) {},
+          onTileSelected: (_, _) {},
+          animateSourceTile: (_, _, child) => child,
+        ),
+      );
+
+      await tester.pumpWidget(canvas());
+      expect(find.byType(PortraitTilt), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(events.hasListener, isTrue);
+
+      void emit(double x, double y, double z) {
+        events.add(AccelerometerEvent(x, y, z, DateTime(2026)));
+      }
+
+      emit(0, 9.81, 0);
+      await tester.pump();
+      for (var i = 0; i < 12; i++) {
+        emit(4, 8, 4);
+        await tester.pump(const Duration(milliseconds: 32));
+      }
+      await tester.pumpAndSettle();
+
+      Matrix4 matrix() => tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('portrait-sensor-plane')),
+          )
+          .transform;
+      final tilted = matrix().entry(0, 2);
+      expect(tilted.abs(), greaterThan(0.01));
+
+      await tester.pumpWidget(canvas(xerox: true));
+      await tester.pump();
+      expect(events.hasListener, isTrue);
+      expect(matrix().entry(0, 2), closeTo(tilted, 1e-6));
+      expect(find.byType(PortraitTilt), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      expect(events.hasListener, isFalse);
       SensorsPlatform.instance = originalSensors;
       debugDefaultTargetPlatformOverride = originalPlatformOverride;
-    });
-    tester.view.physicalSize = const Size(400, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final transform = TransformationController();
-    final playback = AlbumPlayback();
-    addTearDown(transform.dispose);
-    addTearDown(playback.dispose);
-    final layout = HomeAlbumLayoutState();
-    final interaction = CanvasInteractionState(CanvasDrift());
-
-    Widget canvas({bool xerox = false}) => MaterialApp(
-      home: AlbumCanvasViewport(
-        albums: const [
-          {
-            'asset': 'assets/albums/0.jpg',
-            'title': 'Album',
-            'artist': 'Artist',
-          },
-        ],
-        layout: layout,
-        transform: transform,
-        interaction: interaction,
-        playback: playback,
-        xerox: xerox,
-        interactionBlocked: false,
-        onViewportSizeChanged: (_) {},
-        onTileSelected: (_, _) {},
-        animateSourceTile: (_, _, child) => child,
-      ),
-    );
-
-    await tester.pumpWidget(canvas());
-    expect(find.byType(PortraitTilt), findsOneWidget);
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(events.hasListener, isTrue);
-
-    void emit(double x, double y, double z) {
-      events.add(AccelerometerEvent(x, y, z, DateTime(2026)));
-    }
-
-    emit(0, 9.81, 0);
-    await tester.pump();
-    for (var i = 0; i < 12; i++) {
-      emit(4, 8, 4);
-      await tester.pump(const Duration(milliseconds: 32));
-    }
-    await tester.pumpAndSettle();
-
-    Matrix4 matrix() => tester.widget<Transform>(
-      find.byKey(const ValueKey('portrait-sensor-plane')),
-    ).transform;
-    final tilted = matrix().entry(0, 2);
-    expect(tilted.abs(), greaterThan(0.01));
-
-    await tester.pumpWidget(canvas(xerox: true));
-    await tester.pump();
-    expect(events.hasListener, isTrue);
-    expect(matrix().entry(0, 2), closeTo(tilted, 1e-6));
-    expect(find.byType(PortraitTilt), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox.shrink());
-    await tester.pump();
-    expect(events.hasListener, isFalse);
-    SensorsPlatform.instance = originalSensors;
-    debugDefaultTargetPlatformOverride = originalPlatformOverride;
-  });
+    },
+  );
 }

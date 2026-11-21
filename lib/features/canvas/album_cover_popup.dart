@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
+import '../../ui/transitions/rect_flip_transition.dart';
 import '../artwork/presentation/directory_artwork.dart';
 import '../artwork/presentation/xerox_palette.dart';
 
@@ -12,12 +13,7 @@ Future<void> showAlbumCoverPopup({
   required VoidCallback onReturned,
 }) async {
   final navigator = Navigator.of(source, rootNavigator: true);
-  final overlay = navigator.overlay!.context.findRenderObject()!;
-  final tile = source.findRenderObject()! as RenderBox;
-  final origin = MatrixUtils.transformRect(
-    tile.getTransformTo(overlay),
-    Offset.zero & tile.size,
-  );
+  final origin = RectFlipTransition.originOf(source, navigator);
   final directories = DirectoryArtworkScope.watch(source).library;
   final palette = source
       .getInheritedWidgetOfExactType<XeroxPaletteScope>()
@@ -28,7 +24,7 @@ Future<void> showAlbumCoverPopup({
     barrierColor: const Color(0x99000000),
     transitionDuration: MediaQuery.disableAnimationsOf(source)
         ? Duration.zero
-        : const Duration(milliseconds: 460),
+        : RectFlipTransition.duration,
     // The cover's transform is the complete transition. Skip the route fade.
     transitionBuilder: (_, _, _, child) => child,
     pageBuilder: (context, animation, _) {
@@ -94,46 +90,21 @@ class _AlbumCoverPopup extends StatelessWidget {
         width: side,
         height: side,
       );
-      return AnimatedBuilder(
-        animation: animation,
-        child: RepaintBoundary(
-          key: const ValueKey('album-cover-popup'),
-          child: child,
-        ),
-        builder: (context, child) {
-          final progress = Curves.easeInOutCubic.transform(animation.value);
-          final rect = Rect.lerp(origin, square, progress)!;
-          final offset = rect.center - square.center;
-          final angle = math.pi * progress;
-          // Swap faces at edge-on so the artwork always reads the right way.
-          final faceAngle = progress < 0.5 ? angle : angle - math.pi;
-          final perspective = Matrix4.identity()
-            ..setEntry(3, 2, 0.7 / side)
-            ..rotateY(-faceAngle);
-          return Stack(
-            children: [
-              Positioned.fromRect(
-                rect: square,
-                child: IgnorePointer(
-                  ignoring: animation.value < 1,
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()
-                      ..translateByDouble(offset.dx, offset.dy, 0, 1)
-                      ..scaleByDouble(
-                        rect.width / side,
-                        rect.height / side,
-                        1,
-                        1,
-                      )
-                      ..multiply(perspective),
-                    child: child,
-                  ),
-                ),
+      return Stack(
+        children: [
+          Positioned.fromRect(
+            rect: square,
+            child: RectFlipTransition(
+              origin: origin,
+              target: square,
+              animation: animation,
+              child: RepaintBoundary(
+                key: const ValueKey('album-cover-popup'),
+                child: child,
               ),
-            ],
-          );
-        },
+            ),
+          ),
+        ],
       );
     },
   );

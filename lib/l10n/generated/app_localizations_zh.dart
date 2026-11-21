@@ -15,6 +15,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get settings => '设置';
+
+  @override
+  String get settingsAppearance => '外观与显示';
+
+  @override
+  String get settingsManualRotation => '手动旋转';
+
+  @override
   String get coverFlowCameraDenied => '请在系统设置中允许访问相机，以使用实景背景。';
 
   @override
@@ -69,6 +78,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get musicSource => '音乐源';
 
   @override
+  String get musicSourceDemoGroup => '演示';
+
+  @override
+  String get musicSourceDeviceGroup => '设备音乐';
+
+  @override
   String get musicSourceMock => '示例音乐（Mock）';
 
   @override
@@ -108,6 +123,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get musicPlaybackFailed => '无法播放此本地专辑，请检查文件和访问权限。';
+
+  @override
+  String get musicNotPlaying => '未在播放';
+
+  @override
+  String get musicPlay => '播放';
+
+  @override
+  String get musicPause => '暂停';
 
   @override
   String get musicDirectories => '音乐文件夹';

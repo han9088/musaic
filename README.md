@@ -51,6 +51,8 @@ Deploy `build/web/` to a static web host. For a subdirectory, build with
 `python3 scripts/build_pwa.py --base-href /your-path/`. Web uses the sample album catalog and simulated
 playback; system music and local directory sources are unavailable. Browser
 audio restrictions may require interaction before album tick sounds can play.
+Desktop browsers start on the canvas. Enable **Manual rotation** under
+**Settings → Appearance & display** to show the canvas and Cover Flow switch.
 
 PWA builds bundle the rendering engine locally and generate a versioned offline
 cache. A [custom Flutter bootstrap](https://docs.flutter.dev/platform-integration/web/initialization)

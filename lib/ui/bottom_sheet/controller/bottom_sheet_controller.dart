@@ -82,6 +82,7 @@ class SheetController extends BottomSheetControllerApi {
   double _dragStartY = 0;
   bool _isDragging = false;
   bool _didOpen = false;
+  VoidCallback? _stopRouteSlide;
 
   BottomSheetSpringOptions get _layoutSpring {
     if (_isPushLayout) return layout.motion.pushLayoutSpring;
@@ -191,6 +192,7 @@ class SheetController extends BottomSheetControllerApi {
 
   @override
   void close() {
+    _stopRouteSlide?.call();
     if (_isPushLayout) {
       pushProgressOpenY!.value = _openTopY;
       _sheetDriver.animateTo(
@@ -206,6 +208,34 @@ class SheetController extends BottomSheetControllerApi {
       spring: _layoutSpring,
       onComplete: onDismissComplete,
     );
+  }
+
+  /// Move the sheet and its host with the incoming fullscreen page.
+  VoidCallback slideOutForRoute(
+    Animation<double> progress, {
+    required double distance,
+  }) {
+    _stopRouteSlide?.call();
+    _sheetDriver.stop();
+    _isDragging = false;
+    final originalTop = sheetTranslateY.value;
+
+    void update() =>
+        sheetTranslateY.value = originalTop - distance * progress.value;
+
+    void stop() {
+      progress.removeListener(update);
+      _stopRouteSlide = null;
+    }
+
+    _stopRouteSlide = stop;
+    progress.addListener(update);
+    update();
+    return () {
+      if (_stopRouteSlide != stop) return;
+      stop();
+      sheetTranslateY.value = originalTop;
+    };
   }
 
   @override
@@ -372,6 +402,7 @@ class SheetController extends BottomSheetControllerApi {
 
   /// 释放控制器、订阅、动画及其他持有资源，用于底部弹层的状态、布局、手势与动画引擎。
   void dispose() {
+    _stopRouteSlide?.call();
     sheetTranslateY.removeListener(_syncPushProgress);
     _sheetDriver.dispose();
     _progressDriver.dispose();

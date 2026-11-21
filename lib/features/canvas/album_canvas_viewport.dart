@@ -78,6 +78,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
         playButton: AlbumPlayButton(
           asset: asset,
           title: title,
+          artist: album['artist'] as String?,
           playback: widget.playback,
           diameter: 64,
         ),
@@ -135,6 +136,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
           asset: album['asset'] as String,
           artworkIdentity: _artworkIdentityFor(album),
           title: album['title'] as String,
+          artist: album['artist'] as String?,
         ),
       ),
     );

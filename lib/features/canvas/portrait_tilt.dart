@@ -14,11 +14,11 @@ class PortraitTiltMotion {
   Offset? _neutral;
   Offset _filtered = Offset.zero;
 
-  /// 更新相关状态并同步依赖方，用于专辑墙无限画布的布局、视口与交互状态。
-  Offset update(double x, double y, double z) {
-    if (!x.isFinite || !y.isFinite || !z.isFinite) return _filtered;
+  /// Returns null when the reading is unsuitable for estimating gravity.
+  Offset? update(double x, double y, double z) {
+    if (!x.isFinite || !y.isFinite || !z.isFinite) return null;
     final gravity = math.sqrt(x * x + y * y + z * z);
-    if (gravity < 7 || gravity > 13) return _filtered;
+    if (gravity < 7 || gravity > 13) return null;
     final angles = Offset(
       math.atan2(y, z),
       math.atan2(x, math.sqrt(y * y + z * z)),
@@ -94,8 +94,14 @@ class PortraitTilt extends StatefulWidget {
 /// 封装或定义纵向倾斜状态相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class _PortraitTiltState extends State<PortraitTilt>
     with WidgetsBindingObserver {
+  static const _sampleWindow = Duration(milliseconds: 500);
+
   final _motion = PortraitTiltMotion();
   StreamSubscription<AccelerometerEvent>? _subscription;
+  Timer? _sampleWatchdog;
+  bool _receivedEvent = false;
+  bool _receivedUsableSample = false;
+  bool _canReconnect = true;
   Offset _target = Offset.zero;
   bool _resumed = true;
   bool _enabled = false;
@@ -126,13 +132,16 @@ class _PortraitTiltState extends State<PortraitTilt>
     if (oldWidget.events != widget.events) {
       _stop();
       _unavailable = false;
+      _canReconnect = true;
       _syncSensor();
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _resumed = state == AppLifecycleState.resumed;
+    final resumed = state == AppLifecycleState.resumed;
+    if (resumed && !_resumed) _canReconnect = true;
+    _resumed = resumed;
     _syncSensor();
   }
 
@@ -148,6 +157,12 @@ class _PortraitTiltState extends State<PortraitTilt>
     }
     if (_subscription != null || _unavailable) return;
     final generation = ++_generation;
+    void sensorUnavailable() {
+      if (!mounted || generation != _generation) return;
+      _unavailable = true;
+      _stop();
+    }
+
     final events =
         widget.events ??
         accelerometerEventStream(
@@ -156,35 +171,69 @@ class _PortraitTiltState extends State<PortraitTilt>
     _subscription = events.listen(
       (event) {
         if (!mounted || generation != _generation) return;
+        _receivedEvent = true;
+        _watchSamples();
         final next = _motion.update(event.x, event.y, event.z);
+        if (next == null) return;
+        _receivedUsableSample = true;
+        _canReconnect = true;
         if ((next - _target).distance < 0.0002) return;
         setState(() => _target = next);
       },
-      onError: (Object error) {
-        if (!mounted || generation != _generation) return;
-        _unavailable = true;
-        _stop();
-      },
-      cancelOnError: true,
+      onError: (Object error) => sensorUnavailable(),
+      onDone: sensorUnavailable,
     );
+    _watchSamples();
   }
 
-  /// 控制流程的开始、暂停、取消或结束，用于专辑墙无限画布的布局、视口与交互状态。
-  void _stop() {
-    _generation++;
-    final subscription = _subscription;
-    _subscription = null;
-    if (subscription != null) unawaited(subscription.cancel());
+  void _watchSamples() {
+    _sampleWatchdog ??= Timer.periodic(_sampleWindow, (timer) {
+      final receivedEvent = _receivedEvent;
+      final receivedUsableSample = _receivedUsableSample;
+      _receivedEvent = false;
+      _receivedUsableSample = false;
+      if (receivedUsableSample) return;
+
+      // Reopen a silent native stream once, then wait for data before retrying.
+      if (!receivedEvent && _canReconnect && widget.events == null) {
+        _canReconnect = false;
+        _stop();
+        _syncSensor();
+        return;
+      }
+      if (!receivedEvent) {
+        timer.cancel();
+        _sampleWatchdog = null;
+      }
+      _resetTilt();
+    });
+  }
+
+  void _resetTilt() {
     _motion.reset();
     if (_target != Offset.zero && mounted) {
       setState(() => _target = Offset.zero);
     }
   }
 
+  /// 控制流程的开始、暂停、取消或结束，用于专辑墙无限画布的布局、视口与交互状态。
+  void _stop() {
+    _generation++;
+    _sampleWatchdog?.cancel();
+    _sampleWatchdog = null;
+    _receivedEvent = false;
+    _receivedUsableSample = false;
+    final subscription = _subscription;
+    _subscription = null;
+    if (subscription != null) unawaited(subscription.cancel());
+    _resetTilt();
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _generation++;
+    _sampleWatchdog?.cancel();
     final subscription = _subscription;
     if (subscription != null) unawaited(subscription.cancel());
     super.dispose();

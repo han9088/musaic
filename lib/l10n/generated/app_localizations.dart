@@ -106,6 +106,24 @@ abstract class AppLocalizations {
   /// **'Musaic'**
   String get appTitle;
 
+  /// No description provided for @settings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get settings;
+
+  /// No description provided for @settingsAppearance.
+  ///
+  /// In zh, this message translates to:
+  /// **'外观与显示'**
+  String get settingsAppearance;
+
+  /// No description provided for @settingsManualRotation.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动旋转'**
+  String get settingsManualRotation;
+
   /// No description provided for @coverFlowCameraDenied.
   ///
   /// In zh, this message translates to:
@@ -214,6 +232,18 @@ abstract class AppLocalizations {
   /// **'音乐源'**
   String get musicSource;
 
+  /// No description provided for @musicSourceDemoGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'演示'**
+  String get musicSourceDemoGroup;
+
+  /// No description provided for @musicSourceDeviceGroup.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备音乐'**
+  String get musicSourceDeviceGroup;
+
   /// No description provided for @musicSourceMock.
   ///
   /// In zh, this message translates to:
@@ -291,6 +321,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无法播放此本地专辑，请检查文件和访问权限。'**
   String get musicPlaybackFailed;
+
+  /// No description provided for @musicNotPlaying.
+  ///
+  /// In zh, this message translates to:
+  /// **'未在播放'**
+  String get musicNotPlaying;
+
+  /// No description provided for @musicPlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放'**
+  String get musicPlay;
+
+  /// No description provided for @musicPause.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂停'**
+  String get musicPause;
 
   /// No description provided for @musicDirectories.
   ///

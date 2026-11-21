@@ -16,12 +16,14 @@ class SelectedAlbum extends StatefulWidget {
     required this.title,
     required this.playback,
     required this.onOpen,
+    this.artist,
     this.xerox = false,
     this.artworkIdentity,
   });
 
   final String asset;
   final String title;
+  final String? artist;
   final ArtworkIdentity? artworkIdentity;
   final AlbumPlayback playback;
   final ValueChanged<BuildContext> onOpen;
@@ -72,6 +74,7 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
           AlbumPlayButton(
             asset: widget.asset,
             title: widget.title,
+            artist: widget.artist,
             playback: widget.playback,
           ),
         ],

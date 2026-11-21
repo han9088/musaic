@@ -64,7 +64,7 @@ void main() {
         final y = math.sqrt(9.81 * 9.81 - x * x - z * z);
         var angle = Offset.zero;
         for (var i = 0; i < 40; i++) {
-          angle = motion.update(x, y, z);
+          angle = motion.update(x, y, z)!;
           expect(
             angle.distance,
             lessThanOrEqualTo(PortraitTiltMotion.maxAngle + 1e-10),
@@ -73,7 +73,7 @@ void main() {
         expect(angle.dx.sign, -z.sign);
         expect(angle.dy.sign, -x.sign);
         for (var i = 0; i < 60; i++) {
-          angle = motion.update(0, 9.81, 0);
+          angle = motion.update(0, 9.81, 0)!;
         }
         expect(angle.distance, lessThan(1e-6));
       }
@@ -83,11 +83,11 @@ void main() {
   test('calibrates flat devices, rejects shakes and recalibrates', () {
     final motion = PortraitTiltMotion();
     expect(motion.update(0, 0, 9.81), Offset.zero);
-    final angle = motion.update(0, 4, 8.96);
+    final angle = motion.update(0, 4, 8.96)!;
     expect(angle.dx, greaterThan(0));
-    expect(motion.update(double.nan, 0, 0), angle);
-    expect(motion.update(0, 0, 0), angle);
-    expect(motion.update(30, 30, 30), angle);
+    expect(motion.update(double.nan, 0, 0), isNull);
+    expect(motion.update(0, 0, 0), isNull);
+    expect(motion.update(30, 30, 30), isNull);
     motion.reset();
     expect(motion.update(0, 4, 8.96), Offset.zero);
   });

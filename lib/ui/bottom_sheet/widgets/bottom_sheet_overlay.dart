@@ -207,9 +207,34 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
           final handleH = options.showHandle
               ? widget.layout.handle.height
               : widget.layout.handle.hiddenHeight;
-          // 弹层执行展开或收起的弹簧动画时，面板高度可能小于手柄高度，
-          // 此时不能同时布局手柄和 Expanded 内容，否则会触发 Flex 溢出。
-          final panelTallEnough = sheetHeight >= handleH + 8;
+          final panelHeight =
+              sheetHeight +
+              (options.keyboardBehavior == BottomSheetKeyboardBehavior.extend
+                  ? keyboardInset
+                  : 0);
+          final minContentHeight = handleH + 8;
+          final panelTallEnough = sheetHeight >= minContentHeight;
+          final handle = GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragStart: (_) {
+              _dragTranslation = 0;
+              _controller.onDragStart();
+            },
+            onVerticalDragUpdate: (details) {
+              _dragTranslation += details.primaryDelta ?? 0;
+              _controller.onDragUpdate(_dragTranslation);
+            },
+            onVerticalDragEnd: (details) {
+              _controller.onDragEnd(details.primaryVelocity ?? 0);
+            },
+            onVerticalDragCancel: () => _controller.onDragEnd(0),
+            child: BottomSheetHandle(
+              color: theme.handleColor,
+              visible: options.showHandle,
+              height: widget.layout.handle.height,
+              hiddenHeight: widget.layout.handle.hiddenHeight,
+            ),
+          );
 
           Widget panel = Material(
             color: theme.sheetBackgroundColor,
@@ -219,60 +244,31 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
             // 根级 Messenger 发出的 SnackBar 会同时绘制在宿主和每个弹层
             // 的 Scaffold 上（例如导航页、设置页等）。
             child: ScaffoldMessenger(
-              child: panelTallEnough
-                  ? Column(
-                      children: [
-                        if (!isTopPush)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onVerticalDragStart: (_) {
-                              _dragTranslation = 0;
-                              _controller.onDragStart();
-                            },
-                            onVerticalDragUpdate: (d) {
-                              _dragTranslation += d.primaryDelta ?? 0;
-                              _controller.onDragUpdate(_dragTranslation);
-                            },
-                            onVerticalDragEnd: (d) {
-                              _controller.onDragEnd(d.primaryVelocity ?? 0);
-                            },
-                            child: BottomSheetHandle(
-                              color: theme.handleColor,
-                              visible: options.showHandle,
-                              height: widget.layout.handle.height,
-                              hiddenHeight: widget.layout.handle.hiddenHeight,
-                            ),
-                          ),
-                        Expanded(
-                          child: _ContentPanWrapper(
-                            controller: _controller,
-                            child: widget.sheet.content,
-                          ),
+              // Keep the active gesture recognizers mounted until release,
+              // even when the last pixels of the sheet are almost offscreen.
+              child: OverflowBox(
+                alignment: isTopPush
+                    ? Alignment.bottomCenter
+                    : Alignment.topCenter,
+                maxHeight: panelHeight < minContentHeight
+                    ? minContentHeight
+                    : panelHeight,
+                child: Opacity(
+                  opacity: panelTallEnough ? 1 : 0,
+                  child: Column(
+                    children: [
+                      if (!isTopPush) handle,
+                      Expanded(
+                        child: _ContentPanWrapper(
+                          controller: _controller,
+                          child: widget.sheet.content,
                         ),
-                        if (isTopPush)
-                          GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onVerticalDragStart: (_) {
-                              _dragTranslation = 0;
-                              _controller.onDragStart();
-                            },
-                            onVerticalDragUpdate: (d) {
-                              _dragTranslation += d.primaryDelta ?? 0;
-                              _controller.onDragUpdate(_dragTranslation);
-                            },
-                            onVerticalDragEnd: (d) {
-                              _controller.onDragEnd(d.primaryVelocity ?? 0);
-                            },
-                            child: BottomSheetHandle(
-                              color: theme.handleColor,
-                              visible: options.showHandle,
-                              height: widget.layout.handle.height,
-                              hiddenHeight: widget.layout.handle.hiddenHeight,
-                            ),
-                          ),
-                      ],
-                    )
-                  : const SizedBox.expand(),
+                      ),
+                      if (isTopPush) handle,
+                    ],
+                  ),
+                ),
+              ),
             ),
           );
 
@@ -295,14 +291,9 @@ class _BottomSheetOverlayState extends State<BottomSheetOverlay>
                 left: hInset,
                 right: hInset,
                 top: sheetTop + offsetY - keyboardLift,
-                height:
-                    sheetHeight +
-                    (options.keyboardBehavior ==
-                            BottomSheetKeyboardBehavior.extend
-                        ? keyboardInset
-                        : 0),
+                height: panelHeight,
                 child: IgnorePointer(
-                  ignoring: !widget.isTop,
+                  ignoring: !widget.isTop || !panelTallEnough,
                   child: Semantics(
                     label: options.accessibilityLabel,
                     // 推动式效果只改变水平缩放（与 RN 版本一致），使弹层顶部保持对齐，

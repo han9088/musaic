@@ -185,6 +185,38 @@ void main() {
   testWidgets('thumbnail opens the saved photo and delete targets its id', (
     tester,
   ) async {
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const player = MethodChannel('xyz.luan/audioplayers');
+    const global = MethodChannel('xyz.luan/audioplayers.global');
+    const globalEvents = MethodChannel('xyz.luan/audioplayers.global/events');
+    var shutterPlays = 0;
+    messenger.setMockMethodCallHandler(global, (_) async => null);
+    messenger.setMockMethodCallHandler(globalEvents, (_) async => null);
+    messenger.setMockMethodCallHandler(player, (call) async {
+      final id = (call.arguments as Map)['playerId'];
+      final events = MethodChannel('xyz.luan/audioplayers/events/$id');
+      if (call.method == 'create') {
+        messenger.setMockMethodCallHandler(events, (_) async => null);
+        addTearDown(() => messenger.setMockMethodCallHandler(events, null));
+      } else if (call.method == 'setSourceBytes') {
+        await messenger.handlePlatformMessage(
+          events.name,
+          const StandardMethodCodec().encodeSuccessEnvelope({
+            'event': 'audio.onPrepared',
+            'value': true,
+          }),
+          (_) {},
+        );
+      } else if (call.method == 'resume') {
+        shutterPlays++;
+      }
+      return null;
+    });
+    addTearDown(() {
+      for (final channel in [player, global, globalEvents]) {
+        messenger.setMockMethodCallHandler(channel, null);
+      }
+    });
     await mount(tester);
     final blue = _image(
       80,
@@ -195,6 +227,7 @@ void main() {
     blue.dispose();
     await tester.longPress(find.text('Album'));
     await tester.pumpAndSettle();
+    expect(shutterPlays, 0);
 
     Future<void> openCapture() async {
       await tester.tapAt(const Offset(5, 60));
@@ -237,6 +270,7 @@ void main() {
     expect(gallery.deleted, ['photo-2']);
     expect(find.byType(CoverFlowPhotoViewer), findsNothing);
     expect(camera.captures, 2);
+    expect(shutterPlays, 2);
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 

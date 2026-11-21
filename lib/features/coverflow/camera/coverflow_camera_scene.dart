@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -40,6 +41,7 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
   bool _opening = false;
   bool _saving = false;
   int _generation = 0;
+  Future<AudioPlayer?>? _shutter;
 
   bool get _supported =>
       !kIsWeb &&
@@ -96,6 +98,10 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
       await pending.initialize();
       if (!mounted || generation != _generation || !_enabled || !_resumed) {
         return;
+      }
+      // AVFoundation already plays the shutter sound on iOS.
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        _shutter ??= _prepareShutter();
       }
       setState(() {
         _camera = pending;
@@ -182,12 +188,57 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
     }
   }
 
+  Future<AudioPlayer?> _prepareShutter() async {
+    final player = AudioPlayer()..positionUpdater = null;
+    try {
+      await player.setAudioContext(
+        AudioContext(
+          android: const AudioContextAndroid(
+            audioFocus: AndroidAudioFocus.none,
+            usageType: AndroidUsageType.assistanceSonification,
+          ),
+        ),
+      );
+      await player.setReleaseMode(ReleaseMode.stop);
+      final sound = await rootBundle.load('assets/sounds/camera_shutter.wav');
+      await player.setSource(
+        BytesSource(
+          sound.buffer.asUint8List(sound.offsetInBytes, sound.lengthInBytes),
+        ),
+      );
+      return player;
+    } catch (error) {
+      debugPrint('Cover Flow shutter sound unavailable: $error');
+      await _disposeShutter(player);
+      return null;
+    }
+  }
+
+  Future<void> _playShutter() async {
+    final player = await _shutter;
+    if (!mounted || !_resumed || _camera == null) return;
+    try {
+      await player?.resume();
+    } catch (error) {
+      debugPrint('Cover Flow shutter sound: $error');
+    }
+  }
+
+  Future<void> _disposeShutter(AudioPlayer? player) async {
+    try {
+      await player?.dispose();
+    } catch (error) {
+      debugPrint('Cover Flow shutter sound cleanup: $error');
+    }
+  }
+
   Future<void> _capture() async {
     final camera = _camera;
     if (_saving || camera == null || !camera.value.isInitialized) return;
     _saving = true;
     if (_photoPreview != null) setState(_clearPhotoPreview);
     if (!MediaQuery.disableAnimationsOf(context)) _flash.forward(from: 0);
+    if (_shutter != null) unawaited(_playShutter());
     ui.Image? overlay;
     ui.Image? composed;
     XFile? photo;
@@ -251,6 +302,9 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_close());
+    if (_shutter case final shutter?) {
+      unawaited(shutter.then(_disposeShutter));
+    }
     _flash.dispose();
     super.dispose();
   }

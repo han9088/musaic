@@ -15,6 +15,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get settings => 'Settings';
+
+  @override
+  String get settingsAppearance => 'Appearance & display';
+
+  @override
+  String get settingsManualRotation => 'Manual rotation';
+
+  @override
   String get coverFlowCameraDenied =>
       'Allow camera access in system settings to use the live background.';
 
@@ -74,6 +83,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicSource => 'Music source';
 
   @override
+  String get musicSourceDemoGroup => 'Demo';
+
+  @override
+  String get musicSourceDeviceGroup => 'Device music';
+
+  @override
   String get musicSourceMock => 'Demo music (Mock)';
 
   @override
@@ -119,6 +134,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get musicPlaybackFailed =>
       'Could not play this local album. Check the file and music access.';
+
+  @override
+  String get musicNotPlaying => 'Not playing';
+
+  @override
+  String get musicPlay => 'Play';
+
+  @override
+  String get musicPause => 'Pause';
 
   @override
   String get musicDirectories => 'Music folders';

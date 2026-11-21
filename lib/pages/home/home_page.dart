@@ -5,7 +5,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../storage/settings/manual_rotation_preference.dart';
 import '../../services/album_haptics.dart';
 import '../../services/mock_album_cache.dart';
 import '../../services/music/music_models.dart';
@@ -55,6 +57,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _haptics = AlbumHaptics();
   final _playback = AlbumPlayback();
+  final _manualRotation = ManualRotationPreference();
+  late final VoidCallback _stopManualRotationListener;
   late final _sources = widget.sources ?? MusicSourceController();
   late final VoidCallback _stopSourceListener;
   late final AnimationController _layout;
@@ -479,6 +483,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool? _manualLayout;
   bool? _pendingLandscape;
 
+  bool get _automaticLandscape =>
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS) &&
+      MediaQuery.orientationOf(context) == Orientation.landscape;
+
   @override
   void initState() {
     super.initState();
@@ -535,6 +544,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (_sourceTransition.switching.value) return;
       unawaited(_applyCatalog(albums));
     });
+    _stopManualRotationListener = _manualRotation.enabled.subscribe((enabled) {
+      if (enabled || _manualLayout == null) return;
+      setState(() {
+        _manualLayout = null;
+        _updateLayout(_automaticLandscape);
+      });
+    });
+    unawaited(_manualRotation.restore());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_haptics.prepare());
@@ -545,11 +562,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
-    final landscape =
-        _manualLayout ??
-        (defaultTargetPlatform != TargetPlatform.macOS &&
-            MediaQuery.orientationOf(context) == Orientation.landscape);
-    _updateLayout(landscape);
+    _updateLayout(_manualLayout ?? _automaticLandscape);
   }
 
   /// 更新相关状态并同步依赖方，用于页面状态组织与业务流程协调。
@@ -616,6 +629,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void dispose() {
     unawaited(_haptics.dispose());
     _stopSourceListener();
+    _stopManualRotationListener();
+    _manualRotation.dispose();
     _playback.dispose();
     if (widget.sources == null) {
       unawaited(
@@ -645,55 +660,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return HomeSheet(
-      enabled: !_landscape,
-      sources: _sources,
-      sourceSwitching: _sourceTransition.switching,
-      onSourceSelection: _selectMusicSource,
-      xeroxEnabled: _artworkMode.enabled,
-      onXeroxChanged: _setXeroxMode,
-      xeroxPalettePicker: XeroxPalettePicker(
-        selection: _artworkMode.palette,
-        onChanged: _setXeroxPalette,
+    final platform = defaultTargetPlatform;
+    final canvas = Scaffold(
+      backgroundColor: const Color(0xff000000),
+      body: XeroxPaletteScope(
+        notifier: _artworkMode.palette,
+        child: Builder(
+          builder: (context) {
+            final content = _buildAlbums();
+            if (kIsWeb || platform != TargetPlatform.android) return content;
+            // Android samples the outermost pixels for its rotation backdrop.
+            return DecoratedBox(
+              position: DecorationPosition.foreground,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Colors.black,
+                  width: 4 / MediaQuery.devicePixelRatioOf(context),
+                ),
+              ),
+              child: content,
+            );
+          },
+        ),
       ),
-      child: Scaffold(
-        backgroundColor: const Color(0xff000000),
-        body: XeroxPaletteScope(
-          notifier: _artworkMode.palette,
-          child: Builder(
-            builder: (context) {
-              final content = _buildAlbums();
-              final platform = defaultTargetPlatform;
-              if (!kIsWeb && platform == TargetPlatform.android) {
-                // Android samples the outermost pixels for its rotation backdrop.
-                return DecoratedBox(
-                  position: DecorationPosition.foreground,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 4 / MediaQuery.devicePixelRatioOf(context),
-                    ),
-                  ),
-                  child: content,
-                );
-              }
-              if (platform != TargetPlatform.iOS &&
-                  platform != TargetPlatform.macOS) {
-                return content;
-              }
-              return LayoutSwitchOverlay(
-                coverFlow: _landscape,
-                onSwitch: () {
-                  if (_catalog == null || _catalog!.isEmpty) return;
-                  setState(() {
-                    _manualLayout = !_landscape;
-                    _updateLayout(_manualLayout!);
-                  });
-                },
-                child: content,
-              );
-            },
+    );
+    Widget homeSheet(({Widget button, bool visible})? layoutSwitch) =>
+        HomeSheet(
+          enabled: !_landscape,
+          sources: _sources,
+          playback: _playback,
+          layoutSwitch: layoutSwitch,
+          sourceSwitching: _sourceTransition.switching,
+          onSourceSelection: _selectMusicSource,
+          manualRotation: _manualRotation,
+          xeroxEnabled: _artworkMode.enabled,
+          onXeroxChanged: _setXeroxMode,
+          xeroxPalettePicker: XeroxPalettePicker(
+            selection: _artworkMode.palette,
+            onChanged: _setXeroxPalette,
           ),
+          child: canvas,
+        );
+    return SignalBuilder(
+      builder: (context) => LayoutSwitchOverlay(
+        enabled: _manualRotation.enabled.value,
+        coverFlow: _landscape,
+        onSwitch: () {
+          if (_catalog == null || _catalog!.isEmpty) return;
+          setState(() {
+            _manualLayout = !_landscape;
+            _updateLayout(_manualLayout!);
+          });
+        },
+        builder: (button, visible) => homeSheet(
+          button == null ? null : (button: button, visible: visible),
         ),
       ),
     );

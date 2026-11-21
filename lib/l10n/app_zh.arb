@@ -1,6 +1,9 @@
 {
   "@@locale": "zh",
   "appTitle": "Musaic",
+  "settings": "设置",
+  "settingsAppearance": "外观与显示",
+  "settingsManualRotation": "手动旋转",
   "coverFlowCameraDenied": "请在系统设置中允许访问相机，以使用实景背景。",
   "coverFlowCameraFailed": "无法打开相机，请重试。",
   "coverFlowPhotoSaveFailed": "照片保存失败，请检查相册权限和剩余空间后重试。",
@@ -19,6 +22,8 @@
   "appIconVinylWhite": "白标黑胶",
   "appIconMosaicXerox": "拼贴复印",
   "musicSource": "音乐源",
+  "musicSourceDemoGroup": "演示",
+  "musicSourceDeviceGroup": "设备音乐",
   "musicSourceMock": "示例音乐（Mock）",
   "musicSourceMock2": "示例音乐（Mock 2）",
   "musicSourceLocal": "本地音乐",
@@ -32,6 +37,9 @@
   "musicSourceScanFailed": "扫描或切换失败，请重试。",
   "musicSourceEmpty": "本地音乐库暂无专辑",
   "musicPlaybackFailed": "无法播放此本地专辑，请检查文件和访问权限。",
+  "musicNotPlaying": "未在播放",
+  "musicPlay": "播放",
+  "musicPause": "暂停",
   "@musicSourceAlbumCount": {
     "placeholders": {
       "count": {

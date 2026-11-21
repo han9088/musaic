@@ -18,10 +18,12 @@ class MusicSourcePicker extends StatelessWidget {
     required this.sources,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.demoOnly = false,
   });
   final MusicSourceController sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final bool demoOnly;
 
   Future<void> _select(Future<void> Function() selection) =>
       onSourceSelection?.call(selection) ?? selection();
@@ -34,19 +36,23 @@ class MusicSourcePicker extends StatelessWidget {
         final albums = sources.catalog.value;
         final busy = sources.busy.value;
         final problem = sources.problem.value;
+        final directorySelected = sources.directorySelected.value;
+        final localSelected = albums != null && !directorySelected;
+        const groupTitle = TextStyle(
+          color: Colors.white70,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        );
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                l10n.musicSource,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+              if (!demoOnly)
+                Semantics(
+                  header: true,
+                  child: Text(l10n.musicSourceDemoGroup, style: groupTitle),
                 ),
-              ),
               ListTile(
                 key: const ValueKey('music-source-mock'),
                 enabled: !busy && !switching,
@@ -81,11 +87,16 @@ class MusicSourcePicker extends StatelessWidget {
                     : null,
                 onTap: () => _select(sources.selectMock2),
               ),
-              if (!kIsWeb)
+              if (!demoOnly && !kIsWeb) ...[
+                const SizedBox(height: 16),
+                Semantics(
+                  header: true,
+                  child: Text(l10n.musicSourceDeviceGroup, style: groupTitle),
+                ),
                 ListTile(
                   key: const ValueKey('music-source-local'),
                   enabled: !busy && !switching,
-                  selected: albums != null && !sources.directorySelected.value,
+                  selected: localSelected,
                   leading: const Icon(
                     PhosphorIcons.musicNotes,
                     color: Colors.white70,
@@ -97,7 +108,7 @@ class MusicSourcePicker extends StatelessWidget {
                   subtitle: Text(
                     busy
                         ? l10n.musicSourceScanning
-                        : albums == null
+                        : albums == null || directorySelected
                         ? l10n.musicSourceLocalHint
                         : l10n.musicSourceAlbumCount(albums.length),
                     style: const TextStyle(color: Colors.white60),
@@ -111,12 +122,20 @@ class MusicSourcePicker extends StatelessWidget {
                             color: Colors.white,
                           ),
                         )
-                      : albums != null
+                      : localSelected
                       ? const Icon(PhosphorIcons.check, color: Colors.white)
                       : null,
                   onTap: () => _select(sources.selectLocal),
                 ),
-              if (sources.directories case final library?) ...[
+                if (localSelected && !busy)
+                  TextButton(
+                    onPressed: switching
+                        ? null
+                        : () => _select(sources.selectLocal),
+                    child: Text(l10n.musicSourceRescan),
+                  ),
+              ],
+              if (sources.directories case final library? when !demoOnly) ...[
                 ListTile(
                   leading: const Icon(
                     PhosphorIcons.folder,
@@ -126,7 +145,10 @@ class MusicSourcePicker extends StatelessWidget {
                     l10n.musicDirectories,
                     style: const TextStyle(color: Colors.white),
                   ),
-                  selected: sources.directorySelected.value,
+                  selected: directorySelected,
+                  trailing: directorySelected
+                      ? const Icon(PhosphorIcons.check, color: Colors.white)
+                      : null,
                   onTap: busy || switching
                       ? null
                       : () => _select(sources.selectDirectories),
@@ -143,7 +165,7 @@ class MusicSourcePicker extends StatelessWidget {
                     onPressed: library.cancel,
                     child: Text(l10n.musicCancelScan),
                   ),
-                if (sources.directorySelected.value) ...[
+                if (directorySelected) ...[
                   Text(
                     l10n.musicScanCounts(
                       library.counts.value.added,
@@ -230,14 +252,7 @@ class MusicSourcePicker extends StatelessWidget {
                     ),
                 ],
               ],
-              if (albums != null && !busy && !sources.directorySelected.value)
-                TextButton(
-                  onPressed: switching
-                      ? null
-                      : () => _select(sources.selectLocal),
-                  child: Text(l10n.musicSourceRescan),
-                ),
-              if (problem != null)
+              if (!demoOnly && problem != null)
                 Semantics(
                   liveRegion: true,
                   child: Text(switch (problem) {

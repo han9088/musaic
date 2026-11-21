@@ -28,7 +28,7 @@ const server = createServer(async (request, response) => {
 await new Promise(done => server.listen(0, '127.0.0.1', done));
 const origin = `http://127.0.0.1:${server.address().port}`;
 const chrome = spawn(process.env.CHROME_EXECUTABLE || 'google-chrome', [
-  '--no-first-run', '--no-default-browser-check',
+  '--no-first-run', '--no-default-browser-check', '--lang=en-US',
   '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1100,700', 'about:blank',
 ], {stdio: 'ignore'});
 let socket;
@@ -91,7 +91,7 @@ try {
   console.log('Installability passed; no custom install button');
   const cachesBefore = await evaluate('caches.keys()');
   assert.equal(cachesBefore.filter(key => key.startsWith('musaic-pwa:')).length, 1);
-  // macOS starts on the canvas; use the existing layout control to enter Cover Flow.
+  // Desktop browsers start on the canvas with the manual switch off.
   const viewport = await evaluate('({width: innerWidth, height: innerHeight})');
   await send('Page.bringToFront');
   await evaluate("document.querySelector('flt-semantics-placeholder')?.click()");
@@ -99,39 +99,63 @@ try {
     await send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1});
     await send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
   };
-  await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: viewport.width / 2, y: viewport.height - 40});
-  await sleep(300);
-  await clickAt(viewport.width / 2, viewport.height - 40);
-  const fullscreenButton = label => evaluate(`(() => {
-    const element = [...document.querySelectorAll('[role=button]')].find(node => node.getAttribute('aria-label') === '${label}' || node.textContent === '${label}');
-    if (!element) return null;
-    const rect = element.getBoundingClientRect();
-    return {x: rect.x + rect.width / 2, y: rect.y + rect.height / 2};
+  const labeledControl = label => evaluate(`(() => {
+    for (const element of document.querySelectorAll('[aria-label],flt-semantics')) {
+      const name = element.getAttribute('aria-label') || element.textContent;
+      if (!name?.split('\\n').includes(${JSON.stringify(label)})) continue;
+      const rect = element.getBoundingClientRect();
+      const x = rect.x + rect.width / 2;
+      const y = rect.y + rect.height / 2;
+      if (rect.width && rect.height && x > 0 && y > 0 && x < innerWidth && y < innerHeight) {
+        return {x, y};
+      }
+    }
+    return null;
   })()`);
-  await until(() => fullscreenButton('Enter fullscreen'), 'fullscreen menu entry');
+  const clickLabel = async label => {
+    await until(() => labeledControl(label), label, 10000);
+    const {x, y} = await labeledControl(label);
+    await clickAt(x, y);
+  };
+  await until(() => labeledControl('Not playing'), 'desktop canvas', 10000);
+  assert.equal(await labeledControl('切换到 CoverFlow'), null);
+  const capsuleX = viewport.width / 2;
+  const capsuleY = viewport.height - 64;
+  for (let attempt = 0; attempt < 3 && !await labeledControl('Settings'); attempt++) {
+    await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: capsuleX, y: capsuleY});
+    await sleep(250);
+    await send('Input.dispatchMouseEvent', {type: 'mousePressed', x: capsuleX, y: capsuleY, button: 'left', buttons: 1, clickCount: 1});
+    for (let distance = 20; distance <= 160; distance += 20) {
+      await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: capsuleX, y: capsuleY - distance, buttons: 1});
+      await sleep(20);
+    }
+    await send('Input.dispatchMouseEvent', {type: 'mouseReleased', x: capsuleX, y: capsuleY - 160, button: 'left', clickCount: 1});
+    await sleep(700);
+  }
+  await clickLabel('Settings');
+  await sleep(450);
+  await clickLabel('Appearance & display');
+  await sleep(550);
+  await clickLabel('Manual rotation');
+  await until(() => labeledControl('Enter fullscreen'), 'fullscreen menu entry');
   await sleep(600);
-  let target = await fullscreenButton('Enter fullscreen');
-  await clickAt(target.x, target.y);
+  await clickLabel('Enter fullscreen');
   await until(() => evaluate('!!document.fullscreenElement'), 'enter fullscreen from menu');
   console.log('Menu fullscreen entry passed');
-  await until(() => fullscreenButton('Exit fullscreen'), 'fullscreen state label');
-  target = await fullscreenButton('Exit fullscreen');
-  await clickAt(target.x, target.y);
+  await clickLabel('Exit fullscreen');
   await until(() => evaluate('!document.fullscreenElement'), 'exit fullscreen from menu');
-  await until(() => fullscreenButton('Enter fullscreen'), 'exit state synchronized');
+  await until(() => labeledControl('Enter fullscreen'), 'exit state synchronized');
   console.log('Menu fullscreen exit passed');
   await sleep(2000);
-  target = await fullscreenButton('Enter fullscreen');
-  await clickAt(target.x, target.y);
+  await clickLabel('Enter fullscreen');
   await until(() => evaluate('!!document.fullscreenElement'), 'reenter fullscreen');
   await evaluate('document.exitFullscreen()');
-  await until(() => fullscreenButton('Enter fullscreen'), 'external fullscreen exit synchronized');
+  await until(() => labeledControl('Enter fullscreen'), 'external fullscreen exit synchronized');
+  await clickLabel('Back');
+  await sleep(500);
   await clickAt(10, 10);
-  await sleep(600);
-  await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: viewport.width - 38, y: viewport.height - 38});
-  await sleep(300);
-  await send('Input.dispatchMouseEvent', {type: 'mousePressed', x: viewport.width - 38, y: viewport.height - 38, button: 'left', clickCount: 1});
-  await send('Input.dispatchMouseEvent', {type: 'mouseReleased', x: viewport.width - 38, y: viewport.height - 38, button: 'left', clickCount: 1});
+  await clickLabel('切换到 CoverFlow');
+  await until(() => labeledControl('切换到画布'), 'Cover Flow return control', 10000);
   await sleep(1500);
   const screenshot = async name => {
     const result = await send('Page.captureScreenshot');
@@ -152,9 +176,15 @@ try {
   await send('Input.dispatchMouseEvent', {type: 'mouseWheel', x: 550, y: 350, deltaX: 250, deltaY: 0});
   await sleep(1500);
   assert.ok(await screenshot('musaic-pwa-trackpad.png') !== keyed, 'Horizontal scroll must change the album');
+  await send('Input.dispatchMouseEvent', {type: 'mouseMoved', x: viewport.width - 38, y: viewport.height - 38});
+  await clickLabel('切换到画布');
+  await until(() => labeledControl('切换到 CoverFlow'), 'return to canvas', 10000);
   // Acquire the first worker without claiming a page midway through loading.
   await send('Page.reload');
   await until(() => evaluate('window.firstFrame && !!navigator.serviceWorker.controller'), 'controlled page');
+  await evaluate("document.querySelector('flt-semantics-placeholder')?.click()");
+  await until(() => labeledControl('切换到 CoverFlow'), 'saved manual rotation', 10000);
+  console.log('Manual rotation switches in both directions and survives reload');
   const originalScript = await readFile(join(root, 'pwa.js'), 'utf8');
   const updatedScript = originalScript + '\n// upgrade smoke test\n';
   const worker = await readFile(join(root, 'service-worker.js'), 'utf8');

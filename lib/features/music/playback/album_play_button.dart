@@ -13,10 +13,12 @@ class AlbumPlayButton extends StatelessWidget {
     required this.asset,
     required this.title,
     required this.playback,
+    this.artist,
     this.diameter = 30,
   });
   final String asset;
   final String title;
+  final String? artist;
   final AlbumPlayback playback;
   final double diameter;
   @override
@@ -31,7 +33,7 @@ class AlbumPlayButton extends StatelessWidget {
               icon: playback.isPlaying(asset, title)
                   ? PhosphorIcons.pauseFill
                   : PhosphorIcons.playFill,
-              onPressed: () => playback.toggle(asset, title),
+              onPressed: () => playback.toggle(asset, title, artist: artist),
             ),
           ),
   );

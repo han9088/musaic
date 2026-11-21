@@ -121,28 +121,40 @@ class BottomSheetContent {
 
   /// 协调动画进度与状态过渡，用于底部弹层的状态、布局、手势与动画引擎。
   ValueNotifier<double> get animatedIndex => _scope.controller.animatedIndex;
+
   /// 协调动画进度与状态过渡，用于底部弹层的状态、布局、手势与动画引擎。
   ValueNotifier<double> get animatedPosition =>
       _scope.controller.sheetTranslateY;
+  VoidCallback slideOutForRoute(
+    Animation<double> progress, {
+    required double distance,
+  }) => _scope.controller.slideOutForRoute(progress, distance: distance);
+
   /// 执行当前模块中的scrolloffset操作，用于底部弹层的状态、布局、手势与动画引擎。
   ValueNotifier<double> get scrollOffset => _scope.controller.scrollOffset;
 
   /// 执行当前模块中的snaptoindex操作，用于底部弹层的状态、布局、手势与动画引擎。
   void snapToIndex(int index) => _scope.controller.snapToIndex(index);
+
   /// 执行当前模块中的close操作，用于底部弹层的状态、布局、手势与动画引擎。
   void close() => _scope.controller.close();
+
   /// 执行当前模块中的expand操作，用于底部弹层的状态、布局、手势与动画引擎。
   void expand() => _scope.controller.expand();
+
   /// 执行当前模块中的collapse操作，用于底部弹层的状态、布局、手势与动画引擎。
   void collapse() => _scope.controller.collapse();
 
   /// 执行当前模块中的enable内容panninggesture操作，用于底部弹层的状态、布局、手势与动画引擎。
   bool get enableContentPanningGesture =>
       _scope.controller.options.enableContentPanningGesture;
+
   /// 执行当前模块中的enabledynamicsizing操作，用于底部弹层的状态、布局、手势与动画引擎。
   bool get enableDynamicSizing => _scope.controller.options.enableDynamicSizing;
+
   /// 处理对应事件并协调后续状态变化，用于底部弹层的状态、布局、手势与动画引擎。
   double get handleHeight => _scope.controller.handleHeight;
+
   /// 执行当前模块中的底部inset操作，用于底部弹层的状态、布局、手势与动画引擎。
   double get bottomInset => _scope.bottomInset;
 

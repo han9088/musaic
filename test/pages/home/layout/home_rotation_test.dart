@@ -1,13 +1,18 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/app/bottom_sheet_host.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/features/layout/album_layout_transition.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
+import 'package:musaic/features/music/playback/now_playing_capsule.dart';
+import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/mock_album_cache.dart';
+import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 class RotationAlbumCache extends MockAlbumCache {
@@ -52,7 +57,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(home: HomePage(albumCache: RotationAlbumCache())),
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: HomePage(albumCache: RotationAlbumCache()),
+      ),
     );
     await tester.pump();
     final context = tester.element(find.byType(HomePage));
@@ -87,33 +96,104 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('macOS opens the canvas even in a wide window', (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1000, 700);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(
-      MaterialApp(home: HomePage(albumCache: RotationAlbumCache())),
-    );
-    await tester.pump();
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(find.byType(AlbumCoverFlow), findsNothing);
-    tester.view.physicalSize = const Size(1400, 800);
-    await tester.pump();
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('layout-switch-wake')));
-    await tester.pump();
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('layout-switch')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 550));
-    expect(find.byType(AlbumCoverFlow), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('layout-switch')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 550));
-    expect(find.byType(InteractiveViewer), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  testWidgets(
+    'manual rotation exposes both layout switches when enabled',
+    (tester) async {
+      final mobile =
+          defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS;
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = mobile
+          ? const Size(400, 800)
+          : const Size(1000, 700);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppBottomSheetHost(
+            child: HomePage(albumCache: RotationAlbumCache()),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      expect(find.byType(AlbumCoverFlow), findsNothing);
+      if (!mobile) tester.view.physicalSize = const Size(1400, 800);
+      await tester.pump();
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      final wakeButton = find.byKey(const ValueKey('layout-switch-wake'));
+      final button = find.byKey(const ValueKey('layout-switch'));
+      expect(wakeButton, findsNothing);
+      expect(button, findsNothing);
+
+      Future<void> changeSetting(bool enabled) async {
+        final sheet = DeskBottomSheet.of(tester.element(find.byType(HomePage)));
+        await tester.drag(
+          find.byType(NowPlayingCapsule),
+          const Offset(0, -150),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        final settings = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
+        await tester.tap(settings);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.tap(find.text('Appearance & display'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 450));
+        final tile = find.widgetWithText(SwitchListTile, 'Manual rotation');
+        expect(tester.widget<SwitchListTile>(tile).value, !enabled);
+        await tester.tap(tile);
+        await tester.pump();
+        expect(tester.widget<SwitchListTile>(tile).value, enabled);
+        await tester.tap(find.byIcon(PhosphorIcons.caretDown));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 450));
+        sheet.dismiss();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+      }
+
+      await changeSetting(true);
+      final capsule = tester.getRect(find.byType(NowPlayingCapsule));
+      final switchButton = tester.getRect(button);
+      expect(capsule.center.dx, tester.view.physicalSize.width / 2);
+      expect(switchButton.center.dy, capsule.center.dy);
+      expect(switchButton.height, capsule.height);
+      expect(switchButton.left, greaterThan(capsule.right));
+      await tester.tap(button);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(find.byType(AlbumCoverFlow), findsOneWidget);
+      expect(find.byType(NowPlayingCapsule), findsNothing);
+      await tester.tap(button);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 550));
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+      await changeSetting(false);
+      expect(wakeButton, findsNothing);
+      expect(button, findsNothing);
+      if (mobile) {
+        tester.view.physicalSize = const Size(800, 400);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 550));
+        expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(button, findsNothing);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.macOS,
+      TargetPlatform.linux,
+      TargetPlatform.windows,
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
 
   for (final reduced in [false, true]) {
     testWidgets(
@@ -143,6 +223,8 @@ void main() {
         );
         await tester.pumpWidget(
           MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
               child: child!,
@@ -152,15 +234,18 @@ void main() {
         );
         await tester.pump();
         expect(handle, 10);
+        final pauseIcon = find
+            .descendant(
+              of: find.byType(AlbumPlayButton),
+              matching: find.byIcon(PhosphorIcons.pauseFill),
+            )
+            .hitTestable();
         await tester.tapAt(const Offset(150, 250));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
         await tester.tap(find.byType(AlbumPlayButton).hitTestable());
         await tester.pump();
-        expect(
-          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
-          findsOneWidget,
-        );
+        expect(pauseIcon, findsOneWidget);
         tester.view.physicalSize = const Size(800, 400);
         await tester.pump();
         if (!reduced) {
@@ -205,18 +290,12 @@ void main() {
         }
         await tester.tap(find.byType(AlbumPlayButton).hitTestable());
         await tester.pump();
-        expect(
-          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
-          findsOneWidget,
-        );
+        expect(pauseIcon, findsOneWidget);
         tester.view.physicalSize = const Size(400, 800);
         await tester.pump();
         if (!reduced) await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(InteractiveViewer), findsOneWidget);
-        expect(
-          find.byIcon(PhosphorIcons.pauseFill).hitTestable(),
-          findsOneWidget,
-        );
+        expect(pauseIcon, findsOneWidget);
         expect(handle, 10);
         expect(calls.where((c) => c == 'PatternComposer_release'), isEmpty);
         await tester.pumpWidget(const SizedBox());

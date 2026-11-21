@@ -1,3 +1,4 @@
 **/*.map
 **/*.symbols
+**/.DS_Store
 flutter_service_worker.js

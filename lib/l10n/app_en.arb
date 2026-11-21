@@ -1,6 +1,9 @@
 {
   "@@locale": "en",
   "appTitle": "Musaic",
+  "settings": "Settings",
+  "settingsManualRotation": "Manual rotation",
+  "settingsAppearance": "Appearance & display",
   "coverFlowCameraDenied": "Allow camera access in system settings to use the live background.",
   "coverFlowCameraFailed": "Could not open the camera. Please try again.",
   "coverFlowPhotoSaveFailed": "Could not save the photo. Check photo access and available storage, then try again.",
@@ -19,6 +22,8 @@
   "appIconVinylWhite": "White Label Vinyl",
   "appIconMosaicXerox": "Mosaic Xerox",
   "musicSource": "Music source",
+  "musicSourceDemoGroup": "Demo",
+  "musicSourceDeviceGroup": "Device music",
   "musicSourceMock": "Demo music (Mock)",
   "musicSourceMock2": "Demo music (Mock 2)",
   "musicSourceLocal": "Local music",
@@ -32,6 +37,9 @@
   "musicSourceScanFailed": "Could not scan or switch music source. Please retry.",
   "musicSourceEmpty": "No albums in the local music library",
   "musicPlaybackFailed": "Could not play this local album. Check the file and music access.",
+  "musicNotPlaying": "Not playing",
+  "musicPlay": "Play",
+  "musicPause": "Pause",
   "@musicSourceAlbumCount": {
     "placeholders": {
       "count": {

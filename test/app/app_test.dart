@@ -134,6 +134,10 @@ void main() {
     await dismissAlbum(hiddenOffset);
     expect(find.byType(SelectedAlbum), findsOneWidget);
     expect(canvas().hiddenTileOffset, isNull);
+    final selectedPause = find.descendant(
+      of: find.byType(SelectedAlbum),
+      matching: find.byIcon(PhosphorIcons.pauseFill),
+    );
     await tester.tap(
       find.descendant(
         of: find.byType(SelectedAlbum),
@@ -141,12 +145,12 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+    expect(selectedPause, findsOneWidget);
     expect(popup, findsNothing);
     await tester.drag(find.byType(InteractiveViewer), const Offset(80, 0));
     await tester.pump();
     expect(find.byType(SelectedAlbum), findsOneWidget);
-    expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+    expect(selectedPause, findsOneWidget);
     final initial = controller.value.clone();
     await tester.pump(const Duration(milliseconds: 100));
     expect(controller.value, isNot(initial));
@@ -187,7 +191,7 @@ void main() {
       );
       await tester.tap(button);
       await tester.pump();
-      expect(find.byIcon(PhosphorIcons.pauseFill), findsOneWidget);
+      expect(selectedPause, findsOneWidget);
     }
     for (final scale in [0.4, 1.0, 2.5]) {
       controller.value = Matrix4.diagonal3Values(scale, scale, 1);

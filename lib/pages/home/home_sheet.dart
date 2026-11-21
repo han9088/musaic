@@ -4,15 +4,19 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
-import '../../l10n/generated/app_localizations.dart';
-import '../../ui/bottom_sheet/bottom_sheet.dart';
-import '../../services/app_icon_service.dart';
-import '../../features/settings/app_icon_picker.dart';
-import '../../features/settings/fullscreen_control.dart';
+import '../../features/music/playback/album_playback.dart';
+import '../../features/music/playback/now_playing_capsule.dart';
 import '../../features/music/presentation/music_source_picker.dart';
+import '../../features/settings/appearance_settings.dart';
+import '../../features/settings/settings_sheet.dart';
+import '../../l10n/generated/app_localizations.dart';
+import '../../services/app_icon_service.dart';
 import '../../services/music/music_source_controller.dart';
+import '../../storage/settings/manual_rotation_preference.dart';
+import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../ui/widgets/frosted_control_surface.dart';
+import '../settings/settings_page.dart';
 
 /// 封装或定义首页弹层相关类型与行为，负责页面状态组织与业务流程协调。
 class HomeSheet extends StatefulWidget {
@@ -22,8 +26,11 @@ class HomeSheet extends StatefulWidget {
     this.icons = const AppIconService(),
     this.enabled = true,
     this.sources,
+    this.playback,
+    this.layoutSwitch,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.manualRotation,
     this.xeroxEnabled = false,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -33,8 +40,11 @@ class HomeSheet extends StatefulWidget {
   final AppIconService icons;
   final bool enabled;
   final MusicSourceController? sources;
+  final AlbumPlayback? playback;
+  final ({Widget button, bool visible})? layoutSwitch;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final ManualRotationPreference? manualRotation;
   final bool xeroxEnabled;
   final FutureOr<bool> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
@@ -48,7 +58,6 @@ class _HomeSheetState extends State<HomeSheet> {
   bool _open = false;
   bool _sourceSelectionPending = false;
   Completer<void>? _sourceSheetDismissed;
-  double _dragUp = 0;
   Timer? _hideTimer;
   bool _visible = true;
 
@@ -83,7 +92,6 @@ class _HomeSheetState extends State<HomeSheet> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.enabled == widget.enabled) return;
     _visible = widget.enabled;
-    _dragUp = 0;
     _scheduleHide();
     if (!widget.enabled && _open) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -107,73 +115,12 @@ class _HomeSheetState extends State<HomeSheet> {
     _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-    var xeroxEnabled = widget.xeroxEnabled;
-    var xeroxPending = false;
-    final onXeroxChanged = widget.onXeroxChanged;
     DeskBottomSheet.of(context).present(
-      BottomSheetScrollView(
-        child: Column(
-          children: [
-            if (widget.sources case final sources?)
-              MusicSourcePicker(
-                sources: sources,
-                sourceSwitching: widget.sourceSwitching,
-                onSourceSelection: _selectSource,
-              ),
-            if (kIsWeb) const FullscreenControl(),
-            if (onXeroxChanged != null)
-              StatefulBuilder(
-                builder: (context, setSheetState) {
-                  final toggle = ListTile(
-                    key: const ValueKey('xerox-toggle'),
-                    selected: xeroxEnabled,
-                    leading: const Icon(
-                      PhosphorIcons.printer,
-                      color: Colors.white70,
-                    ),
-                    title: Text(
-                      AppLocalizations.of(context).xeroxMode,
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    trailing: xeroxPending
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : xeroxEnabled
-                        ? const Icon(PhosphorIcons.check, color: Colors.white)
-                        : null,
-                    onTap: xeroxPending
-                        ? null
-                        : () async {
-                            final enabled = !xeroxEnabled;
-                            setSheetState(() => xeroxPending = true);
-                            try {
-                              final applied = await onXeroxChanged(enabled);
-                              if (context.mounted) {
-                                setSheetState(() => xeroxEnabled = applied);
-                              }
-                            } finally {
-                              if (context.mounted) {
-                                setSheetState(() => xeroxPending = false);
-                              }
-                            }
-                          },
-                  );
-                  final picker = widget.xeroxPalettePicker;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      toggle,
-                      if (xeroxEnabled && picker != null) picker,
-                    ],
-                  );
-                },
-              ),
-            AppIconPicker(icons: widget.icons),
-          ],
-        ),
+      SettingsSheet(
+        sources: widget.sources,
+        sourceSwitching: widget.sourceSwitching,
+        onSourceSelection: _selectSource,
+        onOpenSection: _openSettings,
       ),
       BottomSheetOptions(
         mode: BottomSheetMode.push,
@@ -203,6 +150,47 @@ class _HomeSheetState extends State<HomeSheet> {
     setState(() => _open = true);
   }
 
+  void _openSettings(BuildContext source, SettingsSection section) {
+    if (!_open || _sourceSelectionPending) return;
+    final navigator = Navigator.of(source, rootNavigator: true);
+    final l10n = AppLocalizations.of(source);
+    late final PageRoute<void> route;
+    final (path, title, body) = switch (section) {
+      SettingsSection.musicSource => (
+        '/settings/music-source',
+        l10n.musicSource,
+        MusicSourcePicker(
+          sources: widget.sources!,
+          sourceSwitching: widget.sourceSwitching,
+          onSourceSelection: (select) async {
+            if (!route.isCurrent) return;
+            navigator.pop();
+            await route.completed;
+            if (mounted) await _selectSource(select);
+          },
+        ),
+      ),
+      SettingsSection.appearance => (
+        '/settings/appearance',
+        l10n.settingsAppearance,
+        AppearanceSettings(
+          icons: widget.icons,
+          manualRotation: widget.manualRotation,
+          xeroxEnabled: widget.xeroxEnabled,
+          onXeroxChanged: widget.onXeroxChanged,
+          xeroxPalettePicker: widget.xeroxPalettePicker,
+        ),
+      ),
+    };
+    route = pushSettingsPage(
+      source: source,
+      navigator: navigator,
+      path: path,
+      title: title,
+      body: body,
+    );
+  }
+
   Future<void> _selectSource(Future<void> Function() select) async {
     if (_sourceSelectionPending) return;
     _sourceSelectionPending = true;
@@ -229,10 +217,13 @@ class _HomeSheetState extends State<HomeSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final layoutSwitch = _open ? null : widget.layoutSwitch;
+    final capsuleVisible = !_open && _visible;
     return PopScope(
       canPop: !_open,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _open) DeskBottomSheet.of(context).dismiss();
+        if (didPop || !_open || _sourceSelectionPending) return;
+        DeskBottomSheet.of(context).dismiss();
       },
       child: MouseRegion(
         onHover: (_) => _reveal(),
@@ -247,76 +238,31 @@ class _HomeSheetState extends State<HomeSheet> {
             fit: StackFit.expand,
             children: [
               widget.child,
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 23,
-                child: Center(
-                  child: IgnorePointer(
-                    ignoring: _open || !widget.enabled || !_visible,
-                    child: AnimatedOpacity(
-                      opacity: _open || !widget.enabled || !_visible ? 0 : 1,
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 200),
-                      child: Semantics(
-                        button: true,
-                        label: MaterialLocalizations.of(context)
-                            .showMenuTooltip,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: _present,
-                          onVerticalDragStart: (_) => _dragUp = 0,
-                          onVerticalDragUpdate: (details) {
-                            final dy = details.primaryDelta ?? 0;
-                            _dragUp = dy < 0 ? _dragUp - dy : 0;
-                            if (_dragUp >= 36) _present();
-                          },
-                          onVerticalDragEnd: (details) {
-                            if ((details.primaryVelocity ?? 0) <= -200) {
-                              _present();
-                            }
-                            _dragUp = 0;
-                          },
-                          onVerticalDragCancel: () => _dragUp = 0,
-                          child: Container(
-                            width: 60,
-                            height: 39,
-                            foregroundDecoration: kDebugMode
-                                ? BoxDecoration(
-                                    color: const Color(0x3300E5FF),
-                                    border: Border.all(
-                                      color: const Color(0xFF00E5FF),
-                                    ),
-                                  )
-                                : null,
-                            child: Align(
-                              alignment: Alignment.bottomCenter,
-                              child: Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: Container(
-                                  width: 44,
-                                  height: 6,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xB3FFFFFF),
-                                    borderRadius: BorderRadius.circular(3),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                        blurRadius: 4,
-                                        color: Color(0x66000000),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
+              if (widget.enabled)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 45,
+                  child: Center(
+                    child: FrostedControlPair(
+                      primaryVisible: capsuleVisible,
+                      companion: layoutSwitch?.button,
+                      companionVisible: layoutSwitch?.visible ?? false,
+                      onPrimaryPullUp: _present,
+                      primary: NowPlayingCapsule(
+                        playback: widget.playback,
+                        visible: capsuleVisible,
+                        onOpenSheet: _present,
                       ),
                     ),
                   ),
                 ),
-              ),
+              if (!widget.enabled && layoutSwitch != null)
+                Positioned(
+                  right: 20,
+                  bottom: 20,
+                  child: SafeArea(child: layoutSwitch.button),
+                ),
             ],
           ),
         ),

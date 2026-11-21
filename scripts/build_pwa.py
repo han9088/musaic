@@ -20,7 +20,7 @@ def package(build: Path, template: Path) -> tuple[int, int]:
         p for p in build.rglob('*')
         if p.is_file() and not p.name.endswith(('.map', '.symbols'))
         and p.name not in {'service-worker.js', 'flutter_service_worker.js', '.last_build_id',
-                          '_headers', '_redirects', '.assetsignore'}
+                          '_headers', '_redirects', '.assetsignore', '.DS_Store'}
     )
     digest = hashlib.sha256(template.read_bytes())
     size = 0
