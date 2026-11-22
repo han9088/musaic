@@ -10,6 +10,7 @@ class FrostedControlPair extends StatefulWidget {
     this.companion,
     this.companionVisible = false,
     this.hideCompanion = false,
+    this.onPrimaryPress,
     this.onPrimaryPullUp,
     this.onPrimaryPullUpdate,
     this.onPrimaryPullEnd,
@@ -23,6 +24,7 @@ class FrostedControlPair extends StatefulWidget {
 
   /// Fades the frosted companion out and disables input while keeping its slot.
   final bool hideCompanion;
+  final VoidCallback? onPrimaryPress;
   final VoidCallback? onPrimaryPullUp;
   final ValueChanged<Offset>? onPrimaryPullUpdate;
 
@@ -92,6 +94,7 @@ class _FrostedControlPairState extends State<FrostedControlPair>
     }
     _pointer = event.pointer;
     _pressOrigin = event.position;
+    widget.onPrimaryPress?.call();
     if (MediaQuery.disableAnimationsOf(context)) return;
     _pressX = event.localPosition.dx;
     _dragStart = _offset;
@@ -110,20 +113,17 @@ class _FrostedControlPairState extends State<FrostedControlPair>
     if (event.pointer != _pointer) return;
     _velocity?.addPosition(event.timeStamp, event.position);
     final delta = event.position - _pressOrigin;
+    final startsDrag = !_dragging;
+    if (startsDrag && delta.distanceSquared < 9) return;
+    _dragging = true;
+    if (startsDrag) _hold?.cancel();
     widget.onPrimaryPullUpdate?.call(delta);
-    if (delta.distanceSquared < 9 && !_dragging) return;
-    final pull = _resistedPull(delta);
-    if (!MediaQuery.disableAnimationsOf(context)) {
-      if (!_dragging) {
-        _dragging = true;
-        _hold?.cancel();
-        _springTo(_pressure, 1, _pressSpring);
-      }
-      var offset = _dragStart + pull;
-      if (offset.distance > _maxTravel) offset *= _maxTravel / offset.distance;
-      _dragX.value = offset.dx;
-      _dragY.value = offset.dy;
-    }
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    if (startsDrag) _springTo(_pressure, 1, _pressSpring);
+    var offset = _dragStart + _resistedPull(delta);
+    if (offset.distance > _maxTravel) offset *= _maxTravel / offset.distance;
+    _dragX.value = offset.dx;
+    _dragY.value = offset.dy;
   }
 
   static Offset _resistedPull(Offset delta) =>

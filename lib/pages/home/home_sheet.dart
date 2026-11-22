@@ -81,7 +81,7 @@ class _HomeSheetState extends State<HomeSheet> {
         MediaQuery.accessibleNavigationOf(context)) {
       return;
     }
-    _hideTimer = Timer(const Duration(seconds: 4), () {
+    _hideTimer = Timer(const Duration(milliseconds: 4500), () {
       if (mounted) setState(() => _visible = false);
     });
   }

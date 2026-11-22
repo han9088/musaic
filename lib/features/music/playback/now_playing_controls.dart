@@ -36,8 +36,7 @@ enum _PullDirection {
 }
 
 class _NowPlayingControlsState extends State<NowPlayingControls> {
-  static const _companionHideThreshold = 12.0;
-  static const _companionRevealDelay = Duration(milliseconds: 200);
+  static const _companionRevealDelay = Duration(seconds: 1);
   static const _horizontalThreshold = 26.0;
   static const _seekDelay = Duration(milliseconds: 420);
   static const _seekInterval = Duration(milliseconds: 300);
@@ -61,24 +60,13 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
 
   void _updatePull(Offset delta) {
     final direction = _horizontalDirection(delta);
-    final movedBeyondSlop =
-        delta.distanceSquared >=
-        _companionHideThreshold * _companionHideThreshold;
-    if (movedBeyondSlop) _cancelCompanionReveal();
-    final hideCompanion = movedBeyondSlop
-        ? delta.dx.abs() > delta.dy.abs()
-        : _hideCompanion;
-    if (!_returning &&
-        _direction == direction &&
-        _hideCompanion == hideCompanion) {
-      return;
-    }
+    if (!_returning && _hideCompanion && _direction == direction) return;
     if (direction != null) _track ??= widget.playback?.currentTrack;
     _seekTimer?.cancel();
     setState(() {
       _direction = direction;
       _seeking = false;
-      _hideCompanion = hideCompanion;
+      _hideCompanion = true;
       _returning = false;
     });
     if (direction != null) {
@@ -114,8 +102,7 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
     _seekTimer?.cancel();
     _track = null;
     _didSeek = false;
-    _returning =
-        _direction != null || (_hideCompanion && _companionRevealTimer == null);
+    _returning = _hideCompanion;
     if (!consumed && canSkip && direction != null) {
       playback!.skip(forward: direction.forward);
       return true;
@@ -181,6 +168,7 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
       companion: widget.companion,
       companionVisible: widget.companionVisible,
       hideCompanion: _hideCompanion,
+      onPrimaryPress: _cancelCompanionReveal,
       onPrimaryPullUp: widget.onOpenSheet,
       onPrimaryPullUpdate: _updatePull,
       onPrimaryPullEnd: _endPull,

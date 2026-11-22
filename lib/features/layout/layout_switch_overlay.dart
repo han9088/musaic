@@ -61,7 +61,8 @@ class _LayoutSwitchOverlayState extends State<LayoutSwitchOverlay> {
     if (_showButton &&
         !_buttonHovered &&
         !MediaQuery.accessibleNavigationOf(context)) {
-      _hideTimer = Timer(Duration(seconds: widget.coverFlow ? 4 : 3), () {
+      final delay = Duration(milliseconds: widget.coverFlow ? 3500 : 2500);
+      _hideTimer = Timer(delay, () {
         if (mounted) setState(() => _visible = false);
       });
     }

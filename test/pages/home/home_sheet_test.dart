@@ -316,6 +316,9 @@ void main() {
       final noiseOpacity = noise()!.opacity;
       expect(noiseOpacity, 0.08);
       await tester.pump(const Duration(seconds: 4));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(tester.widget<Opacity>(opacity).opacity, 1);
+      await tester.pump(const Duration(milliseconds: 100));
       await tester.pump(const Duration(milliseconds: 100));
       expect(tester.widget<Opacity>(opacity).opacity, closeTo(0.5, 0.01));
       expect(noise()?.opacity, closeTo(noiseOpacity / 2, 0.001));

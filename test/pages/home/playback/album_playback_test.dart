@@ -145,7 +145,7 @@ void main() {
         find.widgetWithIcon(IconButton, PhosphorIcons.pauseFill),
         findsOneWidget,
       );
-      await tester.pump(const Duration(milliseconds: 199));
+      await tester.pump(const Duration(milliseconds: 999));
       expect(switchOpacity(), 0);
       await tester.pump(const Duration(milliseconds: 1));
       await tester.pump(const Duration(milliseconds: 100));
@@ -169,8 +169,14 @@ void main() {
     await fastForward.up();
     await tester.pump();
     expect(find.byIcon(PhosphorIcons.fastForwardFill), findsOneWidget);
-    await tester.pumpAndSettle();
+    for (var frame = 0; frame < 32; frame++) {
+      if (tester.getRect(capsule) == restingBounds) break;
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(tester.getRect(capsule), restingBounds);
     expect(find.byIcon(PhosphorIcons.fastForwardFill), findsNothing);
+    await tester.pump(const Duration(milliseconds: 950));
+    expect(switchOpacity(), 0);
 
     provider.emit(
       first.reference,
@@ -179,6 +185,10 @@ void main() {
       duration: trackDuration,
     );
     final rewind = await tester.startGesture(tester.getCenter(capsule));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(switchOpacity(), 0);
+    expect(layoutSwitch.hitTestable(), findsNothing);
     await rewind.moveBy(const Offset(-56, 0));
     await tester.pump(const Duration(milliseconds: 450));
     expect(find.byIcon(PhosphorIcons.rewindFill), findsOneWidget);
@@ -192,16 +202,26 @@ void main() {
     expect(provider.skips, [false, true]);
     expect(settingsOpens, 0);
 
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(switchOpacity(), 1);
     final pullUp = await tester.startGesture(restingCenter);
-    await pullUp.moveBy(const Offset(0, -140));
+    await pullUp.moveBy(const Offset(0, -8));
     await tester.pump();
-    expect(layoutSwitch.hitTestable(), findsOneWidget);
+    expect(layoutSwitch.hitTestable(), findsNothing);
+    await pullUp.moveBy(const Offset(0, -132));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(switchOpacity(), greaterThan(0));
+    expect(switchOpacity(), inExclusiveRange(0, 1));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(switchOpacity(), 0);
     expect(settingsOpens, 0);
     await pullUp.up();
     await tester.pumpAndSettle();
     expect(settingsOpens, 1);
+    expect(switchOpacity(), 0);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(switchOpacity(), 1);
   });
 }
 
