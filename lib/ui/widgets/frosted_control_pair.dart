@@ -21,7 +21,7 @@ class FrostedControlPair extends StatefulWidget {
   final Widget? companion;
   final bool companionVisible;
 
-  /// Hides the companion's paint and input while keeping its layout slot.
+  /// Fades the frosted companion out and disables input while keeping its slot.
   final bool hideCompanion;
   final VoidCallback? onPrimaryPullUp;
   final ValueChanged<Offset>? onPrimaryPullUpdate;
@@ -314,17 +314,21 @@ class _FrostedControlPairState extends State<FrostedControlPair>
               bottom: 0,
               right: 0,
               width: _companionWidth,
-              child: Offstage(
-                offstage: widget.hideCompanion,
-                child: Transform.translate(
-                  offset: Offset(-pull, 0),
-                  transformHitTests: false,
-                  child: Transform.scale(
-                    scale: companionScale,
+              child: IgnorePointer(
+                ignoring: widget.hideCompanion,
+                child: ExcludeSemantics(
+                  excluding: widget.hideCompanion,
+                  child: Transform.translate(
+                    offset: Offset(-pull, 0),
                     transformHitTests: false,
-                    child: _SharedGlassBackdrop(
-                      active: connected,
-                      child: companion,
+                    child: Transform.scale(
+                      scale: companionScale,
+                      transformHitTests: false,
+                      child: _SharedGlassBackdrop(
+                        active: connected,
+                        hidden: widget.hideCompanion,
+                        child: companion,
+                      ),
                     ),
                   ),
                 ),
@@ -354,13 +358,18 @@ class _FrostedControlPairState extends State<FrostedControlPair>
 }
 
 class _SharedGlassBackdrop extends InheritedWidget {
-  const _SharedGlassBackdrop({required this.active, required super.child});
+  const _SharedGlassBackdrop({
+    required this.active,
+    required super.child,
+    this.hidden = false,
+  });
 
   final bool active;
+  final bool hidden;
 
   @override
   bool updateShouldNotify(_SharedGlassBackdrop oldWidget) =>
-      active != oldWidget.active;
+      active != oldWidget.active || hidden != oldWidget.hidden;
 }
 
 class _ControlGlassClipper extends CustomClipper<Path> {

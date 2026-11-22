@@ -163,7 +163,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAbout.
   ///
   /// In zh, this message translates to:
-  /// **'关于'**
+  /// **'关于 Musaic'**
   String get settingsAbout;
 
   /// No description provided for @settingsVersion.

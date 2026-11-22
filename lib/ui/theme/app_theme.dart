@@ -9,7 +9,7 @@ import 'app_radius.dart';
 import 'app_typography.dart';
 
 const appNavigationBackIconSize = 20.0;
-const settingsContentInset = 20.0;
+const settingsContentInset = 28.0;
 const settingsItemPadding = EdgeInsets.symmetric(
   horizontal: settingsContentInset,
 );

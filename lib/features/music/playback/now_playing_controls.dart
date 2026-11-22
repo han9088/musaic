@@ -37,11 +37,13 @@ enum _PullDirection {
 
 class _NowPlayingControlsState extends State<NowPlayingControls> {
   static const _companionHideThreshold = 12.0;
+  static const _companionRevealDelay = Duration(milliseconds: 200);
   static const _horizontalThreshold = 26.0;
   static const _seekDelay = Duration(milliseconds: 420);
   static const _seekInterval = Duration(milliseconds: 300);
 
   Timer? _seekTimer;
+  Timer? _companionRevealTimer;
   MusicReference? _track;
   _PullDirection? _direction;
   bool _seeking = false;
@@ -59,9 +61,11 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
 
   void _updatePull(Offset delta) {
     final direction = _horizontalDirection(delta);
-    final hideCompanion =
+    final movedBeyondSlop =
         delta.distanceSquared >=
-            _companionHideThreshold * _companionHideThreshold
+        _companionHideThreshold * _companionHideThreshold;
+    if (movedBeyondSlop) _cancelCompanionReveal();
+    final hideCompanion = movedBeyondSlop
         ? delta.dx.abs() > delta.dy.abs()
         : _hideCompanion;
     if (!_returning &&
@@ -110,7 +114,8 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
     _seekTimer?.cancel();
     _track = null;
     _didSeek = false;
-    _returning = _direction != null || _hideCompanion;
+    _returning =
+        _direction != null || (_hideCompanion && _companionRevealTimer == null);
     if (!consumed && canSkip && direction != null) {
       playback!.skip(forward: direction.forward);
       return true;
@@ -119,11 +124,28 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
   }
 
   void _finishReturn() {
-    if (_returning) setState(_resetPull);
+    if (!_returning) return;
+    final delayCompanion = _hideCompanion && widget.companion != null;
+    setState(() {
+      _resetPull();
+      _hideCompanion = delayCompanion;
+    });
+    if (delayCompanion) {
+      _companionRevealTimer = Timer(_companionRevealDelay, () {
+        _companionRevealTimer = null;
+        setState(() => _hideCompanion = false);
+      });
+    }
+  }
+
+  void _cancelCompanionReveal() {
+    _companionRevealTimer?.cancel();
+    _companionRevealTimer = null;
   }
 
   void _resetPull() {
     _seekTimer?.cancel();
+    _cancelCompanionReveal();
     _track = null;
     _direction = null;
     _seeking = false;
@@ -141,6 +163,7 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
   @override
   void dispose() {
     _seekTimer?.cancel();
+    _cancelCompanionReveal();
     super.dispose();
   }
 

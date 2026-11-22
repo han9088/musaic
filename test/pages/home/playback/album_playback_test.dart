@@ -7,6 +7,7 @@ import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/features/music/playback/now_playing_controls.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/music/music_provider.dart';
+import 'package:musaic/ui/widgets/frosted_control_surface.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 void main() {
@@ -85,10 +86,13 @@ void main() {
             visible: true,
             onOpenSheet: () => settingsOpens++,
             companionVisible: true,
-            companion: IconButton(
-              key: switchKey,
-              onPressed: () {},
-              icon: const Icon(PhosphorIcons.cards),
+            companion: FrostedControlSurface(
+              visible: true,
+              child: IconButton(
+                key: switchKey,
+                onPressed: () {},
+                icon: const Icon(PhosphorIcons.cards),
+              ),
             ),
           ),
         ),
@@ -97,6 +101,12 @@ void main() {
 
     final capsule = find.byType(NowPlayingCapsule);
     final layoutSwitch = find.byKey(switchKey);
+    final layoutSwitchOpacity = find.ancestor(
+      of: layoutSwitch,
+      matching: find.byType(Opacity),
+    );
+    double switchOpacity() =>
+        tester.widget<Opacity>(layoutSwitchOpacity).opacity;
     final restingBounds = tester.getRect(capsule);
     final restingCenter = restingBounds.center;
     for (final (dx, icon, expectedSkips) in [
@@ -106,8 +116,9 @@ void main() {
       final drag = await tester.startGesture(restingCenter);
       await drag.moveBy(Offset(dx.sign * 16, 0));
       await tester.pump();
-      expect(layoutSwitch, findsNothing);
       expect(layoutSwitch.hitTestable(), findsNothing);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(switchOpacity(), inExclusiveRange(0, 1));
 
       await drag.moveBy(Offset(dx - dx.sign * 16, 0));
       await tester.pump();
@@ -128,11 +139,20 @@ void main() {
       }
       expect(tester.getRect(capsule), restingBounds);
       expect(feedback, findsNothing);
-      expect(layoutSwitch.hitTestable(), findsOneWidget);
+      expect(switchOpacity(), 0);
+      expect(layoutSwitch.hitTestable(), findsNothing);
       expect(
         find.widgetWithIcon(IconButton, PhosphorIcons.pauseFill),
         findsOneWidget,
       );
+      await tester.pump(const Duration(milliseconds: 199));
+      expect(switchOpacity(), 0);
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(switchOpacity(), inExclusiveRange(0, 1));
+      await tester.pumpAndSettle();
+      expect(switchOpacity(), 1);
+      expect(layoutSwitch.hitTestable(), findsOneWidget);
     }
     expect(provider.skips, [false, true]);
     expect(provider.seekPositions, isEmpty);
@@ -176,6 +196,8 @@ void main() {
     await pullUp.moveBy(const Offset(0, -140));
     await tester.pump();
     expect(layoutSwitch.hitTestable(), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(switchOpacity(), greaterThan(0));
     expect(settingsOpens, 0);
     await pullUp.up();
     await tester.pumpAndSettle();

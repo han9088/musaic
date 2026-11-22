@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../ui/theme/app_theme.dart';
 import 'xerox_palette.dart';
 
 class XeroxPalettePicker extends StatelessWidget {
@@ -19,7 +20,12 @@ class XeroxPalettePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(
+        settingsContentInset,
+        4,
+        settingsContentInset,
+        8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

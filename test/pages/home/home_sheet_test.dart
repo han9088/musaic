@@ -61,6 +61,7 @@ void main() {
     final support = find.text(l10n.settingsSupport);
     final rate = find.widgetWithText(ListTile, l10n.settingsRateApp);
     final share = find.widgetWithText(ListTile, l10n.settingsShareApp);
+    expect(tester.getTopLeft(support).dx - tester.getTopLeft(about).dx, 28);
     expect(
       tester.getTopLeft(support).dy,
       greaterThan(tester.getBottomLeft(about).dy),
@@ -119,7 +120,7 @@ void main() {
         final diagnostics = find.widgetWithText(ListTile, 'Troubleshooting');
         expect(tester.widget<ListTile>(diagnostics).onTap, isNull);
         expect(tester.widget<ListTile>(diagnostics).trailing, isNull);
-        final aboutEntry = find.widgetWithText(ListTile, 'About');
+        final aboutEntry = find.widgetWithText(ListTile, 'About Musaic');
         final entryArrow = tester.widget<Icon>(
           find.descendant(
             of: aboutEntry,
@@ -132,7 +133,7 @@ void main() {
         await tester.tap(aboutEntry);
         await tester.pumpAndSettle();
         final about = find.byWidgetPredicate(
-          (widget) => widget is SettingsPage && widget.title == 'About',
+          (widget) => widget is SettingsPage && widget.title == 'About Musaic',
         );
         expect(about, findsOneWidget);
         expect(
@@ -145,6 +146,11 @@ void main() {
         expect(aboutRows.map((row) => row.leading), everyElement(isNull));
         final versionLabel = find.text('Version');
         final versionValue = find.text('1.0.0 (1)');
+        expect(tester.getTopLeft(versionLabel).dx, 28);
+        expect(
+          tester.getSize(about).width - tester.getTopRight(versionValue).dx,
+          28,
+        );
         expect(
           tester.getTopLeft(versionValue).dx,
           greaterThan(tester.getTopRight(versionLabel).dx),
@@ -152,7 +158,7 @@ void main() {
         final detailArrows = tester.widgetList<Icon>(
           find.descendant(
             of: about,
-            matching: find.byIcon(PhosphorIcons.caretRight),
+            matching: find.byIcon(PhosphorIcons.caretLeft),
           ),
         );
         expect(detailArrows.map((icon) => icon.size), [12, 12]);
@@ -213,6 +219,11 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(tester.getTopLeft(detail), Offset.zero);
+          final body = tester.getRect(
+            find.descendant(of: detail, matching: find.byType(SelectableText)),
+          );
+          expect(body.left, 28);
+          expect(width - body.right, 28);
           expect(
             find.byIcon(PhosphorIcons.caretLeft).hitTestable(),
             findsOneWidget,
@@ -492,6 +503,10 @@ void main() {
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
     expect(toggle, findsOneWidget);
     final appearance = find.widgetWithText(ListTile, 'Appearance & display');
+    expect(
+      tester.getTopLeft(toggle).dy,
+      lessThan(tester.getTopLeft(appearance).dy),
+    );
     final feedback = Theme.of(tester.element(appearance));
     expect(feedback.splashFactory, InkRipple.splashFactory);
     expect(feedback.splashColor, Colors.white.withValues(alpha: 0.10));

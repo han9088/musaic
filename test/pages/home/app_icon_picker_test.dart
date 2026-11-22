@@ -30,10 +30,15 @@ void main() {
           final third = tester.getTopLeft(tile(AppIconChoice.mosaic));
           final nextRow = tester.getTopLeft(tile(AppIconChoice.vinyl));
           expect(third.dx, greaterThan(first.dx));
-          expect(third.dy, first.dy);
+          expect(
+            tester.getCenter(tile(AppIconChoice.mosaic)).dy,
+            tester.getCenter(tile(AppIconChoice.vinylPrimary)).dy,
+          );
           expect(nextRow.dx, first.dx);
           expect(nextRow.dy, greaterThan(first.dy));
           final table = find.byType(Table);
+          expect(tester.getTopLeft(table).dx, 28);
+          expect(tester.getTopRight(table).dx, 390 - 28);
           final grid = tester.renderObject<RenderTable>(table);
           for (final (rowIndex, rowChoice) in [
             (0, AppIconChoice.vinylPrimary),

@@ -175,7 +175,10 @@ class _AppIconPickerState extends State<AppIconPicker> {
                   ),
                 ),
                 if (_changing)
-                  const LinearProgressIndicator(color: Colors.white),
+                  const Padding(
+                    padding: settingsItemPadding,
+                    child: LinearProgressIndicator(color: Colors.white),
+                  ),
               ],
             );
           },

@@ -111,17 +111,6 @@ class SettingsSheet extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                if (controller != null)
-                                  _section(
-                                    PhosphorIcons.musicNotes,
-                                    l10n.musicSource,
-                                    SettingsSection.musicSource,
-                                  ),
-                                _section(
-                                  PhosphorIcons.paintBrush,
-                                  l10n.settingsAppearance,
-                                  SettingsSection.appearance,
-                                ),
                                 if ((xeroxEnabled, onXeroxChanged) case (
                                   final mode?,
                                   final onChanged?,
@@ -156,6 +145,17 @@ class SettingsSheet extends StatelessWidget {
                                         ),
                                     child: xeroxPalettePicker,
                                   ),
+                                if (controller != null)
+                                  _section(
+                                    PhosphorIcons.musicNotes,
+                                    l10n.musicSource,
+                                    SettingsSection.musicSource,
+                                  ),
+                                _section(
+                                  PhosphorIcons.paintBrush,
+                                  l10n.settingsAppearance,
+                                  SettingsSection.appearance,
+                                ),
                                 SettingsSectionHeading(
                                   l10n.settingsAboutAndHelp,
                                 ),

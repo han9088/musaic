@@ -27,21 +27,19 @@ class FrostedControlSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final backdropPaintedByPair =
-        context
-            .dependOnInheritedWidgetOfExactType<_SharedGlassBackdrop>()
-            ?.active ??
-        false;
+    final sharedBackdrop = context
+        .dependOnInheritedWidgetOfExactType<_SharedGlassBackdrop>();
+    final showSurface = visible && sharedBackdrop?.hidden != true;
     return ClipPath(
       clipper: const ShapeBorderClipper(shape: StadiumBorder()),
       child: TweenAnimationBuilder<double>(
-        tween: Tween(end: visible ? 1.0 : 0.0),
+        tween: Tween(end: showSurface ? 1.0 : 0.0),
         duration: MediaQuery.disableAnimationsOf(context)
             ? Duration.zero
             : const Duration(milliseconds: 200),
         child: child,
         builder: (context, opacity, child) => _material(
-          opacity: backdropPaintedByPair ? 0 : opacity,
+          opacity: sharedBackdrop?.active == true ? 0 : opacity,
           shape: StadiumBorder(
             side: outline.copyWith(
               color: outline.color.withValues(alpha: outline.color.a * opacity),

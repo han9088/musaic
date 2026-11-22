@@ -44,7 +44,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDiagnostics => 'Troubleshooting';
 
   @override
-  String get settingsAbout => 'About';
+  String get settingsAbout => 'About Musaic';
 
   @override
   String get settingsVersion => 'Version';

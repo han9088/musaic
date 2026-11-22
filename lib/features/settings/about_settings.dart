@@ -128,7 +128,7 @@ class _AboutSettingsState extends State<AboutSettings> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    const arrow = Icon(PhosphorIcons.caretRight, size: settingsItemArrowSize);
+    const arrow = Icon(PhosphorIcons.caretLeft, size: settingsItemArrowSize);
     const tagline = 'Music in Mosaic';
     const taglineStyle = TextStyle(fontFamily: 'Italianno', fontSize: 24);
     return Column(

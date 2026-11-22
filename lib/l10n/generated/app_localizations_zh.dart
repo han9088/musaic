@@ -42,7 +42,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDiagnostics => '问题诊断';
 
   @override
-  String get settingsAbout => '关于';
+  String get settingsAbout => '关于 Musaic';
 
   @override
   String get settingsVersion => '版本';
