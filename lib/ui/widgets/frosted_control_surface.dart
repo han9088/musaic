@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/gestures.dart' show VelocityTracker, kPrimaryButton;
-import 'package:flutter/physics.dart' show SpringSimulation;
+import 'package:flutter/physics.dart' show SpringSimulation, Tolerance;
 import 'package:material_ui/material_ui.dart';
 
 part 'frosted_control_pair.dart';

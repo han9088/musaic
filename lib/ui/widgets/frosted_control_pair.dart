@@ -9,14 +9,28 @@ class FrostedControlPair extends StatefulWidget {
     required this.primaryVisible,
     this.companion,
     this.companionVisible = false,
+    this.hideCompanion = false,
     this.onPrimaryPullUp,
+    this.onPrimaryPullUpdate,
+    this.onPrimaryPullEnd,
+    this.onPrimaryPullSettled,
   });
 
   final Widget primary;
   final bool primaryVisible;
   final Widget? companion;
   final bool companionVisible;
+
+  /// Hides the companion's paint and input while keeping its layout slot.
+  final bool hideCompanion;
   final VoidCallback? onPrimaryPullUp;
+  final ValueChanged<Offset>? onPrimaryPullUpdate;
+
+  /// Receives the pull on release or null on cancel. Return true to consume it.
+  final bool Function(Offset?)? onPrimaryPullEnd;
+
+  /// Called once the primary control has returned to its resting shape.
+  final VoidCallback? onPrimaryPullSettled;
 
   @override
   State<FrostedControlPair> createState() => _FrostedControlPairState();
@@ -29,6 +43,12 @@ class _FrostedControlPairState extends State<FrostedControlPair>
   static const _paintInset = 90.0;
   static const _maxTravel = 34.0;
   static const _pullUpThreshold = 27.0;
+  // End the return once the remaining motion is smaller than a visible shift.
+  static const _returnOffsetTolerance = Tolerance(distance: 0.5, velocity: 12);
+  static const _returnPressureTolerance = Tolerance(
+    distance: 0.04,
+    velocity: 1,
+  );
   static final _pressSpring = SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 430,
@@ -90,6 +110,7 @@ class _FrostedControlPairState extends State<FrostedControlPair>
     if (event.pointer != _pointer) return;
     _velocity?.addPosition(event.timeStamp, event.position);
     final delta = event.position - _pressOrigin;
+    widget.onPrimaryPullUpdate?.call(delta);
     if (delta.distanceSquared < 9 && !_dragging) return;
     final pull = _resistedPull(delta);
     if (!MediaQuery.disableAnimationsOf(context)) {
@@ -117,6 +138,7 @@ class _FrostedControlPairState extends State<FrostedControlPair>
         : Offset.zero;
     final delta = event.position - _pressOrigin;
     _release(velocity);
+    if (widget.onPrimaryPullEnd?.call(lifted ? delta : null) == true) return;
     if (lifted &&
         -delta.dy > delta.dx.abs() &&
         -_resistedPull(delta).dy >= _pullUpThreshold) {
@@ -129,40 +151,64 @@ class _FrostedControlPairState extends State<FrostedControlPair>
     _velocity = null;
     _dragging = false;
     _hold?.cancel();
-    _springTo(_pressure, 0, _releaseSpring);
+    final pressure = _springTo(
+      _pressure,
+      0,
+      _releaseSpring,
+      tolerance: _returnPressureTolerance,
+    );
     final momentum = velocity * 0.18;
-    _springTo(
+    final horizontal = _springTo(
       _dragX,
       0,
       _dragSpring,
       velocity: momentum.dx.clamp(-150.0, 150.0),
+      tolerance: _returnOffsetTolerance,
     );
-    _springTo(
+    final vertical = _springTo(
       _dragY,
       0,
       _dragSpring,
       velocity: momentum.dy.clamp(-150.0, 150.0),
+      tolerance: _returnOffsetTolerance,
     );
+    if (widget.onPrimaryPullSettled != null) {
+      unawaited(_notifyWhenSettled([pressure, horizontal, vertical]));
+    }
   }
 
-  void _springTo(
+  Future<void> _notifyWhenSettled(List<TickerFuture> springs) async {
+    try {
+      await Future.wait(
+        springs.map((spring) => spring.orCancel),
+        eagerError: true,
+      );
+    } on TickerCanceled {
+      return;
+    }
+    if (mounted && _pointer == null) widget.onPrimaryPullSettled?.call();
+  }
+
+  TickerFuture _springTo(
     AnimationController controller,
     double target,
     SpringDescription spring, {
     double? velocity,
+    Tolerance tolerance = Tolerance.defaultTolerance,
   }) {
     final initialVelocity = velocity ?? controller.velocity;
     if (controller.value == target && initialVelocity == 0) {
       controller.stop();
-      return;
+      return TickerFuture.complete();
     }
-    controller.animateWith(
+    return controller.animateWith(
       SpringSimulation(
         spring,
         controller.value,
         target,
         initialVelocity,
         snapToEnd: true,
+        tolerance: tolerance,
       ),
     );
   }
@@ -203,6 +249,7 @@ class _FrostedControlPairState extends State<FrostedControlPair>
           companion != null &&
               widget.primaryVisible &&
               widget.companionVisible &&
+              !widget.hideCompanion &&
               upwardPull <= 0
           ? math.max(pressConnection * proximity, dragConnection)
           : 0.0;
@@ -267,15 +314,18 @@ class _FrostedControlPairState extends State<FrostedControlPair>
               bottom: 0,
               right: 0,
               width: _companionWidth,
-              child: Transform.translate(
-                offset: Offset(-pull, 0),
-                transformHitTests: false,
-                child: Transform.scale(
-                  scale: companionScale,
+              child: Offstage(
+                offstage: widget.hideCompanion,
+                child: Transform.translate(
+                  offset: Offset(-pull, 0),
                   transformHitTests: false,
-                  child: _SharedGlassBackdrop(
-                    active: connected,
-                    child: companion,
+                  child: Transform.scale(
+                    scale: companionScale,
+                    transformHitTests: false,
+                    child: _SharedGlassBackdrop(
+                      active: connected,
+                      child: companion,
+                    ),
                   ),
                 ),
               ),

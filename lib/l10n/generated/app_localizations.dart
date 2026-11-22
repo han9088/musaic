@@ -112,6 +112,132 @@ abstract class AppLocalizations {
   /// **'设置'**
   String get settings;
 
+  /// No description provided for @settingsAboutAndHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于与帮助'**
+  String get settingsAboutAndHelp;
+
+  /// No description provided for @settingsSupport.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持'**
+  String get settingsSupport;
+
+  /// No description provided for @settingsRateApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'为Musaic评分'**
+  String get settingsRateApp;
+
+  /// No description provided for @settingsShareApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'分享 Musaic'**
+  String get settingsShareApp;
+
+  /// No description provided for @settingsReviewUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前无法打开商店评分页面。'**
+  String get settingsReviewUnavailable;
+
+  /// No description provided for @settingsShareLinkCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'Musaic 链接已复制。'**
+  String get settingsShareLinkCopied;
+
+  /// No description provided for @settingsShareUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时无法分享 Musaic，请稍后重试。'**
+  String get settingsShareUnavailable;
+
+  /// No description provided for @settingsDiagnostics.
+  ///
+  /// In zh, this message translates to:
+  /// **'问题诊断'**
+  String get settingsDiagnostics;
+
+  /// No description provided for @settingsAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get settingsAbout;
+
+  /// No description provided for @settingsVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'版本'**
+  String get settingsVersion;
+
+  /// No description provided for @settingsVersionUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取版本'**
+  String get settingsVersionUnavailable;
+
+  /// No description provided for @settingsCheckUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查更新'**
+  String get settingsCheckUpdate;
+
+  /// No description provided for @settingsNoRelease.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时没有公开发布的版本。'**
+  String get settingsNoRelease;
+
+  /// No description provided for @settingsUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前已是最新发布版本。'**
+  String get settingsUpToDate;
+
+  /// No description provided for @settingsUpdateAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'新版本 {version} 已发布。'**
+  String settingsUpdateAvailable(String version);
+
+  /// No description provided for @settingsUpdateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法检查更新，请稍后重试。'**
+  String get settingsUpdateFailed;
+
+  /// No description provided for @settingsViewRelease.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看发布版本'**
+  String get settingsViewRelease;
+
+  /// No description provided for @settingsPrivacyPolicy.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私政策'**
+  String get settingsPrivacyPolicy;
+
+  /// No description provided for @settingsPrivacyDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'Musaic 读取你授权的音乐库和选择的文件夹来展示专辑和封面。曲库索引、封面缓存和偏好设置保存在设备上。\n\nCover Flow 的相机功能需要相机权限。你拍摄的照片可以保存到系统相册。你可以在系统设置里管理相关权限。\n\n检查更新时，Musaic 会向 GitHub 请求公开发布信息。请求不会包含你的音乐、照片或曲库内容。'**
+  String get settingsPrivacyDetails;
+
+  /// No description provided for @settingsWhatsNew.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新内容'**
+  String get settingsWhatsNew;
+
+  /// No description provided for @settingsWhatsNewDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'• 竖屏也可使用 Cover Flow。横屏时可点按旋转按钮回到竖屏画布。\n\n• 翻转展开的封面会在有高清原图时加载更大尺寸。\n\n• 从 Cover Flow 返回画布时会复用已加载的本地封面。'**
+  String get settingsWhatsNewDetails;
+
   /// No description provided for @settingsAppearance.
   ///
   /// In zh, this message translates to:
@@ -346,6 +472,30 @@ abstract class AppLocalizations {
   /// **'暂停'**
   String get musicPause;
 
+  /// No description provided for @musicPreviousTrack.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一首'**
+  String get musicPreviousTrack;
+
+  /// No description provided for @musicNextTrack.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一首'**
+  String get musicNextTrack;
+
+  /// No description provided for @musicRewind.
+  ///
+  /// In zh, this message translates to:
+  /// **'快退五秒'**
+  String get musicRewind;
+
+  /// No description provided for @musicFastForward.
+  ///
+  /// In zh, this message translates to:
+  /// **'快进五秒'**
+  String get musicFastForward;
+
   /// No description provided for @musicDirectories.
   ///
   /// In zh, this message translates to:
@@ -433,7 +583,7 @@ abstract class AppLocalizations {
   /// No description provided for @xeroxMode.
   ///
   /// In zh, this message translates to:
-  /// **'Xerox 化'**
+  /// **'Xerox'**
   String get xeroxMode;
 
   /// No description provided for @xeroxPaperColor.

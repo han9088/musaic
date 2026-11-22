@@ -5,13 +5,14 @@ import 'dart:ui';
 
 import 'package:material_ui/material_ui.dart';
 
+import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import 'app_jelly_transition.dart';
 
 const appDialogBarrierColor = Color(0x0A000000);
 const appDialogNoiseOpacity = 0.06;
-const appDialogSurfaceColor = Color.fromARGB(242, 255, 255, 255);
-const appDialogBorderColor = Color(0x14000000);
+const appDialogSurfaceColor = AppColors.dialogSurface;
+const appDialogBorderColor = Color(0x1FFFFFFF);
 const appDialogBlurSigma = 4.0;
 const appDialogNoiseAsset = 'assets/textures/dialog_noise.png';
 
@@ -123,7 +124,7 @@ class AppAlertDialog extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.large),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x1A000000),
+                    color: AppColors.dialogShadow,
                     blurRadius: 32,
                     offset: Offset(0, 12),
                   ),
@@ -161,7 +162,9 @@ class AppAlertDialog extends StatelessWidget {
                                   child: DefaultTextStyle(
                                     style:
                                         dialogTheme.titleTextStyle ??
-                                        theme.textTheme.headlineSmall!,
+                                        theme.textTheme.headlineSmall!.copyWith(
+                                          color: AppColors.dialogForeground,
+                                        ),
                                     child: title!,
                                   ),
                                 ),
@@ -176,7 +179,9 @@ class AppAlertDialog extends StatelessWidget {
                                   child: DefaultTextStyle(
                                     style:
                                         dialogTheme.contentTextStyle ??
-                                        theme.textTheme.bodyMedium!,
+                                        theme.textTheme.bodyMedium!.copyWith(
+                                          color: AppColors.dialogForeground,
+                                        ),
                                     child: content!,
                                   ),
                                 ),
@@ -188,12 +193,22 @@ class AppAlertDialog extends StatelessWidget {
                                     16,
                                     12,
                                   ),
-                                  child: OverflowBar(
-                                    alignment: MainAxisAlignment.end,
-                                    spacing: 8,
-                                    overflowAlignment: OverflowBarAlignment.end,
-                                    overflowSpacing: 4,
-                                    children: actions,
+                                  child: TextButtonTheme(
+                                    data: TextButtonThemeData(
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            AppColors.dialogForeground,
+                                        disabledForegroundColor: Colors.white38,
+                                      ).merge(theme.textButtonTheme.style),
+                                    ),
+                                    child: OverflowBar(
+                                      alignment: MainAxisAlignment.end,
+                                      spacing: 8,
+                                      overflowAlignment:
+                                          OverflowBarAlignment.end,
+                                      overflowSpacing: 4,
+                                      children: actions,
+                                    ),
                                   ),
                                 ),
                             ],

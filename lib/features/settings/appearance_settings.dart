@@ -26,7 +26,6 @@ class AppearanceSettings extends StatelessWidget {
       if (manualRotation case final rotation?)
         SignalBuilder(
           builder: (context) => SwitchListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
             secondary: const Icon(
               PhosphorIcons.deviceRotate,
               color: Colors.white70,

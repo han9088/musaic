@@ -17,6 +17,7 @@ class AlbumPlayback extends ChangeNotifier {
   StreamSubscription<MusicPlayback>? _subscription;
   Map<String, ProviderAlbum> _albums = {};
   Map<MusicReference, ({ProviderAlbum album, ProviderSong song})> _tracks = {};
+  MusicPlayback? _playbackState;
   ProviderSong? _currentSong;
   String? _albumArtist;
   bool _busy = false;
@@ -27,6 +28,7 @@ class AlbumPlayback extends ChangeNotifier {
   int _generation = 0;
 
   String? get currentTitle => _currentSong?.title ?? title;
+  MusicReference? get currentTrack => _playbackState?.currentItem;
   String? get currentArtist {
     final name = (_currentSong?.artist ?? _albumArtist)?.trim();
     return switch (name?.toLowerCase()) {
@@ -57,6 +59,7 @@ class AlbumPlayback extends ChangeNotifier {
     };
     asset = null;
     title = null;
+    _playbackState = null;
     _currentSong = null;
     _albumArtist = null;
     playing = false;
@@ -64,8 +67,15 @@ class AlbumPlayback extends ChangeNotifier {
     _subscription = provider?.playback.listen(
       (state) {
         if (generation != _generation) return;
+        final trackChanged = currentTrack != state.currentItem;
+        // Keep the seek position current without rebuilding on position ticks.
+        _playbackState = state;
         final track = _tracks[state.currentItem];
-        if (_currentSong == track?.song && playing == state.isPlaying) return;
+        if (!trackChanged &&
+            _currentSong == track?.song &&
+            playing == state.isPlaying) {
+          return;
+        }
         _currentSong = track?.song;
         if (track case (:final album, song: _)) {
           asset = albumArtworkSource(album);
@@ -100,7 +110,19 @@ class AlbumPlayback extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    if (!_busy) unawaited(_toggleLocal(asset, title));
+    unawaited(
+      _runProviderCommand((provider) async {
+        final album = _albums[asset];
+        if (album == null) throw StateError('Unknown local album');
+        if (isPlaying(asset, title)) {
+          await provider.pause();
+        } else if (this.asset == asset) {
+          await provider.resume();
+        } else {
+          await provider.play([album.reference]);
+        }
+      }),
+    );
   }
 
   void toggleCurrent() {
@@ -111,20 +133,39 @@ class AlbumPlayback extends ChangeNotifier {
     }
   }
 
-  Future<void> _toggleLocal(String asset, String title) async {
-    final provider = _provider!;
+  void skip({required bool forward}) {
+    if (currentTrack == null) return;
+    unawaited(
+      _runProviderCommand(
+        (provider) => forward ? provider.next() : provider.previous(),
+      ),
+    );
+  }
+
+  void seekStep({required bool forward}) {
+    final state = _playbackState;
+    if (state == null ||
+        state.currentItem == null ||
+        state.status == MusicPlaybackStatus.error) {
+      return;
+    }
+    final duration = state.duration ?? _currentSong?.duration;
+    var target = state.position + Duration(seconds: forward ? 5 : -5);
+    if (target.isNegative) target = Duration.zero;
+    if (duration != null && target > duration) target = duration;
+    if (target == state.position) return;
+    unawaited(_runProviderCommand((provider) => provider.seek(target)));
+  }
+
+  Future<void> _runProviderCommand(
+    Future<void> Function(MusicProvider provider) command,
+  ) async {
+    final provider = _provider;
+    if (provider == null || _busy) return;
     final generation = _generation;
     _busy = true;
     try {
-      final album = _albums[asset];
-      if (album == null) throw StateError('Unknown local album');
-      if (isPlaying(asset, title)) {
-        await provider.pause();
-      } else if (this.asset == asset) {
-        await provider.resume();
-      } else {
-        await provider.play([album.reference]);
-      }
+      await command(provider);
     } catch (_) {
       if (generation == _generation) onError?.call();
     } finally {

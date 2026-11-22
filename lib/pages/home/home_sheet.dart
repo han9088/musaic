@@ -6,8 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../features/music/playback/album_playback.dart';
-import '../../features/music/playback/now_playing_capsule.dart';
+import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/presentation/music_source_picker.dart';
+import '../../features/settings/about_settings.dart';
 import '../../features/settings/appearance_settings.dart';
 import '../../features/settings/settings_sheet.dart';
 import '../../l10n/generated/app_localizations.dart';
@@ -16,7 +17,6 @@ import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_spacing.dart';
-import '../../ui/widgets/frosted_control_surface.dart';
 import '../settings/settings_page.dart';
 
 /// 封装或定义首页弹层相关类型与行为，负责页面状态组织与业务流程协调。
@@ -195,6 +195,11 @@ class _HomeSheetState extends State<HomeSheet> {
           manualRotation: widget.manualRotation,
         ),
       ),
+      SettingsSection.about => (
+        '/settings/about',
+        l10n.settingsAbout,
+        const AboutSettings(onOpenDetail: pushSettingsDetail),
+      ),
     };
     route = pushSettingsPage(
       source: source,
@@ -275,16 +280,12 @@ class _HomeSheetState extends State<HomeSheet> {
                   right: 16,
                   bottom: AppSpacing.playbackBottom,
                   child: Center(
-                    child: FrostedControlPair(
-                      primaryVisible: capsuleVisible,
+                    child: NowPlayingControls(
+                      playback: widget.playback,
+                      visible: capsuleVisible,
+                      onOpenSheet: _present,
                       companion: layoutSwitch?.button,
                       companionVisible: layoutSwitch?.visible ?? false,
-                      onPrimaryPullUp: _present,
-                      primary: NowPlayingCapsule(
-                        playback: widget.playback,
-                        visible: capsuleVisible,
-                        onOpenSheet: _present,
-                      ),
                     ),
                   ),
                 ),

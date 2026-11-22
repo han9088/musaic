@@ -197,7 +197,7 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
               borderRadius: BorderRadius.circular(AppRadius.large),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x1A000000),
+                  color: AppColors.dialogShadow,
                   blurRadius: 32,
                   offset: Offset(0, 12),
                 ),
@@ -212,7 +212,7 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
                     DecoratedBox(
                       key: const Key('app-notification-surface'),
                       decoration: BoxDecoration(
-                        color: const Color.fromARGB(242, 255, 255, 255),
+                        color: AppColors.dialogSurface,
                         borderRadius: BorderRadius.circular(AppRadius.large),
                         border: Border.all(color: appNotificationBorderColor),
                       ),
@@ -255,7 +255,7 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
                                           .textTheme
                                           .titleSmall
                                           ?.copyWith(
-                                            color: AppColors.primary,
+                                            color: AppColors.dialogForeground,
                                             fontWeight: FontWeight.w700,
                                           ),
                                     ),
@@ -268,7 +268,9 @@ class _AppNotificationCardState extends State<_AppNotificationCard>
                                     style: Theme.of(context)
                                         .textTheme
                                         .bodyMedium
-                                        ?.copyWith(color: AppColors.primary),
+                                        ?.copyWith(
+                                          color: AppColors.dialogForeground,
+                                        ),
                                   ),
                                 ],
                               ),
@@ -335,10 +337,10 @@ class _NotificationJellySpringCurve extends Curve {
 }
 
 Color _accentColor(AppNotificationType type) => switch (type) {
-  AppNotificationType.info => AppColors.primary,
-  AppNotificationType.success => AppColors.success,
-  AppNotificationType.warning => AppColors.warning,
-  AppNotificationType.error => AppColors.danger,
+  AppNotificationType.info => AppColors.dialogForeground,
+  AppNotificationType.success => AppColors.notificationSuccess,
+  AppNotificationType.warning => AppColors.notificationWarning,
+  AppNotificationType.error => AppColors.notificationError,
 };
 
 IconData _icon(AppNotificationType type) => switch (type) {

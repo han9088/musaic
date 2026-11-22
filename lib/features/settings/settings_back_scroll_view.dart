@@ -13,7 +13,7 @@ class SettingsBackScrollView extends StatefulWidget {
 
   final double distance;
   final ValueChanged<double> onPull;
-  final ValueChanged<bool> onRelease;
+  final void Function(double fraction, {required bool canceled}) onRelease;
   final List<Widget> slivers;
 
   @override
@@ -21,7 +21,6 @@ class SettingsBackScrollView extends StatefulWidget {
 }
 
 class _SettingsBackScrollViewState extends State<SettingsBackScrollView> {
-  static const _dismissFraction = 0.22;
   double _pull = 0;
 
   double _applyDragOffset(ScrollMetrics position, double offset) {
@@ -37,9 +36,9 @@ class _SettingsBackScrollViewState extends State<SettingsBackScrollView> {
 
   void _finishPull({required bool canceled}) {
     if (_pull == 0) return;
-    final dismiss = !canceled && _pull >= widget.distance * _dismissFraction;
+    final fraction = _pull / widget.distance;
     _pull = 0;
-    widget.onRelease(dismiss);
+    widget.onRelease(fraction, canceled: canceled);
   }
 
   @override

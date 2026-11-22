@@ -5,8 +5,8 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../features/settings/settings_back_scroll_view.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
-
-const _slideCurve = Curves.easeInOutCubic;
+import '../../ui/theme/app_theme.dart';
+import '../../ui/transitions/directional_push_route.dart';
 
 PageRoute<void> pushSettingsPage({
   required BuildContext source,
@@ -17,78 +17,47 @@ PageRoute<void> pushSettingsPage({
 }) {
   final sheet = BottomSheetContent.of(source);
   final distance = navigator.overlay!.context.size!.height;
-  final slide = CurveTween(curve: _slideCurve);
-  final duration = MediaQuery.disableAnimationsOf(source)
-      ? Duration.zero
-      : const Duration(milliseconds: 420);
-  late final _SettingsPageRoute route;
-  route = _SettingsPageRoute(
+  late final DirectionalPushRoute<void> route;
+  route = DirectionalPushRoute<void>(
+    direction: AxisDirection.up,
+    opaque: false,
     settings: RouteSettings(name: path),
-    duration: duration,
-    pageBuilder: (_, _, _) => SettingsPage(
+    animate: !MediaQuery.disableAnimationsOf(source),
+    builder: (_) => SettingsPage(
       title: title,
       body: body,
-      distance: distance,
-      onPull: route.updatePull,
-      onRelease: route.finishPull,
-    ),
-    transitionsBuilder: (_, animation, _, child) => AnimatedBuilder(
-      animation: animation,
-      child: child,
-      builder: (_, child) => ClipRect(
-        child: Transform.translate(
-          offset: Offset(0, distance * (1 - slide.evaluate(animation))),
-          child: IgnorePointer(ignoring: !animation.isCompleted, child: child),
-        ),
+      backIcon: PhosphorIcons.caretDown,
+      pullToDismiss: (
+        distance: distance,
+        onPull: route.updateDismissGesture,
+        onRelease: route.finishDismissGesture,
       ),
     ),
   );
   unawaited(navigator.push(route));
   final restoreSheet = sheet.slideOutForRoute(
-    route.sheetAnimation.drive(slide),
+    route.pushProgress,
     distance: distance,
   );
   unawaited(route.completed.whenComplete(restoreSheet));
   return route;
 }
 
-class _SettingsPageRoute extends PageRouteBuilder<void> {
-  _SettingsPageRoute({
-    required super.settings,
-    required super.pageBuilder,
-    required super.transitionsBuilder,
-    required Duration duration,
-  }) : super(
-         // Keep the sheet visible behind the sliding page.
-         opaque: false,
-         transitionDuration: duration,
-         reverseTransitionDuration: duration,
-       );
-
-  // ModalRoute temporarily reports a completed animation during offstage layout.
-  Animation<double> get sheetAnimation => controller!.view;
-
-  // Invert the easing so the page and sheet track the finger in pixels.
-  static final _inverseSlide = Cubic(
-    _slideCurve.b,
-    _slideCurve.a,
-    _slideCurve.d,
-    _slideCurve.c,
+void pushSettingsDetail(BuildContext source, String title, Widget body) {
+  unawaited(
+    Navigator.of(source, rootNavigator: true).push(
+      DirectionalPushRoute<void>(
+        direction: AxisDirection.left,
+        swipeToDismiss: true,
+        animate: !MediaQuery.disableAnimationsOf(source),
+        builder: (_) => SettingsPage(
+          title: title,
+          body: body,
+          backIcon: PhosphorIcons.caretLeft,
+        ),
+      ),
+    ),
   );
-
-  void updatePull(double fraction) {
-    if (!isCurrent) return;
-    controller!.value = _inverseSlide.transform(1 - fraction);
-  }
-
-  void finishPull(bool dismiss) {
-    if (!isCurrent) return;
-    if (dismiss) {
-      navigator!.pop();
-    } else {
-      unawaited(controller!.forward());
-    }
-  }
 }
 
 class SettingsPage extends StatelessWidget {
@@ -96,56 +65,72 @@ class SettingsPage extends StatelessWidget {
     super.key,
     required this.title,
     required this.body,
-    required this.distance,
-    required this.onPull,
-    required this.onRelease,
+    required this.backIcon,
+    this.pullToDismiss,
   });
 
   final String title;
   final Widget body;
-  final double distance;
-  final ValueChanged<double> onPull;
-  final ValueChanged<bool> onRelease;
+  final IconData backIcon;
+  final ({
+    double distance,
+    ValueChanged<double> onPull,
+    void Function(double fraction, {required bool canceled}) onRelease,
+  })?
+  pullToDismiss;
 
   @override
-  Widget build(BuildContext context) => Theme(
-    data: Theme.of(context).copyWith(
-      listTileTheme: const ListTileThemeData(
-        textColor: Colors.white,
-        iconColor: Colors.white70,
-        selectedColor: Colors.white,
+  Widget build(BuildContext context) {
+    final slivers = <Widget>[
+      SliverAppBar(
+        pinned: true,
+        centerTitle: true,
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          iconSize: appNavigationBackIconSize,
+          icon: Icon(backIcon),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
       ),
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-          disabledForegroundColor: Colors.white38,
+      SliverSafeArea(
+        top: false,
+        sliver: SliverToBoxAdapter(
+          child: SettingsInteractionTheme(child: body),
         ),
       ),
-    ),
-    child: Scaffold(
-      backgroundColor: Colors.black,
-      body: SettingsBackScrollView(
-        distance: distance,
-        onPull: onPull,
-        onRelease: onRelease,
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            centerTitle: true,
-            backgroundColor: Colors.black,
+    ];
+    final pull = pullToDismiss;
+    return Theme(
+      data: Theme.of(context).copyWith(
+        listTileTheme: const ListTileThemeData(
+          contentPadding: settingsItemPadding,
+          horizontalTitleGap: settingsItemTitleGap,
+          textColor: Colors.white,
+          iconColor: Colors.white70,
+          selectedColor: Colors.white,
+        ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(
             foregroundColor: Colors.white,
-            scrolledUnderElevation: 0,
-            leading: IconButton(
-              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-              iconSize: 20,
-              icon: const Icon(PhosphorIcons.caretDown),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            title: Text(title, style: const TextStyle(color: Colors.white)),
+            disabledForegroundColor: Colors.white38,
           ),
-          SliverSafeArea(top: false, sliver: SliverToBoxAdapter(child: body)),
-        ],
+        ),
       ),
-    ),
-  );
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: pull == null
+            ? CustomScrollView(slivers: slivers)
+            : SettingsBackScrollView(
+                distance: pull.distance,
+                onPull: pull.onPull,
+                onRelease: pull.onRelease,
+                slivers: slivers,
+              ),
+      ),
+    );
+  }
 }

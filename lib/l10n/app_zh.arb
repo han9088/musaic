@@ -2,6 +2,32 @@
   "@@locale": "zh",
   "appTitle": "Musaic",
   "settings": "设置",
+  "settingsAboutAndHelp": "关于与帮助",
+  "settingsSupport": "支持",
+  "settingsRateApp": "为Musaic评分",
+  "settingsShareApp": "分享 Musaic",
+  "settingsReviewUnavailable": "当前无法打开商店评分页面。",
+  "settingsShareLinkCopied": "Musaic 链接已复制。",
+  "settingsShareUnavailable": "暂时无法分享 Musaic，请稍后重试。",
+  "settingsDiagnostics": "问题诊断",
+  "settingsAbout": "关于",
+  "settingsVersion": "版本",
+  "settingsVersionUnavailable": "无法读取版本",
+  "settingsCheckUpdate": "检查更新",
+  "settingsNoRelease": "暂时没有公开发布的版本。",
+  "settingsUpToDate": "当前已是最新发布版本。",
+  "settingsUpdateAvailable": "新版本 {version} 已发布。",
+  "@settingsUpdateAvailable": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "settingsUpdateFailed": "无法检查更新，请稍后重试。",
+  "settingsViewRelease": "查看发布版本",
+  "settingsPrivacyPolicy": "隐私政策",
+  "settingsPrivacyDetails": "Musaic 读取你授权的音乐库和选择的文件夹来展示专辑和封面。曲库索引、封面缓存和偏好设置保存在设备上。\n\nCover Flow 的相机功能需要相机权限。你拍摄的照片可以保存到系统相册。你可以在系统设置里管理相关权限。\n\n检查更新时，Musaic 会向 GitHub 请求公开发布信息。请求不会包含你的音乐、照片或曲库内容。",
+  "settingsWhatsNew": "更新内容",
+  "settingsWhatsNewDetails": "• 竖屏也可使用 Cover Flow。横屏时可点按旋转按钮回到竖屏画布。\n\n• 翻转展开的封面会在有高清原图时加载更大尺寸。\n\n• 从 Cover Flow 返回画布时会复用已加载的本地封面。",
   "settingsAppearance": "外观与显示",
   "settingsShowLayoutSwitch": "显示布局切换按钮",
   "settingsShowLayoutSwitchDescription": "竖屏也可使用 Cover Flow",
@@ -41,6 +67,10 @@
   "musicNotPlaying": "未在播放",
   "musicPlay": "播放",
   "musicPause": "暂停",
+  "musicPreviousTrack": "上一首",
+  "musicNextTrack": "下一首",
+  "musicRewind": "快退五秒",
+  "musicFastForward": "快进五秒",
   "@musicSourceAlbumCount": {
     "placeholders": {
       "count": {
@@ -90,7 +120,7 @@
   "enterFullscreen": "进入全屏",
   "exitFullscreen": "退出全屏",
   "fullscreenFailed": "无法切换全屏，请重试。",
-  "xeroxMode": "Xerox 化",
+  "xeroxMode": "Xerox",
   "xeroxPaperColor": "纸色",
   "xeroxPaperOriginal": "黑白",
   "xeroxPaperIvory": "暖米白",

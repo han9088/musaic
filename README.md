@@ -10,6 +10,10 @@ mise exec -- flutter pub get
 mise exec -- flutter run
 ```
 
+Settings → Support shares `https://musaic.deskbtm.com` and opens the store
+listing for reviews. For iOS and macOS release builds, pass the numeric Apple
+ID from App Store Connect as `--dart-define=MUSAIC_APP_STORE_ID=<id>`.
+
 ## Android variants
 
 Debug and Release can be installed side by side, following Loive's build-type setup:

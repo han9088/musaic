@@ -45,6 +45,17 @@ void main() {
 
     final surface = find.byKey(const Key('app-alert-dialog-surface'));
     expect(tester.getSize(surface).width, 460);
+    final decorations = tester.widgetList<DecoratedBox>(
+      find.descendant(of: surface, matching: find.byType(DecoratedBox)),
+    );
+    expect(
+      decorations.map((box) => (box.decoration as BoxDecoration).color),
+      contains(const Color.fromARGB(197, 0, 0, 0)),
+    );
+    for (final text in ['Title', 'Content']) {
+      final style = DefaultTextStyle.of(tester.element(find.text(text))).style;
+      expect(style.color, Colors.white);
+    }
     expect(find.byType(BackdropFilter), findsOneWidget);
     final noise = tester.widget<Image>(find.byType(Image));
     expect(noise.fit, BoxFit.cover);

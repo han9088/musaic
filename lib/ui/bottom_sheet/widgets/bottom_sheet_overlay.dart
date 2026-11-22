@@ -1,5 +1,7 @@
 // 文件职责：底部弹层的状态、布局、手势与动画引擎。
 
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import '../controller/bottom_sheet_controller.dart';
@@ -459,7 +461,10 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
 
     if (notification is ScrollEndNotification) {
       final v = notification.dragDetails?.primaryVelocity ?? _lastVelocity;
-      _endSheetDrag(v);
+      // A bouncing scroll can end during layout as the viewport shrinks.
+      scheduleMicrotask(() {
+        if (mounted) _endSheetDrag(v);
+      });
       return false;
     }
 
@@ -470,7 +475,7 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
   Widget build(BuildContext context) {
     if (!_enabled) return widget.child;
 
-    return NotificationListener<ScrollNotification>(
+    final panContent = NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -493,6 +498,16 @@ class _ContentPanWrapperState extends State<_ContentPanWrapper> {
         },
         child: widget.child,
       ),
+    );
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        // Expanding a detent can clamp the scroll offset without scrolling.
+        if (notification.metrics.axis == Axis.vertical) {
+          widget.controller.scrollOffset.value = notification.metrics.pixels;
+        }
+        return false;
+      },
+      child: panContent,
     );
   }
 }

@@ -8,6 +8,14 @@ import 'app_colors.dart';
 import 'app_radius.dart';
 import 'app_typography.dart';
 
+const appNavigationBackIconSize = 20.0;
+const settingsContentInset = 20.0;
+const settingsItemPadding = EdgeInsets.symmetric(
+  horizontal: settingsContentInset,
+);
+const settingsItemArrowSize = 12.0;
+const settingsItemTitleGap = 12.0;
+
 /// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildAppTheme({double fontScale = 1.0}) {
   final base = FlexThemeData.light(
@@ -151,9 +159,9 @@ ThemeData buildSecondaryPageTheme(ThemeData base) => buildSheetTheme(base);
 ThemeData buildSettingsInteractionTheme(ThemeData base) {
   return base.copyWith(
     splashFactory: InkRipple.splashFactory,
-    splashColor: base.colorScheme.onSurface.withValues(alpha: 0.10),
-    highlightColor: base.colorScheme.onSurface.withValues(alpha: 0.10),
-    hoverColor: base.colorScheme.onSurface.withValues(alpha: 0.06),
+    splashColor: Colors.white.withValues(alpha: 0.10),
+    highlightColor: Colors.white.withValues(alpha: 0.10),
+    hoverColor: Colors.white.withValues(alpha: 0.06),
   );
 }
 

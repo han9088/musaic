@@ -18,6 +18,73 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get settingsAboutAndHelp => '关于与帮助';
+
+  @override
+  String get settingsSupport => '支持';
+
+  @override
+  String get settingsRateApp => '为Musaic评分';
+
+  @override
+  String get settingsShareApp => '分享 Musaic';
+
+  @override
+  String get settingsReviewUnavailable => '当前无法打开商店评分页面。';
+
+  @override
+  String get settingsShareLinkCopied => 'Musaic 链接已复制。';
+
+  @override
+  String get settingsShareUnavailable => '暂时无法分享 Musaic，请稍后重试。';
+
+  @override
+  String get settingsDiagnostics => '问题诊断';
+
+  @override
+  String get settingsAbout => '关于';
+
+  @override
+  String get settingsVersion => '版本';
+
+  @override
+  String get settingsVersionUnavailable => '无法读取版本';
+
+  @override
+  String get settingsCheckUpdate => '检查更新';
+
+  @override
+  String get settingsNoRelease => '暂时没有公开发布的版本。';
+
+  @override
+  String get settingsUpToDate => '当前已是最新发布版本。';
+
+  @override
+  String settingsUpdateAvailable(String version) {
+    return '新版本 $version 已发布。';
+  }
+
+  @override
+  String get settingsUpdateFailed => '无法检查更新，请稍后重试。';
+
+  @override
+  String get settingsViewRelease => '查看发布版本';
+
+  @override
+  String get settingsPrivacyPolicy => '隐私政策';
+
+  @override
+  String get settingsPrivacyDetails =>
+      'Musaic 读取你授权的音乐库和选择的文件夹来展示专辑和封面。曲库索引、封面缓存和偏好设置保存在设备上。\n\nCover Flow 的相机功能需要相机权限。你拍摄的照片可以保存到系统相册。你可以在系统设置里管理相关权限。\n\n检查更新时，Musaic 会向 GitHub 请求公开发布信息。请求不会包含你的音乐、照片或曲库内容。';
+
+  @override
+  String get settingsWhatsNew => '更新内容';
+
+  @override
+  String get settingsWhatsNewDetails =>
+      '• 竖屏也可使用 Cover Flow。横屏时可点按旋转按钮回到竖屏画布。\n\n• 翻转展开的封面会在有高清原图时加载更大尺寸。\n\n• 从 Cover Flow 返回画布时会复用已加载的本地封面。';
+
+  @override
   String get settingsAppearance => '外观与显示';
 
   @override
@@ -137,6 +204,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get musicPause => '暂停';
 
   @override
+  String get musicPreviousTrack => '上一首';
+
+  @override
+  String get musicNextTrack => '下一首';
+
+  @override
+  String get musicRewind => '快退五秒';
+
+  @override
+  String get musicFastForward => '快进五秒';
+
+  @override
   String get musicDirectories => '音乐文件夹';
 
   @override
@@ -186,7 +265,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fullscreenFailed => '无法切换全屏，请重试。';
 
   @override
-  String get xeroxMode => 'Xerox 化';
+  String get xeroxMode => 'Xerox';
 
   @override
   String get xeroxPaperColor => '纸色';

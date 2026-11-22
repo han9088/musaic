@@ -18,6 +18,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get settingsAboutAndHelp => 'About & help';
+
+  @override
+  String get settingsSupport => 'Support';
+
+  @override
+  String get settingsRateApp => 'Rate Musaic';
+
+  @override
+  String get settingsShareApp => 'Share Musaic';
+
+  @override
+  String get settingsReviewUnavailable =>
+      'The store review page is currently unavailable.';
+
+  @override
+  String get settingsShareLinkCopied => 'Musaic link copied.';
+
+  @override
+  String get settingsShareUnavailable =>
+      'Couldn’t share Musaic. Try again later.';
+
+  @override
+  String get settingsDiagnostics => 'Troubleshooting';
+
+  @override
+  String get settingsAbout => 'About';
+
+  @override
+  String get settingsVersion => 'Version';
+
+  @override
+  String get settingsVersionUnavailable => 'Version unavailable';
+
+  @override
+  String get settingsCheckUpdate => 'Check for updates';
+
+  @override
+  String get settingsNoRelease => 'No public releases are available yet.';
+
+  @override
+  String get settingsUpToDate => 'You’re on the latest published version.';
+
+  @override
+  String settingsUpdateAvailable(String version) {
+    return 'Version $version is available.';
+  }
+
+  @override
+  String get settingsUpdateFailed =>
+      'Couldn’t check for updates. Try again later.';
+
+  @override
+  String get settingsViewRelease => 'View release';
+
+  @override
+  String get settingsPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get settingsPrivacyDetails =>
+      'Musaic reads the music library you authorize and the folders you select to show albums and artwork. Library indexes, artwork caches, and preferences are stored on your device.\n\nThe Cover Flow camera uses your camera permission. Photos you take can be saved to your photo library. You can manage these permissions in system settings.\n\nWhen you check for updates, Musaic requests public release information from GitHub. Your music, photos, and library contents are not included in the request.';
+
+  @override
+  String get settingsWhatsNew => 'What’s New';
+
+  @override
+  String get settingsWhatsNewDetails =>
+      '• Use Cover Flow in portrait and tap the rotate button to return to the canvas from landscape.\n\n• Enlarged Cover Flow previews load higher-resolution artwork when available.\n\n• The canvas reuses loaded local artwork when returning from Cover Flow.';
+
+  @override
   String get settingsAppearance => 'Appearance & display';
 
   @override
@@ -147,6 +217,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get musicPause => 'Pause';
+
+  @override
+  String get musicPreviousTrack => 'Previous track';
+
+  @override
+  String get musicNextTrack => 'Next track';
+
+  @override
+  String get musicRewind => 'Rewind five seconds';
+
+  @override
+  String get musicFastForward => 'Fast-forward five seconds';
 
   @override
   String get musicDirectories => 'Music folders';

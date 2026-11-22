@@ -1,8 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
+import 'package:musaic/features/music/playback/now_playing_capsule.dart';
+import 'package:musaic/features/music/playback/now_playing_controls.dart';
+import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/music/music_provider.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 void main() {
   test('browse-only catalog never falls back to simulated playback', () {
@@ -26,14 +31,7 @@ void main() {
     final first = _song('1', 'First song', 'First singer');
     final second = _song('2', 'Second song', 'Second singer');
     playback.bind(provider, [
-      (
-        reference: _reference('album', MusicKind.album),
-        title: 'Album',
-        artist: 'Album artist',
-        artworkUrl: null,
-        trackCount: 2,
-        tracks: [first, second],
-      ),
+      _album([first, second]),
     ]);
 
     provider.emit(first.reference, playing: true);
@@ -55,6 +53,134 @@ void main() {
     expect(playback.currentTitle, isNull);
     expect(playback.currentArtist, isNull);
   });
+
+  testWidgets('playback pulls skip on release or seek while held', (
+    tester,
+  ) async {
+    final playback = AlbumPlayback();
+    final provider = _Player();
+    addTearDown(provider.events.close);
+    addTearDown(playback.dispose);
+    final first = _song('1', 'First song', 'First singer');
+    final second = _song('2', 'Second song', 'Second singer');
+    playback.bind(provider, [
+      _album([first, second]),
+    ]);
+    const trackDuration = Duration(minutes: 1);
+    provider.emit(
+      first.reference,
+      playing: true,
+      position: const Duration(seconds: 15),
+      duration: trackDuration,
+    );
+    var settingsOpens = 0;
+    const switchKey = ValueKey('layout-switch');
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Center(
+          child: NowPlayingControls(
+            playback: playback,
+            visible: true,
+            onOpenSheet: () => settingsOpens++,
+            companionVisible: true,
+            companion: IconButton(
+              key: switchKey,
+              onPressed: () {},
+              icon: const Icon(PhosphorIcons.cards),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final capsule = find.byType(NowPlayingCapsule);
+    final layoutSwitch = find.byKey(switchKey);
+    final restingBounds = tester.getRect(capsule);
+    final restingCenter = restingBounds.center;
+    for (final (dx, icon, expectedSkips) in [
+      (-56.0, PhosphorIcons.skipBackFill, <bool>[]),
+      (56.0, PhosphorIcons.skipForwardFill, [false]),
+    ]) {
+      final drag = await tester.startGesture(restingCenter);
+      await drag.moveBy(Offset(dx.sign * 16, 0));
+      await tester.pump();
+      expect(layoutSwitch, findsNothing);
+      expect(layoutSwitch.hitTestable(), findsNothing);
+
+      await drag.moveBy(Offset(dx - dx.sign * 16, 0));
+      await tester.pump();
+      final feedback = find.widgetWithIcon(IconButton, icon);
+      expect(feedback, findsOneWidget);
+      expect(provider.skips, expectedSkips);
+      await drag.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(tester.getCenter(capsule), isNot(restingCenter));
+      expect(feedback, findsOneWidget);
+      expect(layoutSwitch.hitTestable(), findsNothing);
+
+      for (var frame = 0; frame < 25; frame++) {
+        if (tester.getRect(capsule) == restingBounds) break;
+        expect(feedback, findsOneWidget);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(tester.getRect(capsule), restingBounds);
+      expect(feedback, findsNothing);
+      expect(layoutSwitch.hitTestable(), findsOneWidget);
+      expect(
+        find.widgetWithIcon(IconButton, PhosphorIcons.pauseFill),
+        findsOneWidget,
+      );
+    }
+    expect(provider.skips, [false, true]);
+    expect(provider.seekPositions, isEmpty);
+
+    final fastForward = await tester.startGesture(tester.getCenter(capsule));
+    await fastForward.moveBy(const Offset(56, 0));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.byIcon(PhosphorIcons.fastForwardFill), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(provider.seekPositions, const [
+      Duration(seconds: 20),
+      Duration(seconds: 25),
+    ]);
+    await fastForward.up();
+    await tester.pump();
+    expect(find.byIcon(PhosphorIcons.fastForwardFill), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(PhosphorIcons.fastForwardFill), findsNothing);
+
+    provider.emit(
+      first.reference,
+      playing: true,
+      position: const Duration(seconds: 3),
+      duration: trackDuration,
+    );
+    final rewind = await tester.startGesture(tester.getCenter(capsule));
+    await rewind.moveBy(const Offset(-56, 0));
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(find.byIcon(PhosphorIcons.rewindFill), findsOneWidget);
+    expect(provider.seekPositions.last, Duration.zero);
+    await rewind.cancel();
+    await tester.pump();
+    expect(find.byIcon(PhosphorIcons.rewindFill), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(PhosphorIcons.rewindFill), findsNothing);
+    expect(provider.seekPositions, hasLength(3));
+    expect(provider.skips, [false, true]);
+    expect(settingsOpens, 0);
+
+    final pullUp = await tester.startGesture(restingCenter);
+    await pullUp.moveBy(const Offset(0, -140));
+    await tester.pump();
+    expect(layoutSwitch.hitTestable(), findsOneWidget);
+    expect(settingsOpens, 0);
+    await pullUp.up();
+    await tester.pumpAndSettle();
+    expect(settingsOpens, 1);
+  });
 }
 
 MusicReference _reference(String id, MusicKind kind) => (
@@ -74,10 +200,22 @@ ProviderSong _song(String id, String title, String artist) => (
   playable: true,
 );
 
+ProviderAlbum _album(List<ProviderSong> tracks) => (
+  reference: _reference('album', MusicKind.album),
+  title: 'Album',
+  artist: 'Album artist',
+  artworkUrl: null,
+  trackCount: tracks.length,
+  tracks: tracks,
+);
+
 class _Player extends Fake implements MusicProvider {
   final events = StreamController<MusicPlayback>.broadcast(sync: true);
   int pauses = 0;
   int resumes = 0;
+  final skips = <bool>[];
+  final seekPositions = <Duration>[];
+  late MusicPlayback _state;
 
   @override
   Stream<MusicPlayback> get playback => events.stream;
@@ -88,13 +226,40 @@ class _Player extends Fake implements MusicProvider {
   @override
   Future<void> resume() async => resumes++;
 
-  void emit(MusicReference song, {required bool playing}) => events.add((
-    status: playing ? MusicPlaybackStatus.playing : MusicPlaybackStatus.paused,
-    currentItem: song,
-    position: Duration.zero,
-    duration: null,
-    isPlaying: playing,
-    isBuffering: false,
-    error: null,
-  ));
+  @override
+  Future<void> next() async => skips.add(true);
+
+  @override
+  Future<void> previous() async => skips.add(false);
+
+  @override
+  Future<void> seek(Duration position) async {
+    seekPositions.add(position);
+    emit(
+      _state.currentItem!,
+      playing: _state.isPlaying,
+      position: position,
+      duration: _state.duration,
+    );
+  }
+
+  void emit(
+    MusicReference song, {
+    required bool playing,
+    Duration position = Duration.zero,
+    Duration? duration,
+  }) {
+    _state = (
+      status: playing
+          ? MusicPlaybackStatus.playing
+          : MusicPlaybackStatus.paused,
+      currentItem: song,
+      position: position,
+      duration: duration,
+      isPlaying: playing,
+      isBuffering: false,
+      error: null,
+    );
+    events.add(_state);
+  }
 }

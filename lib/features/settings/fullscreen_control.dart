@@ -45,27 +45,18 @@ class _FullscreenControlState extends State<FullscreenControl> {
   Widget build(BuildContext context) {
     if (!_fullscreen.supported) return const SizedBox.shrink();
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: ListenableBuilder(
-        listenable: _fullscreen,
-        builder: (context, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextButton.icon(
-              onPressed: _pending ? null : _toggle,
-              icon: Icon(
-                _fullscreen.active
-                    ? PhosphorIcons.arrowsIn
-                    : PhosphorIcons.arrowsOut,
-              ),
-              label: Text(
-                _fullscreen.active ? l10n.exitFullscreen : l10n.enterFullscreen,
-              ),
-            ),
-            if (_failed) Text(l10n.fullscreenFailed),
-          ],
+    return ListenableBuilder(
+      listenable: _fullscreen,
+      builder: (context, _) => ListTile(
+        enabled: !_pending,
+        onTap: _pending ? null : _toggle,
+        leading: Icon(
+          _fullscreen.active ? PhosphorIcons.arrowsIn : PhosphorIcons.arrowsOut,
         ),
+        title: Text(
+          _fullscreen.active ? l10n.exitFullscreen : l10n.enterFullscreen,
+        ),
+        subtitle: _failed ? Text(l10n.fullscreenFailed) : null,
       ),
     );
   }

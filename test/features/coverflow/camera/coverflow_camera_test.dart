@@ -249,7 +249,13 @@ void main() {
     addTearDown(tester.view.resetPadding);
     tester.view.padding = const FakeViewPadding(left: 36, top: 18, right: 27);
     await tester.pump();
-    final back = tester.getRect(find.bySemanticsLabel('Back'));
+    final backButton = find.bySemanticsLabel('Back');
+    final backIcon = find.descendant(
+      of: backButton,
+      matching: find.byType(Icon),
+    );
+    expect(tester.widget<Icon>(backIcon).size, 20);
+    final back = tester.getRect(backButton);
     final delete = tester.getRect(find.bySemanticsLabel('Delete photo'));
     expect(back.left, 60);
     expect(delete.right, 749);

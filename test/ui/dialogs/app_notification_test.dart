@@ -43,7 +43,10 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
     final statusIcon = tester.widget<Icon>(find.byIcon(Icons.check_rounded));
-    expect(statusIcon.color?.a, closeTo(appNotificationIconOpacity, 0.001));
+    expect(
+      statusIcon.color,
+      const Color(0xFF5FCB76).withValues(alpha: appNotificationIconOpacity),
+    );
 
     final position = tester.widget<AnimatedPositioned>(
       find.byKey(const Key('app-notification-position')),
@@ -113,8 +116,12 @@ void main() {
       find.byKey(const Key('app-notification-surface')),
     );
     final decoration = surface.decoration as BoxDecoration;
-    expect(decoration.color, const Color.fromARGB(242, 255, 255, 255));
-    expect(decoration.border, Border.all(color: appNotificationBorderColor));
+    expect(decoration.color, const Color.fromARGB(197, 0, 0, 0));
+    expect(decoration.border, Border.all(color: const Color(0x14FFFFFF)));
+    expect(
+      tester.widget<Text>(find.text('Surface')).style?.color,
+      Colors.white,
+    );
 
     final noise = tester.widget<Opacity>(
       find.byKey(const Key('app-notification-noise')),

@@ -5,6 +5,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/coverflow_photo_library.dart';
+import '../../../ui/theme/app_theme.dart';
 import '../../../ui/widgets/glass_icon_button.dart';
 
 class CoverFlowPhotoViewer extends StatefulWidget {
@@ -64,6 +65,7 @@ class _CoverFlowPhotoViewerState extends State<CoverFlowPhotoViewer> {
                 children: [
                   GlassIconButton(
                     icon: PhosphorIcons.arrowLeft,
+                    iconSize: appNavigationBackIconSize,
                     label: MaterialLocalizations.of(context).backButtonTooltip,
                     onPressed: () {
                       if (!_deleting) Navigator.pop(context);

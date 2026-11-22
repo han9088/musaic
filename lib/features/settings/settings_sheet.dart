@@ -5,9 +5,12 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
+import 'settings_support_section.dart';
 
-enum SettingsSection { musicSource, appearance }
+enum SettingsSection { musicSource, appearance, about }
 
 class SettingsSheet extends StatelessWidget {
   const SettingsSheet({
@@ -29,22 +32,17 @@ class SettingsSheet extends StatelessWidget {
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
 
-  Widget _section(IconData icon, String title, SettingsSection section) =>
+  Widget _section(IconData icon, String title, [SettingsSection? section]) =>
       Builder(
-        builder: (origin) => Theme(
-          data: Theme.of(origin).copyWith(
-            splashFactory: NoSplash.splashFactory,
-            highlightColor: Colors.transparent,
-          ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-            iconColor: Colors.white70,
-            textColor: Colors.white,
-            leading: Icon(icon),
-            title: Text(title),
-            trailing: const Icon(PhosphorIcons.caretRight, size: 16),
-            onTap: () => onOpenSection(origin, section),
-          ),
+        builder: (origin) => ListTile(
+          iconColor: Colors.white70,
+          textColor: Colors.white,
+          leading: Icon(icon),
+          title: Text(title),
+          trailing: section == null
+              ? null
+              : const Icon(PhosphorIcons.caretUp, size: settingsItemArrowSize),
+          onTap: section == null ? null : () => onOpenSection(origin, section),
         ),
       );
 
@@ -79,7 +77,7 @@ class SettingsSheet extends StatelessWidget {
         ),
       ],
     );
-    return DefaultTabController(
+    final content = DefaultTabController(
       length: controller == null ? 1 : 2,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -109,57 +107,70 @@ class SettingsSheet extends StatelessWidget {
                             ),
                           ),
                         BottomSheetScrollView(
-                          child: Column(
-                            children: [
-                              if (controller != null)
-                                _section(
-                                  PhosphorIcons.musicNotes,
-                                  l10n.musicSource,
-                                  SettingsSection.musicSource,
-                                ),
-                              _section(
-                                PhosphorIcons.paintBrush,
-                                l10n.settingsAppearance,
-                                SettingsSection.appearance,
-                              ),
-                              if ((xeroxEnabled, onXeroxChanged) case (
-                                final mode?,
-                                final onChanged?,
-                              ))
-                                ValueListenableBuilder<bool>(
-                                  valueListenable: mode,
-                                  builder: (context, enabled, picker) => Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      ListTile(
-                                        key: const ValueKey('xerox-toggle'),
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 20,
-                                            ),
-                                        iconColor: Colors.white70,
-                                        textColor: Colors.white,
-                                        leading: const Icon(
-                                          PhosphorIcons.printer,
-                                        ),
-                                        title: Text(l10n.xeroxMode),
-                                        selected: enabled,
-                                        selectedColor: Colors.white,
-                                        trailing: enabled
-                                            ? const Icon(
-                                                PhosphorIcons.check,
-                                                size: 16,
-                                              )
-                                            : null,
-                                        onTap: () => onChanged(!enabled),
-                                      ),
-                                      if (enabled && picker != null) picker,
-                                    ],
+                          child: SettingsInteractionTheme(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (controller != null)
+                                  _section(
+                                    PhosphorIcons.musicNotes,
+                                    l10n.musicSource,
+                                    SettingsSection.musicSource,
                                   ),
-                                  child: xeroxPalettePicker,
+                                _section(
+                                  PhosphorIcons.paintBrush,
+                                  l10n.settingsAppearance,
+                                  SettingsSection.appearance,
                                 ),
-                            ],
+                                if ((xeroxEnabled, onXeroxChanged) case (
+                                  final mode?,
+                                  final onChanged?,
+                                ))
+                                  ValueListenableBuilder<bool>(
+                                    valueListenable: mode,
+                                    builder: (context, enabled, picker) =>
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            ListTile(
+                                              key: const ValueKey(
+                                                'xerox-toggle',
+                                              ),
+                                              iconColor: Colors.white70,
+                                              textColor: Colors.white,
+                                              title: Text(l10n.xeroxMode),
+                                              selected: enabled,
+                                              selectedColor: Colors.white,
+                                              trailing: enabled
+                                                  ? const Icon(
+                                                      PhosphorIcons.check,
+                                                      size: 16,
+                                                    )
+                                                  : null,
+                                              onTap: () => onChanged(!enabled),
+                                            ),
+                                            if (enabled && picker != null)
+                                              picker,
+                                          ],
+                                        ),
+                                    child: xeroxPalettePicker,
+                                  ),
+                                SettingsSectionHeading(
+                                  l10n.settingsAboutAndHelp,
+                                ),
+                                _section(
+                                  PhosphorIcons.stethoscope,
+                                  l10n.settingsDiagnostics,
+                                ),
+                                _section(
+                                  PhosphorIcons.info,
+                                  l10n.settingsAbout,
+                                  SettingsSection.about,
+                                ),
+                                const SettingsSupportSection(),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -171,6 +182,11 @@ class SettingsSheet extends StatelessWidget {
           );
         },
       ),
+    );
+    return ListTileTheme.merge(
+      contentPadding: settingsItemPadding,
+      horizontalTitleGap: settingsItemTitleGap,
+      child: content,
     );
   }
 }

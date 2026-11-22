@@ -1,4 +1,9 @@
+import 'dart:async';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
@@ -13,11 +18,259 @@ import 'package:musaic/services/app_icon_service.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
+import 'package:musaic/ui/thinking_orbs/thinking_orb.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 void main() {
   final settingsTab = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
   final capsule = find.byType(NowPlayingCapsule);
+
+  testWidgets('Support ends settings and shares the public Musaic link', (
+    tester,
+  ) async {
+    const channel = MethodChannel('dev.fluttercommunity.plus/share');
+    final messages = tester.binding.defaultBinaryMessenger;
+    MethodCall? shareCall;
+    messages.setMockMethodCallHandler(channel, (call) async {
+      shareCall = call;
+      return '';
+    });
+    addTearDown(() => messages.setMockMethodCallHandler(channel, null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        locale: Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(icons: _Icons(), child: SizedBox.expand()),
+        ),
+      ),
+    );
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+    final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    sheet.topSheetController!.expand();
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(SettingsSheet)),
+    );
+    final about = find.widgetWithText(ListTile, l10n.settingsAbout);
+    final support = find.text(l10n.settingsSupport);
+    final rate = find.widgetWithText(ListTile, l10n.settingsRateApp);
+    final share = find.widgetWithText(ListTile, l10n.settingsShareApp);
+    expect(
+      tester.getTopLeft(support).dy,
+      greaterThan(tester.getBottomLeft(about).dy),
+    );
+    expect(
+      tester.getTopLeft(share).dy,
+      greaterThan(tester.getTopLeft(rate).dy),
+    );
+    await tester.ensureVisible(share);
+    await tester.pumpAndSettle();
+    await tester.tap(share);
+    await tester.pumpAndSettle();
+
+    expect(shareCall?.method, 'share');
+    expect(
+      shareCall?.arguments,
+      containsPair('uri', 'https://musaic.deskbtm.com'),
+    );
+    expect(shareCall?.arguments, containsPair('originWidth', greaterThan(0)));
+    expect(find.byType(SettingsPage), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('About is the only page under About & help', (tester) async {
+    PackageInfo.setMockInitialValues(
+      appName: 'Musaic',
+      packageName: 'com.deskbtm.musaic',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    late Future<http.Response> response;
+    await http.runWithClient(
+      () async {
+        await tester.pumpWidget(
+          const MaterialApp(
+            locale: Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: AppBottomSheetHost(
+              child: HomeSheet(
+                icons: _Icons(),
+                child: ColoredBox(color: Colors.black),
+              ),
+            ),
+          ),
+        );
+        await tester.drag(capsule, const Offset(0, -150));
+        await tester.pumpAndSettle();
+        final sheet = DeskBottomSheet.of(
+          tester.element(find.byType(HomeSheet)),
+        );
+        sheet.topSheetController!.expand();
+        await tester.pumpAndSettle();
+        expect(find.text('About & help'), findsOneWidget);
+        final diagnostics = find.widgetWithText(ListTile, 'Troubleshooting');
+        expect(tester.widget<ListTile>(diagnostics).onTap, isNull);
+        expect(tester.widget<ListTile>(diagnostics).trailing, isNull);
+        final aboutEntry = find.widgetWithText(ListTile, 'About');
+        final entryArrow = tester.widget<Icon>(
+          find.descendant(
+            of: aboutEntry,
+            matching: find.byIcon(PhosphorIcons.caretUp),
+          ),
+        );
+        expect(entryArrow.size, 12);
+        expect(find.byType(SettingsPage), findsNothing);
+
+        await tester.tap(aboutEntry);
+        await tester.pumpAndSettle();
+        final about = find.byWidgetPredicate(
+          (widget) => widget is SettingsPage && widget.title == 'About',
+        );
+        expect(about, findsOneWidget);
+        expect(
+          find.byIcon(PhosphorIcons.caretDown).hitTestable(),
+          findsOneWidget,
+        );
+        final aboutRows = tester.widgetList<ListTile>(
+          find.descendant(of: about, matching: find.byType(ListTile)),
+        );
+        expect(aboutRows.map((row) => row.leading), everyElement(isNull));
+        final versionLabel = find.text('Version');
+        final versionValue = find.text('1.0.0 (1)');
+        expect(
+          tester.getTopLeft(versionValue).dx,
+          greaterThan(tester.getTopRight(versionLabel).dx),
+        );
+        final detailArrows = tester.widgetList<Icon>(
+          find.descendant(
+            of: about,
+            matching: find.byIcon(PhosphorIcons.caretRight),
+          ),
+        );
+        expect(detailArrows.map((icon) => icon.size), [12, 12]);
+
+        Future<void> closeDialog() async {
+          await tester.tap(find.text('Close'));
+          await tester.pumpAndSettle();
+        }
+
+        for (final (status, body, message) in [
+          (404, '', 'No public releases are available yet.'),
+          (
+            200,
+            '{"tag_name":"v1.0.0+1"}',
+            'You’re on the latest published version.',
+          ),
+          (200, '{"tag_name":"v1.0.0+2"}', 'Version 1.0.0+2 is available.'),
+          (503, '', 'Couldn’t check for updates. Try again later.'),
+        ]) {
+          final result = http.Response(body, status);
+          final pending = status == 404 ? Completer<http.Response>() : null;
+          response = pending?.future ?? Future.value(result);
+          await tester.tap(find.widgetWithText(ListTile, 'Version'));
+          final loader = find.byType(ThinkingOrb);
+          if (pending != null) {
+            await tester.pump();
+            final orb = tester.widget<ThinkingOrb>(loader);
+            expect(orb.state, ThinkingOrbState.working);
+            expect(orb.size, ThinkingOrbSize.inline);
+            expect(
+              tester.getTopLeft(loader).dx,
+              greaterThan(tester.getTopRight(versionValue).dx),
+            );
+            pending.complete(result);
+          }
+          await tester.pumpAndSettle();
+          expect(loader, findsNothing);
+          expect(find.text(message), findsOneWidget);
+          if (body.contains('+2')) {
+            expect(find.text('View release'), findsOneWidget);
+          }
+          await closeDialog();
+        }
+
+        for (final item in ['Privacy policy', 'What’s New']) {
+          final detail = find.byWidgetPredicate(
+            (widget) => widget is SettingsPage && widget.title == item,
+          );
+          final width = tester.getSize(about).width;
+          await tester.tap(find.widgetWithText(ListTile, item));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 140));
+          expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
+          expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
+          expect(
+            tester.getTopLeft(detail).dx - tester.getTopLeft(about).dx,
+            closeTo(width, 0.01),
+          );
+          await tester.pumpAndSettle();
+          expect(tester.getTopLeft(detail), Offset.zero);
+          expect(
+            find.byIcon(PhosphorIcons.caretLeft).hitTestable(),
+            findsOneWidget,
+          );
+          await tester.tap(find.byTooltip('Back').hitTestable());
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 140));
+          expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
+          expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
+          await tester.pumpAndSettle();
+          expect(detail, findsNothing);
+          expect(tester.getTopLeft(about), Offset.zero);
+        }
+
+        await tester.tap(find.widgetWithText(ListTile, 'What’s New'));
+        await tester.pumpAndSettle();
+        final detail = find.byWidgetPredicate(
+          (widget) => widget is SettingsPage && widget.title == 'What’s New',
+        );
+        final width = tester.getSize(detail).width;
+
+        Future<TestGesture> swipeBack(double distance) async {
+          final gesture = await tester.startGesture(const Offset(150, 220));
+          await gesture.moveBy(Offset(distance, 0));
+          await tester.pump();
+          expect(tester.getTopLeft(detail).dx, closeTo(distance, 2));
+          expect(tester.getTopLeft(about).dx, closeTo(distance - width, 2));
+          expect(tester.getTopLeft(detail).dy, 0);
+          return gesture;
+        }
+
+        final shortSwipe = await swipeBack(width * 0.15);
+        await shortSwipe.moveBy(Offset(-width * 0.05, 0));
+        await tester.pump();
+        expect(tester.getTopLeft(detail).dx, closeTo(width * 0.10, 2));
+        await shortSwipe.up();
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(detail), Offset.zero);
+
+        final canceledSwipe = await swipeBack(width * 0.30);
+        await canceledSwipe.cancel();
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(detail), Offset.zero);
+
+        final completedSwipe = await swipeBack(width * 0.30);
+        await completedSwipe.up();
+        await tester.pumpAndSettle();
+        expect(detail, findsNothing);
+        expect(tester.getTopLeft(about), Offset.zero);
+        await tester.pumpWidget(const SizedBox.shrink());
+      },
+      () => MockClient((request) {
+        expect(request.url.path, '/repos/han9088/musaic/releases/latest');
+        return response;
+      }),
+    );
+  });
+
   testWidgets(
     'handle fades after idle, wakes on touch, stays hidden in CoverFlow',
     (tester) async {
@@ -138,6 +391,46 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('capsule shows drag feedback without a provider track', (
+    tester,
+  ) async {
+    final playback = AlbumPlayback();
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(playback: playback, child: const SizedBox.expand()),
+        ),
+      ),
+    );
+
+    for (final (dx, skip, seek) in [
+      (56.0, PhosphorIcons.skipForwardFill, PhosphorIcons.fastForwardFill),
+      (-56.0, PhosphorIcons.skipBackFill, PhosphorIcons.rewindFill),
+    ]) {
+      if (dx < 0) {
+        playback.toggle('demo', 'Demo');
+        await tester.pump();
+      }
+      final idleIcon = playback.playing
+          ? PhosphorIcons.pauseFill
+          : PhosphorIcons.playFill;
+      final pull = await tester.startGesture(tester.getCenter(capsule));
+      await pull.moveBy(Offset(dx, 0));
+      await tester.pump();
+      expect(find.widgetWithIcon(IconButton, skip), findsOneWidget);
+      expect(find.byIcon(idleIcon), findsNothing);
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(find.widgetWithIcon(IconButton, seek), findsOneWidget);
+      await pull.up();
+      await tester.pumpAndSettle();
+      expect(find.byIcon(seek), findsNothing);
+      expect(find.widgetWithIcon(IconButton, idleIcon), findsOneWidget);
+    }
+  });
+
   testWidgets('Xerox opens in place and closes the sheet when turned off', (
     tester,
   ) async {
@@ -199,6 +492,10 @@ void main() {
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
     expect(toggle, findsOneWidget);
     final appearance = find.widgetWithText(ListTile, 'Appearance & display');
+    final feedback = Theme.of(tester.element(appearance));
+    expect(feedback.splashFactory, InkRipple.splashFactory);
+    expect(feedback.splashColor, Colors.white.withValues(alpha: 0.10));
+    expect(feedback.highlightColor, Colors.white.withValues(alpha: 0.10));
     await tester.tap(appearance);
     expect(sheetPosition.value, originalTop);
     await tester.pump();
@@ -293,7 +590,8 @@ void main() {
   testWidgets(
     'settings pull continues past the top to return to its sheet',
     (tester) async {
-      await tester.binding.setSurfaceSize(const Size(320, 420));
+      const viewport = Size(320, 360);
+      await tester.binding.setSurfaceSize(viewport);
       addTearDown(() => tester.binding.setSurfaceSize(null));
       await tester.pumpWidget(
         const MaterialApp(
@@ -326,13 +624,15 @@ void main() {
         matching: find.byType(Scrollable),
       );
       final position = tester.state<ScrollableState>(scrollable).position;
-      position.jumpTo(80);
+      final initialScroll = position.maxScrollExtent.clamp(0.0, 80.0);
+      expect(initialScroll, greaterThan(30));
+      position.jumpTo(initialScroll);
       await tester.pump();
       final pull = await tester.startGesture(const Offset(160, 160));
       await pull.moveBy(const Offset(0, 25));
       await pull.moveBy(const Offset(0, 30));
       await tester.pump();
-      expect(position.pixels, inExclusiveRange(0, 80));
+      expect(position.pixels, inExclusiveRange(0, initialScroll));
       expect(tester.getTopLeft(page).dy, 0);
 
       final remainingScroll = position.pixels;
@@ -342,7 +642,7 @@ void main() {
       expect(tester.getTopLeft(page).dy, closeTo(60, 2));
       expect(
         tester.getTopLeft(page).dy - sheetPosition.value,
-        420 - originalTop,
+        closeTo(viewport.height - originalTop, 0.01),
       );
       await pull.moveBy(const Offset(0, -30));
       await tester.pump();
@@ -355,9 +655,11 @@ void main() {
       Future<TestGesture> pullPastThreshold() async {
         final gesture = await tester.startGesture(const Offset(160, 160));
         await gesture.moveBy(const Offset(0, 25));
+        await tester.pump();
+        final dragStart = tester.getTopLeft(page).dy;
         await gesture.moveBy(const Offset(0, 130));
         await tester.pump();
-        expect(tester.getTopLeft(page).dy, closeTo(130, 2));
+        expect(tester.getTopLeft(page).dy - dragStart, closeTo(130, 2));
         return gesture;
       }
 
@@ -423,10 +725,14 @@ void main() {
     await tester.tap(find.text('Music source'));
     await tester.pumpAndSettle();
     final page = find.byType(SettingsPage);
-    expect(
-      find.descendant(of: page, matching: find.text('Demo')),
-      findsOneWidget,
+    final demoHeading = find.descendant(of: page, matching: find.text('Demo'));
+    final demoIcon = find.descendant(
+      of: mock2,
+      matching: find.byIcon(PhosphorIcons.squaresFour),
     );
+    expect(tester.widget<Text>(demoHeading).style?.fontSize, 13);
+    expect(tester.getTopLeft(mock2).dx, tester.getTopLeft(page).dx);
+    expect(tester.getTopLeft(demoHeading).dx, tester.getTopLeft(demoIcon).dx);
     expect(find.text('Device music'), findsOneWidget);
     expect(find.text('Local music'), findsOneWidget);
 
@@ -468,6 +774,68 @@ void main() {
     expect(settingsTab, findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets(
+    'settings can be dragged closed after scrolling and expanding',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(390, 900);
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppBottomSheetHost(
+            child: HomeSheet(icons: _Icons(), child: SizedBox.expand()),
+          ),
+        ),
+      );
+
+      await tester.drag(capsule, const Offset(0, -140));
+      await tester.pumpAndSettle();
+      final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+      final handle = find.byType(BottomSheetHandle);
+      final settings = find.byType(BottomSheetScrollView);
+      final scrollable = find.descendant(
+        of: settings,
+        matching: find.byType(Scrollable),
+      );
+      final position = tester.state<ScrollableState>(scrollable).position;
+      final index = BottomSheetContent.of(tester.element(handle)).animatedIndex;
+      expect(index.value, 0);
+
+      await tester.drag(settings, const Offset(0, -80));
+      await tester.pumpAndSettle();
+      expect(position.pixels, greaterThan(0));
+      expect(index.value, 0);
+
+      await tester.drag(handle, const Offset(0, -260));
+      await tester.pumpAndSettle();
+      expect(index.value, 1);
+      expect(position.pixels, 0);
+      expect(position.maxScrollExtent, 0);
+
+      await tester.dragFrom(
+        tester.getTopLeft(settings) + const Offset(150, 32),
+        const Offset(0, 260),
+      );
+      await tester.pumpAndSettle();
+      expect(index.value, 0);
+      expect(sheet.isPresented, isTrue);
+
+      await tester.dragFrom(
+        tester.getTopLeft(settings) + const Offset(150, 32),
+        const Offset(0, 180),
+      );
+      await tester.pumpAndSettle();
+      expect(sheet.isPresented, isFalse);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
 
   testWidgets('dragging the sheet to the bottom restores canvas input', (
     tester,

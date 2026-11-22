@@ -5,6 +5,8 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
+import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/settings_section_heading.dart';
 
 /// 封装或定义应用图标选择器相关类型与行为，负责设置项展示与系统能力控制。
 class AppIconPicker extends StatefulWidget {
@@ -47,116 +49,231 @@ class _AppIconPickerState extends State<AppIconPicker> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              l10n.appIcon,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          FutureBuilder<AppIconSnapshot>(
-            future: _loading,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                );
-              }
-              if (snapshot.hasError) {
-                return Column(
-                  children: [
-                    Text(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSectionHeading(l10n.appIcon),
+        FutureBuilder<AppIconSnapshot>(
+          future: _loading,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            }
+            if (snapshot.hasError) {
+              return Column(
+                children: [
+                  Padding(
+                    padding: settingsItemPadding,
+                    child: Text(
                       l10n.appIconLoadFailed,
                       style: const TextStyle(color: Colors.white70),
                     ),
-                    TextButton(
-                      onPressed: () {
-                        final loading = widget.icons.read();
-                        setState(() {
-                          _loading = loading;
-                        });
-                      },
-                      child: Text(
-                        l10n.retry,
-                        style: const TextStyle(color: Colors.white),
-                      ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      final loading = widget.icons.read();
+                      setState(() {
+                        _loading = loading;
+                      });
+                    },
+                    child: Text(
+                      l10n.retry,
+                      style: const TextStyle(color: Colors.white),
                     ),
-                  ],
-                );
-              }
-              final state = snapshot.requireData;
-              if (!state.supported) {
-                return Text(
-                  l10n.appIconUnsupported,
-                  style: const TextStyle(color: Colors.white70),
-                );
-              }
-              return Column(
-                children: [
-                  for (final choice in widget.icons.choices)
-                    Semantics(
-                      selected: choice == state.current,
-                      child: ListTile(
-                        key: ValueKey('app-icon-${choice.name}'),
-                        contentPadding: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 8,
-                        ),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            choice.previewAsset,
-                            width: 52,
-                            height: 52,
-                            cacheWidth: 156,
-                            fit: BoxFit.cover,
-                            excludeFromSemantics: true,
-                          ),
-                        ),
-                        title: Text(switch (choice) {
-                          AppIconChoice.vinylPrimary => l10n.appIconDefault,
-                          AppIconChoice.text => l10n.appIconText,
-                          AppIconChoice.mosaic => l10n.appIconMosaic,
-                          AppIconChoice.vinyl => l10n.appIconVinyl,
-                          AppIconChoice.vinylWhite => l10n.appIconVinylWhite,
-                          AppIconChoice.mosaicXerox => l10n.appIconMosaicXerox,
-                        }, style: const TextStyle(color: Colors.white)),
-                        trailing: choice == state.current
-                            ? const Icon(
-                                PhosphorIcons.checkBold,
-                                color: Colors.white,
-                              )
-                            : null,
-                        enabled: !_changing,
-                        onTap: choice == state.current
-                            ? null
-                            : () => _change(choice),
-                      ),
-                    ),
-                  if (_changing)
-                    const LinearProgressIndicator(color: Colors.white),
+                  ),
                 ],
               );
-            },
-          ),
-          if (_changeFailed)
-            Semantics(
-              liveRegion: true,
+            }
+            final state = snapshot.requireData;
+            if (!state.supported) {
+              return Padding(
+                padding: settingsItemPadding,
+                child: Text(
+                  l10n.appIconUnsupported,
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+            return Column(
+              children: [
+                Padding(
+                  padding: settingsItemPadding.copyWith(top: 8),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      const spacing = 8.0;
+                      const minTileWidth = 100.0;
+                      const line = BorderSide(
+                        color: Color(0x33FFFFFF),
+                        width: 0.5,
+                      );
+                      final width = constraints.maxWidth;
+                      final columns =
+                          ((width + spacing) / (minTileWidth + spacing))
+                              .floor()
+                              .clamp(1, AppIconChoice.values.length);
+                      final tileWidth =
+                          (width - (columns - 1) * spacing) / columns;
+                      final tiles = [
+                        for (final choice in widget.icons.choices)
+                          _AppIconTile(
+                            key: ValueKey('app-icon-${choice.name}'),
+                            choice: choice,
+                            selected: choice == state.current,
+                            onTap: _changing || choice == state.current
+                                ? null
+                                : () => _change(choice),
+                          ),
+                      ];
+                      final edgeWidth = FixedColumnWidth(
+                        tileWidth + spacing / 2,
+                      );
+                      return Table(
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        border: const TableBorder(
+                          top: line,
+                          right: line,
+                          bottom: line,
+                          left: line,
+                          horizontalInside: line,
+                          verticalInside: line,
+                        ),
+                        columnWidths: {
+                          if (columns > 1) ...{
+                            0: edgeWidth,
+                            columns - 1: edgeWidth,
+                          },
+                        },
+                        children: [
+                          for (
+                            var first = 0;
+                            first < tiles.length;
+                            first += columns
+                          )
+                            TableRow(
+                              children: [
+                                for (var column = 0; column < columns; column++)
+                                  if (first + column < tiles.length)
+                                    Padding(
+                                      padding: EdgeInsets.only(
+                                        left: column == 0 ? 0 : spacing / 2,
+                                        right: column == columns - 1
+                                            ? 0
+                                            : spacing / 2,
+                                      ),
+                                      child: tiles[first + column],
+                                    )
+                                  else
+                                    const SizedBox.shrink(),
+                              ],
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                if (_changing)
+                  const LinearProgressIndicator(color: Colors.white),
+              ],
+            );
+          },
+        ),
+        if (_changeFailed)
+          Semantics(
+            liveRegion: true,
+            child: Padding(
+              padding: settingsItemPadding,
               child: Text(
                 l10n.appIconChangeFailed,
                 style: const TextStyle(color: Colors.redAccent),
               ),
             ),
-        ],
+          ),
+      ],
+    );
+  }
+}
+
+class _AppIconTile extends StatelessWidget {
+  const _AppIconTile({
+    super.key,
+    required this.choice,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppIconChoice choice;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final title = switch (choice) {
+      AppIconChoice.vinylPrimary => l10n.appIconDefault,
+      AppIconChoice.text => l10n.appIconText,
+      AppIconChoice.mosaic => l10n.appIconMosaic,
+      AppIconChoice.vinyl => l10n.appIconVinyl,
+      AppIconChoice.vinylWhite => l10n.appIconVinylWhite,
+      AppIconChoice.mosaicXerox => l10n.appIconMosaicXerox,
+    };
+    final radius = BorderRadius.circular(12);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: radius,
+                    child: Image.asset(
+                      choice.previewAsset,
+                      width: 56,
+                      height: 56,
+                      cacheWidth: 168,
+                      fit: BoxFit.cover,
+                      excludeFromSemantics: true,
+                    ),
+                  ),
+                  if (selected)
+                    const Positioned(
+                      right: 0,
+                      bottom: 0,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.black87,
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(
+                            PhosphorIcons.checkBold,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

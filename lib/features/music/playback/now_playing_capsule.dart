@@ -13,11 +13,13 @@ class NowPlayingCapsule extends StatelessWidget {
     required this.playback,
     required this.visible,
     required this.onOpenSheet,
+    this.pullFeedbackIcon,
   });
 
   final AlbumPlayback? playback;
   final bool visible;
   final VoidCallback onOpenSheet;
+  final IconData? pullFeedbackIcon;
 
   static const _textShadows = [Shadow(color: Color(0xB3000000), blurRadius: 3)];
 
@@ -42,6 +44,16 @@ class NowPlayingCapsule extends StatelessWidget {
             child: Semantics(
               customSemanticsActions: {
                 CustomSemanticsAction(label: l10n.settings): onOpenSheet,
+                if (playback != null && playback.currentTrack != null) ...{
+                  CustomSemanticsAction(label: l10n.musicPreviousTrack): () =>
+                      playback.skip(forward: false),
+                  CustomSemanticsAction(label: l10n.musicNextTrack): () =>
+                      playback.skip(forward: true),
+                  CustomSemanticsAction(label: l10n.musicRewind): () =>
+                      playback.seekStep(forward: false),
+                  CustomSemanticsAction(label: l10n.musicFastForward): () =>
+                      playback.seekStep(forward: true),
+                },
               },
               child: ConstrainedBox(
                 constraints: const BoxConstraints(
@@ -90,11 +102,16 @@ class NowPlayingCapsule extends StatelessWidget {
               tooltip: playing ? l10n.musicPause : l10n.musicPlay,
               onPressed: title == null ? null : playback!.toggleCurrent,
               color: Colors.white,
-              disabledColor: Colors.white38,
+              disabledColor: pullFeedbackIcon == null
+                  ? Colors.white38
+                  : Colors.white,
               iconSize: 14,
               padding: EdgeInsets.zero,
               icon: Icon(
-                playing ? PhosphorIcons.pauseFill : PhosphorIcons.playFill,
+                pullFeedbackIcon ??
+                    (playing
+                        ? PhosphorIcons.pauseFill
+                        : PhosphorIcons.playFill),
                 shadows: _textShadows,
               ),
             ),

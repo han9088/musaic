@@ -20,7 +20,7 @@ const appNotificationBottomInset = 70.0;
 const appNotificationStackGap = 15.0;
 const appNotificationNoiseOpacity = 0.06;
 const appNotificationIconOpacity = 0.68;
-const appNotificationBorderColor = Color(0x14000000);
+const appNotificationBorderColor = Color(0x14FFFFFF);
 const _appNotificationNoiseAsset = 'assets/textures/dialog_noise.png';
 
 /// 封装或定义应用通知type相关类型与行为，负责对话框、通知及其转场和展示管理。
@@ -131,4 +131,3 @@ final class _AppNotificationController {
     overlay.insert(_entry!);
   }
 }
-
