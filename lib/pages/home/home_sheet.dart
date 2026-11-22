@@ -10,11 +10,15 @@ import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../features/settings/about_settings.dart';
 import '../../features/settings/appearance_settings.dart';
+import '../../features/settings/diagnostics_settings.dart';
 import '../../features/settings/settings_sheet.dart';
+import '../../features/settings/usage_guide_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 import '../../services/music/music_source_controller.dart';
+import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
+import '../../storage/settings/usage_guide_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../settings/settings_page.dart';
@@ -32,6 +36,7 @@ class HomeSheet extends StatefulWidget {
     this.layoutSwitch,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.language,
     this.manualRotation,
     this.xeroxEnabled,
     this.onXeroxChanged,
@@ -47,6 +52,7 @@ class HomeSheet extends StatefulWidget {
   final ({Widget button, bool visible})? layoutSwitch;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final AppLanguagePreference? language;
   final ManualRotationPreference? manualRotation;
   final ValueListenable<bool>? xeroxEnabled;
   final FutureOr<void> Function(bool enabled)? onXeroxChanged;
@@ -58,6 +64,7 @@ class HomeSheet extends StatefulWidget {
 
 /// 封装或定义首页弹层状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomeSheetState extends State<HomeSheet> {
+  final _usageGuide = UsageGuidePreference();
   bool _open = false;
   bool _xeroxChangePending = false;
   bool _sourceSelectionPending = false;
@@ -66,6 +73,12 @@ class _HomeSheetState extends State<HomeSheet> {
   bool _visible = true;
 
   bool get _playbackAvailable => widget.enabled && widget.playbackReady;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_usageGuide.restore());
+  }
 
   void _reveal() {
     if (!_playbackAvailable || _open) return;
@@ -119,6 +132,7 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _usageGuide.dispose();
     final dismissed = _sourceSheetDismissed;
     if (dismissed != null && !dismissed.isCompleted) dismissed.complete();
     super.dispose();
@@ -135,6 +149,7 @@ class _HomeSheetState extends State<HomeSheet> {
         sourceSwitching: widget.sourceSwitching,
         onSourceSelection: _selectSource,
         onOpenSection: _openSettings,
+        usageGuideVisible: _usageGuide.visible,
         xeroxEnabled: widget.xeroxEnabled,
         onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
         xeroxPalettePicker: widget.xeroxPalettePicker,
@@ -170,12 +185,11 @@ class _HomeSheetState extends State<HomeSheet> {
   void _openSettings(BuildContext source, SettingsSection section) {
     if (!_open || _sourceSelectionPending || _xeroxChangePending) return;
     final navigator = Navigator.of(source, rootNavigator: true);
-    final l10n = AppLocalizations.of(source);
     late final PageRoute<void> route;
     final (path, title, body) = switch (section) {
       SettingsSection.musicSource => (
         '/settings/music-source',
-        l10n.musicSource,
+        (AppLocalizations l10n) => l10n.musicSource,
         MusicSourcePicker(
           sources: widget.sources!,
           sourceSwitching: widget.sourceSwitching,
@@ -189,15 +203,26 @@ class _HomeSheetState extends State<HomeSheet> {
       ),
       SettingsSection.appearance => (
         '/settings/appearance',
-        l10n.settingsAppearance,
+        (AppLocalizations l10n) => l10n.settingsAppearance,
         AppearanceSettings(
           icons: widget.icons,
+          language: widget.language,
           manualRotation: widget.manualRotation,
         ),
       ),
+      SettingsSection.usageGuide => (
+        '/settings/usage-guide',
+        (AppLocalizations l10n) => l10n.settingsUsageGuide,
+        const UsageGuideSettings(),
+      ),
+      SettingsSection.diagnostics => (
+        '/settings/diagnostics',
+        (AppLocalizations l10n) => l10n.settingsDiagnostics,
+        const DiagnosticsSettings(),
+      ),
       SettingsSection.about => (
         '/settings/about',
-        l10n.settingsAbout,
+        (AppLocalizations l10n) => l10n.settingsAbout,
         const AboutSettings(onOpenDetail: pushSettingsDetail),
       ),
     };
@@ -207,6 +232,19 @@ class _HomeSheetState extends State<HomeSheet> {
       path: path,
       title: title,
       body: body,
+      bodyIsSliver: section == SettingsSection.diagnostics,
+      footer: section == SettingsSection.about
+          ? const AboutCopyrightFooter()
+          : null,
+      fixedFooter: section == SettingsSection.usageGuide
+          ? UsageGuideDismissFooter(
+              onDismiss: () async {
+                if (!route.isCurrent) return;
+                await _usageGuide.hide();
+                if (route.isCurrent) navigator.pop();
+              },
+            )
+          : null,
     );
   }
 

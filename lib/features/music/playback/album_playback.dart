@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../services/diagnostics/diagnostic_log.dart';
 import '../../../services/music/music_provider.dart';
 import '../catalog/album_catalog_mapper.dart';
 
@@ -89,8 +90,12 @@ class AlbumPlayback extends ChangeNotifier {
         playing = state.isPlaying;
         notifyListeners();
       },
-      onError: (Object _) {
+      onError: (Object error) {
         if (generation != _generation) return;
+        diagnosticLog.record(
+          DiagnosticEvent.playbackStreamFailed,
+          error: error,
+        );
         playing = false;
         notifyListeners();
         onError?.call();
@@ -116,10 +121,13 @@ class AlbumPlayback extends ChangeNotifier {
         if (album == null) throw StateError('Unknown local album');
         if (isPlaying(asset, title)) {
           await provider.pause();
+          diagnosticLog.record(DiagnosticEvent.playbackPaused);
         } else if (this.asset == asset) {
           await provider.resume();
+          diagnosticLog.record(DiagnosticEvent.playbackResumed);
         } else {
           await provider.play([album.reference]);
+          diagnosticLog.record(DiagnosticEvent.playbackStarted);
         }
       }),
     );
@@ -136,9 +144,14 @@ class AlbumPlayback extends ChangeNotifier {
   void skip({required bool forward}) {
     if (currentTrack == null) return;
     unawaited(
-      _runProviderCommand(
-        (provider) => forward ? provider.next() : provider.previous(),
-      ),
+      _runProviderCommand((provider) async {
+        await (forward ? provider.next() : provider.previous());
+        diagnosticLog.record(
+          forward
+              ? DiagnosticEvent.playbackNext
+              : DiagnosticEvent.playbackPrevious,
+        );
+      }),
     );
   }
 
@@ -154,19 +167,26 @@ class AlbumPlayback extends ChangeNotifier {
     if (target.isNegative) target = Duration.zero;
     if (duration != null && target > duration) target = duration;
     if (target == state.position) return;
-    unawaited(_runProviderCommand((provider) => provider.seek(target)));
+    unawaited(
+      _runProviderCommand(
+        (provider) => provider.seek(target),
+        failure: DiagnosticEvent.playbackSeekFailed,
+      ),
+    );
   }
 
   Future<void> _runProviderCommand(
-    Future<void> Function(MusicProvider provider) command,
-  ) async {
+    Future<void> Function(MusicProvider provider) command, {
+    DiagnosticEvent failure = DiagnosticEvent.playbackCommandFailed,
+  }) async {
     final provider = _provider;
     if (provider == null || _busy) return;
     final generation = _generation;
     _busy = true;
     try {
       await command(provider);
-    } catch (_) {
+    } catch (error, stack) {
+      diagnosticLog.record(failure, error: error, stack: stack);
       if (generation == _generation) onError?.call();
     } finally {
       if (generation == _generation) _busy = false;

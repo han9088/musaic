@@ -1,12 +1,25 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 
 const _appleAppStoreId = String.fromEnvironment('MUSAIC_APP_STORE_ID');
+const musaicContactEmail = 'deskbtm@gmail.com';
 final _musaicUrl = Uri.https('musaic.deskbtm.com');
 
 enum MusaicShareResult { handled, copied, unavailable }
+
+Future<bool> composeMusaicContactEmail() async {
+  try {
+    await FlutterEmailSender.send(
+      const Email(recipients: [musaicContactEmail]),
+    );
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
 
 Future<bool> openMusaicReview() async {
   final hasStoreListing = switch (defaultTargetPlatform) {

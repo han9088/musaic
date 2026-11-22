@@ -7,6 +7,7 @@ import 'directory_music_library.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../diagnostics/diagnostic_log.dart';
 import 'local_music_provider.dart';
 import 'music_provider.dart';
 
@@ -24,14 +25,17 @@ final class MusicSourceController {
   final busy = signal(false);
   final problem = signal<MusicSourceProblem?>(null);
   MusicProvider? _provider;
+
   /// 获取当前选中的音乐源提供器。
   MusicProvider? get provider => _provider;
   bool _disposed = false;
   bool _selectionTouched = false;
   final directoryLibrary = signal<DirectoryMusicLibrary?>(null);
+
   /// 获取当前本地音乐目录媒体库。
   DirectoryMusicLibrary? get directories => directoryLibrary.value;
   final directorySelected = signal(false);
+
   /// 用于取消本地媒体库曲目变化订阅的回调。
   void Function()? _stopDirectories;
 
@@ -77,8 +81,10 @@ final class MusicSourceController {
       if (_disposed) return;
       mock2Selected.value = false;
       _publishDirectories();
+      diagnosticLog.record(DiagnosticEvent.directorySourceSelected);
       await library.refresh();
-    } catch (_) {
+    } catch (error) {
+      diagnosticLog.record(DiagnosticEvent.directorySourceFailed, error: error);
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
     } finally {
       if (!_disposed) busy.value = false;
@@ -91,6 +97,7 @@ final class MusicSourceController {
     _selectionTouched = true;
     busy.value = true;
     problem.value = null;
+    diagnosticLog.record(DiagnosticEvent.localLibrarySelected);
     MusicProvider? candidate;
     try {
       candidate = _createLocal();
@@ -101,11 +108,19 @@ final class MusicSourceController {
       }
       if (_disposed) return;
       if (access != MusicAccess.authorized) {
-        problem.value = switch (access) {
-          MusicAccess.restricted => MusicSourceProblem.restricted,
-          MusicAccess.unavailable => MusicSourceProblem.unavailable,
-          _ => MusicSourceProblem.denied,
+        final (issue, event) = switch (access) {
+          MusicAccess.restricted => (
+            MusicSourceProblem.restricted,
+            DiagnosticEvent.localAccessRestricted,
+          ),
+          MusicAccess.unavailable => (
+            MusicSourceProblem.unavailable,
+            DiagnosticEvent.localAccessUnavailable,
+          ),
+          _ => (MusicSourceProblem.denied, DiagnosticEvent.localAccessDenied),
         };
+        diagnosticLog.record(event);
+        problem.value = issue;
         return;
       }
       final albums = <ProviderAlbum>[];
@@ -129,7 +144,12 @@ final class MusicSourceController {
       _provider = candidate;
       candidate = null;
       catalog.value = List<ProviderAlbum>.unmodifiable(albums);
-    } catch (_) {
+      diagnosticLog.record(
+        DiagnosticEvent.localLibraryLoaded,
+        count: albums.length,
+      );
+    } catch (error) {
+      diagnosticLog.record(DiagnosticEvent.localLibraryFailed, error: error);
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
     } finally {
       try {
@@ -162,7 +182,16 @@ final class MusicSourceController {
       mock2Selected.value = mock2;
       catalog.value = null;
       problem.value = null;
-    } catch (_) {
+      diagnosticLog.record(
+        mock2
+            ? DiagnosticEvent.secondDemoSourceSelected
+            : DiagnosticEvent.demoSourceSelected,
+      );
+    } catch (error) {
+      diagnosticLog.record(
+        DiagnosticEvent.musicSourceSwitchFailed,
+        error: error,
+      );
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
     } finally {
       if (!_disposed) busy.value = false;

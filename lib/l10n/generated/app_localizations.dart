@@ -118,6 +118,108 @@ abstract class AppLocalizations {
   /// **'关于与帮助'**
   String get settingsAboutAndHelp;
 
+  /// No description provided for @settingsUsageGuide.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用说明'**
+  String get settingsUsageGuide;
+
+  /// No description provided for @usageGuideDismiss.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭并不再显示'**
+  String get usageGuideDismiss;
+
+  /// No description provided for @usageGuideBrowseTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'浏览专辑'**
+  String get usageGuideBrowseTitle;
+
+  /// No description provided for @usageGuideBrowse.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖动画布浏览专辑，点一下封面选中，再点一次放大。在 Cover Flow 中左右滑动切换专辑，从中间封面向上拖动可展开，向下拖动可收起。'**
+  String get usageGuideBrowse;
+
+  /// No description provided for @usageGuidePlaybackTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放音乐'**
+  String get usageGuidePlaybackTitle;
+
+  /// No description provided for @usageGuidePlaybackBar.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放条'**
+  String get usageGuidePlaybackBar;
+
+  /// No description provided for @usageGuideReplayDemo.
+  ///
+  /// In zh, this message translates to:
+  /// **'重播拖拽演示'**
+  String get usageGuideReplayDemo;
+
+  /// No description provided for @usageGuideDragHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'短拉松手切歌，拉住可快进或快退'**
+  String get usageGuideDragHint;
+
+  /// No description provided for @usageGuideDragFastForward.
+  ///
+  /// In zh, this message translates to:
+  /// **'快进'**
+  String get usageGuideDragFastForward;
+
+  /// No description provided for @usageGuideDragRewind.
+  ///
+  /// In zh, this message translates to:
+  /// **'快退'**
+  String get usageGuideDragRewind;
+
+  /// No description provided for @usageGuidePlayback.
+  ///
+  /// In zh, this message translates to:
+  /// **'点封面上的播放按钮开始播放，在画布底部的播放条可以暂停或继续。播放本地音乐时，向左拖动播放条切换到上一首，向右拖动切换到下一首。'**
+  String get usageGuidePlayback;
+
+  /// No description provided for @usageGuideMusic.
+  ///
+  /// In zh, this message translates to:
+  /// **'在设置中打开「音乐源」，可以切换内置的示例音乐。示例音乐采用模拟播放。'**
+  String get usageGuideMusic;
+
+  /// No description provided for @usageGuideMusicMobile.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择「本地音乐」并按提示授权，可浏览设备里的音乐。也可以通过「添加文件夹」扫描指定文件夹中的音乐文件。'**
+  String get usageGuideMusicMobile;
+
+  /// No description provided for @usageGuideLayoutTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换布局'**
+  String get usageGuideLayoutTitle;
+
+  /// No description provided for @usageGuideLayout.
+  ///
+  /// In zh, this message translates to:
+  /// **'在「外观与显示」里开启「显示布局切换按钮」，就能用这个按钮在专辑画布和 Cover Flow 之间切换。'**
+  String get usageGuideLayout;
+
+  /// No description provided for @usageGuideCameraTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'相机背景'**
+  String get usageGuideCameraTitle;
+
+  /// No description provided for @usageGuideCamera.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按 Cover Flow 标题可开启或关闭相机背景。开启后，点屏幕空白处拍照，照片会保存到系统相册。'**
+  String get usageGuideCamera;
+
   /// No description provided for @settingsSupport.
   ///
   /// In zh, this message translates to:
@@ -135,6 +237,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'分享 Musaic'**
   String get settingsShareApp;
+
+  /// No description provided for @settingsContactUs.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系我们'**
+  String get settingsContactUs;
+
+  /// No description provided for @settingsContactXiaohongshu.
+  ///
+  /// In zh, this message translates to:
+  /// **'小红书'**
+  String get settingsContactXiaohongshu;
+
+  /// No description provided for @settingsContactLinkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开此链接。'**
+  String get settingsContactLinkUnavailable;
+
+  /// No description provided for @settingsContactEmailUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'邮件操作未完成，请检查邮件应用后重试。'**
+  String get settingsContactEmailUnavailable;
 
   /// No description provided for @settingsReviewUnavailable.
   ///
@@ -159,6 +285,94 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'问题诊断'**
   String get settingsDiagnostics;
+
+  /// No description provided for @diagnosticsPrivacy.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断报告由 Musaic 在本机生成，用于排查问题。报告包含近期运行日志、设备型号、系统和应用版本，不包含账号、设备 ID、歌曲信息、照片或本地文件路径。你可以先导出查看，再决定是否发送。'**
+  String get diagnosticsPrivacy;
+
+  /// No description provided for @diagnosticsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'问题描述（选填）'**
+  String get diagnosticsDescription;
+
+  /// No description provided for @diagnosticsDescriptionHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请描述遇到的问题。如果方便，也可以写下复现步骤。'**
+  String get diagnosticsDescriptionHint;
+
+  /// No description provided for @diagnosticsAttachment.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志附件（.txt）'**
+  String get diagnosticsAttachment;
+
+  /// No description provided for @diagnosticsExport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出日志'**
+  String get diagnosticsExport;
+
+  /// No description provided for @diagnosticsExported.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断日志已导出。'**
+  String get diagnosticsExported;
+
+  /// No description provided for @diagnosticsExportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法导出日志，请重试。'**
+  String get diagnosticsExportFailed;
+
+  /// No description provided for @diagnosticsEmail.
+  ///
+  /// In zh, this message translates to:
+  /// **'同意并通过邮件发送'**
+  String get diagnosticsEmail;
+
+  /// No description provided for @diagnosticsEmailSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志会附在邮件中，补充描述会填入正文。'**
+  String get diagnosticsEmailSubtitle;
+
+  /// No description provided for @diagnosticsEmailSubject.
+  ///
+  /// In zh, this message translates to:
+  /// **'Musaic 问题反馈'**
+  String get diagnosticsEmailSubject;
+
+  /// No description provided for @diagnosticsEmailDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备型号：{device}\n系统版本：{system}\nMusaic 版本：{appVersion}'**
+  String diagnosticsEmailDetails(
+    String device,
+    String system,
+    String appVersion,
+  );
+
+  /// No description provided for @diagnosticsUnavailableValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法读取'**
+  String get diagnosticsUnavailableValue;
+
+  /// No description provided for @diagnosticsMailUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前无法打开支持附件的邮件编辑器。你可以先导出日志，再手动添加到邮件。'**
+  String get diagnosticsMailUnavailable;
+
+  /// No description provided for @diagnosticsMailFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开反馈邮件，请重试。'**
+  String get diagnosticsMailFailed;
 
   /// No description provided for @settingsAbout.
   ///
@@ -243,6 +457,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'外观与显示'**
   String get settingsAppearance;
+
+  /// No description provided for @settingsLanguage.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言'**
+  String get settingsLanguage;
+
+  /// No description provided for @settingsLanguageSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get settingsLanguageSystem;
+
+  /// No description provided for @settingsLanguageSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索语言'**
+  String get settingsLanguageSearch;
+
+  /// No description provided for @settingsLanguageNoResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到匹配的语言'**
+  String get settingsLanguageNoResults;
 
   /// No description provided for @settingsShowLayoutSwitch.
   ///

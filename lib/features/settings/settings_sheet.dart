@@ -1,16 +1,18 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
 import 'settings_support_section.dart';
 
-enum SettingsSection { musicSource, appearance, about }
+enum SettingsSection { musicSource, appearance, usageGuide, diagnostics, about }
 
 class SettingsSheet extends StatelessWidget {
   const SettingsSheet({
@@ -19,6 +21,7 @@ class SettingsSheet extends StatelessWidget {
     required this.sourceSwitching,
     required this.onSourceSelection,
     required this.onOpenSection,
+    required this.usageGuideVisible,
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -28,21 +31,23 @@ class SettingsSheet extends StatelessWidget {
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function()) onSourceSelection;
   final void Function(BuildContext, SettingsSection) onOpenSection;
+  final ReadonlySignal<bool> usageGuideVisible;
   final ValueListenable<bool>? xeroxEnabled;
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
 
-  Widget _section(IconData icon, String title, [SettingsSection? section]) =>
+  Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
         builder: (origin) => ListTile(
           iconColor: Colors.white70,
           textColor: Colors.white,
           leading: Icon(icon),
           title: Text(title),
-          trailing: section == null
-              ? null
-              : const Icon(PhosphorIcons.caretUp, size: settingsItemArrowSize),
-          onTap: section == null ? null : () => onOpenSection(origin, section),
+          trailing: const Icon(
+            PhosphorIcons.caretUp,
+            size: settingsItemArrowSize,
+          ),
+          onTap: () => onOpenSection(origin, section),
         ),
       );
 
@@ -55,7 +60,7 @@ class SettingsSheet extends StatelessWidget {
       indicatorColor: Colors.transparent,
       automaticIndicatorColorAdjustment: false,
       dividerColor: Colors.transparent,
-      labelColor: Colors.white,
+      labelColor: AppColors.settingsAccent,
       unselectedLabelColor: const Color(0xFF9CA3AF),
       tabs: [
         if (controller != null)
@@ -147,21 +152,31 @@ class SettingsSheet extends StatelessWidget {
                                   ),
                                 if (controller != null)
                                   _section(
-                                    PhosphorIcons.musicNotes,
+                                    PhosphorIcons.musicNoteSimple,
                                     l10n.musicSource,
                                     SettingsSection.musicSource,
                                   ),
                                 _section(
-                                  PhosphorIcons.paintBrush,
+                                  PhosphorIcons.monitor,
                                   l10n.settingsAppearance,
                                   SettingsSection.appearance,
                                 ),
                                 SettingsSectionHeading(
                                   l10n.settingsAboutAndHelp,
                                 ),
+                                SignalBuilder(
+                                  builder: (_) => usageGuideVisible.value
+                                      ? _section(
+                                          PhosphorIcons.bookOpen,
+                                          l10n.settingsUsageGuide,
+                                          SettingsSection.usageGuide,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
                                 _section(
                                   PhosphorIcons.stethoscope,
                                   l10n.settingsDiagnostics,
+                                  SettingsSection.diagnostics,
                                 ),
                                 _section(
                                   PhosphorIcons.info,

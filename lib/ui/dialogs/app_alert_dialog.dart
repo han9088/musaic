@@ -19,6 +19,7 @@ const appDialogNoiseAsset = 'assets/textures/dialog_noise.png';
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
+  Widget Function(BuildContext, Animation<double>, Widget)? layoutBuilder,
   bool barrierDismissible = true,
   bool useRootNavigator = true,
   Duration? autoDismissAfter,
@@ -30,8 +31,19 @@ Future<T?> showAppDialog<T>({
       MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
   final route = _AppDialogRoute<T>(
-    pageBuilder: (dialogContext, _, _) {
-      return themes.wrap(SafeArea(child: Builder(builder: builder)));
+    pageBuilder: (_, animation, _) {
+      final content = Builder(builder: builder);
+      return themes.wrap(
+        layoutBuilder == null
+            ? SafeArea(child: content)
+            : Builder(
+                builder: (context) => layoutBuilder(
+                  context,
+                  disableAnimations ? kAlwaysCompleteAnimation : animation,
+                  content,
+                ),
+              ),
+      );
     },
     barrierDismissible: barrierDismissible,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
@@ -43,7 +55,7 @@ Future<T?> showAppDialog<T>({
         ? Duration.zero
         : const Duration(milliseconds: 190),
     transitionBuilder: (context, animation, _, child) {
-      if (disableAnimations) return child;
+      if (disableAnimations || layoutBuilder != null) return child;
       return AppJellyTransition(
         animation: animation,
         transformKey: const Key('app-alert-dialog-jelly-transform'),
@@ -119,129 +131,60 @@ class AppAlertDialog extends StatelessWidget {
           child: ConstrainedBox(
             key: const Key('app-alert-dialog-surface'),
             constraints: const BoxConstraints(maxWidth: 460),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(AppRadius.large),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.dialogShadow,
-                    blurRadius: 32,
-                    offset: Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.large),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: appDialogBlurSigma,
-                    sigmaY: appDialogBlurSigma,
-                  ),
-                  child: Stack(
-                    children: [
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: appDialogSurfaceColor,
-                          borderRadius: BorderRadius.circular(AppRadius.large),
-                          border: Border.all(color: appDialogBorderColor),
-                        ),
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (title != null)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    24,
-                                    24,
-                                    24,
-                                    0,
-                                  ),
-                                  child: DefaultTextStyle(
-                                    style:
-                                        dialogTheme.titleTextStyle ??
-                                        theme.textTheme.headlineSmall!.copyWith(
-                                          color: AppColors.dialogForeground,
-                                        ),
-                                    child: title!,
-                                  ),
-                                ),
-                              if (content != null)
-                                Padding(
-                                  padding: EdgeInsets.fromLTRB(
-                                    24,
-                                    title == null ? 24 : 16,
-                                    24,
-                                    actions.isEmpty ? 24 : 16,
-                                  ),
-                                  child: DefaultTextStyle(
-                                    style:
-                                        dialogTheme.contentTextStyle ??
-                                        theme.textTheme.bodyMedium!.copyWith(
-                                          color: AppColors.dialogForeground,
-                                        ),
-                                    child: content!,
-                                  ),
-                                ),
-                              if (actions.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    12,
-                                  ),
-                                  child: TextButtonTheme(
-                                    data: TextButtonThemeData(
-                                      style: TextButton.styleFrom(
-                                        foregroundColor:
-                                            AppColors.dialogForeground,
-                                        disabledForegroundColor: Colors.white38,
-                                      ).merge(theme.textButtonTheme.style),
-                                    ),
-                                    child: OverflowBar(
-                                      alignment: MainAxisAlignment.end,
-                                      spacing: 8,
-                                      overflowAlignment:
-                                          OverflowBarAlignment.end,
-                                      overflowSpacing: 4,
-                                      children: actions,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Positioned.fill(
-                        child: IgnorePointer(
-                          child: Opacity(
-                            key: const Key('app-alert-dialog-noise'),
-                            opacity: appDialogNoiseOpacity,
-                            child: LayoutBuilder(
-                              builder: (context, constraints) {
-                                return Image(
-                                  image: ResizeImage(
-                                    const AssetImage(appDialogNoiseAsset),
-                                    width: constraints.maxWidth.ceil(),
-                                    height: constraints.maxHeight.ceil(),
-                                  ),
-                                  fit: BoxFit.cover,
-                                  color: Colors.white,
-                                  colorBlendMode: BlendMode.difference,
-                                  filterQuality: FilterQuality.low,
-                                  excludeFromSemantics: true,
-                                );
-                              },
+            child: AppDialogSurface(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (title != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+                      child: DefaultTextStyle(
+                        style:
+                            dialogTheme.titleTextStyle ??
+                            theme.textTheme.headlineSmall!.copyWith(
+                              color: AppColors.dialogForeground,
                             ),
-                          ),
+                        child: title!,
+                      ),
+                    ),
+                  if (content != null)
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        title == null ? 24 : 16,
+                        24,
+                        actions.isEmpty ? 24 : 16,
+                      ),
+                      child: DefaultTextStyle(
+                        style:
+                            dialogTheme.contentTextStyle ??
+                            theme.textTheme.bodyMedium!.copyWith(
+                              color: AppColors.dialogForeground,
+                            ),
+                        child: content!,
+                      ),
+                    ),
+                  if (actions.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: TextButtonTheme(
+                        data: TextButtonThemeData(
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.dialogForeground,
+                            disabledForegroundColor: Colors.white38,
+                          ).merge(theme.textButtonTheme.style),
+                        ),
+                        child: OverflowBar(
+                          alignment: MainAxisAlignment.end,
+                          spacing: 8,
+                          overflowAlignment: OverflowBarAlignment.end,
+                          overflowSpacing: 4,
+                          children: actions,
                         ),
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -249,4 +192,77 @@ class AppAlertDialog extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The frosted surface shared by dialogs and popup menus.
+class AppDialogSurface extends StatelessWidget {
+  const AppDialogSurface({
+    super.key,
+    required this.child,
+    this.borderRadius = const BorderRadius.all(
+      Radius.circular(AppRadius.large),
+    ),
+  });
+
+  final Widget child;
+  final BorderRadius borderRadius;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      borderRadius: borderRadius,
+      boxShadow: const [
+        BoxShadow(
+          color: AppColors.dialogShadow,
+          blurRadius: 32,
+          offset: Offset(0, 12),
+        ),
+      ],
+    ),
+    child: ClipRRect(
+      borderRadius: borderRadius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: appDialogBlurSigma,
+          sigmaY: appDialogBlurSigma,
+        ),
+        child: Stack(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: appDialogSurfaceColor,
+                borderRadius: borderRadius,
+                border: Border.all(color: appDialogBorderColor),
+              ),
+              child: SizedBox(width: double.infinity, child: child),
+            ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Opacity(
+                  key: const Key('app-alert-dialog-noise'),
+                  opacity: appDialogNoiseOpacity,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Image(
+                        image: ResizeImage(
+                          const AssetImage(appDialogNoiseAsset),
+                          width: constraints.maxWidth.ceil(),
+                          height: constraints.maxHeight.ceil(),
+                        ),
+                        fit: BoxFit.cover,
+                        color: Colors.white,
+                        colorBlendMode: BlendMode.difference,
+                        filterQuality: FilterQuality.low,
+                        excludeFromSemantics: true,
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

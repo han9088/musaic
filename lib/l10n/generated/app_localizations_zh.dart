@@ -21,6 +21,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutAndHelp => '关于与帮助';
 
   @override
+  String get settingsUsageGuide => '使用说明';
+
+  @override
+  String get usageGuideDismiss => '关闭并不再显示';
+
+  @override
+  String get usageGuideBrowseTitle => '浏览专辑';
+
+  @override
+  String get usageGuideBrowse =>
+      '拖动画布浏览专辑，点一下封面选中，再点一次放大。在 Cover Flow 中左右滑动切换专辑，从中间封面向上拖动可展开，向下拖动可收起。';
+
+  @override
+  String get usageGuidePlaybackTitle => '播放音乐';
+
+  @override
+  String get usageGuidePlaybackBar => '播放条';
+
+  @override
+  String get usageGuideReplayDemo => '重播拖拽演示';
+
+  @override
+  String get usageGuideDragHint => '短拉松手切歌，拉住可快进或快退';
+
+  @override
+  String get usageGuideDragFastForward => '快进';
+
+  @override
+  String get usageGuideDragRewind => '快退';
+
+  @override
+  String get usageGuidePlayback =>
+      '点封面上的播放按钮开始播放，在画布底部的播放条可以暂停或继续。播放本地音乐时，向左拖动播放条切换到上一首，向右拖动切换到下一首。';
+
+  @override
+  String get usageGuideMusic => '在设置中打开「音乐源」，可以切换内置的示例音乐。示例音乐采用模拟播放。';
+
+  @override
+  String get usageGuideMusicMobile =>
+      '选择「本地音乐」并按提示授权，可浏览设备里的音乐。也可以通过「添加文件夹」扫描指定文件夹中的音乐文件。';
+
+  @override
+  String get usageGuideLayoutTitle => '切换布局';
+
+  @override
+  String get usageGuideLayout =>
+      '在「外观与显示」里开启「显示布局切换按钮」，就能用这个按钮在专辑画布和 Cover Flow 之间切换。';
+
+  @override
+  String get usageGuideCameraTitle => '相机背景';
+
+  @override
+  String get usageGuideCamera =>
+      '长按 Cover Flow 标题可开启或关闭相机背景。开启后，点屏幕空白处拍照，照片会保存到系统相册。';
+
+  @override
   String get settingsSupport => '支持';
 
   @override
@@ -28,6 +84,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShareApp => '分享 Musaic';
+
+  @override
+  String get settingsContactUs => '联系我们';
+
+  @override
+  String get settingsContactXiaohongshu => '小红书';
+
+  @override
+  String get settingsContactLinkUnavailable => '无法打开此链接。';
+
+  @override
+  String get settingsContactEmailUnavailable => '邮件操作未完成，请检查邮件应用后重试。';
 
   @override
   String get settingsReviewUnavailable => '当前无法打开商店评分页面。';
@@ -40,6 +108,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsDiagnostics => '问题诊断';
+
+  @override
+  String get diagnosticsPrivacy =>
+      '诊断报告由 Musaic 在本机生成，用于排查问题。报告包含近期运行日志、设备型号、系统和应用版本，不包含账号、设备 ID、歌曲信息、照片或本地文件路径。你可以先导出查看，再决定是否发送。';
+
+  @override
+  String get diagnosticsDescription => '问题描述（选填）';
+
+  @override
+  String get diagnosticsDescriptionHint => '请描述遇到的问题。如果方便，也可以写下复现步骤。';
+
+  @override
+  String get diagnosticsAttachment => '日志附件（.txt）';
+
+  @override
+  String get diagnosticsExport => '导出日志';
+
+  @override
+  String get diagnosticsExported => '诊断日志已导出。';
+
+  @override
+  String get diagnosticsExportFailed => '无法导出日志，请重试。';
+
+  @override
+  String get diagnosticsEmail => '同意并通过邮件发送';
+
+  @override
+  String get diagnosticsEmailSubtitle => '日志会附在邮件中，补充描述会填入正文。';
+
+  @override
+  String get diagnosticsEmailSubject => 'Musaic 问题反馈';
+
+  @override
+  String diagnosticsEmailDetails(
+    String device,
+    String system,
+    String appVersion,
+  ) {
+    return '设备型号：$device\n系统版本：$system\nMusaic 版本：$appVersion';
+  }
+
+  @override
+  String get diagnosticsUnavailableValue => '无法读取';
+
+  @override
+  String get diagnosticsMailUnavailable =>
+      '当前无法打开支持附件的邮件编辑器。你可以先导出日志，再手动添加到邮件。';
+
+  @override
+  String get diagnosticsMailFailed => '无法打开反馈邮件，请重试。';
 
   @override
   String get settingsAbout => '关于 Musaic';
@@ -86,6 +204,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAppearance => '外观与显示';
+
+  @override
+  String get settingsLanguage => '语言';
+
+  @override
+  String get settingsLanguageSystem => '跟随系统';
+
+  @override
+  String get settingsLanguageSearch => '搜索语言';
+
+  @override
+  String get settingsLanguageNoResults => '未找到匹配的语言';
 
   @override
   String get settingsShowLayoutSwitch => '显示布局切换按钮';

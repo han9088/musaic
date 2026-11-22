@@ -5,6 +5,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
+import '../../services/diagnostics/diagnostic_log.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 
@@ -32,6 +33,7 @@ class _AppIconPickerState extends State<AppIconPicker> {
     });
     try {
       await widget.icons.change(choice);
+      diagnosticLog.record(DiagnosticEvent.appIconChanged);
       final current = await widget.icons.read();
       if (mounted) {
         setState(() {
@@ -39,6 +41,11 @@ class _AppIconPickerState extends State<AppIconPicker> {
         });
       }
     } catch (error, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.appIconChangeFailed,
+        error: error,
+        stack: stack,
+      );
       debugPrint('App icon change failed: $error\n$stack');
       if (mounted) setState(() => _changeFailed = true);
     } finally {

@@ -39,6 +39,9 @@ dependencies:
   gal: ^3.0.1
   in_app_review: ^2.0.12
   share_plus: ^13.3.1
+  file_picker: ^13.4.1
+  flutter_email_sender: ^11.2.0
+  device_info_plus: ^13.3.0
 
 dependency_overrides:
   audioplayers_android:
@@ -52,6 +55,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.7
   camera_platform_interface: ^2.15.1
+  flutter_email_sender_method_channel: ^2.0.1
+  shared_preferences_platform_interface: ^2.4.2
 flutter:
   generate: true
   uses-material-design: true

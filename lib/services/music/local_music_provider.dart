@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 
+import '../diagnostics/diagnostic_log.dart';
 import 'local_music_library.dart';
 import 'music_provider.dart';
 
@@ -250,8 +251,11 @@ final class LocalMusicProvider implements MusicProvider {
   AudioPlayer _getPlayer() {
     if (_player case final player?) return player;
     final player = _player = AudioPlayer();
-    void failed(Object error) =>
-        _emit(status: MusicPlaybackStatus.error, error: error);
+    void failed(Object error) {
+      diagnosticLog.record(DiagnosticEvent.playbackPlayerFailed, error: error);
+      _emit(status: MusicPlaybackStatus.error, error: error);
+    }
+
     _subscriptions.add(
       player.onPositionChanged.listen(
         (value) => _emit(position: value),
@@ -287,8 +291,11 @@ final class LocalMusicProvider implements MusicProvider {
             } else {
               _emit(status: MusicPlaybackStatus.completed);
             }
-          }).catchError((Object _) {
-            /* Error already published by _command. */
+          }).catchError((Object error) {
+            diagnosticLog.record(
+              DiagnosticEvent.playbackAdvanceFailed,
+              error: error,
+            );
           }),
         );
       }, onError: failed),

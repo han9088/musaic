@@ -14,6 +14,10 @@ Settings → Support shares `https://musaic.deskbtm.com` and opens the store
 listing for reviews. For iOS and macOS release builds, pass the numeric Apple
 ID from App Store Connect as `--dart-define=MUSAIC_APP_STORE_ID=<id>`.
 
+Settings → Troubleshooting exports a local diagnostic report and can attach it
+to a feedback email. Set `--dart-define=MUSAIC_FEEDBACK_EMAIL=<address>` to
+prefill the recipient in the native mail composer.
+
 ## Android variants
 
 Debug and Release can be installed side by side, following Loive's build-type setup:

@@ -8,6 +8,7 @@ import 'package:musaic_query/musaic_query.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../storage/music/music_index.dart';
+import '../diagnostics/diagnostic_log.dart';
 import 'directory_catalog.dart';
 import 'music_provider.dart';
 
@@ -17,6 +18,7 @@ enum DirectoryScanState { idle, loading, scanning, complete, cancelled, failed }
 /// 封装或定义scancounts相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class ScanCounts {
   int added = 0, updated = 0, deleted = 0, skipped = 0, failed = 0;
+
   /// 执行当前模块中的copy操作，用于音乐源、媒体库、播放及切换流程。
   ScanCounts copy() => ScanCounts()
     ..added = added
@@ -52,6 +54,7 @@ final class DirectoryMusicLibrary {
   bool _cacheLoaded = false;
   int _artworkRevision = 0;
   Map<String, IndexedAudio> _tracksById = const {};
+
   /// 执行当前模块中的track操作，用于音乐源、媒体库、播放及切换流程。
   IndexedAudio? track(String id) => _tracksById[id];
   final _artwork = <String, Future<String?>>{};
@@ -155,7 +158,15 @@ final class DirectoryMusicLibrary {
           : DirectoryScanState.scanning;
       error.value = null;
     });
-    if (cancellation.isCancelled) return;
+    if (cancellation.isCancelled) {
+      diagnosticLog.record(DiagnosticEvent.directoryScanCancelled);
+      return;
+    }
+    diagnosticLog.record(
+      force
+          ? DiagnosticEvent.directoryRescanStarted
+          : DiagnosticEvent.directoryScanStarted,
+    );
     var failed = false;
     try {
       final generation = await index.nextGeneration();
@@ -299,8 +310,15 @@ final class DirectoryMusicLibrary {
             : failed
             ? DirectoryScanState.failed
             : DirectoryScanState.complete;
+        diagnosticLog.record(switch (state.value) {
+          DirectoryScanState.cancelled =>
+            DiagnosticEvent.directoryScanCancelled,
+          DirectoryScanState.failed => DiagnosticEvent.directoryScanFailed,
+          _ => DiagnosticEvent.directoryScanCompleted,
+        }, count: totals.failed);
       }
     } catch (e) {
+      diagnosticLog.record(DiagnosticEvent.directoryScanFailed, error: e);
       if (!_disposed) {
         error.value = e;
         state.value = DirectoryScanState.failed;

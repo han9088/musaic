@@ -11,6 +11,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/music/music_source_controller.dart';
 import '../../../ui/theme/app_theme.dart';
+import '../../../ui/theme/app_typography.dart';
 import '../../../ui/widgets/settings_section_heading.dart';
 
 /// 封装或定义音乐来源选择器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
@@ -22,6 +23,7 @@ class MusicSourcePicker extends StatelessWidget {
     this.onSourceSelection,
     this.demoOnly = false,
   });
+
   final MusicSourceController sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
@@ -43,6 +45,24 @@ class MusicSourcePicker extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!demoOnly)
+              ListTile(
+                key: const ValueKey('music-source-apple-music'),
+                leading: const Icon(
+                  PhosphorIcons.appleLogoFill,
+                  color: Colors.white,
+                ),
+                title: Text(
+                  'Apple Music',
+                  style: AppTypography.inter(
+                    fontSize:
+                        Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                    color: const Color(0xFFFA2D55),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                onTap: () {},
+              ),
             if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
               key: const ValueKey('music-source-mock'),

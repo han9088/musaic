@@ -11,6 +11,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/coverflow_photo_library.dart';
+import '../../../services/diagnostics/diagnostic_log.dart';
 import 'coverflow_photo.dart';
 import 'coverflow_photo_preview.dart';
 import 'coverflow_photo_viewer.dart';
@@ -107,12 +108,23 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
         _camera = pending;
         pending = null;
       });
+      diagnosticLog.record(DiagnosticEvent.cameraOpened);
     } catch (error, stack) {
       if (mounted && generation == _generation && _enabled) {
         setState(() => _enabled = false);
         final l10n = AppLocalizations.of(context);
         final denied =
             error is CameraException && error.code.startsWith('CameraAccess');
+        diagnosticLog.record(
+          switch (error) {
+            _ when denied => DiagnosticEvent.cameraAccessDenied,
+            CameraException(code: 'NoCamera') =>
+              DiagnosticEvent.cameraUnavailable,
+            _ => DiagnosticEvent.cameraOpenFailed,
+          },
+          error: error,
+          stack: stack,
+        );
         _message(
           denied ? l10n.coverFlowCameraDenied : l10n.coverFlowCameraFailed,
         );
@@ -267,12 +279,18 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
       final assetId = await saveCoverFlowPhoto(
         png.buffer.asUint8List(png.offsetInBytes, png.lengthInBytes),
       );
+      diagnosticLog.record(DiagnosticEvent.cameraPhotoSaved);
       if (mounted && _enabled) {
         setState(() => _photoPreview = (image: image, assetId: assetId));
         composed = null;
       }
       unawaited(HapticFeedback.mediumImpact());
     } catch (error, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.cameraPhotoFailed,
+        error: error,
+        stack: stack,
+      );
       if (mounted) {
         _message(AppLocalizations.of(context).coverFlowPhotoSaveFailed);
       }

@@ -20,6 +20,8 @@ abstract final class AppColors {
   static const notificationWarning = Color(0xFFF6B94A);
   static const notificationError = Color(0xFFFF5A5A);
 
+  static const settingsAccent = Color(0xFFC20040);
+
   /// Bottom sheet panel fill.
   static const sheetBackground = Color(0xFF000000);
 

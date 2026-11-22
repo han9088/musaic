@@ -21,6 +21,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutAndHelp => 'About & help';
 
   @override
+  String get settingsUsageGuide => 'User guide';
+
+  @override
+  String get usageGuideDismiss => 'Close and don’t show again';
+
+  @override
+  String get usageGuideBrowseTitle => 'Browse albums';
+
+  @override
+  String get usageGuideBrowse =>
+      'Drag the album canvas to browse. Tap a cover to select it, then tap it again to enlarge it. In Cover Flow, swipe left or right to browse albums. Drag up on the center cover to expand it, and drag down to close the preview.';
+
+  @override
+  String get usageGuidePlaybackTitle => 'Play music';
+
+  @override
+  String get usageGuidePlaybackBar => 'Playback bar';
+
+  @override
+  String get usageGuideReplayDemo => 'Replay the drag demo';
+
+  @override
+  String get usageGuideDragHint =>
+      'Pull briefly to skip. Pull and hold to seek.';
+
+  @override
+  String get usageGuideDragFastForward => 'Fast-forward';
+
+  @override
+  String get usageGuideDragRewind => 'Rewind';
+
+  @override
+  String get usageGuidePlayback =>
+      'Use the play button on an album cover to start playback. Pause or resume from the playback bar at the bottom of the canvas. While playing a track from your device library, drag the bar left for the previous track or right for the next one.';
+
+  @override
+  String get usageGuideMusic =>
+      'Open Music source in Settings to switch between the built-in demo collections. The demos simulate playback.';
+
+  @override
+  String get usageGuideMusicMobile =>
+      'Choose Local music and grant access to browse your device library, or use Add folder to scan music files in a folder.';
+
+  @override
+  String get usageGuideLayoutTitle => 'Switch layouts';
+
+  @override
+  String get usageGuideLayout =>
+      'In Appearance & display, turn on Show layout switch button. Use that button to switch between the album canvas and Cover Flow.';
+
+  @override
+  String get usageGuideCameraTitle => 'Camera background';
+
+  @override
+  String get usageGuideCamera =>
+      'Press and hold the Cover Flow title to turn the camera background on or off. With the camera on, tap an empty part of the screen to take a photo and save it to your photo library.';
+
+  @override
   String get settingsSupport => 'Support';
 
   @override
@@ -28,6 +86,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShareApp => 'Share Musaic';
+
+  @override
+  String get settingsContactUs => 'Contact us';
+
+  @override
+  String get settingsContactXiaohongshu => 'Xiaohongshu';
+
+  @override
+  String get settingsContactLinkUnavailable => 'Couldn’t open this link.';
+
+  @override
+  String get settingsContactEmailUnavailable =>
+      'Couldn’t open or send this email. Check your mail app and try again.';
 
   @override
   String get settingsReviewUnavailable =>
@@ -42,6 +113,59 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDiagnostics => 'Troubleshooting';
+
+  @override
+  String get diagnosticsPrivacy =>
+      'Musaic generates this report on your device to help diagnose issues. It includes recent app events, your device model, and OS and app versions. It excludes account details, device IDs, music information, photos, and local file paths. You can export and review it before sending.';
+
+  @override
+  String get diagnosticsDescription => 'Problem description (optional)';
+
+  @override
+  String get diagnosticsDescriptionHint =>
+      'Describe what happened and, if you can, how to reproduce it.';
+
+  @override
+  String get diagnosticsAttachment => 'Log attachment (.txt)';
+
+  @override
+  String get diagnosticsExport => 'Export logs';
+
+  @override
+  String get diagnosticsExported => 'Diagnostic logs exported.';
+
+  @override
+  String get diagnosticsExportFailed => 'Couldn’t export the logs. Try again.';
+
+  @override
+  String get diagnosticsEmail => 'Agree and send by email';
+
+  @override
+  String get diagnosticsEmailSubtitle =>
+      'The log is attached and your description goes in the email body.';
+
+  @override
+  String get diagnosticsEmailSubject => 'Musaic feedback';
+
+  @override
+  String diagnosticsEmailDetails(
+    String device,
+    String system,
+    String appVersion,
+  ) {
+    return 'Device model: $device\nSystem version: $system\nMusaic version: $appVersion';
+  }
+
+  @override
+  String get diagnosticsUnavailableValue => 'Unavailable';
+
+  @override
+  String get diagnosticsMailUnavailable =>
+      'Couldn’t open a mail composer with attachments. You can export the log and attach it to an email manually.';
+
+  @override
+  String get diagnosticsMailFailed =>
+      'Couldn’t open the feedback email. Try again.';
 
   @override
   String get settingsAbout => 'About Musaic';
@@ -89,6 +213,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAppearance => 'Appearance & display';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsLanguageSystem => 'System default';
+
+  @override
+  String get settingsLanguageSearch => 'Search languages';
+
+  @override
+  String get settingsLanguageNoResults => 'No languages found';
 
   @override
   String get settingsShowLayoutSwitch => 'Show layout switch button';

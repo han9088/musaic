@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../features/settings/settings_back_scroll_view.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/transitions/directional_push_route.dart';
@@ -12,8 +13,11 @@ PageRoute<void> pushSettingsPage({
   required BuildContext source,
   required NavigatorState navigator,
   required String path,
-  required String title,
+  required String Function(AppLocalizations) title,
   required Widget body,
+  bool bodyIsSliver = false,
+  Widget? footer,
+  Widget? fixedFooter,
 }) {
   final sheet = BottomSheetContent.of(source);
   final distance = navigator.overlay!.context.size!.height;
@@ -23,9 +27,12 @@ PageRoute<void> pushSettingsPage({
     opaque: false,
     settings: RouteSettings(name: path),
     animate: !MediaQuery.disableAnimationsOf(source),
-    builder: (_) => SettingsPage(
-      title: title,
+    builder: (context) => SettingsPage(
+      title: title(AppLocalizations.of(context)),
       body: body,
+      bodyIsSliver: bodyIsSliver,
+      footer: footer,
+      fixedFooter: fixedFooter,
       backIcon: PhosphorIcons.caretDown,
       pullToDismiss: (
         distance: distance,
@@ -66,12 +73,18 @@ class SettingsPage extends StatelessWidget {
     required this.title,
     required this.body,
     required this.backIcon,
+    this.bodyIsSliver = false,
+    this.footer,
+    this.fixedFooter,
     this.pullToDismiss,
   });
 
   final String title;
   final Widget body;
   final IconData backIcon;
+  final bool bodyIsSliver;
+  final Widget? footer;
+  final Widget? fixedFooter;
   final ({
     double distance,
     ValueChanged<double> onPull,
@@ -81,6 +94,7 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomAction = fixedFooter;
     final slivers = <Widget>[
       SliverAppBar(
         pinned: true,
@@ -98,10 +112,19 @@ class SettingsPage extends StatelessWidget {
       ),
       SliverSafeArea(
         top: false,
-        sliver: SliverToBoxAdapter(
-          child: SettingsInteractionTheme(child: body),
+        bottom: footer == null,
+        sliver: SettingsInteractionTheme(
+          child: bodyIsSliver ? body : SliverToBoxAdapter(child: body),
         ),
       ),
+      if (footer case final pageFooter?)
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: SafeArea(
+            top: false,
+            child: Align(alignment: Alignment.bottomCenter, child: pageFooter),
+          ),
+        ),
     ];
     final pull = pullToDismiss;
     return Theme(
@@ -122,6 +145,10 @@ class SettingsPage extends StatelessWidget {
       ),
       child: Scaffold(
         backgroundColor: Colors.black,
+        extendBody: bottomAction != null,
+        bottomNavigationBar: bottomAction == null
+            ? null
+            : SafeArea(top: false, child: bottomAction),
         body: pull == null
             ? CustomScrollView(slivers: slivers)
             : SettingsBackScrollView(

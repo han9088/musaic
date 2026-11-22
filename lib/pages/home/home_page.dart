@@ -7,8 +7,10 @@ import 'package:flutter/scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
 import '../../services/album_haptics.dart';
+import '../../services/diagnostics/diagnostic_log.dart';
 import '../../services/mock_album_cache.dart';
 import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
@@ -43,9 +45,15 @@ enum _HomeMusicSource { mock, mock2, local, directories }
 
 /// 封装或定义首页page相关类型与行为，负责页面状态组织与业务流程协调。
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.albumCache, this.sources});
+  const HomePage({
+    super.key,
+    required this.albumCache,
+    this.sources,
+    this.language,
+  });
 
   final MusicSourceController? sources;
+  final AppLanguagePreference? language;
 
   final MockAlbumCache albumCache;
 
@@ -211,6 +219,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         enter: enter,
       );
     } catch (error, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.musicSourceTransitionFailed,
+        error: error,
+      );
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: error,
@@ -430,7 +442,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         reduceMotion: _reduceMotion,
         context: context,
       );
+      if (mounted && _artworkMode.enabled == enabled) {
+        diagnosticLog.record(
+          enabled
+              ? DiagnosticEvent.xeroxEnabled
+              : DiagnosticEvent.xeroxDisabled,
+        );
+      }
     } catch (error, stack) {
+      diagnosticLog.record(DiagnosticEvent.xeroxTransitionFailed, error: error);
       if (_artworkMode.preparing) _artworkMode.cancelPreparation();
       FlutterError.reportError(
         FlutterErrorDetails(
@@ -591,6 +611,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     } else if (landscape != _landscape) {
       final reversing = _layout.isAnimating;
       _landscape = landscape;
+      diagnosticLog.record(
+        landscape
+            ? DiagnosticEvent.coverFlowShown
+            : DiagnosticEvent.canvasShown,
+      );
       _interaction.resetForLayoutChange();
       if (landscape && !reversing) {
         _albumLayout.prepareExpansion(
@@ -705,6 +730,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           layoutSwitch: layoutSwitch,
           sourceSwitching: _sourceTransition.switching,
           onSourceSelection: _selectMusicSource,
+          language: widget.language,
           manualRotation: _manualRotation,
           xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,

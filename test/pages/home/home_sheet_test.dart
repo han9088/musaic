@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_email_sender_method_channel/flutter_email_sender_method_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -15,16 +18,223 @@ import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
 import 'package:musaic/pages/settings/settings_page.dart';
 import 'package:musaic/services/app_icon_service.dart';
+import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
+import 'package:musaic/storage/settings/app_language_preference.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
+import 'package:musaic/ui/theme/app_colors.dart';
 import 'package:musaic/ui/thinking_orbs/thinking_orb.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 void main() {
   final settingsTab = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
   final capsule = find.byType(NowPlayingCapsule);
+
+  setUp(() {
+    final previous = SharedPreferencesAsyncPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = previous);
+  });
+
+  testWidgets('Appearance language updates the open settings page', (
+    tester,
+  ) async {
+    tester.binding.platformDispatcher.localesTestValue = [const Locale('en')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+    addTearDown(tester.view.resetViewInsets);
+    final preference = AppLanguagePreference(AppLanguage.system);
+    addTearDown(preference.dispose);
+
+    await tester.pumpWidget(
+      SignalBuilder(
+        builder: (_) => MaterialApp(
+          locale: preference.selected.value.locale,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppBottomSheetHost(
+            child: HomeSheet(
+              icons: const _Icons(),
+              language: preference,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+    final appearance = find.widgetWithText(ListTile, 'Appearance & display');
+    expect(
+      find.descendant(
+        of: appearance,
+        matching: find.byIcon(PhosphorIcons.monitor),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(appearance);
+    await tester.pumpAndSettle();
+
+    final page = find.byType(SettingsPage);
+    Future<void> selectLanguage(
+      String label,
+      String query,
+      String choice,
+      String emptyLabel,
+    ) async {
+      final trigger = find.widgetWithText(ListTile, label);
+      await tester.tap(trigger);
+      await tester.pumpAndSettle();
+      final menu = find.byType(AppDialogSurface);
+      expect(
+        tester.getTopLeft(menu).dy,
+        greaterThan(tester.getBottomLeft(trigger).dy),
+      );
+      final search = find.descendant(
+        of: menu,
+        matching: find.byType(TextField),
+      );
+      final options = find.descendant(
+        of: menu,
+        matching: find.byType(ListTile),
+      );
+      expect(options, findsNWidgets(3));
+      await tester.enterText(search, 'missing language');
+      await tester.pumpAndSettle();
+      expect(find.text(emptyLabel), findsOneWidget);
+      expect(options, findsNothing);
+      await tester.enterText(search, query);
+      final devicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.viewInsets = FakeViewPadding(bottom: 420 * devicePixelRatio);
+      await tester.pumpAndSettle();
+      expect(options, findsOneWidget);
+      expect(
+        find.descendant(of: menu, matching: find.text(choice)),
+        findsOneWidget,
+      );
+      expect(
+        tester.getBottomLeft(menu).dy,
+        lessThan(tester.view.physicalSize.height / devicePixelRatio - 420),
+      );
+      await tester.tap(options);
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
+      expect(menu, findsNothing);
+    }
+
+    await selectLanguage(
+      'Language',
+      '  CHINESE  ',
+      '简体中文',
+      'No languages found',
+    );
+    expect(tester.widget<SettingsPage>(page).title, '外观与显示');
+    expect(find.widgetWithText(ListTile, '语言'), findsOneWidget);
+    expect(preference.selected.value, AppLanguage.simplifiedChinese);
+
+    await selectLanguage('语言', '英文', 'English', '未找到匹配的语言');
+    expect(tester.widget<SettingsPage>(page).title, 'Appearance & display');
+    expect(preference.selected.value, AppLanguage.english);
+
+    await selectLanguage(
+      'Language',
+      '跟随系统',
+      'System default',
+      'No languages found',
+    );
+    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).locale, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('Only the guide dismissal button permanently hides its entry', (
+    tester,
+  ) async {
+    const app = MaterialApp(
+      locale: Locale('zh'),
+      localizationsDelegates: [
+        AppLocalizations.delegate,
+        ...GlobalMaterialLocalizations.delegates,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: AppBottomSheetHost(
+        child: HomeSheet(icons: _Icons(), child: SizedBox.expand()),
+      ),
+    );
+    await tester.pumpWidget(app);
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+
+    final guide = find.widgetWithText(ListTile, '使用说明');
+    expect(
+      tester.getTopLeft(guide).dy,
+      greaterThan(tester.getBottomLeft(find.text('关于与帮助')).dy),
+    );
+    await tester.ensureVisible(guide);
+    await tester.pumpAndSettle();
+    Future<void> openGuide() async {
+      await tester.tap(guide);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    await openGuide();
+
+    final page = find.byType(SettingsPage);
+    expect(tester.widget<SettingsPage>(page).title, '使用说明');
+    expect(find.text('浏览专辑'), findsOneWidget);
+    expect(find.text('相机背景'), findsOneWidget);
+    await tester.tap(find.byIcon(PhosphorIcons.caretDown).hitTestable());
+    await tester.pumpAndSettle();
+
+    expect(page, findsNothing);
+    expect(guide, findsOneWidget);
+
+    await openGuide();
+    final dismiss = find.widgetWithText(FilledButton, '关闭并不再显示');
+    expect(dismiss.hitTestable(), findsOneWidget);
+    final dismissBounds = tester.getRect(dismiss);
+    final heading = find.text('浏览专辑');
+    final headingTop = tester.getTopLeft(heading).dy;
+    final scrollView = find.descendant(
+      of: page,
+      matching: find.byType(CustomScrollView),
+    );
+    expect(tester.getRect(scrollView).bottom, tester.getRect(page).bottom);
+    await tester.drag(scrollView, const Offset(0, -180));
+    await tester.pump();
+    expect(tester.getTopLeft(heading).dy, lessThan(headingTop));
+    expect(tester.getRect(dismiss), dismissBounds);
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: scrollView, matching: find.byType(Scrollable)),
+    );
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+    await tester.pump();
+    final l10n = AppLocalizations.of(tester.element(page));
+    expect(
+      tester.getBottomLeft(find.text(l10n.usageGuideCamera)).dy,
+      lessThan(dismissBounds.top),
+    );
+    expect(tester.getSize(dismiss).height, greaterThanOrEqualTo(56));
+    await tester.tap(dismiss);
+    await tester.pumpAndSettle();
+    expect(page, findsNothing);
+    expect(guide, findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(app);
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, '问题诊断'), findsOneWidget);
+    expect(guide, findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('Support ends settings and shares the public Musaic link', (
     tester,
@@ -85,7 +295,147 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('About is the only page under About & help', (tester) async {
+  testWidgets('Troubleshooting exports a log and attaches it to feedback', (
+    tester,
+  ) async {
+    MethodChannelFlutterEmailSender.registerWith();
+    const device = MethodChannel('dev.fluttercommunity.plus/device_info');
+    const email = MethodChannel('flutter_email_sender');
+    final messenger = tester.binding.defaultBinaryMessenger;
+    final originalPicker = FilePickerPlatform.instance;
+    final picker = _DiagnosticFilePicker();
+    FilePickerPlatform.instance = picker;
+    addTearDown(() {
+      FilePickerPlatform.instance = originalPicker;
+      messenger.setMockMethodCallHandler(device, null);
+      messenger.setMockMethodCallHandler(email, null);
+    });
+    messenger.setMockMethodCallHandler(
+      device,
+      (_) async => <String, Object>{
+        'name': 'Private phone name',
+        'systemName': 'iOS',
+        'systemVersion': '26.1',
+        'model': 'iPhone',
+        'modelName': 'iPhone 17 Pro',
+        'localizedModel': 'iPhone',
+        'identifierForVendor': 'private-device-id',
+        'freeDiskSize': 1,
+        'totalDiskSize': 1,
+        'isPhysicalDevice': true,
+        'physicalRamSize': 1,
+        'availableRamSize': 1,
+        'isiOSAppOnMac': false,
+        'isiOSAppOnVision': false,
+        'utsname': {
+          'sysname': 'Darwin',
+          'nodename': 'private-host',
+          'release': '',
+          'version': '',
+          'machine': 'iPhone18,1',
+        },
+      },
+    );
+    final drafts = <Map<Object?, Object?>>[];
+    messenger.setMockMethodCallHandler(email, (call) async {
+      if (call.method == 'getCapabilities') return {'canSend': true};
+      expect(call.method, 'send');
+      drafts.add(call.arguments as Map<Object?, Object?>);
+      return 'cancelled';
+    });
+    PackageInfo.setMockInitialValues(
+      appName: 'Musaic',
+      packageName: 'com.deskbtm.musaic',
+      version: '1.0.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+    diagnosticLog.record(DiagnosticEvent.cameraAccessDenied);
+    await tester.pumpWidget(
+      const MaterialApp(
+        locale: Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(icons: _Icons(), child: SizedBox.expand()),
+        ),
+      ),
+    );
+    await tester.drag(capsule, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    sheet.topSheetController!.expand();
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Troubleshooting'));
+    await tester.pumpAndSettle();
+    final page = find.byType(SettingsPage);
+    expect(page, findsOneWidget);
+    final l10n = AppLocalizations.of(tester.element(page));
+    expect(find.text(l10n.diagnosticsPrivacy), findsOneWidget);
+
+    final mail = find.widgetWithText(FilledButton, l10n.diagnosticsEmail);
+    final export = find.widgetWithText(ListTile, l10n.diagnosticsExport);
+    final field = find.byType(TextField);
+    final button = tester.widget<FilledButton>(mail);
+    expect(
+      button.style!.backgroundColor!.resolve({}),
+      AppColors.settingsAccent,
+    );
+    expect(button.style!.shape!.resolve({}), isA<StadiumBorder>());
+    final mailRect = tester.getRect(mail);
+    final pageRect = tester.getRect(page);
+    expect(mailRect.height, greaterThanOrEqualTo(56));
+    expect(mailRect.width, greaterThan(pageRect.width * 0.8));
+    expect(mailRect.bottom, closeTo(pageRect.bottom - 16, 0.5));
+    await tester.ensureVisible(mail);
+    await tester.tap(mail);
+    await tester.pumpAndSettle();
+    final details = l10n.diagnosticsEmailDetails(
+      'iPhone 17 Pro',
+      'iOS 26.1',
+      '1.0.0 (1)',
+    );
+    expect(drafts.single['body'], details);
+
+    const description = 'Camera stopped after returning to Cover Flow.';
+    await tester.ensureVisible(field);
+    await tester.enterText(field, description);
+    await tester.ensureVisible(mail);
+    await tester.tap(mail);
+    await tester.pumpAndSettle();
+    expect(drafts.last['subject'], 'Musaic feedback');
+    expect(drafts.last['body'], '$description\n\n$details');
+    final attachments = drafts.last['attachments']! as List<Object?>;
+    final attachment = attachments.single! as Map<Object?, Object?>;
+    expect(
+      attachment['file_name'],
+      matches(r'^musaic-diagnostics-\d{14}\.txt$'),
+    );
+    final report = utf8.decode(attachment['data']! as Uint8List);
+    expect(report, contains('Device model: iPhone 17 Pro'));
+    expect(report, contains('System: iOS 26.1'));
+    expect(report, contains('Musaic version: 1.0.0 (1)'));
+    expect(report, contains('cameraAccessDenied'));
+    expect(report, isNot(contains(description)));
+    expect(report, isNot(contains('private-')));
+    expect(report, isNot(contains('Private phone name')));
+
+    await tester.ensureVisible(export);
+    await tester.tap(export);
+    await tester.pumpAndSettle();
+    expect(picker.fileName, endsWith('.txt'));
+    expect(picker.content, contains('cameraAccessDenied'));
+    expect(picker.content, isNot(contains(description)));
+    expect(find.text(l10n.diagnosticsExported), findsOneWidget);
+    await tester.tap(find.byIcon(PhosphorIcons.caretDown).hitTestable());
+    await tester.pumpAndSettle();
+    expect(page, findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('About opens its detail pages and uses the settings routes', (
+    tester,
+  ) async {
     PackageInfo.setMockInitialValues(
       appName: 'Musaic',
       packageName: 'com.deskbtm.musaic',
@@ -117,9 +467,6 @@ void main() {
         sheet.topSheetController!.expand();
         await tester.pumpAndSettle();
         expect(find.text('About & help'), findsOneWidget);
-        final diagnostics = find.widgetWithText(ListTile, 'Troubleshooting');
-        expect(tester.widget<ListTile>(diagnostics).onTap, isNull);
-        expect(tester.widget<ListTile>(diagnostics).trailing, isNull);
         final aboutEntry = find.widgetWithText(ListTile, 'About Musaic');
         final entryArrow = tester.widget<Icon>(
           find.descendant(
@@ -136,6 +483,13 @@ void main() {
           (widget) => widget is SettingsPage && widget.title == 'About Musaic',
         );
         expect(about, findsOneWidget);
+        final copyright = find.text('© ${DateTime.now().year} deskbtm');
+        expect(tester.widget<Text>(copyright).style?.color, Colors.white38);
+        expect(tester.getCenter(copyright).dx, tester.getCenter(about).dx);
+        expect(
+          tester.getBottomRight(about).dy - tester.getBottomRight(copyright).dy,
+          24,
+        );
         expect(
           find.byIcon(PhosphorIcons.caretDown).hitTestable(),
           findsOneWidget,
@@ -731,7 +1085,9 @@ void main() {
     await tester.drag(capsule, const Offset(0, -140));
     await tester.pumpAndSettle();
     final mock2 = find.byKey(const ValueKey('music-source-mock2'));
+    final appleMusic = find.byKey(const ValueKey('music-source-apple-music'));
     expect(mock2, findsOneWidget);
+    expect(appleMusic, findsNothing);
     expect(find.text('Local music'), findsNothing);
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
     expect(tabBar.indicatorColor, Colors.transparent);
@@ -753,6 +1109,22 @@ void main() {
     expect(tester.getTopLeft(demoHeading).dx, tester.getTopLeft(demoIcon).dx);
     expect(find.text('Device music'), findsOneWidget);
     expect(find.text('Local music'), findsOneWidget);
+    expect(find.text('Apple Music'), findsOneWidget);
+    final appleMusicTile = tester.widget<ListTile>(appleMusic);
+    expect(appleMusicTile.enabled, isTrue);
+    expect(appleMusicTile.onTap, isNotNull);
+    final appleMusicIcon = tester.widget<Icon>(
+      find.descendant(
+        of: appleMusic,
+        matching: find.byIcon(PhosphorIcons.appleLogoFill),
+      ),
+    );
+    expect(appleMusicIcon.color, Colors.white);
+    await tester.tap(appleMusic);
+    await tester.pumpAndSettle();
+    expect(page, findsOneWidget);
+    expect(sources.catalog.value, isNull);
+    expect(sources.provider, isNull);
 
     final lowerPull = await tester.startGesture(const Offset(180, 650));
     await lowerPull.moveBy(const Offset(0, 24));
@@ -974,4 +1346,27 @@ class _Icons extends AppIconService {
   @override
   Future<AppIconSnapshot> read() async =>
       (supported: true, current: AppIconChoice.text);
+}
+
+class _DiagnosticFilePicker extends FilePickerPlatform {
+  String? fileName;
+  String? content;
+
+  @override
+  Future<Uri?> saveFile({
+    required String fileName,
+    required Uint8List bytes,
+    required String mimeType,
+    String? dialogTitle,
+    String? initialDirectory,
+    ValueChanged<FilePickerStatus>? onFileSaving,
+    WindowsOptions windowsOptions = const WindowsOptions(),
+    LinuxOptions linuxOptions = const LinuxOptions(),
+    WebOptions webOptions = const WebOptions(),
+  }) async {
+    expect(mimeType, 'text/plain');
+    this.fileName = fileName;
+    content = utf8.decode(bytes);
+    return Uri.file('/test/$fileName');
+  }
 }

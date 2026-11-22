@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 import '../../services/app_updates.dart';
+import '../../services/diagnostics/diagnostic_log.dart';
 import '../../ui/dialogs/app_alert_dialog.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/thinking_orbs/thinking_orb.dart';
@@ -51,6 +52,25 @@ class AboutSettings extends StatefulWidget {
   State<AboutSettings> createState() => _AboutSettingsState();
 }
 
+class AboutCopyrightFooter extends StatelessWidget {
+  const AboutCopyrightFooter({super.key});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(
+      settingsContentInset,
+      24,
+      settingsContentInset,
+      24,
+    ),
+    child: Text(
+      '© ${DateTime.now().year} deskbtm',
+      textAlign: TextAlign.center,
+      style: const TextStyle(color: Colors.white38, fontSize: 12),
+    ),
+  );
+}
+
 class _AboutSettingsState extends State<AboutSettings> {
   late final _packageInfo = PackageInfo.fromPlatform();
   bool _checking = false;
@@ -92,7 +112,15 @@ class _AboutSettingsState extends State<AboutSettings> {
           : available
           ? l10n.settingsUpdateAvailable(latest.toString())
           : l10n.settingsUpToDate;
-    } catch (_) {
+      diagnosticLog.record(
+        latest == null
+            ? DiagnosticEvent.updateNoRelease
+            : available
+            ? DiagnosticEvent.updateFound
+            : DiagnosticEvent.updateCurrent,
+      );
+    } catch (error) {
+      diagnosticLog.record(DiagnosticEvent.updateCheckFailed, error: error);
       message = l10n.settingsUpdateFailed;
     } finally {
       if (mounted) setState(() => _checking = false);
