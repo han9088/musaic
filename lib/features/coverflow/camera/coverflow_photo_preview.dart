@@ -78,7 +78,7 @@ class _CoverFlowPhotoPreviewState extends State<CoverFlowPhotoPreview>
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
-        final width = math.min(152.0, size.width * 0.28);
+        final width = math.min(104.0, size.width * 0.19);
         final thumb = Rect.fromLTWH(
           size.width - padding.right - 12 - width,
           padding.top + 12,

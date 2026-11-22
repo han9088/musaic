@@ -34,6 +34,7 @@ class AppearanceSettings extends StatelessWidget {
             title: Text(AppLocalizations.of(context).settingsShowLayoutSwitch),
             subtitle: Text(
               AppLocalizations.of(context).settingsShowLayoutSwitchDescription,
+              style: const TextStyle(fontSize: 12, color: Colors.white60),
             ),
             value: rotation.enabled.value,
             onChanged: rotation.setEnabled,

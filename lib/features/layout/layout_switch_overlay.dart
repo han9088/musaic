@@ -149,12 +149,14 @@ class _LayoutSwitchOverlayState extends State<LayoutSwitchOverlay> {
                 key: buttonKey,
                 diameter: 36,
                 iconSize: iconSize,
-                label: widget.screenLandscape ? '长按旋转回竖屏' : '切换到画布',
+                label: widget.screenLandscape ? '返回竖屏画布' : '切换到画布',
                 icon: widget.screenLandscape
                     ? PhosphorIcons.deviceRotate
                     : PhosphorIcons.gridNine,
-                onPressed: _switchLayout,
-                onLongPress: onLongPress,
+                onPressed: widget.screenLandscape
+                    ? _rotateScreen
+                    : _switchLayout,
+                onLongPress: widget.screenLandscape ? null : onLongPress,
               )
             : _wakeButton(const SizedBox.square(dimension: 44)),
       );

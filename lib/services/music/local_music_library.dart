@@ -16,11 +16,17 @@ final class LocalMusicLibrary {
   Map<String, ProviderAlbum> _albums = {};
   Map<String, String> _sources = {};
   List<ProviderAlbum> _orderedAlbums = const [];
+
   /// 执行当前模块中的albums操作，用于音乐源、媒体库、播放及切换流程。
   List<ProviderAlbum> get albums => _orderedAlbums;
 
-  static Future<Uint8List?> trackArtwork(int id) =>
-      MusaicQuery().queryArtwork(id, ArtworkType.AUDIO, size: 512, quality: 90);
+  static Future<Uint8List?> trackArtwork(int id, {int size = 512}) =>
+      MusaicQuery().queryArtwork(
+        id,
+        ArtworkType.AUDIO,
+        size: size,
+        quality: 90,
+      );
 
   /// 执行当前模块中的authorizationstatus操作，用于音乐源、媒体库、播放及切换流程。
   Future<MusicAccess> authorizationStatus({bool request = false}) async {

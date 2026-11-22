@@ -1,3 +1,7 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
@@ -136,6 +140,95 @@ void main() {
     expect(flip, findsNothing);
     expect(tester.getRect(center), landscapeRect);
   });
+
+  testWidgets('only the opened cover requests full preview pixels', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 3;
+    tester.view.physicalSize = const Size(1200, 2400);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final messenger = tester.binding.defaultBinaryMessenger;
+    const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+    final cache = Directory.systemTemp.createTempSync('musaic-flip-');
+    messenger.setMockMethodCallHandler(pathChannel, (_) async => cache.path);
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(pathChannel, null);
+      cache.deleteSync(recursive: true);
+    });
+    const artworkChannel = MethodChannel('com.deskbtm.muasic.query');
+    final bytes = (await tester.runAsync(
+      () => rootBundle.load('assets/albums/0.jpg'),
+    ))!.buffer.asUint8List();
+    final preview = Completer<Uint8List>();
+    final previewQueries = <(int, int)>[];
+    messenger.setMockMethodCallHandler(artworkChannel, (call) async {
+      expect(call.method, 'queryArtwork');
+      final size = call.arguments['size'] as int;
+      if (size == 512) return bytes;
+      previewQueries.add((call.arguments['id'] as int, size));
+      return preview.future;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(artworkChannel, null));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: AlbumCoverFlow(
+          albums: [
+            {'asset': 'media-store:17', 'artist': 'Artist', 'title': 'First'},
+            {'asset': 'media-store:18', 'artist': 'Artist', 'title': 'Second'},
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    final cover = find.byType(CoverFlowFlipCard);
+    final coverImages = find.descendant(
+      of: cover,
+      matching: find.byType(Image),
+    );
+    final original = tester.widget<Image>(coverImages.first).image;
+    await tester.runAsync(() => precacheImage(original, tester.element(cover)));
+    await tester.pump();
+    final painted = find.descendant(
+      of: cover,
+      matching: find.byWidgetPredicate((w) => w is RawImage && w.image != null),
+    );
+    expect(painted, findsWidgets);
+    expect(coverImages, findsNWidgets(2));
+
+    final touch = tester.widget<CoverFlowFlipCard>(cover).source.center;
+    final drag = await tester.startGesture(touch);
+    await drag.moveBy(const Offset(0, -24));
+    await drag.moveBy(const Offset(0, -150));
+    await tester.pump();
+    expect(previewQueries, isEmpty);
+    await drag.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(previewQueries, isEmpty);
+
+    await tester.pumpAndSettle();
+    expect(previewQueries, [(17, 1024)]);
+    expect(painted, findsWidgets);
+    expect(coverImages, findsNWidgets(2));
+    preview.complete(bytes);
+    await tester.pump();
+    await tester.pump();
+    expect(coverImages, findsNWidgets(3));
+    expect(
+      tester
+          .widgetList<Image>(coverImages)
+          .map((w) => (w.image as ResizeImage).width),
+      unorderedEquals([512, 512, 1024]),
+    );
+    final card = tester.widget<CoverFlowFlipCard>(cover);
+    await tester.dragFrom(card.destination.center, const Offset(0, 200));
+    await tester.pumpAndSettle();
+    expect(coverImages, findsNWidgets(2));
+    expect(previewQueries, [(17, 1024)]);
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   for (final direction in [-1.0, 1.0]) {
     for (final sample in [

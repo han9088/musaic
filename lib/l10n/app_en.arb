@@ -3,7 +3,7 @@
   "appTitle": "Musaic",
   "settings": "Settings",
   "settingsShowLayoutSwitch": "Show layout switch button",
-  "settingsShowLayoutSwitchDescription": "Use Cover Flow in portrait. Tap to switch layouts. On phones, press and hold to rotate the screen.",
+  "settingsShowLayoutSwitchDescription": "Use Cover Flow in portrait.",
   "settingsAppearance": "Appearance & display",
   "coverFlowCameraDenied": "Allow camera access in system settings to use the live background.",
   "coverFlowCameraFailed": "Could not open the camera. Please try again.",

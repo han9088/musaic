@@ -92,6 +92,7 @@ class ArtworkPipeline {
           ArtworkVersion?,
           DirectoryMusicLibrary?,
           int,
+          int?,
         ),
         _DisplayedArtwork
       >{};
@@ -108,6 +109,7 @@ class ArtworkPipeline {
       request.version,
       directories,
       directoryRevision,
+      request.sourceResolution,
     );
     var entry = _displayed[key];
     if (entry == null || (entry.completed && entry.resource == null)) {
@@ -153,6 +155,7 @@ class ArtworkPipeline {
       request.identity?.value,
       request.version?.value,
       identityHashCode(directories),
+      request.sourceResolution,
     ]);
     final existing = _resolving[key];
     if (existing != null) return existing;

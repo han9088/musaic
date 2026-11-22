@@ -127,7 +127,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShowLayoutSwitchDescription.
   ///
   /// In zh, this message translates to:
-  /// **'开启后可在竖屏使用 Cover Flow。点按切换布局，手机上长按切换横竖屏。'**
+  /// **'竖屏也可使用 Cover Flow'**
   String get settingsShowLayoutSwitchDescription;
 
   /// No description provided for @coverFlowCameraDenied.

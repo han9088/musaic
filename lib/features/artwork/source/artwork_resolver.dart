@@ -64,10 +64,15 @@ class ArtworkResolver {
             .then((provider) => _resource(source, provider));
 
       case ArtworkSourceType.directory:
-        return _resolveDirectory(source, request.version, directories);
+        return _resolveDirectory(
+          source,
+          request.version,
+          directories,
+          request.sourceResolution,
+        );
 
       case ArtworkSourceType.mediaStore:
-        return _resolveMediaStore(source);
+        return _resolveMediaStore(source, request.sourceResolution);
     }
   }
 
@@ -80,14 +85,17 @@ class ArtworkResolver {
     image: provider,
   );
 
-  Future<ArtworkResource?> _resolveMediaStore(ArtworkSource source) async {
+  Future<ArtworkResource?> _resolveMediaStore(
+    ArtworkSource source,
+    int? size,
+  ) async {
     final id = int.tryParse(source.value);
     if (id == null || id < 0) return null;
-    final bytes = await LocalMusicLibrary.trackArtwork(id);
+    final bytes = await LocalMusicLibrary.trackArtwork(id, size: size ?? 512);
     if (bytes == null || bytes.isEmpty) return null;
     return ArtworkResource(
       identity: source.identity,
-      sourceKey: source.cacheKey,
+      sourceKey: size == null ? source.cacheKey : '${source.cacheKey}|$size',
       image: MemoryImage(bytes),
     );
   }
@@ -96,6 +104,7 @@ class ArtworkResolver {
     ArtworkSource source,
     ArtworkVersion? requestedVersion,
     DirectoryMusicLibrary? directories,
+    int? size,
   ) async {
     if (directories == null) return null;
 
@@ -103,7 +112,7 @@ class ArtworkResolver {
     final track = directories.track(id);
     if (track == null) return null;
 
-    final uri = await directories.artwork(track);
+    final uri = await directories.artwork(track, size: size ?? 512);
     if (uri == null || uri.isEmpty) return null;
 
     final provider = file_provider.fileArtworkProvider(uri);

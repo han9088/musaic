@@ -14,6 +14,7 @@ class ArtworkRequest {
     this.version,
     this.targetSize,
     this.fixedResolution,
+    this.previewResolution,
     this.devicePixelRatio = 1,
     this.fit = BoxFit.cover,
   });
@@ -33,6 +34,18 @@ class ArtworkRequest {
   /// 固定解码和 Xerox 位图的像素尺寸，适用于可连续缩放的专辑墙。
   final int? fixedResolution;
 
+  final int? previewResolution;
+
+  int? get sourceResolution {
+    final resolution = previewResolution;
+    return resolution != null &&
+            resolution > 512 &&
+            (source.startsWith('media-store:') ||
+                source.startsWith('directory:'))
+        ? resolution
+        : null;
+  }
+
   final double devicePixelRatio;
   final BoxFit fit;
 
@@ -44,6 +57,7 @@ class ArtworkRequest {
       version == other.version &&
       targetSize == other.targetSize &&
       fixedResolution == other.fixedResolution &&
+      previewResolution == other.previewResolution &&
       devicePixelRatio == other.devicePixelRatio &&
       fit == other.fit;
 
@@ -54,6 +68,7 @@ class ArtworkRequest {
     version,
     targetSize,
     fixedResolution,
+    previewResolution,
     devicePixelRatio,
     fit,
   );

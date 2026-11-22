@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
+import '../artwork/pipeline/artwork_lod_manager.dart';
 import 'camera/coverflow_camera_scene.dart';
 import 'coverflow_flip_card.dart';
 import 'coverflow_input.dart';
@@ -53,6 +54,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late final Ticker _ticker;
   late final AnimationController _flip;
+  final _showFlipPreview = ValueNotifier(false);
   late final AlbumHaptics _haptics;
   late final CoverFlowMotion _motion;
   Size? _flipViewport;
@@ -74,11 +76,10 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     );
     _hapticIndex = _motion.position.round();
     _ticker = createTicker(_tick);
-    _flip =
-        AnimationController(vsync: this, duration: RectFlipTransition.duration)
-          ..addStatusListener((status) {
-            if (status == AnimationStatus.dismissed) _resumeStrip();
-          });
+    _flip = AnimationController(
+      vsync: this,
+      duration: RectFlipTransition.duration,
+    )..addStatusListener((_) => _syncFlipState());
     _haptics = widget.haptics ?? AlbumHaptics();
     WidgetsBinding.instance.addObserver(this);
     if (widget.haptics == null) unawaited(_haptics.prepare());
@@ -97,7 +98,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       _flipDragging = false;
       _flipTarget = 0;
       _flip.reset();
-      _resumeStrip();
+      _syncFlipState();
     }
     _flipViewport = viewport;
   }
@@ -131,7 +132,17 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     } else {
       _flip.animateTo(1, curve: RectFlipTransition.curve);
     }
-    _resumeStrip();
+    _syncFlipState();
+  }
+
+  void _syncFlipState() {
+    if (_flipDragging) return;
+    if (_flip.isCompleted && _flipTarget == 1) {
+      _showFlipPreview.value = true;
+    } else if (_flip.isDismissed && _flipTarget == 0) {
+      _showFlipPreview.value = false;
+      _resumeStrip();
+    }
   }
 
   void _resumeStrip() {
@@ -212,6 +223,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     WidgetsBinding.instance.removeObserver(this);
     if (widget.haptics == null) unawaited(_haptics.dispose());
     _flip.dispose();
+    _showFlipPreview.dispose();
     _ticker.dispose();
     super.dispose();
   }
@@ -220,7 +232,11 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     ..setEntry(3, 2, 0.88 / width)
     ..rotateY(tilt);
 
-  Widget _image(Map<String, dynamic> album, double size) {
+  Widget _image(
+    Map<String, dynamic> album,
+    double size, {
+    int? previewResolution,
+  }) {
     final asset = album['asset'] as String;
     final rawIdentity = album['id'] as String?;
     return albumArtwork(
@@ -234,6 +250,35 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       filterQuality: FilterQuality.medium,
       excludeFromSemantics: true,
       xerox: widget.xerox,
+      previewResolution: previewResolution,
+    );
+  }
+
+  Widget _coverArtwork(
+    Map<String, dynamic> album,
+    double size,
+    Rect? destination,
+  ) {
+    final image = _image(album, size);
+    if (destination == null) return image;
+    return SizedBox.square(
+      dimension: size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          image,
+          ValueListenableBuilder(
+            valueListenable: _showFlipPreview,
+            builder: (context, show, _) {
+              if (!show) return const SizedBox.shrink();
+              final resolution = selectArtworkResolution(
+                destination.width * MediaQuery.devicePixelRatioOf(context),
+              );
+              return _image(album, size, previewResolution: resolution);
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -495,7 +540,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
             child: RepaintBoundary(
               child: Column(
                 children: [
-                  _image(album, size),
+                  _coverArtwork(album, size, destination),
                   if (destination == null)
                     reflection
                   else

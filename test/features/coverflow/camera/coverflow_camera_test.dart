@@ -362,9 +362,9 @@ void main() {
       expect(tester.getRect(preview), const Rect.fromLTWH(0, 0, 800, 400));
       await tester.pump(const Duration(milliseconds: 180));
       expect(tester.widget<FadeTransition>(flash).opacity.value, 0);
-      expect(tester.getSize(preview).width, inExclusiveRange(152, 800));
+      expect(tester.getSize(preview).width, inExclusiveRange(104, 800));
       await tester.pump(const Duration(milliseconds: 181));
-      const thumbnail = Rect.fromLTWH(636, 12, 152, 76);
+      const thumbnail = Rect.fromLTWH(684, 12, 104, 52);
       expect(tester.getRect(preview), thumbnail);
       await tester.pump(const Duration(milliseconds: 2999));
       expect(tester.getRect(preview), thumbnail);

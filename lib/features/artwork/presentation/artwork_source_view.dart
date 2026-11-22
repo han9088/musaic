@@ -48,6 +48,8 @@ class ArtworkSourceView extends StatefulWidget {
 
 class _ArtworkSourceViewState extends State<ArtworkSourceView> {
   ArtworkPipeline get _pipeline => widget.pipeline ?? ArtworkPipeline.instance;
+  int? get _fixedResolution =>
+      widget.request.previewResolution ?? widget.request.fixedResolution;
 
   DirectoryMusicLibrary? _directories;
   int _directoryRevision = -1;
@@ -151,14 +153,16 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
             fit: widget.fit ?? BoxFit.scaleDown,
             currentOriginalDecodeResolution: _originalDecodeResolution,
             currentXeroxResolution: _xeroxResolution,
-            fixedResolution: widget.request.fixedResolution,
+            fixedResolution: _fixedResolution,
             priority: widget.xerox
                 ? XeroxRasterPriority.visible
                 : XeroxRasterPriority.background,
           );
           _originalDecodeResolution = plan.originalDecodeResolution;
           _xeroxResolution = plan.xeroxRequest.resolution;
-          _scheduleBackgroundXerox(plan);
+          if (widget.request.previewResolution == null) {
+            _scheduleBackgroundXerox(plan);
+          }
 
           if (!widget.xerox) return _render(resource, plan);
 
@@ -174,7 +178,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
   @override
   Widget build(BuildContext context) {
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    if (widget.request.fixedResolution != null) {
+    if (_fixedResolution != null) {
       return _resourceView(dpr, Size.zero);
     }
     return LayoutBuilder(

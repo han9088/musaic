@@ -332,12 +332,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(AlbumCoverFlow), findsOneWidget);
         expect(find.byType(InteractiveViewer), findsNothing);
-
+        expect(
+          find.descendant(
+            of: button,
+            matching: find.byIcon(PhosphorIcons.deviceRotate),
+          ),
+          findsOneWidget,
+        );
         await tester.tap(button);
-        await tester.pump();
-        expect(find.byType(AlbumCoverFlow), findsOneWidget);
-        expect(orientationRequests, hasLength(1));
-        await tester.longPress(button);
+        expect(orientationRequests, hasLength(2));
         expect(orientationRequests.last, ['DeviceOrientation.portraitUp']);
         tester.view.physicalSize = const Size(400, 800);
         await tester.pump();

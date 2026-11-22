@@ -54,8 +54,8 @@ audio restrictions may require interaction before album tick sounds can play.
 Desktop browsers start on the canvas. Enable **Show layout switch button** under
 **Settings → Appearance & display** to switch between the canvas and Cover Flow,
 including in portrait. In the iOS and Android apps, landscape opens Cover Flow.
-Press and hold the button to rotate the screen. After a forced landscape
-rotation, the same control can rotate the screen back to portrait.
+Press and hold the layout button to rotate to landscape. Tap the rotate button
+to return to the portrait canvas.
 
 PWA builds bundle the rendering engine locally and generate a versioned offline
 cache. A [custom Flutter bootstrap](https://docs.flutter.dev/platform-integration/web/initialization)

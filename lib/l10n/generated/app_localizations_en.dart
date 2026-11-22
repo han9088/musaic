@@ -25,7 +25,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShowLayoutSwitchDescription =>
-      'Use Cover Flow in portrait. Tap to switch layouts. On phones, press and hold to rotate the screen.';
+      'Use Cover Flow in portrait.';
 
   @override
   String get coverFlowCameraDenied =>
