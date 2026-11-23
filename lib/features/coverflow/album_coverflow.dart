@@ -9,7 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
 import '../artwork/presentation/custom_artwork_menu.dart';
-import 'camera/coverflow_camera_scene.dart';
+import 'camera/coverflow_camera_intro.dart';
 import 'coverflow_flip_card.dart';
 import 'coverflow_input.dart';
 import 'coverflow_motion.dart';
@@ -262,8 +262,8 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     final bottomPadding = MediaQuery.paddingOf(context).bottom;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
-      child: CoverFlowCameraScene(
-        builder: (toggleCamera) => SafeArea(
+      child: CoverFlowCameraIntro(
+        builder: (toggleCamera, decorateTitle) => SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
               final flowViewport =
@@ -442,27 +442,32 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                             behavior: HitTestBehavior.opaque,
                             onLongPress: toggleCamera,
                             onTap: toggleCamera == null ? null : () {},
-                            child: Column(
-                              children: [
-                                Text(
-                                  selected['artist'] as String,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xffbfc6ce),
-                                    fontSize: 12,
-                                  ),
+                            child: Center(
+                              child: decorateTitle(
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      selected['artist'] as String,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Color(0xffbfc6ce),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      selected['title'] as String,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                Text(
-                                  selected['title'] as String,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),

@@ -10,6 +10,7 @@ class FrostedControlPair extends StatefulWidget {
     this.companion,
     this.companionVisible = false,
     this.hideCompanion = false,
+    this.previewDrag,
     this.onPrimaryPress,
     this.onPrimaryPullUp,
     this.onPrimaryPullUpdate,
@@ -24,6 +25,9 @@ class FrostedControlPair extends StatefulWidget {
 
   /// Fades the frosted companion out and disables input while keeping its slot.
   final bool hideCompanion;
+
+  /// Applies the drag deformation without invoking any gesture callbacks.
+  final Offset? previewDrag;
   final VoidCallback? onPrimaryPress;
   final VoidCallback? onPrimaryPullUp;
   final ValueChanged<Offset>? onPrimaryPullUpdate;
@@ -234,10 +238,17 @@ class _FrostedControlPairState extends State<FrostedControlPair>
     child: widget.primary,
     builder: (context, primary) {
       final reduceMotion = MediaQuery.disableAnimationsOf(context);
+      final preview = widget.previewDrag;
       final pressure = reduceMotion
           ? 0.0
-          : _pressure.value.clamp(-0.5, 1.08).toDouble();
-      final offset = reduceMotion ? Offset.zero : _offset;
+          : preview == null
+          ? _pressure.value.clamp(-0.5, 1.08).toDouble()
+          : (preview.distance / 36).clamp(0.0, 1.0).toDouble();
+      final offset = reduceMotion
+          ? Offset.zero
+          : preview == null
+          ? _offset
+          : _resistedPull(preview);
       final companion = widget.companion;
       final distanceAway = math.max(0.0, -offset.dx) + 0.7 * offset.dy.abs();
       final proximity = (1 - distanceAway / 30).clamp(0.0, 1.0);

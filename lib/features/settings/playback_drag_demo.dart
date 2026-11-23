@@ -5,6 +5,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/widgets/frosted_control_surface.dart';
+import '../../ui/widgets/guide_touch_indicator.dart';
 import 'usage_guide_demo_card.dart';
 
 class PlaybackDragDemo extends StatelessWidget {
@@ -169,9 +170,11 @@ class PlaybackDragDemo extends StatelessWidget {
           Positioned(
             left:
                 (pullingLeft ? left + 5 : left + width - 5) -
-                UsageGuideTouch.diameter / 2,
-            top: pillTop + (pillHeight - UsageGuideTouch.diameter) / 2,
-            child: const UsageGuideTouch(key: ValueKey('playback-drag-touch')),
+                GuideTouchIndicator.diameter / 2,
+            top: pillTop + (pillHeight - GuideTouchIndicator.diameter) / 2,
+            child: const GuideTouchIndicator(
+              key: ValueKey('playback-drag-touch'),
+            ),
           ),
       ],
     );

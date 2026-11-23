@@ -13,6 +13,8 @@ import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette_picker.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
+import 'package:musaic/features/onboarding/gesture_guide_spotlight.dart';
+import 'package:musaic/features/settings/developer_options_unlock.dart';
 import 'package:musaic/features/settings/settings_sheet.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
@@ -21,6 +23,7 @@ import 'package:musaic/services/app_icon_service.dart';
 import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/settings/app_language_preference.dart';
+import 'package:musaic/storage/settings/usage_guide_preference.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
 import 'package:musaic/ui/theme/app_colors.dart';
@@ -54,6 +57,212 @@ void main() {
         InMemorySharedPreferencesAsync.empty();
     addTearDown(() => SharedPreferencesAsyncPlatform.instance = previous);
   });
+
+  testWidgets('first-use guide demonstrates two pulls on the playback bar', (
+    tester,
+  ) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final playback = AlbumPlayback();
+    addTearDown(playback.dispose);
+    final app = MaterialApp(
+      locale: const Locale('en'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: AppBottomSheetHost(
+        child: HomeSheet(playback: playback, child: const SizedBox.expand()),
+      ),
+    );
+    await tester.pumpWidget(app);
+    final center = tester.getCenter(capsule);
+    final touch = find.byKey(const ValueKey('playback-intro-touch'));
+    final spotlight = find.byType(GestureGuideSpotlight);
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1700));
+    expect(spotlight, findsNothing);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 680));
+    expect(spotlight, findsOneWidget);
+    expect(touch, findsNothing);
+    expect(tester.getCenter(capsule), center);
+
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(find.text('Previous track'), findsOneWidget);
+    expect(tester.getCenter(touch).dx, lessThan(center.dx));
+    expect(tester.getCenter(capsule).dx, lessThan(center.dx));
+
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text('Fast-forward'), findsOneWidget);
+    expect(tester.getCenter(touch).dx, greaterThan(center.dx));
+    expect(tester.getCenter(capsule).dx, greaterThan(center.dx));
+    expect(playback.currentTrack, isNull);
+
+    await tester.tapAt(const Offset(100, 100));
+    await tester.pump();
+    expect(touch, findsNothing);
+    expect(spotlight, findsNothing);
+    expect(tester.getCenter(capsule), center);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pumpWidget(app);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(spotlight, findsNothing);
+    expect(touch, findsNothing);
+    expect(find.text('Previous track'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('first-use guide reveals and closes the first settings detent', (
+    tester,
+  ) async {
+    const viewport = Size(402, 874);
+    tester.view.physicalSize = viewport;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final playback = AlbumPlayback();
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(playback: playback, child: const SizedBox.expand()),
+        ),
+      ),
+    );
+
+    final host = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    final spotlight = find.byType(GestureGuideSpotlight);
+    final settingsCaption = find.text('Swipe Up for Settings');
+    final touch = find.byKey(const ValueKey('playback-intro-touch'));
+    GestureGuideSpotlight mask() => tester.widget(spotlight);
+
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1800));
+    await tester.pump(const Duration(milliseconds: 680));
+    final playbackCaption = find.text('Playback Controls');
+    expect(tester.getCenter(playbackCaption), viewport.center(Offset.zero));
+    final capsuleCenter = tester.getCenter(capsule);
+    await tester.pump(const Duration(milliseconds: 3860));
+    expect(tester.getCenter(settingsCaption), viewport.center(Offset.zero));
+    expect(mask().expansion!.progress.value, inExclusiveRange(0, 1));
+    expect(host.isPresented, isFalse);
+
+    await tester.pump(const Duration(milliseconds: 510));
+    expect(mask().expansion!.progress.value, 1);
+    expect(tester.getCenter(touch).dy, lessThan(capsuleCenter.dy - 20));
+    expect(host.isPresented, isFalse);
+
+    await tester.pump(const Duration(milliseconds: 320));
+    await tester.pumpAndSettle();
+    expect(host.presentedSheetCount, 1);
+    final sheetTop = tester.getTopLeft(find.byType(BottomSheetHandle)).dy;
+    expect(sheetTop, closeTo(874 * 0.62, 1));
+    expect(mask().expansion!.shape(viewport).top, closeTo(sheetTop, 1));
+
+    await tester.pump(const Duration(milliseconds: 1250));
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(host.isPresented, isTrue);
+    expect(mask().focus.value, closeTo(1, 0.00001));
+    expect(mask().expansion!.progress.value, 1);
+    for (var i = 0; i < 60 && host.isPresented; i++) {
+      expect(mask().focus.value, closeTo(1, 0.00001));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(host.isPresented, isFalse);
+    await tester.pump(const Duration(milliseconds: 340));
+    expect(mask().focus.value, inExclusiveRange(0, 1));
+    expect(mask().expansion!.progress.value, 1);
+    await tester.pumpAndSettle();
+    expect(spotlight, findsNothing);
+    expect(settingsCaption, findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets(
+    'five quick About icon taps unlock options and reset both demos',
+    (tester) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      for (final intro in UsageGuideIntro.values) {
+        await UsageGuidePreference.markIntroSeen(intro);
+      }
+      final wizard = UsageGuidePreference();
+      await wizard.hide();
+      wizard.dispose();
+      final playback = AlbumPlayback();
+      addTearDown(playback.dispose);
+      final app = MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(playback: playback, child: const SizedBox.expand()),
+        ),
+      );
+      Future<DeskBottomSheet> openSettings() async {
+        await tester.drag(capsule, const Offset(0, -150));
+        await tester.pumpAndSettle();
+        final sheet = DeskBottomSheet.of(
+          tester.element(find.byType(HomeSheet)),
+        );
+        sheet.topSheetController!.expand();
+        await tester.pumpAndSettle();
+        return sheet;
+      }
+
+      await tester.pumpWidget(app);
+      final sheet = await openSettings();
+      final options = find.widgetWithText(ListTile, 'Developer options');
+      expect(options, findsNothing);
+      await tester.tap(find.widgetWithText(ListTile, 'About Musaic'));
+      await tester.pumpAndSettle();
+
+      final logo = find.byType(DeveloperOptionsUnlock);
+      for (var tap = 0; tap < 4; tap++) {
+        await tester.tap(logo);
+      }
+      await tester.pump(const Duration(seconds: 1));
+      for (var tap = 0; tap < 4; tap++) {
+        await tester.tap(logo);
+      }
+      await tester.pump();
+      expect(find.text('Reset demos'), findsNothing);
+      await tester.tap(logo);
+      await tester.pumpAndSettle();
+      expect(find.text('Developer options'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ListTile, 'Reset demos'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Demos reset. Return home to see them again.'),
+        findsOneWidget,
+      );
+      expect(
+        await UsageGuidePreference.shouldPlayIntro(UsageGuideIntro.camera),
+        isTrue,
+      );
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(options, findsOneWidget);
+      expect(find.text('Wizard'), findsNothing);
+      sheet.dismiss();
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byType(GestureGuideSpotlight), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(app);
+      await openSettings();
+      expect(options, findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
 
   testWidgets('Appearance language updates the open settings page', (
     tester,

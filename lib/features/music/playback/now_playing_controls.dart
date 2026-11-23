@@ -8,6 +8,14 @@ import '../../../ui/widgets/frosted_control_surface.dart';
 import 'album_playback.dart';
 import 'now_playing_capsule.dart';
 
+typedef PlaybackPullPreview = ({
+  Offset drag,
+  String? title,
+  IconData? icon,
+  Widget? indicator,
+  Widget Function(Widget) decorateTarget,
+});
+
 class NowPlayingControls extends StatefulWidget {
   const NowPlayingControls({
     super.key,
@@ -16,6 +24,7 @@ class NowPlayingControls extends StatefulWidget {
     required this.onOpenSheet,
     this.companion,
     this.companionVisible = false,
+    this.pullPreview,
   });
 
   final AlbumPlayback? playback;
@@ -23,6 +32,7 @@ class NowPlayingControls extends StatefulWidget {
   final VoidCallback onOpenSheet;
   final Widget? companion;
   final bool companionVisible;
+  final Animation<PlaybackPullPreview>? pullPreview;
 
   @override
   State<NowPlayingControls> createState() => _NowPlayingControlsState();
@@ -155,7 +165,12 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: widget.pullPreview ?? kAlwaysDismissedAnimation,
+    builder: (context, _) => _buildControls(widget.pullPreview?.value),
+  );
+
+  Widget _buildControls(PlaybackPullPreview? preview) {
     final icon = switch ((_direction, _seeking)) {
       (_PullDirection.left, false) => PhosphorIcons.skipBackFill,
       (_PullDirection.right, false) => PhosphorIcons.skipForwardFill,
@@ -163,22 +178,34 @@ class _NowPlayingControlsState extends State<NowPlayingControls> {
       (_PullDirection.right, true) => PhosphorIcons.fastForwardFill,
       (null, _) => null,
     };
-    return FrostedControlPair(
+    final capsule = NowPlayingCapsule(
+      playback: widget.playback,
+      visible: widget.visible,
+      onOpenSheet: widget.onOpenSheet,
+      pullFeedbackIcon: preview?.icon ?? icon,
+      previewTitle: preview?.title,
+    );
+    final controls = FrostedControlPair(
       primaryVisible: widget.visible,
       companion: widget.companion,
       companionVisible: widget.companionVisible,
-      hideCompanion: _hideCompanion,
+      hideCompanion:
+          _hideCompanion || (preview != null && preview.drag != Offset.zero),
+      previewDrag: preview?.drag,
       onPrimaryPress: _cancelCompanionReveal,
       onPrimaryPullUp: widget.onOpenSheet,
       onPrimaryPullUpdate: _updatePull,
       onPrimaryPullEnd: _endPull,
       onPrimaryPullSettled: _finishReturn,
-      primary: NowPlayingCapsule(
-        playback: widget.playback,
-        visible: widget.visible,
-        onOpenSheet: widget.onOpenSheet,
-        pullFeedbackIcon: icon,
-      ),
+      primary: preview?.decorateTarget(capsule) ?? capsule,
+    );
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        controls,
+        if (preview?.indicator case final indicator?)
+          Positioned.fill(child: IgnorePointer(child: indicator)),
+      ],
     );
   }
 }

@@ -196,6 +196,18 @@ abstract class AppLocalizations {
   /// **'播放条'**
   String get usageGuidePlaybackBar;
 
+  /// No description provided for @usageGuidePlaybackControls.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放控制'**
+  String get usageGuidePlaybackControls;
+
+  /// No description provided for @usageGuideSwipeUpForSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'上拉打开设置'**
+  String get usageGuideSwipeUpForSettings;
+
   /// No description provided for @usageGuideReplayDemo.
   ///
   /// In zh, this message translates to:
@@ -255,6 +267,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'相机背景'**
   String get usageGuideCameraTitle;
+
+  /// No description provided for @usageGuideCameraHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'长按标题开启相机'**
+  String get usageGuideCameraHold;
 
   /// No description provided for @usageGuideCamera.
   ///
@@ -421,6 +439,36 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关于 Musaic'**
   String get settingsAbout;
+
+  /// No description provided for @settingsDeveloperOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'开发者选项'**
+  String get settingsDeveloperOptions;
+
+  /// No description provided for @developerResetDemos.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置演示'**
+  String get developerResetDemos;
+
+  /// No description provided for @developerResetDemosDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新观看首页和 Cover Flow 的首次手势演示。'**
+  String get developerResetDemosDescription;
+
+  /// No description provided for @developerResetDemosDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'演示已重置，返回首页即可重看。'**
+  String get developerResetDemosDone;
+
+  /// No description provided for @developerResetDemosFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法重置演示，请重试。'**
+  String get developerResetDemosFailed;
 
   /// No description provided for @settingsVersion.
   ///

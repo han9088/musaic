@@ -61,6 +61,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get usageGuidePlaybackBar => '播放条';
 
   @override
+  String get usageGuidePlaybackControls => '播放控制';
+
+  @override
+  String get usageGuideSwipeUpForSettings => '上拉打开设置';
+
+  @override
   String get usageGuideReplayDemo => '重播演示';
 
   @override
@@ -92,6 +98,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get usageGuideCameraTitle => '相机背景';
+
+  @override
+  String get usageGuideCameraHold => '长按标题开启相机';
 
   @override
   String get usageGuideCamera =>
@@ -182,6 +191,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAbout => '关于 Musaic';
+
+  @override
+  String get settingsDeveloperOptions => '开发者选项';
+
+  @override
+  String get developerResetDemos => '重置演示';
+
+  @override
+  String get developerResetDemosDescription => '重新观看首页和 Cover Flow 的首次手势演示。';
+
+  @override
+  String get developerResetDemosDone => '演示已重置，返回首页即可重看。';
+
+  @override
+  String get developerResetDemosFailed => '无法重置演示，请重试。';
 
   @override
   String get settingsVersion => '版本';

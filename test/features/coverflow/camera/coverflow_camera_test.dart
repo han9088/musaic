@@ -11,8 +11,11 @@ import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/coverflow/camera/coverflow_photo.dart';
 import 'package:musaic/features/coverflow/camera/coverflow_photo_preview.dart';
 import 'package:musaic/features/coverflow/camera/coverflow_photo_viewer.dart';
+import 'package:musaic/features/onboarding/gesture_guide_spotlight.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/album_haptics.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 const _back = CameraDescription(
   name: 'back',
@@ -181,6 +184,59 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
+
+  testWidgets('first Cover Flow visit demonstrates the camera title gesture', (
+    tester,
+  ) async {
+    final previous = SharedPreferencesAsyncPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = previous);
+    await mount(tester);
+    final spotlight = find.byType(GestureGuideSpotlight);
+    await tester.pump(const Duration(milliseconds: 1200));
+    expect(spotlight, findsNothing);
+    await tester.pump(const Duration(milliseconds: 650));
+    await tester.pump(const Duration(milliseconds: 340));
+    expect(spotlight, findsOneWidget);
+    final halfwayIn = tester
+        .widget<GestureGuideSpotlight>(spotlight)
+        .focus
+        .value;
+    expect(halfwayIn, inExclusiveRange(0.0, 1.0));
+    await tester.pump(const Duration(milliseconds: 340));
+    expect(tester.widget<GestureGuideSpotlight>(spotlight).focus.value, 1);
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final touch = find.byKey(const ValueKey('coverflow-camera-intro-touch'));
+    final title = find.text('Album');
+    expect(
+      tester.getCenter(touch).dx,
+      closeTo(tester.getCenter(title).dx, 0.5),
+    );
+    final caption = find.text('Press and hold the title to open the camera');
+    expect(tester.getCenter(caption), const Offset(400, 200));
+    expect(camera.settings, isEmpty);
+    expect(camera.captures, 0);
+
+    await tester.pump(const Duration(milliseconds: 2740));
+    final halfwayOut = tester.widget<GestureGuideSpotlight>(spotlight);
+    expect(halfwayOut.focus.value, closeTo(halfwayIn, 0.001));
+    expect(halfwayOut.opacity.value, 1);
+    await tester.pump(const Duration(milliseconds: 260));
+    final ending = tester.widget<GestureGuideSpotlight>(spotlight);
+    expect(ending.focus.value, inExclusiveRange(0.0, halfwayIn));
+    expect(ending.opacity.value, inExclusiveRange(0.0, 1.0));
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(touch, findsNothing);
+    expect(spotlight, findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await mount(tester);
+    await tester.pump(const Duration(seconds: 3));
+    expect(touch, findsNothing);
+    expect(spotlight, findsNothing);
+    expect(camera.settings, isEmpty);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('thumbnail opens the saved photo and delete targets its id', (
     tester,

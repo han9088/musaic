@@ -14,12 +14,14 @@ class NowPlayingCapsule extends StatelessWidget {
     required this.visible,
     required this.onOpenSheet,
     this.pullFeedbackIcon,
+    this.previewTitle,
   });
 
   final AlbumPlayback? playback;
   final bool visible;
   final VoidCallback onOpenSheet;
   final IconData? pullFeedbackIcon;
+  final String? previewTitle;
 
   static const _textShadows = [Shadow(color: Color(0xB3000000), blurRadius: 3)];
 
@@ -67,8 +69,8 @@ class NowPlayingCapsule extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       NowPlayingTitle(
-                        title: title ?? l10n.musicNotPlaying,
-                        animate: title != null,
+                        title: previewTitle ?? title ?? l10n.musicNotPlaying,
+                        animate: previewTitle == null && title != null,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,
@@ -77,7 +79,7 @@ class NowPlayingCapsule extends StatelessWidget {
                           shadows: _textShadows,
                         ),
                       ),
-                      if (artist != null)
+                      if (artist != null && previewTitle == null)
                         Text(
                           artist,
                           style: const TextStyle(

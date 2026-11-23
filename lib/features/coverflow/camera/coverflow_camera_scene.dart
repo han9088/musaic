@@ -22,6 +22,11 @@ class CoverFlowCameraScene extends StatefulWidget {
 
   final Widget Function(VoidCallback? toggleCamera) builder;
 
+  static bool get supported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
   @override
   State<CoverFlowCameraScene> createState() => _CoverFlowCameraSceneState();
 }
@@ -43,11 +48,6 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
   bool _saving = false;
   int _generation = 0;
   Future<AudioPlayer?>? _shutter;
-
-  bool get _supported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.android);
 
   bool get _resumed =>
       WidgetsBinding.instance.lifecycleState == null ||
@@ -357,7 +357,9 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
           onTap: camera == null ? null : _capture,
           child: RepaintBoundary(
             key: _overlayKey,
-            child: widget.builder(_supported ? _toggle : null),
+            child: widget.builder(
+              CoverFlowCameraScene.supported ? _toggle : null,
+            ),
           ),
         ),
         if (photoPreview != null)

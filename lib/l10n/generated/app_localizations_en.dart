@@ -61,6 +61,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usageGuidePlaybackBar => 'Playback bar';
 
   @override
+  String get usageGuidePlaybackControls => 'Playback Controls';
+
+  @override
+  String get usageGuideSwipeUpForSettings => 'Swipe Up for Settings';
+
+  @override
   String get usageGuideReplayDemo => 'Replay the demo';
 
   @override
@@ -94,6 +100,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get usageGuideCameraTitle => 'Camera background';
+
+  @override
+  String get usageGuideCameraHold =>
+      'Press and hold the title to open the camera';
 
   @override
   String get usageGuideCamera =>
@@ -190,6 +200,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAbout => 'About Musaic';
+
+  @override
+  String get settingsDeveloperOptions => 'Developer options';
+
+  @override
+  String get developerResetDemos => 'Reset demos';
+
+  @override
+  String get developerResetDemosDescription =>
+      'Replay the first-time gestures on the home screen and in Cover Flow.';
+
+  @override
+  String get developerResetDemosDone =>
+      'Demos reset. Return home to see them again.';
+
+  @override
+  String get developerResetDemosFailed =>
+      'Couldn’t reset the demos. Try again.';
 
   @override
   String get settingsVersion => 'Version';

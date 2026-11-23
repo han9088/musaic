@@ -13,7 +13,14 @@ import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
 import 'settings_support_section.dart';
 
-enum SettingsSection { musicSource, appearance, usageGuide, diagnostics, about }
+enum SettingsSection {
+  musicSource,
+  appearance,
+  usageGuide,
+  diagnostics,
+  about,
+  developerOptions,
+}
 
 class SettingsSheet extends StatelessWidget {
   const SettingsSheet({
@@ -23,6 +30,7 @@ class SettingsSheet extends StatelessWidget {
     required this.onSourceSelection,
     required this.onOpenSection,
     required this.usageGuideVisible,
+    required this.developerOptionsEnabled,
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -33,6 +41,7 @@ class SettingsSheet extends StatelessWidget {
   final Future<void> Function(Future<void> Function()) onSourceSelection;
   final void Function(BuildContext, SettingsSection) onOpenSection;
   final ReadonlySignal<bool> usageGuideVisible;
+  final ReadonlySignal<bool> developerOptionsEnabled;
   final ValueListenable<bool>? xeroxEnabled;
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
@@ -182,6 +191,15 @@ class SettingsSheet extends StatelessWidget {
                                   SettingsSection.about,
                                 ),
                                 const SettingsSupportSection(),
+                                SignalBuilder(
+                                  builder: (_) => developerOptionsEnabled.value
+                                      ? _section(
+                                          PhosphorIcons.code,
+                                          l10n.settingsDeveloperOptions,
+                                          SettingsSection.developerOptions,
+                                        )
+                                      : const SizedBox.shrink(),
+                                ),
                               ],
                             ),
                           ),

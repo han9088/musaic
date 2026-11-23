@@ -11,6 +11,7 @@ import '../../ui/dialogs/app_alert_dialog.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/thinking_orbs/thinking_orb.dart';
+import 'developer_options_unlock.dart';
 
 String _displayVersion(PackageInfo info) => info.buildNumber.isEmpty
     ? info.version
@@ -44,10 +45,15 @@ Future<void> _showAboutDialog(
 }
 
 class AboutSettings extends StatefulWidget {
-  const AboutSettings({super.key, required this.onOpenDetail});
+  const AboutSettings({
+    super.key,
+    required this.onOpenDetail,
+    required this.onOpenDeveloperOptions,
+  });
 
   final void Function(BuildContext context, String title, Widget body)
   onOpenDetail;
+  final ValueChanged<BuildContext> onOpenDeveloperOptions;
 
   @override
   State<AboutSettings> createState() => _AboutSettingsState();
@@ -163,13 +169,16 @@ class _AboutSettingsState extends State<AboutSettings> {
     return Column(
       children: [
         const SizedBox(height: 30),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Image.asset(
-            AppIconChoice.vinylPrimary.previewAsset,
-            width: 75,
-            height: 75,
-            excludeFromSemantics: true,
+        DeveloperOptionsUnlock(
+          onUnlock: () => widget.onOpenDeveloperOptions(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              AppIconChoice.vinylPrimary.previewAsset,
+              width: 75,
+              height: 75,
+              excludeFromSemantics: true,
+            ),
           ),
         ),
         const SizedBox(height: 20),

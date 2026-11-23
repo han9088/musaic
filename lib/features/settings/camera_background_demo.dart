@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:material_ui/material_ui.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../ui/widgets/guide_touch_indicator.dart';
 import '../coverflow/coverflow_flip_card.dart';
 import '../coverflow/coverflow_geometry.dart';
 import 'usage_guide_demo_card.dart';
@@ -38,7 +39,7 @@ class CameraBackgroundDemo extends StatelessWidget {
     final holdingTitle = time >= 0.09 && time < 0.32;
     final tappingBackground = time >= 0.54 && time < 0.62;
     final flash = time >= 0.62 ? 0.85 * (1 - _progress(time, 0.62, 0.65)) : 0.0;
-    const touchRadius = UsageGuideTouch.diameter / 2;
+    const touchRadius = GuideTouchIndicator.diameter / 2;
     final touchTarget = holdingTitle
         ? Offset(size.width / 2 + 28, 28)
         : Offset(size.width * 0.80, size.height - 19);
@@ -70,7 +71,9 @@ class CameraBackgroundDemo extends StatelessWidget {
           Positioned(
             left: touchTarget.dx - touchRadius,
             top: touchTarget.dy - touchRadius,
-            child: const UsageGuideTouch(key: ValueKey('camera-demo-touch')),
+            child: const GuideTouchIndicator(
+              key: ValueKey('camera-demo-touch'),
+            ),
           ),
         if (flash > 0)
           Opacity(

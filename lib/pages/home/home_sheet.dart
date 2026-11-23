@@ -7,9 +7,11 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
+import '../../features/music/playback/playback_gesture_intro.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../features/settings/about_settings.dart';
 import '../../features/settings/appearance_settings.dart';
+import '../../features/settings/developer_options_settings.dart';
 import '../../features/settings/diagnostics_settings.dart';
 import '../../features/settings/settings_sheet.dart';
 import '../../features/settings/usage_guide_settings.dart';
@@ -17,6 +19,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
+import '../../storage/settings/developer_options_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
 import '../../storage/settings/usage_guide_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
@@ -64,7 +67,10 @@ class HomeSheet extends StatefulWidget {
 
 /// 封装或定义首页弹层状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomeSheetState extends State<HomeSheet> {
+  static const _firstSheetDetent = BottomSheetDetentFraction(0.38);
+
   final _usageGuide = UsageGuidePreference();
+  final _developerOptions = DeveloperOptionsPreference();
   String? _sheetId;
   bool _sheetExpanded = false;
   bool _xeroxChangePending = false;
@@ -81,6 +87,7 @@ class _HomeSheetState extends State<HomeSheet> {
   void initState() {
     super.initState();
     unawaited(_usageGuide.restore());
+    unawaited(_developerOptions.restore());
   }
 
   void _reveal() {
@@ -136,33 +143,39 @@ class _HomeSheetState extends State<HomeSheet> {
   void dispose() {
     _hideTimer?.cancel();
     _usageGuide.dispose();
+    _developerOptions.dispose();
     _finishXeroxCollapse(false);
     final dismissed = _sourceSheetDismissed;
     if (dismissed != null && !dismissed.isCompleted) dismissed.complete();
     super.dispose();
   }
 
+  Widget _buildSettingsSheet() => SettingsSheet(
+    sources: widget.sources,
+    sourceSwitching: widget.sourceSwitching,
+    onSourceSelection: _selectSource,
+    onOpenSection: _openSettings,
+    usageGuideVisible: _usageGuide.visible,
+    developerOptionsEnabled: _developerOptions.enabled,
+    xeroxEnabled: widget.xeroxEnabled,
+    onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
+    xeroxPalettePicker: widget.xeroxPalettePicker,
+  );
+
   void _present() {
     if (_open || !_playbackAvailable || _xeroxChangePending) return;
+    final host = DeskBottomSheet.of(context);
+    if (host.isPresented) return;
     _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-    final sheetId = DeskBottomSheet.of(context).present(
-      SettingsSheet(
-        sources: widget.sources,
-        sourceSwitching: widget.sourceSwitching,
-        onSourceSelection: _selectSource,
-        onOpenSection: _openSettings,
-        usageGuideVisible: _usageGuide.visible,
-        xeroxEnabled: widget.xeroxEnabled,
-        onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
-        xeroxPalettePicker: widget.xeroxPalettePicker,
-      ),
+    final sheetId = host.present(
+      _buildSettingsSheet(),
       BottomSheetOptions(
         mode: BottomSheetMode.push,
         pushDirection: PushDirection.bottom,
         snapPoints: [
-          const BottomSheetDetent.fraction(0.38),
+          _firstSheetDetent,
           BottomSheetDetent.fraction(landscape ? 0.76 : 0.78),
         ],
         index: 0,
@@ -236,7 +249,15 @@ class _HomeSheetState extends State<HomeSheet> {
       SettingsSection.about => (
         '/settings/about',
         (AppLocalizations l10n) => l10n.settingsAbout,
-        const AboutSettings(onOpenDetail: pushSettingsDetail),
+        AboutSettings(
+          onOpenDetail: pushSettingsDetail,
+          onOpenDeveloperOptions: _openDeveloperOptions,
+        ),
+      ),
+      SettingsSection.developerOptions => (
+        '/settings/developer-options',
+        (AppLocalizations l10n) => l10n.settingsDeveloperOptions,
+        const DeveloperOptionsSettings(),
       ),
     };
     route = pushSettingsPage(
@@ -258,6 +279,16 @@ class _HomeSheetState extends State<HomeSheet> {
               },
             )
           : null,
+    );
+  }
+
+  void _openDeveloperOptions(BuildContext source) {
+    if (ModalRoute.isCurrentOf(source) == false) return;
+    unawaited(_developerOptions.enable());
+    pushSettingsDetail(
+      source,
+      AppLocalizations.of(source).settingsDeveloperOptions,
+      const DeveloperOptionsSettings(),
     );
   }
 
@@ -319,9 +350,22 @@ class _HomeSheetState extends State<HomeSheet> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => widget.playback == null
+      ? _buildHome(context, null)
+      : PlaybackGestureIntro(
+          enabled: _playbackAvailable && !_open,
+          sheetDetent: _firstSheetDetent,
+          buildSheet: _buildSettingsSheet,
+          builder: _buildHome,
+        );
+
+  Widget _buildHome(
+    BuildContext context,
+    Animation<PlaybackPullPreview>? pullPreview,
+  ) {
     final layoutSwitch = _open ? null : widget.layoutSwitch;
-    final capsuleVisible = _playbackAvailable && !_open && _visible;
+    final capsuleVisible =
+        _playbackAvailable && !_open && (_visible || pullPreview != null);
     return PopScope(
       canPop: !_open,
       onPopInvokedWithResult: (didPop, _) {
@@ -349,6 +393,7 @@ class _HomeSheetState extends State<HomeSheet> {
                   child: Center(
                     child: NowPlayingControls(
                       playback: widget.playback,
+                      pullPreview: pullPreview,
                       visible: capsuleVisible,
                       onOpenSheet: _present,
                       companion: layoutSwitch?.button,
