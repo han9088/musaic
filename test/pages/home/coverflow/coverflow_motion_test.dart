@@ -240,6 +240,7 @@ void main() {
     );
     final artist = find.descendant(of: back, matching: find.text('Artist'));
     expect(artist, findsOne);
+    expect(find.byTooltip('Close'), findsNothing);
     expect(find.descendant(of: back, matching: find.text('01')), findsOne);
     expect(find.text('Track 1'), findsOneWidget);
     expect(
@@ -274,7 +275,7 @@ void main() {
     await tester.tap(backPlay);
     await tester.pump();
     expect(playback.isPlaying('media-store:17', 'First'), isTrue);
-    await tester.tap(find.byTooltip('Close'));
+    await tester.dragFrom(tester.getCenter(artist), const Offset(0, 200));
     await tester.pumpAndSettle();
     expect(back, findsNothing);
     expect(coverPlay, findsOneWidget);

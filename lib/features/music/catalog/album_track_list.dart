@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/music/music_models.dart';
@@ -63,7 +62,7 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
   Widget build(BuildContext context) {
     final album = widget.album;
     final id = album['id'] as String?;
-    return Listener(
+    final content = Listener(
       onPointerDown: widget.playback == null
           ? null
           : (_) => _revealPlayButton(),
@@ -89,6 +88,7 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
         ),
       ),
     );
+    return Semantics(onDismiss: widget.onClose, child: content);
   }
 
   Widget _buildContents(BuildContext context, double side, Color? accent) {
@@ -143,16 +143,6 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
                   ],
                 ),
               ),
-              if (widget.onClose case final close?)
-                IconButton(
-                  onPressed: close,
-                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                  icon: Icon(
-                    PhosphorIcons.caretDown,
-                    color: trackColor,
-                    size: 18,
-                  ),
-                ),
               if (widget.playback case final controller?)
                 ValueListenableBuilder(
                   valueListenable: _playButtonVisible,
@@ -235,10 +225,7 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
                   ? () => playback.playTrack(tracks, index)
                   : null,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 7,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
