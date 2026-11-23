@@ -10,7 +10,9 @@ import '../model/artwork_resource.dart';
 import '../pipeline/artwork_pipeline.dart';
 import '../pipeline/xerox_raster_resource.dart';
 import '../xerox/xerox_raster_request.dart';
+import 'artwork_accent.dart';
 import 'artwork_renderer.dart';
+import 'custom_artwork_scope.dart';
 import 'directory_artwork.dart';
 
 /// 负责资源请求与展示之间的生命周期，不直接接触下载器或缓存实现。
@@ -28,6 +30,8 @@ class ArtworkSourceView extends StatefulWidget {
     this.xerox = false,
     this.scale = 1,
     this.pipeline,
+    this.accentBuilder,
+    this.prepareXerox = true,
   });
 
   final ArtworkRequest request;
@@ -41,6 +45,8 @@ class ArtworkSourceView extends StatefulWidget {
   final bool xerox;
   final double scale;
   final ArtworkPipeline? pipeline;
+  final ArtworkAccentBuilder? accentBuilder;
+  final bool prepareXerox;
 
   @override
   State<ArtworkSourceView> createState() => _ArtworkSourceViewState();
@@ -54,6 +60,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
   DirectoryMusicLibrary? _directories;
   int _directoryRevision = -1;
   int _resourceRevision = 0;
+  int? _customArtworkRevision;
   ArtworkResourceLease? _resourceLease;
   int? _originalDecodeResolution;
   int? _xeroxResolution;
@@ -61,6 +68,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
 
   void _resolve() {
     _resourceRevision++;
+    _customArtworkRevision = _pipeline.customArtworkRevision(widget.request);
     _originalDecodeResolution = null;
     _xeroxResolution = null;
     _lastBackgroundKey = null;
@@ -76,6 +84,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    CustomArtworkScope.watch(context);
     final scope = DirectoryArtworkScope.watch(context);
     final directoryChanged =
         scope.library != _directories || scope.revision != _directoryRevision;
@@ -83,7 +92,10 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
 
     _directories = scope.library;
     _directoryRevision = scope.revision;
-    if (_resourceLease == null || (usesDirectorySource && directoryChanged)) {
+    if (_resourceLease == null ||
+        _customArtworkRevision !=
+            _pipeline.customArtworkRevision(widget.request) ||
+        (usesDirectorySource && directoryChanged)) {
       _resolve();
     }
   }
@@ -123,19 +135,36 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
     ArtworkResource resource,
     ArtworkDisplayPlan plan, {
     ui.Image? processedImage,
-  }) => ArtworkRenderer(
-    resource: resource,
-    plan: plan,
-    width: widget.width,
-    height: widget.height,
-    fit: widget.fit,
-    filterQuality: widget.filterQuality,
-    semanticLabel: widget.semanticLabel,
-    excludeFromSemantics: widget.excludeFromSemantics,
-    xerox: widget.xerox,
-    placeholder: widget.placeholder,
-    processedImage: processedImage,
-  );
+  }) {
+    final artwork = ArtworkRenderer(
+      resource: resource,
+      plan: plan,
+      width: widget.width,
+      height: widget.height,
+      fit: widget.fit,
+      filterQuality: widget.filterQuality,
+      semanticLabel: widget.semanticLabel,
+      excludeFromSemantics: widget.excludeFromSemantics,
+      xerox: widget.xerox,
+      placeholder: widget.placeholder,
+      processedImage: processedImage,
+    );
+    return _compose(artwork, image: artwork);
+  }
+
+  Widget _compose(Widget child, {ArtworkRenderer? image}) {
+    final builder = widget.accentBuilder;
+    if (builder == null) return child;
+    final width = widget.width;
+    final height = widget.height;
+    return ArtworkAccent(
+      sourceKey: image?.resource.sourceKey,
+      image: image?.originalImageProvider,
+      size: width == null || height == null ? null : Size(width, height),
+      builder: builder,
+      child: child,
+    );
+  }
 
   Widget _resourceView(double dpr, Size targetSize) =>
       FutureBuilder<ArtworkResource?>(
@@ -143,7 +172,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
         future: _resourceLease?.future,
         builder: (context, snapshot) {
           final resource = snapshot.data;
-          if (resource == null) return widget.placeholder;
+          if (resource == null) return _compose(widget.placeholder);
 
           final plan = _pipeline.createDisplayPlan(
             resource: resource,
@@ -160,7 +189,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
           );
           _originalDecodeResolution = plan.originalDecodeResolution;
           _xeroxResolution = plan.xeroxRequest.resolution;
-          if (widget.request.previewResolution == null) {
+          if (widget.prepareXerox && widget.request.previewResolution == null) {
             _scheduleBackgroundXerox(plan);
           }
 
@@ -177,6 +206,7 @@ class _ArtworkSourceViewState extends State<ArtworkSourceView> {
 
   @override
   Widget build(BuildContext context) {
+    if (_resourceLease?.isMissing == true) return _compose(widget.placeholder);
     final dpr = MediaQuery.devicePixelRatioOf(context);
     if (_fixedResolution != null) {
       return _resourceView(dpr, Size.zero);

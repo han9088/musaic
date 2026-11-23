@@ -3,6 +3,8 @@ package xyz.luan.audioplayers.player
 import android.content.res.AssetFileDescriptor
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Handler
+import android.os.Looper
 import android.os.ParcelFileDescriptor
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
@@ -31,7 +33,6 @@ class SourceOwnershipTest {
         var failPrepare = false
         var failRelease = false
         var releases = 0
-        val plugin = AudioplayersPlugin()
         private val messenger =
             Proxy.newProxyInstance(
                 BinaryMessenger::class.java.classLoader,
@@ -41,10 +42,11 @@ class SourceOwnershipTest {
             } as BinaryMessenger
         val owner =
             WrappedPlayer(
-                plugin,
+                RuntimeEnvironment.getApplication(),
+                Handler(Looper.getMainLooper()),
                 EventHandler(EventChannel(messenger, "test")),
                 AudioContextAndroid().copy(audioFocus = AudioManager.AUDIOFOCUS_NONE),
-                SoundPoolManager(plugin),
+                SoundPoolManager {},
             )
         private val backend =
             Proxy.newProxyInstance(
@@ -135,7 +137,7 @@ class SourceOwnershipTest {
         ReflectionHelpers.setField(wrapper, "mediaPlayer", broken)
         assertThrows(IllegalStateException::class.java) { wrapper.release() }
         assertTrue(broken.closed)
-        harness.owner.dispose()
+        harness.owner.release()
     }
 
     @Test
@@ -152,7 +154,7 @@ class SourceOwnershipTest {
         complete.onCompletion(native)
         assertFalse(harness.owner.prepared)
         assertTrue(descriptor.fileDescriptor.valid())
-        harness.owner.dispose()
+        harness.owner.release()
     }
 
     @Test
@@ -166,7 +168,7 @@ class SourceOwnershipTest {
         assertTrue(second.fileDescriptor.valid())
         harness.owner.release()
         assertFalse(second.fileDescriptor.valid())
-        harness.owner.dispose()
+        harness.owner.release()
         assertEquals(1, harness.releases)
     }
 
@@ -185,7 +187,7 @@ class SourceOwnershipTest {
         assertNull(harness.owner.source)
         assertTrue(harness.owner.released)
         assertEquals(1, harness.releases)
-        harness.owner.dispose()
+        harness.owner.release()
     }
 
     @Test
@@ -198,6 +200,6 @@ class SourceOwnershipTest {
         assertFalse(descriptor.fileDescriptor.valid())
         assertNull(harness.owner.source)
         assertTrue(harness.owner.released)
-        harness.owner.dispose()
+        harness.owner.release()
     }
 }

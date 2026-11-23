@@ -15,6 +15,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get albumCoversLoadFailed => '无法加载专辑封面。';
+
+  @override
+  String get albumTracksUnavailable => '暂无曲目信息。';
+
+  @override
+  String get artworkAddCover => '添加封面';
+
+  @override
+  String get artworkChangeCover => '更换封面';
+
+  @override
+  String get artworkRestoreCover => '恢复原封面';
+
+  @override
+  String get artworkRestoreFailed => '无法恢复原封面。';
+
+  @override
+  String get artworkSaveFailed => '无法保存封面，请换一张图片试试。';
+
+  @override
   String get settings => '设置';
 
   @override
@@ -31,7 +52,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get usageGuideBrowse =>
-      '拖动画布浏览专辑，点一下封面选中，再点一次放大。在 Cover Flow 中左右滑动切换专辑，从中间封面向上拖动可展开，向下拖动可收起。';
+      '拖动画布浏览音乐，点一下封面选中，再点一次翻转。在 Cover Flow 中左右滑动浏览，向上拖动中间的封面可翻转。多首歌的专辑会显示曲目列表。';
 
   @override
   String get usageGuidePlaybackTitle => '播放音乐';
@@ -40,7 +61,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get usageGuidePlaybackBar => '播放条';
 
   @override
-  String get usageGuideReplayDemo => '重播拖拽演示';
+  String get usageGuideReplayDemo => '重播演示';
 
   @override
   String get usageGuideDragHint => '短拉松手切歌，拉住可快进或快退';

@@ -4,7 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/features/settings/app_icon_picker.dart';
 import 'package:musaic/services/app_icon_service.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:musaic/ui/theme/app_colors.dart';
+import 'package:musaic/ui/widgets/app_selection_dot.dart';
 
 void main() {
   for (final choice in [AppIconChoice.mosaic, AppIconChoice.vinyl]) {
@@ -70,17 +71,28 @@ void main() {
           await tester.pumpAndSettle();
 
           final selected = tile(fails ? AppIconChoice.text : choice);
+          final marker = find.descendant(
+            of: selected,
+            matching: find.byType(AppSelectionDot),
+          );
+          final circle = find.descendant(
+            of: marker,
+            matching: find.byType(DecoratedBox),
+          );
+          expect(marker, findsOneWidget);
+          expect(find.byType(AppSelectionDot), findsOneWidget);
+          expect(tester.getSize(circle), const Size.square(8));
           expect(
-            find.descendant(
-              of: selected,
-              matching: find.byIcon(PhosphorIcons.checkBold),
+            tester.widget<DecoratedBox>(circle).decoration,
+            const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.settingsAccent,
             ),
-            findsOneWidget,
           );
           expect(icons.changes, 1);
           expect(tester.takeException(), isNull);
           expect(
-            find.text('Could not change the app icon. Please try again.'),
+            find.text('Couldn’t change the app icon. Try again.'),
             fails ? findsOneWidget : findsNothing,
           );
         },

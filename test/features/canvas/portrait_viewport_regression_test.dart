@@ -5,25 +5,40 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
+import 'package:musaic/features/artwork/presentation/artwork_source_view.dart';
+import 'package:musaic/features/artwork/presentation/custom_artwork_scope.dart';
 import 'package:musaic/features/canvas/album_canvas_viewport.dart';
 import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
+import 'package:musaic/features/canvas/selected_album.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
+import 'package:musaic/features/music/catalog/album_track_list.dart';
+import 'package:musaic/features/music/playback/album_play_button.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
 import 'package:musaic/services/mock_album_cache.dart';
+import 'package:musaic/storage/music/custom_artwork_store.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class _FixedAlbumCache extends MockAlbumCache {
+  _FixedAlbumCache({this.trackCount});
+
+  final int? trackCount;
+
   @override
   Future<List<Map<String, dynamic>>> load() async => [
-    {'asset': 'assets/albums/0.jpg', 'title': 'Album', 'artist': 'Artist'},
+    {
+      'asset': 'assets/albums/0.jpg',
+      'title': 'Album',
+      'artist': 'Artist',
+      if (trackCount != null) 'trackCount': trackCount,
+    },
   ];
 
   @override
@@ -205,6 +220,106 @@ void main() {
     },
   );
 
+  testWidgets('repeated covers keep one tappable semantic entry per album', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final transform = TransformationController(
+      Matrix4.diagonal3Values(0.4, 0.4, 1),
+    );
+    final layout = HomeAlbumLayoutState();
+    final playback = AlbumPlayback();
+    final selected = <String>[];
+    const albums = [
+      {'asset': 'local:one', 'title': 'First album'},
+      {'asset': 'local:two', 'title': 'Second album'},
+    ];
+    addTearDown(transform.dispose);
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AlbumCanvasViewport(
+          albums: albums,
+          layout: layout,
+          transform: transform,
+          interaction: CanvasInteractionState(CanvasDrift()),
+          playback: playback,
+          xerox: false,
+          interactionBlocked: false,
+          onViewportSizeChanged: (_) {},
+          onTileSelected: (row, column) => selected.add(
+            layout.albumAt(row, column, albums)['title'] as String,
+          ),
+          animateSourceTile: (_, _, child) => child,
+        ),
+      ),
+    );
+
+    final first = find.semantics.byLabel('First album');
+    final second = find.semantics.byLabel('Second album');
+    expect(first, findsOneWidget);
+    expect(second, findsOneWidget);
+
+    transform.value = transform.value.clone()..setEntry(0, 3, -850);
+    await tester.pump();
+    expect(first, findsOneWidget);
+    expect(second, findsOneWidget);
+    tester.semantics.tap(first);
+    expect(selected, ['First album']);
+    await tester.pumpWidget(const SizedBox.shrink());
+    handle.dispose();
+  });
+
+  testWidgets('a vertical fling hands motion to canvas drift on release', (
+    tester,
+  ) async {
+    final transform = TransformationController(
+      Matrix4.diagonal3Values(0.4, 0.4, 1),
+    );
+    final drift = CanvasDrift();
+    final playback = AlbumPlayback();
+    addTearDown(transform.dispose);
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AlbumCanvasViewport(
+          albums: const [
+            {'asset': 'local:placeholder', 'title': 'Album'},
+          ],
+          layout: HomeAlbumLayoutState(),
+          transform: transform,
+          interaction: CanvasInteractionState(drift),
+          playback: playback,
+          xerox: false,
+          interactionBlocked: false,
+          onViewportSizeChanged: (_) {},
+          onTileSelected: (_, _) {},
+          animateSourceTile: (_, _, child) => child,
+        ),
+      ),
+    );
+
+    final placeholders = tester.widgetList<RawImage>(find.byType(RawImage));
+    expect(placeholders.length, greaterThan(1));
+    expect(placeholders.map((tile) => tile.image).toSet(), hasLength(1));
+
+    await tester.fling(
+      find.byType(AlbumCanvasViewport),
+      const Offset(0, -180),
+      2400,
+    );
+    expect(drift.velocity.dy, lessThan(-2000));
+    await tester.pump();
+    drift.advance(Duration.zero, transform, enabled: true);
+    const frame = Duration(milliseconds: 8);
+    drift.advance(frame, transform, enabled: true);
+    final driftPosition = transform.value.entry(1, 3);
+    await tester.pump(frame);
+
+    expect(transform.value.entry(1, 3), driftPosition);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   for (final transition in ['BottomSheet', 'Cover Flow']) {
     testWidgets('tilt responds after returning from $transition', (
       tester,
@@ -323,6 +438,104 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   }
+
+  testWidgets('the cover menu freezes canvas drift and tilt until it closes', (
+    tester,
+  ) async {
+    final events = StreamController<AccelerometerEvent>.broadcast();
+    final previousSensors = SensorsPlatform.instance;
+    SensorsPlatform.instance = _ControlledSensors(events.stream);
+    final store = CustomArtworkStore();
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() async {
+      SensorsPlatform.instance = previousSensors;
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+      await events.close();
+      store.dispose();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: CustomArtworkScope(
+          store: store,
+          child: HomePage(albumCache: _FixedAlbumCache()),
+        ),
+      ),
+    );
+    await tester.pump();
+    final transform = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!;
+    Matrix4 tilt() => tester
+        .widget<Transform>(find.byKey(const ValueKey('portrait-sensor-plane')))
+        .transform;
+
+    events.add(AccelerometerEvent(0, 0, 9.81, DateTime(2026)));
+    await tester.pump();
+    await tester.flingFrom(const Offset(200, 400), const Offset(0, -160), 2400);
+    await tester.longPressAt(const Offset(200, 400));
+    await tester.pump();
+    expect(find.text('Add cover'), findsOneWidget);
+    final frozenPosition = transform.value.clone();
+    final frozenTilt = tilt().clone();
+    for (var i = 0; i < 10; i++) {
+      events.add(AccelerometerEvent(7, 0, 7, DateTime(2026)));
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(transform.value, frozenPosition);
+      expect(tilt(), frozenTilt);
+    }
+
+    await tester.tapAt(const Offset(24, 120));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(transform.value, frozenPosition);
+    expect(tilt(), frozenTilt);
+
+    await tester.pump(const Duration(milliseconds: 120));
+    for (var i = 0; i < 8; i++) {
+      events.add(AccelerometerEvent(7, 0, 7, DateTime(2026)));
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+    expect(find.text('Add cover'), findsNothing);
+    expect(transform.value, isNot(frozenPosition));
+    expect(tilt(), isNot(frozenTilt));
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('a single track keeps its artwork in the canvas preview', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: HomePage(albumCache: _FixedAlbumCache(trackCount: 1)),
+      ),
+    );
+    await tester.pump();
+    await tester.tapAt(const Offset(150, 250));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    final cover = tester.getRect(find.byType(SelectedAlbum));
+    await tester.tapAt(cover.topLeft + const Offset(12, 12));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final popup = find.byKey(const ValueKey('album-cover-popup'));
+    Finder inPopup(Type type) =>
+        find.descendant(of: popup, matching: find.byType(type));
+    expect(inPopup(ArtworkSourceView), findsOneWidget);
+    expect(inPopup(AlbumTrackList), findsNothing);
+    expect(inPopup(AlbumPlayButton), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
 
   testWidgets('HomePage keeps the sensor plane inside the infinite viewport', (
     tester,

@@ -25,6 +25,8 @@ import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
 import 'package:musaic/ui/theme/app_colors.dart';
 import 'package:musaic/ui/thinking_orbs/thinking_orb.dart';
+import 'package:musaic/ui/widgets/app_navigation_back_button.dart';
+import 'package:musaic/ui/widgets/app_selection_dot.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -34,6 +36,17 @@ import 'package:signals_flutter/signals_flutter.dart';
 void main() {
   final settingsTab = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
   final capsule = find.byType(NowPlayingCapsule);
+  Finder dotIn(Finder item) =>
+      find.descendant(of: item, matching: find.byType(AppSelectionDot));
+
+  void expectDotAligned(WidgetTester tester, Finder item, Finder title) {
+    final dot = dotIn(item);
+    expect(dot, findsOneWidget);
+    expect(
+      tester.getCenter(dot).dy,
+      closeTo(tester.getCenter(title).dy + 1, 0.01),
+    );
+  }
 
   setUp(() {
     final previous = SharedPreferencesAsyncPlatform.instance;
@@ -107,6 +120,18 @@ void main() {
         matching: find.byType(ListTile),
       );
       expect(options, findsNWidgets(3));
+      final marker = find.descendant(
+        of: menu,
+        matching: find.byType(AppSelectionDot),
+      );
+      expect(marker, findsOneWidget);
+      final selected = find.ancestor(of: marker, matching: options);
+      expect(tester.widget<ListTile>(selected).selected, isTrue);
+      expectDotAligned(
+        tester,
+        selected,
+        find.descendant(of: selected, matching: find.byType(Text)),
+      );
       await tester.enterText(search, 'missing language');
       await tester.pumpAndSettle();
       expect(find.text(emptyLabel), findsOneWidget);
@@ -116,6 +141,7 @@ void main() {
       tester.view.viewInsets = FakeViewPadding(bottom: 420 * devicePixelRatio);
       await tester.pumpAndSettle();
       expect(options, findsOneWidget);
+      expect(marker, findsNothing);
       expect(
         find.descendant(of: menu, matching: find.text(choice)),
         findsOneWidget,
@@ -157,6 +183,11 @@ void main() {
   testWidgets('Only the guide dismissal button permanently hides its entry', (
     tester,
   ) async {
+    const bottomInset = 34.0;
+    tester.view.padding = FakeViewPadding(
+      bottom: bottomInset * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.resetPadding);
     const app = MaterialApp(
       locale: Locale('zh'),
       localizationsDelegates: [
@@ -191,7 +222,7 @@ void main() {
     expect(tester.widget<SettingsPage>(page).title, '使用说明');
     expect(find.text('浏览专辑'), findsOneWidget);
     expect(find.text('相机背景'), findsOneWidget);
-    await tester.tap(find.byIcon(PhosphorIcons.caretDown).hitTestable());
+    await tester.tap(find.byIcon(PhosphorIcons.caretDownBold).hitTestable());
     await tester.pumpAndSettle();
 
     expect(page, findsNothing);
@@ -201,6 +232,10 @@ void main() {
     final dismiss = find.widgetWithText(FilledButton, '关闭并不再显示');
     expect(dismiss.hitTestable(), findsOneWidget);
     final dismissBounds = tester.getRect(dismiss);
+    expect(
+      tester.getRect(page).bottom - dismissBounds.bottom,
+      closeTo(bottomInset + 24, 0.5),
+    );
     final heading = find.text('浏览专辑');
     final headingTop = tester.getTopLeft(heading).dy;
     final scrollView = find.descendant(
@@ -298,6 +333,13 @@ void main() {
   testWidgets('Troubleshooting exports a log and attaches it to feedback', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const bottomInset = 34.0;
+    tester.view.padding = FakeViewPadding(
+      bottom: bottomInset * tester.view.devicePixelRatio,
+    );
+    addTearDown(tester.view.resetPadding);
     MethodChannelFlutterEmailSender.registerWith();
     const device = MethodChannel('dev.fluttercommunity.plus/device_info');
     const email = MethodChannel('flutter_email_sender');
@@ -386,7 +428,12 @@ void main() {
     final pageRect = tester.getRect(page);
     expect(mailRect.height, greaterThanOrEqualTo(56));
     expect(mailRect.width, greaterThan(pageRect.width * 0.8));
-    expect(mailRect.bottom, closeTo(pageRect.bottom - 16, 0.5));
+    expect(pageRect.bottom - mailRect.bottom, closeTo(bottomInset + 24, 0.5));
+    final scrollView = find.descendant(
+      of: page,
+      matching: find.byType(CustomScrollView),
+    );
+    expect(tester.getRect(scrollView).bottom, pageRect.bottom - bottomInset);
     await tester.ensureVisible(mail);
     await tester.tap(mail);
     await tester.pumpAndSettle();
@@ -427,7 +474,7 @@ void main() {
     expect(picker.content, contains('cameraAccessDenied'));
     expect(picker.content, isNot(contains(description)));
     expect(find.text(l10n.diagnosticsExported), findsOneWidget);
-    await tester.tap(find.byIcon(PhosphorIcons.caretDown).hitTestable());
+    await tester.tap(find.byIcon(PhosphorIcons.caretDownBold).hitTestable());
     await tester.pumpAndSettle();
     expect(page, findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
@@ -491,9 +538,26 @@ void main() {
           24,
         );
         expect(
-          find.byIcon(PhosphorIcons.caretDown).hitTestable(),
+          find.byIcon(PhosphorIcons.caretDownBold).hitTestable(),
           findsOneWidget,
         );
+        final back = find.descendant(
+          of: about,
+          matching: find.byType(AppNavigationBackButton),
+        );
+        final circle = find.descendant(
+          of: back,
+          matching: find.byType(DecoratedBox),
+        );
+        expect(tester.getSize(circle), const Size.square(22));
+        expect(
+          tester.widget<DecoratedBox>(circle).decoration,
+          const BoxDecoration(
+            color: AppColors.settingsAccent,
+            shape: BoxShape.circle,
+          ),
+        );
+        expect(tester.getSize(back).width, greaterThanOrEqualTo(44));
         final aboutRows = tester.widgetList<ListTile>(
           find.descendant(of: about, matching: find.byType(ListTile)),
         );
@@ -501,6 +565,10 @@ void main() {
         final versionLabel = find.text('Version');
         final versionValue = find.text('1.0.0 (1)');
         expect(tester.getTopLeft(versionLabel).dx, 28);
+        expect(
+          tester.getTopLeft(circle).dx,
+          tester.getTopLeft(versionLabel).dx,
+        );
         expect(
           tester.getSize(about).width - tester.getTopRight(versionValue).dx,
           28,
@@ -523,12 +591,8 @@ void main() {
         }
 
         for (final (status, body, message) in [
-          (404, '', 'No public releases are available yet.'),
-          (
-            200,
-            '{"tag_name":"v1.0.0+1"}',
-            'You’re on the latest published version.',
-          ),
+          (404, '', 'There are no public releases yet.'),
+          (200, '{"tag_name":"v1.0.0+1"}', 'You’re up to date.'),
           (200, '{"tag_name":"v1.0.0+2"}', 'Version 1.0.0+2 is available.'),
           (503, '', 'Couldn’t check for updates. Try again later.'),
         ]) {
@@ -552,7 +616,7 @@ void main() {
           expect(loader, findsNothing);
           expect(find.text(message), findsOneWidget);
           if (body.contains('+2')) {
-            expect(find.text('View release'), findsOneWidget);
+            expect(find.text('View on GitHub'), findsOneWidget);
           }
           await closeDialog();
         }
@@ -579,7 +643,7 @@ void main() {
           expect(body.left, 28);
           expect(width - body.right, 28);
           expect(
-            find.byIcon(PhosphorIcons.caretLeft).hitTestable(),
+            find.byIcon(PhosphorIcons.caretLeftBold).hitTestable(),
             findsOneWidget,
           );
           await tester.tap(find.byTooltip('Back').hitTestable());
@@ -799,7 +863,7 @@ void main() {
     }
   });
 
-  testWidgets('Xerox opens in place and closes the sheet when turned off', (
+  testWidgets('Xerox waits for an expanded sheet to reach the first detent', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(320, 640));
@@ -807,8 +871,10 @@ void main() {
     final xeroxEnabled = ValueNotifier(false);
     addTearDown(xeroxEnabled.dispose);
     final modeChanges = <({bool enabled, bool homeCurrent, int sheets})>[];
+    final togglePositions = <double>[];
     late final ModalRoute<dynamic> homeRoute;
     late final DeskBottomSheet sheet;
+    late final ValueNotifier<double> sheetPosition;
     final palette = ValueNotifier(XeroxPalette.original);
     addTearDown(palette.dispose);
     await tester.pumpWidget(
@@ -825,6 +891,7 @@ void main() {
               onChanged: (value) => palette.value = value,
             ),
             onXeroxChanged: (enabled) {
+              if (sheet.isPresented) togglePositions.add(sheetPosition.value);
               modeChanges.add((
                 enabled: enabled,
                 homeCurrent: homeRoute.isCurrent,
@@ -849,11 +916,12 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    sheet.topSheetController!.expand();
-    await tester.pumpAndSettle();
-    final sheetPosition = BottomSheetContent.of(
+    sheetPosition = BottomSheetContent.of(
       tester.element(find.byType(SettingsSheet)),
     ).animatedPosition;
+    final firstDetentTop = sheetPosition.value;
+    sheet.topSheetController!.expand();
+    await tester.pumpAndSettle();
     final originalTop = sheetPosition.value;
     final originalContentTop = tester.getTopLeft(find.byType(SettingsSheet)).dy;
 
@@ -910,14 +978,34 @@ void main() {
     final picker = find.byType(XeroxPalettePicker);
     expect(picker, findsNothing);
     final sheetId = sheet.topSheetId;
-    await tester.tap(toggle);
-    await tester.pump();
-    expect(modeChanges, [(enabled: true, homeCurrent: true, sheets: 1)]);
+
+    Future<void> toggleFromExpanded(bool enabled) async {
+      await tester.ensureVisible(toggle);
+      await tester.pumpAndSettle();
+      final previousCount = modeChanges.length;
+      await tester.tap(toggle);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(
+        sheetPosition.value,
+        inExclusiveRange(originalTop, firstDetentTop),
+      );
+      expect(modeChanges, hasLength(previousCount));
+      await tester.pumpAndSettle();
+      expect(modeChanges, hasLength(previousCount + 1));
+      expect(modeChanges.last, (
+        enabled: enabled,
+        homeCurrent: true,
+        sheets: 1,
+      ));
+      expect(togglePositions.last, closeTo(firstDetentTop, 0.1));
+      expect(xeroxEnabled.value, enabled);
+      expect(sheet.topSheetId, sheetId);
+    }
+
+    await toggleFromExpanded(true);
+    sheet.topSheetController!.expand();
     await tester.pumpAndSettle();
-    expect(xeroxEnabled.value, isTrue);
-    expect(page, findsNothing);
-    expect(sheet.topSheetId, sheetId);
-    expect(sheetPosition.value, originalTop);
 
     Future<void> reopenSettings() async {
       await tester.drag(capsule, const Offset(0, -140));
@@ -927,24 +1015,36 @@ void main() {
     }
 
     expect(tester.widget<ListTile>(toggle).selected, isTrue);
+    expectDotAligned(tester, toggle, find.text('Xerox'));
     for (final preset in XeroxPalette.values) {
       final swatch = find.byKey(ValueKey(preset));
       await tester.ensureVisible(swatch);
       await tester.tap(swatch);
       await tester.pump();
       expect(palette.value, preset);
+      expect(
+        find.descendant(of: swatch, matching: find.byType(AppSelectionDot)),
+        findsOneWidget,
+      );
     }
+    await toggleFromExpanded(false);
     await tester.ensureVisible(toggle);
     await tester.pumpAndSettle();
+    await tester.tap(toggle);
+    await tester.pump();
+    expect(xeroxEnabled.value, isTrue);
+    expect(togglePositions.last, closeTo(firstDetentTop, 0.1));
     final switchOff = tester.widget<ListTile>(toggle).onTap!;
     sheet.present(const SizedBox.expand());
     await tester.pumpAndSettle();
     expect(sheet.presentedSheetCount, 2);
     switchOff();
     await tester.pump();
-    expect(modeChanges, hasLength(1));
+    expect(modeChanges, hasLength(3));
     await tester.pumpAndSettle();
     expect(modeChanges, [
+      (enabled: true, homeCurrent: true, sheets: 1),
+      (enabled: false, homeCurrent: true, sheets: 1),
       (enabled: true, homeCurrent: true, sheets: 1),
       (enabled: false, homeCurrent: true, sheets: 0),
     ]);
@@ -960,7 +1060,7 @@ void main() {
   });
 
   testWidgets(
-    'settings pull continues past the top to return to its sheet',
+    'settings requires a deliberate pull starting at the top to return',
     (tester) async {
       const viewport = Size(320, 360);
       await tester.binding.setSurfaceSize(viewport);
@@ -989,6 +1089,7 @@ void main() {
       final appearance = find.widgetWithText(ListTile, 'Appearance & display');
       await tester.tap(appearance);
       await tester.pumpAndSettle();
+      final coveredSheetTop = sheetPosition.value;
 
       final page = find.byType(SettingsPage);
       final scrollable = find.descendant(
@@ -1007,33 +1108,51 @@ void main() {
       expect(position.pixels, inExclusiveRange(0, initialScroll));
       expect(tester.getTopLeft(page).dy, 0);
 
-      final remainingScroll = position.pixels;
-      await pull.moveBy(Offset(0, remainingScroll + 60));
+      await pull.moveBy(Offset(0, position.pixels + 100));
       await tester.pump();
       expect(position.pixels, 0);
-      expect(tester.getTopLeft(page).dy, closeTo(60, 2));
-      expect(
-        tester.getTopLeft(page).dy - sheetPosition.value,
-        closeTo(viewport.height - originalTop, 0.01),
-      );
-      await pull.moveBy(const Offset(0, -30));
-      await tester.pump();
-      expect(position.pixels, 0);
-      expect(tester.getTopLeft(page).dy, closeTo(30, 2));
+      expect(tester.getTopLeft(page).dy, 0);
+      expect(sheetPosition.value, coveredSheetTop);
       await pull.up();
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(page).dy, 0);
 
+      for (var attempt = 0; attempt < 2; attempt++) {
+        final shortPull = await tester.startGesture(const Offset(160, 160));
+        await shortPull.moveBy(const Offset(0, 25));
+        await shortPull.moveBy(const Offset(0, 12));
+        await tester.pump();
+        expect(tester.getTopLeft(page).dy, 0);
+        expect(sheetPosition.value, coveredSheetTop);
+        await shortPull.up();
+        await tester.pumpAndSettle();
+      }
+
       Future<TestGesture> pullPastThreshold() async {
         final gesture = await tester.startGesture(const Offset(160, 160));
         await gesture.moveBy(const Offset(0, 25));
+        await gesture.moveBy(const Offset(0, 15));
         await tester.pump();
-        final dragStart = tester.getTopLeft(page).dy;
+        expect(tester.getTopLeft(page).dy, 0);
         await gesture.moveBy(const Offset(0, 130));
         await tester.pump();
-        expect(tester.getTopLeft(page).dy - dragStart, closeTo(130, 2));
+        expect(tester.getTopLeft(page).dy, inInclusiveRange(103, 132));
+        expect(
+          tester.getTopLeft(page).dy - sheetPosition.value,
+          closeTo(viewport.height - originalTop, 0.01),
+        );
         return gesture;
       }
+
+      final reversed = await pullPastThreshold();
+      final pullDistance = tester.getTopLeft(page).dy;
+      await reversed.moveBy(const Offset(0, -100));
+      await tester.pump();
+      expect(position.pixels, 0);
+      expect(tester.getTopLeft(page).dy, closeTo(pullDistance - 100, 2));
+      await reversed.up();
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(page).dy, 0);
 
       final interrupted = await pullPastThreshold();
       await interrupted.cancel();
@@ -1087,6 +1206,13 @@ void main() {
     final mock2 = find.byKey(const ValueKey('music-source-mock2'));
     final appleMusic = find.byKey(const ValueKey('music-source-apple-music'));
     expect(mock2, findsOneWidget);
+    final mock = find.byKey(const ValueKey('music-source-mock'));
+    expectDotAligned(
+      tester,
+      mock,
+      find.descendant(of: mock, matching: find.byType(Text)),
+    );
+    expect(dotIn(mock2), findsNothing);
     expect(appleMusic, findsNothing);
     expect(find.text('Local music'), findsNothing);
     final tabBar = tester.widget<TabBar>(find.byType(TabBar));
@@ -1107,7 +1233,7 @@ void main() {
     expect(tester.widget<Text>(demoHeading).style?.fontSize, 13);
     expect(tester.getTopLeft(mock2).dx, tester.getTopLeft(page).dx);
     expect(tester.getTopLeft(demoHeading).dx, tester.getTopLeft(demoIcon).dx);
-    expect(find.text('Device music'), findsOneWidget);
+    expect(find.text('On this device'), findsOneWidget);
     expect(find.text('Local music'), findsOneWidget);
     expect(find.text('Apple Music'), findsOneWidget);
     final appleMusicTile = tester.widget<ListTile>(appleMusic);
@@ -1126,13 +1252,23 @@ void main() {
     expect(sources.catalog.value, isNull);
     expect(sources.provider, isNull);
 
+    sources.catalog.value = const [];
+    await tester.pumpAndSettle();
+    expectDotAligned(
+      tester,
+      find.byKey(const ValueKey('music-source-local')),
+      find.text('Local music'),
+    );
+    sources.catalog.value = null;
+    await tester.pumpAndSettle();
+
     final lowerPull = await tester.startGesture(const Offset(180, 650));
     await lowerPull.moveBy(const Offset(0, 24));
     await tester.pump();
-    final lowerStart = tester.getTopLeft(page).dy;
-    await lowerPull.moveBy(const Offset(0, 215));
+    expect(tester.getTopLeft(page).dy, 0);
+    await lowerPull.moveBy(const Offset(0, 255));
     await tester.pump();
-    expect(tester.getTopLeft(page).dy - lowerStart, closeTo(215, 2));
+    expect(tester.getTopLeft(page).dy, inInclusiveRange(213, 241));
     await lowerPull.up();
     await tester.pumpAndSettle();
     expect(page, findsNothing);
@@ -1142,10 +1278,10 @@ void main() {
     final headerPull = await tester.startGesture(const Offset(180, 28));
     await headerPull.moveBy(const Offset(0, 24));
     await tester.pump();
-    final headerStart = tester.getTopLeft(page).dy;
+    expect(tester.getTopLeft(page).dy, 0);
     await headerPull.moveBy(const Offset(0, 60));
     await tester.pump();
-    expect(tester.getTopLeft(page).dy - headerStart, closeTo(60, 2));
+    expect(tester.getTopLeft(page).dy, inInclusiveRange(18, 46));
     await headerPull.up();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(page).dy, 0);

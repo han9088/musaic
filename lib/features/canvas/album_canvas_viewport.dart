@@ -4,7 +4,10 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
-import '../music/playback/album_play_button.dart';
+import '../artwork/presentation/artwork_placeholder.dart';
+import '../artwork/presentation/custom_artwork_menu.dart';
+import '../music/catalog/album_catalog_mapper.dart';
+import '../music/catalog/album_track_list.dart';
 import '../music/playback/album_playback.dart';
 import 'album_canvas.dart';
 import 'album_cover_popup.dart';
@@ -68,6 +71,11 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
       await showAlbumCoverPopup(
         source: source,
         onReturned: restoreSource,
+        onCoverLongPress: customArtworkMenuAction(
+          context,
+          asset,
+          _artworkIdentityFor(album),
+        ),
         artwork: albumArtwork(
           asset,
           artworkIdentity: _artworkIdentityFor(album),
@@ -75,13 +83,9 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
           semanticLabel: title,
           xerox: widget.xerox,
         ),
-        playButton: AlbumPlayButton(
-          asset: asset,
-          title: title,
-          artist: album['artist'] as String?,
-          playback: widget.playback,
-          diameter: 64,
-        ),
+        trackList: albumHasSingleTrack(album)
+            ? null
+            : AlbumTrackList(album: album, playback: widget.playback),
       );
     } finally {
       restoreSource();
@@ -105,6 +109,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => widget.onTileSelected(row, column),
+          onLongPressStart: customArtworkMenuAction(context, asset, identity),
           child: albumArtwork(
             asset,
             artworkIdentity: identity,
@@ -112,6 +117,10 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
             xerox: widget.xerox,
             fixedResolution: albumCanvasArtworkResolution,
             semanticLabel: title,
+            placeholder:
+                asset.startsWith('media-store:') || asset.startsWith('local:')
+                ? const ArtworkPlaceholder.canvasTile()
+                : null,
           ),
         ),
       ),
@@ -150,7 +159,12 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
     final hiddenOffset = popup == null
         ? null
         : Offset(popup.$2 * albumGridExtent, popup.$1 * albumGridExtent);
-    return PortraitTilt(
+    return ValueListenableBuilder(
+      valueListenable: customArtworkMenuVisible,
+      builder: (_, menuVisible, canvas) => TickerMode(
+        enabled: !menuVisible,
+        child: PortraitTilt(paused: menuVisible, child: canvas!),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           widget.onViewportSizeChanged(constraints.biggest);
@@ -168,8 +182,9 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
               child: InteractiveViewer.builder(
                 clipBehavior: Clip.none,
                 transformationController: transform,
-                // 手势结束后由自定义漂移逻辑继续接管惯性运动。
-                interactionEndFrictionCoefficient: 1e-100,
+                // Use the smallest allowed coefficient to make the viewer's
+                // fling zero-duration. CanvasDrift owns motion after release.
+                interactionEndFrictionCoefficient: double.minPositive,
                 onInteractionStart: (_) => interaction.interactionStart(),
                 onInteractionUpdate: interaction.interactionUpdate,
                 onInteractionEnd: interaction.interactionEnd,
@@ -216,6 +231,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
                     transform: transform,
                     tiltPadding: tiltPadding,
                     isTransitioning: widget.interactionBlocked,
+                    albumAt: (row, column) =>
+                        widget.layout.albumAt(row, column, widget.albums),
                     hiddenTileOffset: hiddenOffset,
                     tiles: tiles.values,
                     selected: selected == null

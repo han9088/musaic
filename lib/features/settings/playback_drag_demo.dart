@@ -4,18 +4,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
-import '../../ui/theme/app_radius.dart';
 import '../../ui/widgets/frosted_control_surface.dart';
+import 'usage_guide_demo_card.dart';
 
-class PlaybackDragDemo extends StatefulWidget {
+class PlaybackDragDemo extends StatelessWidget {
   const PlaybackDragDemo({super.key});
 
-  @override
-  State<PlaybackDragDemo> createState() => _PlaybackDragDemoState();
-}
-
-class _PlaybackDragDemoState extends State<PlaybackDragDemo>
-    with SingleTickerProviderStateMixin {
   static const _reachForPill = 8.0;
   static const _shortPull = 11.0;
   static const _showSkip = 8.0;
@@ -56,74 +50,33 @@ class _PlaybackDragDemoState extends State<PlaybackDragDemo>
     TweenSequenceItem(tween: ConstantTween(0.0), weight: _pause),
   ]);
 
-  late final _animation = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 6400),
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _animation.reset();
-    } else if (!_animation.isAnimating) {
-      _animation.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _animation.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final reduceMotion = MediaQuery.disableAnimationsOf(context);
-    return Semantics(
+    return UsageGuideDemoCard(
+      duration: const Duration(milliseconds: 6400),
       label: l10n.usageGuideDragHint,
-      hint: reduceMotion ? null : l10n.usageGuideReplayDemo,
-      child: Material(
-        color: const Color(0xFF141416),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.medium),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: reduceMotion
-              ? null
-              : () {
-                  _animation.reset();
-                  _animation.repeat();
-                },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: ExcludeSemantics(
-              child: SizedBox(
-                height: 68,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth;
-                    final pillWidth = math.min(146.0, width * 0.60);
-                    final pillLeft = (width - pillWidth) / 2;
-                    final maxStretch = math.min(
-                      68.0,
-                      math.max(0.0, pillLeft - 14),
-                    );
-                    return AnimatedBuilder(
-                      animation: _animation,
-                      builder: (context, _) => _buildPill(
-                        l10n,
-                        pillLeft: pillLeft,
-                        pillWidth: pillWidth,
-                        maxStretch: maxStretch,
-                      ),
-                    );
-                  },
+      builder: (context, animation) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: SizedBox(
+          height: 68,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final width = constraints.maxWidth;
+              final pillWidth = math.min(146.0, width * 0.60);
+              final pillLeft = (width - pillWidth) / 2;
+              final maxStretch = math.min(68.0, math.max(0.0, pillLeft - 14));
+              return AnimatedBuilder(
+                animation: animation,
+                builder: (context, _) => _buildPill(
+                  l10n,
+                  animation.value,
+                  pillLeft: pillLeft,
+                  pillWidth: pillWidth,
+                  maxStretch: maxStretch,
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -131,15 +84,16 @@ class _PlaybackDragDemoState extends State<PlaybackDragDemo>
   }
 
   Widget _buildPill(
-    AppLocalizations l10n, {
+    AppLocalizations l10n,
+    double value, {
     required double pillLeft,
     required double pillWidth,
     required double maxStretch,
   }) {
     const pillHeight = FrostedControlSurface.compactHeight;
     const pillTop = 15.0;
-    final pullingLeft = _animation.value >= 0.5;
-    final progress = _animation.value * 2 - (pullingLeft ? 1 : 0);
+    final pullingLeft = value >= 0.5;
+    final progress = value * 2 - (pullingLeft ? 1 : 0);
     final extension = maxStretch * _stretch.transform(progress);
     final left = pillLeft - (pullingLeft ? extension : 0);
     final width = pillWidth + extension;
@@ -213,18 +167,11 @@ class _PlaybackDragDemoState extends State<PlaybackDragDemo>
         ),
         if (held)
           Positioned(
-            left: (pullingLeft ? left + 5 : left + width - 5) - 12,
-            top: pillTop + (pillHeight - 24) / 2,
-            child: const SizedBox.square(
-              key: ValueKey('playback-drag-touch'),
-              dimension: 24,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Color(0x4DFFFFFF),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+            left:
+                (pullingLeft ? left + 5 : left + width - 5) -
+                UsageGuideTouch.diameter / 2,
+            top: pillTop + (pillHeight - UsageGuideTouch.diameter) / 2,
+            child: const UsageGuideTouch(key: ValueKey('playback-drag-touch')),
           ),
       ],
     );

@@ -1,8 +1,21 @@
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
+import 'package:musaic/ui/widgets/app_dropdown_menu.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  void expectFrostedOpening(WidgetTester tester) {
+    final filter = find.descendant(
+      of: find.byType(AppDialogSurface),
+      matching: find.byType(BackdropFilter),
+    );
+    expect(tester.widget<BackdropFilter>(filter).enabled, isTrue);
+    final opacityLayers = tester.widgetList<Opacity>(
+      find.ancestor(of: filter, matching: find.byType(Opacity)),
+    );
+    expect(opacityLayers.map((layer) => layer.opacity), everyElement(1.0));
+  }
+
   Future<void> pumpDialog(
     WidgetTester tester,
     Size size, {
@@ -57,15 +70,14 @@ void main() {
       expect(style.color, Colors.white);
     }
     expect(find.byType(BackdropFilter), findsOneWidget);
-    final noise = tester.widget<Image>(find.byType(Image));
-    expect(noise.fit, BoxFit.cover);
-    expect(noise.color, Colors.white);
-    expect(noise.colorBlendMode, BlendMode.difference);
-    expect(noise.image, isA<ResizeImage>());
-    final noiseOpacity = tester.widget<Opacity>(
+    final noise = tester.widget<Image>(
       find.byKey(const Key('app-alert-dialog-noise')),
     );
-    expect(noiseOpacity.opacity, appDialogNoiseOpacity);
+    expect(noise.fit, BoxFit.cover);
+    expect(noise.image, const AssetImage(appDialogNoiseAsset));
+    expect(noise.opacity?.value, appDialogNoiseOpacity);
+    expect(noise.color, isNull);
+    expect(noise.colorBlendMode, isNull);
     final barrier = tester.widget<ModalBarrier>(find.byType(ModalBarrier).last);
     expect(barrier.color, appDialogBarrierColor);
   });
@@ -83,9 +95,9 @@ void main() {
     Transform transform() => tester.widget<Transform>(
       find.byKey(const Key('app-alert-dialog-jelly-transform')),
     );
-
     expect(transform().transform.storage[0], closeTo(0.84, 0.001));
     expect(transform().transform.storage[5], closeTo(0.84, 0.001));
+    expectFrostedOpening(tester);
 
     await tester.pump(const Duration(milliseconds: 110));
     expect(transform().transform.storage[0], greaterThan(1));
@@ -95,10 +107,39 @@ void main() {
           .abs(),
       greaterThan(0.012),
     );
+    expectFrostedOpening(tester);
 
     await tester.pumpAndSettle();
     expect(transform().transform.storage[0], closeTo(1, 0.001));
     expect(transform().transform.storage[5], closeTo(1, 0.001));
+    expectFrostedOpening(tester);
+  });
+
+  testWidgets('dropdowns open with the same frosted surface', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDropdownMenu<String>(
+            title: 'Select',
+            value: 'one',
+            entries: const [
+              AppDropdownMenuEntry('one', 'One'),
+              AppDropdownMenuEntry('two', 'Two'),
+            ],
+            onSelected: (_) {},
+            searchLabel: 'Search',
+            emptyLabel: 'No results',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Select'));
+    await tester.pump();
+    expectFrostedOpening(tester);
+    await tester.pump(const Duration(milliseconds: 60));
+    expectFrostedOpening(tester);
+    await tester.pumpAndSettle();
+    expectFrostedOpening(tester);
   });
 
   testWidgets('dismisses substantially faster than it opens', (tester) async {
@@ -107,6 +148,10 @@ void main() {
     await tester.tapAt(const Offset(4, 4));
     await tester.pump();
     expect(find.text('Title'), findsOneWidget);
+    expect(
+      tester.widget<BackdropFilter>(find.byType(BackdropFilter)).enabled,
+      isTrue,
+    );
 
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('Title'), findsNothing);

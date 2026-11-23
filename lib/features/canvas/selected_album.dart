@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
+import '../artwork/presentation/custom_artwork_menu.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 import 'album_grid_snapshot.dart';
@@ -44,40 +45,48 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
     curve: Curves.easeOutCubic,
     builder: (context, scale, child) =>
         Transform.scale(scale: scale, child: child),
-    child: DecoratedBox(
-      decoration: const BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x80000000),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: customArtworkMenuAction(
+        context,
+        widget.asset,
+        widget.artworkIdentity,
       ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Builder(
-            builder: (context) => GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => widget.onOpen(context),
-              child: albumArtwork(
-                widget.asset,
-                artworkIdentity: widget.artworkIdentity,
-                fit: BoxFit.cover,
-                semanticLabel: widget.title,
-                xerox: widget.xerox,
-                fixedResolution: albumCanvasArtworkResolution,
+      child: DecoratedBox(
+        decoration: const BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x80000000),
+              blurRadius: 18,
+              offset: Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Builder(
+              builder: (context) => GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => widget.onOpen(context),
+                child: albumArtwork(
+                  widget.asset,
+                  artworkIdentity: widget.artworkIdentity,
+                  fit: BoxFit.cover,
+                  semanticLabel: widget.title,
+                  xerox: widget.xerox,
+                  fixedResolution: albumCanvasArtworkResolution,
+                ),
               ),
             ),
-          ),
-          AlbumPlayButton(
-            asset: widget.asset,
-            title: widget.title,
-            artist: widget.artist,
-            playback: widget.playback,
-          ),
-        ],
+            AlbumPlayButton(
+              asset: widget.asset,
+              title: widget.title,
+              artist: widget.artist,
+              playback: widget.playback,
+            ),
+          ],
+        ),
       ),
     ),
   );

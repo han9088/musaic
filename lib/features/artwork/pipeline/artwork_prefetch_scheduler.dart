@@ -18,7 +18,10 @@ class ArtworkPrefetchScheduler {
     final seen = <ArtworkRequest>{};
     final result = <ArtworkRequest>[];
     for (final request in requests) {
-      if (request.source.startsWith('local:')) continue;
+      if (request.source.startsWith('local:') &&
+          ArtworkPipeline.instance.customArtworkRevision(request) == null) {
+        continue;
+      }
       if (seen.add(request)) result.add(request);
     }
     return result;

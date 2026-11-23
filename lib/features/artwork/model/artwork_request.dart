@@ -25,6 +25,8 @@ class ArtworkRequest {
   /// 同一逻辑封面在不同布局中的稳定身份。
   final ArtworkIdentity? identity;
 
+  String get customArtworkKey => identity?.value ?? source;
+
   /// 上游可提供时，用于使原图与 Xerox 缓存主动失效的版本标记。
   final ArtworkVersion? version;
 

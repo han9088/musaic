@@ -12,6 +12,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../services/music/music_source_controller.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../ui/theme/app_typography.dart';
+import '../../../ui/widgets/app_selection_dot.dart';
 import '../../../ui/widgets/settings_section_heading.dart';
 
 /// 封装或定义音乐来源选择器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
@@ -42,6 +43,9 @@ class MusicSourcePicker extends StatelessWidget {
         final problem = sources.problem.value;
         final directorySelected = sources.directorySelected.value;
         final localSelected = albums != null && !directorySelected;
+        final mock2Selected = sources.mock2Selected.value;
+        final firstDemoSelected = albums == null && !mock2Selected;
+        final secondDemoSelected = albums == null && mock2Selected;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -67,35 +71,35 @@ class MusicSourcePicker extends StatelessWidget {
             ListTile(
               key: const ValueKey('music-source-mock'),
               enabled: !busy && !switching,
-              selected: albums == null && !sources.mock2Selected.value,
+              selected: firstDemoSelected,
               leading: const Icon(
                 PhosphorIcons.squaresFour,
                 color: Colors.white70,
               ),
-              title: Text(
-                l10n.musicSourceMock,
-                style: const TextStyle(color: Colors.white),
+              title: AppSelectionTitle(
+                selected: firstDemoSelected,
+                child: Text(
+                  l10n.musicSourceMock,
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
-              trailing: albums == null && !sources.mock2Selected.value
-                  ? const Icon(PhosphorIcons.check, color: Colors.white)
-                  : null,
               onTap: () => _select(sources.selectMock),
             ),
             ListTile(
               key: const ValueKey('music-source-mock2'),
               enabled: !busy && !switching,
-              selected: albums == null && sources.mock2Selected.value,
+              selected: secondDemoSelected,
               leading: const Icon(
                 PhosphorIcons.squaresFour,
                 color: Colors.white70,
               ),
-              title: Text(
-                l10n.musicSourceMock2,
-                style: const TextStyle(color: Colors.white),
+              title: AppSelectionTitle(
+                selected: secondDemoSelected,
+                child: Text(
+                  l10n.musicSourceMock2,
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
-              trailing: albums == null && sources.mock2Selected.value
-                  ? const Icon(PhosphorIcons.check, color: Colors.white)
-                  : null,
               onTap: () => _select(sources.selectMock2),
             ),
             if (!demoOnly && !kIsWeb) ...[
@@ -108,9 +112,12 @@ class MusicSourcePicker extends StatelessWidget {
                   PhosphorIcons.musicNotes,
                   color: Colors.white70,
                 ),
-                title: Text(
-                  l10n.musicSourceLocal,
-                  style: const TextStyle(color: Colors.white),
+                title: AppSelectionTitle(
+                  selected: localSelected && !busy,
+                  child: Text(
+                    l10n.musicSourceLocal,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
                 subtitle: Text(
                   busy
@@ -129,8 +136,6 @@ class MusicSourcePicker extends StatelessWidget {
                           color: Colors.white,
                         ),
                       )
-                    : localSelected
-                    ? const Icon(PhosphorIcons.check, color: Colors.white)
                     : null,
                 onTap: () => _select(sources.selectLocal),
               ),
@@ -148,14 +153,14 @@ class MusicSourcePicker extends StatelessWidget {
                   PhosphorIcons.folder,
                   color: Colors.white70,
                 ),
-                title: Text(
-                  l10n.musicDirectories,
-                  style: const TextStyle(color: Colors.white),
+                title: AppSelectionTitle(
+                  selected: directorySelected,
+                  child: Text(
+                    l10n.musicDirectories,
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
                 selected: directorySelected,
-                trailing: directorySelected
-                    ? const Icon(PhosphorIcons.check, color: Colors.white)
-                    : null,
                 onTap: busy || switching
                     ? null
                     : () => _select(sources.selectDirectories),

@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../ui/theme/app_theme.dart';
+import '../../../ui/widgets/app_selection_dot.dart';
 import 'xerox_palette.dart';
 
 class XeroxPalettePicker extends StatelessWidget {
@@ -65,11 +65,7 @@ class XeroxPalettePicker extends StatelessWidget {
                         ),
                         alignment: Alignment.center,
                         child: current == palette
-                            ? Icon(
-                                PhosphorIcons.check,
-                                size: 16,
-                                color: palette.ink,
-                              )
+                            ? const AppSelectionDot()
                             : null,
                       ),
                     ),

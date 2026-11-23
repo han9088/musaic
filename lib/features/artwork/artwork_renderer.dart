@@ -1,11 +1,13 @@
 // 文件职责：提供画布、Cover Flow 和布局过渡共用的专辑封面入口。
 
 import 'package:material_ui/material_ui.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import 'model/artwork_identity.dart';
 import 'model/artwork_request.dart';
+import 'presentation/artwork_accent.dart';
+import 'presentation/artwork_placeholder.dart';
 import 'presentation/artwork_source_view.dart';
+import 'presentation/custom_artwork_scope.dart';
 
 /// 所有专辑封面统一从这里进入 Artwork Pipeline。
 ///
@@ -24,8 +26,11 @@ Widget albumArtwork(
   int? previewResolution,
   ArtworkIdentity? artworkIdentity,
   ArtworkVersion? artworkVersion,
+  Widget? placeholder,
+  ArtworkAccentBuilder? accentBuilder,
+  bool prepareXerox = true,
 }) {
-  final placeholder = previewResolution != null
+  final fallback = previewResolution != null
       ? const SizedBox.shrink()
       : Semantics(
           label: excludeFromSemantics ? null : semanticLabel,
@@ -33,22 +38,11 @@ Widget albumArtwork(
           child: SizedBox(
             width: width,
             height: height,
-            child: const ColoredBox(
-              color: Color(0xff292929),
-              child: Center(
-                child: Icon(
-                  PhosphorIcons.vinylRecord,
-                  color: Colors.white38,
-                  size: 48,
-                ),
-              ),
-            ),
+            child: placeholder ?? ArtworkPlaceholder.standard,
           ),
         );
 
-  if (asset.startsWith('local:')) return placeholder;
-
-  return ArtworkSourceView(
+  final artwork = ArtworkSourceView(
     request: ArtworkRequest(
       source: asset,
       identity: artworkIdentity,
@@ -56,7 +50,7 @@ Widget albumArtwork(
       fixedResolution: fixedResolution,
       previewResolution: previewResolution,
     ),
-    placeholder: placeholder,
+    placeholder: fallback,
     width: width,
     height: height,
     fit: fit,
@@ -65,5 +59,17 @@ Widget albumArtwork(
     excludeFromSemantics: excludeFromSemantics,
     xerox: xerox,
     scale: scale,
+    accentBuilder: accentBuilder,
+    prepareXerox: prepareXerox,
+  );
+
+  if (!asset.startsWith('local:')) return artwork;
+  return Builder(
+    builder: (context) =>
+        CustomArtworkScope.watch(context)
+                ?.revisionOf(artwork.request.customArtworkKey) ==
+            null
+        ? accentBuilder?.call(context, fallback, null) ?? fallback
+        : artwork,
   );
 }

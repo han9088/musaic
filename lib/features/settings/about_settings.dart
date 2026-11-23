@@ -8,6 +8,7 @@ import '../../services/app_icon_service.dart';
 import '../../services/app_updates.dart';
 import '../../services/diagnostics/diagnostic_log.dart';
 import '../../ui/dialogs/app_alert_dialog.dart';
+import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/thinking_orbs/thinking_orb.dart';
 
@@ -171,14 +172,14 @@ class _AboutSettingsState extends State<AboutSettings> {
             excludeFromSemantics: true,
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 20),
         Stack(
           alignment: Alignment.center,
           children: [
             Text(
               tagline,
               textAlign: TextAlign.center,
-              style: taglineStyle.copyWith(color: const Color(0xFFEACD58)),
+              style: taglineStyle.copyWith(color: AppColors.settingsAccent),
             ),
             // Trim the edge of the regular-weight glyphs against the black page.
             ExcludeSemantics(
@@ -196,7 +197,7 @@ class _AboutSettingsState extends State<AboutSettings> {
             ),
           ],
         ),
-        const SizedBox(height: 95),
+        const SizedBox(height: 20),
         FutureBuilder<PackageInfo>(
           future: _packageInfo,
           builder: (context, snapshot) {

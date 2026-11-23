@@ -8,7 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
-import '../artwork/pipeline/artwork_lod_manager.dart';
+import '../artwork/presentation/custom_artwork_menu.dart';
 import 'camera/coverflow_camera_scene.dart';
 import 'coverflow_flip_card.dart';
 import 'coverflow_input.dart';
@@ -16,6 +16,8 @@ import 'coverflow_motion.dart';
 import 'coverflow_geometry.dart';
 import '../../services/album_haptics.dart';
 import '../../ui/transitions/rect_flip_transition.dart';
+import '../music/catalog/album_catalog_mapper.dart';
+import '../music/catalog/album_track_list.dart';
 import '../music/playback/album_play_button.dart';
 import '../music/playback/album_playback.dart';
 
@@ -54,7 +56,6 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late final Ticker _ticker;
   late final AnimationController _flip;
-  final _showFlipPreview = ValueNotifier(false);
   late final AlbumHaptics _haptics;
   late final CoverFlowMotion _motion;
   Size? _flipViewport;
@@ -125,6 +126,15 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
         (distance.abs() >= 52 ||
             (distance.abs() >= 12 && -velocity * distance.sign >= 450));
     if (committed) _flipTarget = distance > 0 ? 1 : 0;
+    _animateFlip();
+  }
+
+  void _closeFlip() {
+    _flipTarget = 0;
+    _animateFlip();
+  }
+
+  void _animateFlip() {
     if (MediaQuery.disableAnimationsOf(context)) {
       _flip.value = _flipTarget;
     } else if (_flipTarget == 0) {
@@ -136,13 +146,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
   }
 
   void _syncFlipState() {
-    if (_flipDragging) return;
-    if (_flip.isCompleted && _flipTarget == 1) {
-      _showFlipPreview.value = true;
-    } else if (_flip.isDismissed && _flipTarget == 0) {
-      _showFlipPreview.value = false;
-      _resumeStrip();
-    }
+    if (!_flipDragging && _flip.isDismissed) _resumeStrip();
   }
 
   void _resumeStrip() {
@@ -223,7 +227,6 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     WidgetsBinding.instance.removeObserver(this);
     if (widget.haptics == null) unawaited(_haptics.dispose());
     _flip.dispose();
-    _showFlipPreview.dispose();
     _ticker.dispose();
     super.dispose();
   }
@@ -232,11 +235,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
     ..setEntry(3, 2, 0.88 / width)
     ..rotateY(tilt);
 
-  Widget _image(
-    Map<String, dynamic> album,
-    double size, {
-    int? previewResolution,
-  }) {
+  Widget _image(Map<String, dynamic> album, double size) {
     final asset = album['asset'] as String;
     final rawIdentity = album['id'] as String?;
     return albumArtwork(
@@ -250,35 +249,6 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       filterQuality: FilterQuality.medium,
       excludeFromSemantics: true,
       xerox: widget.xerox,
-      previewResolution: previewResolution,
-    );
-  }
-
-  Widget _coverArtwork(
-    Map<String, dynamic> album,
-    double size,
-    Rect? destination,
-  ) {
-    final image = _image(album, size);
-    if (destination == null) return image;
-    return SizedBox.square(
-      dimension: size,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          image,
-          ValueListenableBuilder(
-            valueListenable: _showFlipPreview,
-            builder: (context, show, _) {
-              if (!show) return const SizedBox.shrink();
-              final resolution = selectArtworkResolution(
-                destination.width * MediaQuery.devicePixelRatioOf(context),
-              );
-              return _image(album, size, previewResolution: resolution);
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -510,6 +480,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
 
   Widget _cover(int index, double size, Offset center, {Rect? destination}) {
     final album = widget.albums[index % widget.albums.length];
+    final id = album['id'] as String?;
     final source = Rect.fromCenter(center: center, width: size, height: size);
     final reflection = SizedBox(
       height: size * CoverFlowFlipCard.reflectionFraction,
@@ -532,48 +503,58 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
       ),
     );
     final playingButton = _playButton(album, destination, size);
-    final card = Stack(
-      children: [
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () => _settle(index.toDouble()),
-            child: RepaintBoundary(
-              child: Column(
-                children: [
-                  _coverArtwork(album, size, destination),
-                  if (destination == null)
-                    reflection
-                  else
-                    FadeTransition(
-                      opacity: ReverseAnimation(
-                        _flip.drive(CurveTween(curve: const Interval(0, 0.25))),
+    final onLongPress = customArtworkMenuAction(
+      context,
+      album['asset'] as String,
+      id == null ? null : ArtworkIdentity(id),
+    );
+    final card = GestureDetector(
+      onLongPressStart: onLongPress,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => _settle(index.toDouble()),
+              child: RepaintBoundary(
+                child: Column(
+                  children: [
+                    _image(album, size),
+                    if (destination == null)
+                      reflection
+                    else
+                      FadeTransition(
+                        opacity: ReverseAnimation(
+                          _flip.drive(
+                            CurveTween(curve: const Interval(0, 0.25)),
+                          ),
+                        ),
+                        child: reflection,
                       ),
-                      child: reflection,
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        if (playingButton != null)
-          Positioned(
-            left: 0,
-            top: 0,
-            width: size,
-            height: size,
-            child: IgnorePointer(
-              ignoring: index != _motion.position.round(),
-              child: AnimatedOpacity(
-                opacity: index == _motion.position.round() ? 1 : 0,
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 180),
-                curve: Curves.easeInOut,
-                child: playingButton,
+          if (playingButton != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              width: size,
+              height: size,
+              child: IgnorePointer(
+                ignoring: index != _motion.position.round(),
+                child: AnimatedOpacity(
+                  opacity: index == _motion.position.round() ? 1 : 0,
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 180),
+                  curve: Curves.easeInOut,
+                  child: playingButton,
+                ),
               ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
     return Positioned(
       key: ValueKey('cover-$index'),
@@ -587,6 +568,30 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
               progress: _flip,
               source: source,
               destination: destination,
+              back: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox.square(
+                  dimension: size,
+                  child: FittedBox(
+                    // Lay out the back at its final size before scaling the card.
+                    child: SizedBox.square(
+                      dimension: destination.width,
+                      child: GestureDetector(
+                        // The camera only captures taps outside the card.
+                        onTap: () {},
+                        onLongPressStart: onLongPress,
+                        child: albumHasSingleTrack(album)
+                            ? _image(album, destination.width)
+                            : AlbumTrackList(
+                                album: album,
+                                playback: widget.playback,
+                                onClose: _closeFlip,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               child: card,
             ),
     );

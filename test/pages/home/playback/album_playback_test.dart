@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart' show ImageFilterLayer, RenderBox;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
+import 'package:musaic/features/music/catalog/album_track_edge_blur.dart';
+import 'package:musaic/features/music/catalog/album_track_list.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/features/music/playback/now_playing_controls.dart';
@@ -53,6 +57,115 @@ void main() {
     playback.bind(null, null);
     expect(playback.currentTitle, isNull);
     expect(playback.currentArtist, isNull);
+  });
+
+  testWidgets(
+    'tapping an album track queues the album and highlights playback',
+    (tester) async {
+      final playback = AlbumPlayback();
+      final provider = _Player();
+      addTearDown(provider.events.close);
+      addTearDown(playback.dispose);
+      final first = _song('1', 'First song', 'Singer');
+      final unavailable = _song(
+        '2',
+        'Unavailable song',
+        'Singer',
+        playable: false,
+      );
+      final second = _song('3', 'Second song', 'Singer');
+      final third = _song('4', 'Third song', 'Singer');
+      final albums = [
+        _album([first, unavailable, second, third]),
+      ];
+      playback.bind(provider, albums);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Center(
+            child: SizedBox.square(
+              dimension: 360,
+              child: AlbumTrackList(
+                album: mapProviderAlbums(albums).single,
+                playback: playback,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      Color? textColor(String title) =>
+          tester.widget<Text>(find.text(title)).style?.color;
+      final accent = textColor('Album artist');
+      final unselected = textColor('Second song');
+      expect(unselected, isNot(accent));
+      expect(find.byType(ShaderMask), findsOneWidget);
+
+      await tester.tap(find.text('Unavailable song'));
+      await tester.pump();
+      expect(provider.queue, isEmpty);
+
+      await tester.tap(find.text('Second song'));
+      await tester.pumpAndSettle();
+      expect(provider.queue, [
+        first.reference,
+        second.reference,
+        third.reference,
+      ]);
+      expect(provider.startIndex, 1);
+      expect(playback.currentTrack, second.reference);
+      expect(textColor('Second song'), accent);
+
+      provider.emit(third.reference, playing: true);
+      await tester.pump();
+      expect(textColor('Second song'), unselected);
+      expect(textColor('Third song'), accent);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets('compact album rows blur as they leave the viewport', (
+    tester,
+  ) async {
+    final album = _album([
+      for (var i = 1; i <= 15; i++) _song('$i', 'Song $i', 'Singer'),
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Center(
+          child: SizedBox.square(
+            dimension: 360,
+            child: AlbumTrackList(album: mapProviderAlbums([album]).single),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final title = find.text('Song 1');
+    final pitch =
+        tester.getCenter(find.text('Song 2')).dy - tester.getCenter(title).dy;
+    expect(pitch, inExclusiveRange(30, 36));
+    final row = tester.renderObject<RenderBox>(
+      find.ancestor(of: title, matching: find.byType(AlbumTrackEdgeBlur)),
+    );
+    final scroller = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(row.debugLayer, isNull);
+
+    scroller.position.jumpTo(12);
+    await tester.pump();
+    final firstBlur = (row.debugLayer! as ImageFilterLayer).imageFilter;
+    expect(firstBlur, isNotNull);
+    scroller.position.jumpTo(25);
+    await tester.pump();
+    expect((row.debugLayer! as ImageFilterLayer).imageFilter, isNot(firstBlur));
+    scroller.position.jumpTo(0);
+    await tester.pump();
+    expect(row.debugLayer, isNull);
   });
 
   testWidgets('playback pulls skip on release or seek while held', (
@@ -233,13 +346,18 @@ MusicReference _reference(String id, MusicKind kind) => (
   storefront: null,
 );
 
-ProviderSong _song(String id, String title, String artist) => (
+ProviderSong _song(
+  String id,
+  String title,
+  String artist, {
+  bool playable = true,
+}) => (
   reference: _reference(id, MusicKind.song),
   title: title,
   artist: artist,
   artworkUrl: null,
   duration: null,
-  playable: true,
+  playable: playable,
 );
 
 ProviderAlbum _album(List<ProviderSong> tracks) => (
@@ -253,6 +371,8 @@ ProviderAlbum _album(List<ProviderSong> tracks) => (
 
 class _Player extends Fake implements MusicProvider {
   final events = StreamController<MusicPlayback>.broadcast(sync: true);
+  List<MusicReference> queue = const [];
+  int? startIndex;
   int pauses = 0;
   int resumes = 0;
   final skips = <bool>[];
@@ -261,6 +381,13 @@ class _Player extends Fake implements MusicProvider {
 
   @override
   Stream<MusicPlayback> get playback => events.stream;
+
+  @override
+  Future<void> play(List<MusicReference> items, {int startIndex = 0}) async {
+    queue = List.of(items);
+    this.startIndex = startIndex;
+    emit(queue[startIndex], playing: true);
+  }
 
   @override
   Future<void> pause() async => pauses++;

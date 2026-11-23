@@ -239,7 +239,7 @@ void main() {
         await tester.pump();
       }
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Open captured photo'));
+      await tester.tap(find.bySemanticsLabel('View photo'));
       await tester.pumpAndSettle();
       expect(find.byType(CoverFlowPhotoViewer), findsOneWidget);
     }
@@ -249,12 +249,12 @@ void main() {
     addTearDown(tester.view.resetPadding);
     tester.view.padding = const FakeViewPadding(left: 36, top: 18, right: 27);
     await tester.pump();
-    final backButton = find.bySemanticsLabel('Back');
+    final backButton = find.byTooltip('Back');
     final backIcon = find.descendant(
       of: backButton,
       matching: find.byType(Icon),
     );
-    expect(tester.widget<Icon>(backIcon).size, 20);
+    expect(tester.widget<Icon>(backIcon).size, 14);
     final back = tester.getRect(backButton);
     final delete = tester.getRect(find.bySemanticsLabel('Delete photo'));
     expect(back.left, 60);
@@ -264,7 +264,7 @@ void main() {
     tester.view.resetPadding();
     await tester.pump(const Duration(seconds: 4));
     expect(find.byType(CoverFlowPhotoViewer), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Back'));
+    await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byType(CoverFlowPhotoViewer), findsNothing);
     expect(gallery.deleted, isEmpty);
@@ -429,10 +429,7 @@ void main() {
     await tester.longPress(find.text('Album'));
     await tester.pumpAndSettle();
     expect(camera.settings, isEmpty);
-    expect(
-      find.text('Could not open the camera. Please try again.'),
-      findsOneWidget,
-    );
+    expect(find.text('Couldn’t open the camera. Try again.'), findsOneWidget);
     expect(find.byType(CameraPreview), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -455,7 +452,7 @@ void main() {
     expect(find.byType(CameraPreview), findsNothing);
     expect(
       find.text(
-        'Allow camera access in system settings to use the live background.',
+        'To use the live background, allow camera access in your device settings.',
       ),
       findsOneWidget,
     );

@@ -8,6 +8,7 @@ import '../../services/music/music_source_controller.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_selection_dot.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
 import 'settings_support_section.dart';
@@ -133,15 +134,12 @@ class SettingsSheet extends StatelessWidget {
                                               ),
                                               iconColor: Colors.white70,
                                               textColor: Colors.white,
-                                              title: Text(l10n.xeroxMode),
+                                              title: AppSelectionTitle(
+                                                selected: enabled,
+                                                child: Text(l10n.xeroxMode),
+                                              ),
                                               selected: enabled,
                                               selectedColor: Colors.white,
-                                              trailing: enabled
-                                                  ? const Icon(
-                                                      PhosphorIcons.check,
-                                                      size: 16,
-                                                    )
-                                                  : null,
                                               onTap: () => onChanged(!enabled),
                                             ),
                                             if (enabled && picker != null)

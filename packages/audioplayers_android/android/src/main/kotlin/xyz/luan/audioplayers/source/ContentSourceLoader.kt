@@ -12,9 +12,11 @@ import java.util.concurrent.Future
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
-/** All ownership changes run on the platform thread; only provider I/O runs on the worker. */
-internal class ContentSourceLoader(private val resolver: ContentResolver) {
-    private val main = Handler(Looper.getMainLooper())
+/** Provider I/O runs separately from the Looper that owns the players and requests. */
+internal class ContentSourceLoader(
+    private val resolver: ContentResolver,
+    private val owner: Handler = Handler(Looper.getMainLooper()),
+) {
     private val worker = ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS, ArrayBlockingQueue(16))
     private val pending = mutableMapOf<String, Request>()
 
@@ -25,7 +27,7 @@ internal class ContentSourceLoader(private val resolver: ContentResolver) {
 
     fun load(id: String, uri: Uri, complete: (Result<ContentUriSource>) -> Unit) {
         cancel(id)
-        // Include completed opens awaiting main-thread delivery in the bound.
+        // Include completed opens awaiting delivery in the bound.
         if (pending.size >= 17) {
             complete(
                 Result.failure(
@@ -48,14 +50,17 @@ internal class ContentSourceLoader(private val resolver: ContentResolver) {
                                 )
                         ContentUriSource(asset)
                     }
-                    main.post {
-                        if (pending[id] !== request) {
-                            result.getOrNull()?.dispose()
-                        } else {
-                            pending.remove(id)
-                            request.complete(result)
+                    val posted =
+                        owner.post {
+                            if (pending[id] !== request) {
+                                result.getOrNull()?.dispose()
+                            } else {
+                                pending.remove(id)
+                                request.complete(result)
+                            }
                         }
-                    }
+                    // The engine can detach while the provider is still opening the file.
+                    if (!posted) result.getOrNull()?.dispose()
                 }
         } catch (error: Exception) {
             pending.remove(id)

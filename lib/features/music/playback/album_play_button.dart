@@ -15,12 +15,14 @@ class AlbumPlayButton extends StatelessWidget {
     required this.playback,
     this.artist,
     this.diameter = 30,
+    this.iconSize,
   });
   final String asset;
   final String title;
   final String? artist;
   final AlbumPlayback playback;
   final double diameter;
+  final double? iconSize;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: playback,
@@ -29,6 +31,7 @@ class AlbumPlayButton extends StatelessWidget {
         : Center(
             child: GlassIconButton(
               diameter: diameter,
+              iconSize: iconSize,
               label: '${playback.isPlaying(asset, title) ? '暂停' : '播放'} $title',
               icon: playback.isPlaying(asset, title)
                   ? PhosphorIcons.pauseFill

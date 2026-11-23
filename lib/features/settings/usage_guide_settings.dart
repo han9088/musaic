@@ -3,7 +3,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/app_theme.dart';
+import 'camera_background_demo.dart';
 import 'playback_drag_demo.dart';
 
 class UsageGuideSettings extends StatelessWidget {
@@ -31,7 +33,12 @@ class UsageGuideSettings extends StatelessWidget {
         null,
       ),
       (l10n.usageGuideLayoutTitle, l10n.usageGuideLayout, null),
-      if (isMobile) (l10n.usageGuideCameraTitle, l10n.usageGuideCamera, null),
+      if (isMobile)
+        (
+          l10n.usageGuideCameraTitle,
+          l10n.usageGuideCamera,
+          const CameraBackgroundDemo(),
+        ),
     ];
 
     return Center(
@@ -82,8 +89,9 @@ class UsageGuideDismissFooter extends StatelessWidget {
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 640),
       child: Padding(
-        padding: settingsItemPadding.add(
-          const EdgeInsets.symmetric(vertical: 16),
+        padding: settingsItemPadding.copyWith(
+          top: AppSpacing.sm,
+          bottom: AppSpacing.md,
         ),
         child: FilledButton(
           onPressed: onDismiss,

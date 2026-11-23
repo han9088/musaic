@@ -12,6 +12,7 @@ class CoverFlowFlipCard extends StatelessWidget {
     required this.source,
     required this.destination,
     required this.child,
+    this.back,
   });
 
   static const reflectionFraction = 0.36;
@@ -22,6 +23,7 @@ class CoverFlowFlipCard extends StatelessWidget {
   final Rect source;
   final Rect destination;
   final Widget child;
+  final Widget? back;
 
   static Rect? destinationFor(Size viewport, Rect source) {
     const top = 64.0;
@@ -46,6 +48,8 @@ class CoverFlowFlipCard extends StatelessWidget {
       child: child,
       builder: (context, child) {
         final t = progress.value;
+        final turn = turnCurve.transform(t);
+        final reverse = back;
         return Transform(
           key: const ValueKey('cover-flow-flipping-card'),
           // Pivot around the artwork center. The reflection sits below it.
@@ -53,10 +57,12 @@ class CoverFlowFlipCard extends StatelessWidget {
           transform: RectFlipTransition.transform(
             layout: source,
             rect: Rect.lerp(source, destination, t)!,
-            turnProgress: reducedMotion ? 0 : turnCurve.transform(t),
+            turnProgress: reducedMotion ? 0 : turn,
             axis: Axis.vertical,
           ),
-          child: child,
+          child: reverse != null && turn >= 0.5
+              ? IgnorePointer(ignoring: t < 1, child: reverse)
+              : child,
         );
       },
     );

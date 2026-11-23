@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../../../services/music/directory_music_library.dart';
+import '../../../storage/music/custom_artwork_store.dart';
 import '../model/artwork_identity.dart';
 import '../model/artwork_request.dart';
 import '../model/artwork_resource.dart';
@@ -30,9 +31,12 @@ class ArtworkDisplayPlan {
 }
 
 class ArtworkResourceLease {
-  ArtworkResourceLease._(this.future, [this._release]);
+  ArtworkResourceLease._(this.future, {this._release, this.isMissing = false});
 
   final Future<ArtworkResource?> future;
+
+  /// A previous display request confirmed there is no artwork for this source.
+  final bool isMissing;
   VoidCallback? _release;
 
   void release() {
@@ -50,6 +54,7 @@ class _DisplayedArtwork {
       },
       onError: (Object error, StackTrace stack) {
         completed = true;
+        failed = true;
         Error.throwWithStackTrace(error, stack);
       },
     );
@@ -58,6 +63,7 @@ class _DisplayedArtwork {
   late final Future<ArtworkResource?> pending;
   ArtworkResource? resource;
   bool completed = false;
+  bool failed = false;
   int references = 0;
 }
 
@@ -69,6 +75,7 @@ class ArtworkPipeline {
   ArtworkPipeline({
     this._resolver = const ArtworkResolver(),
     this._lodManager = ArtworkLodManager.instance,
+    this._customArtwork,
     XeroxRasterCache? rasterCache,
     XeroxBackgroundProcessor? backgroundProcessor,
   }) : _rasterCache = rasterCache ?? XeroxRasterCache.instance,
@@ -77,9 +84,15 @@ class ArtworkPipeline {
          backgroundProcessor,
        );
 
-  static final instance = ArtworkPipeline();
+  static final instance = ArtworkPipeline(
+    customArtwork: CustomArtworkStore.instance,
+  );
 
   final ArtworkResolver _resolver;
+  final CustomArtworkStore? _customArtwork;
+  int? customArtworkRevision(ArtworkRequest request) =>
+      _customArtwork?.revisionOf(request.customArtworkKey);
+
   final ArtworkLodManager _lodManager;
   final XeroxRasterCache _rasterCache;
   final XeroxBackgroundProcessor _backgroundProcessor;
@@ -92,6 +105,7 @@ class ArtworkPipeline {
           ArtworkVersion?,
           DirectoryMusicLibrary?,
           int,
+          int?,
           int?,
         ),
         _DisplayedArtwork
@@ -110,29 +124,39 @@ class ArtworkPipeline {
       directories,
       directoryRevision,
       request.sourceResolution,
+      customArtworkRevision(request),
     );
+    // Repeated canvas tiles share a confirmed absence until the last tile leaves.
+    final reuseMissing = request.source.startsWith('media-store:');
     var entry = _displayed[key];
-    if (entry == null || (entry.completed && entry.resource == null)) {
+    if (entry == null ||
+        entry.failed ||
+        (entry.completed && entry.resource == null && !reuseMissing)) {
       entry = _DisplayedArtwork(resolve(request, directories: directories));
-      if (entry.completed && entry.resource == null) {
+      if (entry.completed && entry.resource == null && !reuseMissing) {
         return ArtworkResourceLease._(entry.pending);
       }
       _displayed[key] = entry;
     }
     final displayed = entry;
     displayed.references++;
-    final resource = displayed.resource;
     return ArtworkResourceLease._(
-      resource == null ||
+      !displayed.completed ||
+              displayed.failed ||
               displayed.pending is SynchronousFuture<ArtworkResource?>
           ? displayed.pending
-          : SynchronousFuture(resource),
-      () {
+          : SynchronousFuture(displayed.resource),
+      release: () {
         if (--displayed.references == 0 &&
             identical(_displayed[key], displayed)) {
           _displayed.remove(key);
         }
       },
+      isMissing:
+          reuseMissing &&
+          displayed.completed &&
+          !displayed.failed &&
+          displayed.resource == null,
     );
   }
 
@@ -150,20 +174,21 @@ class ArtworkPipeline {
     ArtworkRequest request, {
     required DirectoryMusicLibrary? directories,
   }) {
+    final customRevision = customArtworkRevision(request);
     final key = jsonEncode([
       request.source,
       request.identity?.value,
       request.version?.value,
       identityHashCode(directories),
       request.sourceResolution,
+      customRevision,
     ]);
     final existing = _resolving[key];
     if (existing != null) return existing;
 
-    final resolution = _resolver.resolveRequest(
-      request,
-      directories: directories,
-    );
+    final resolution = customRevision == null
+        ? _resolver.resolveRequest(request, directories: directories)
+        : _resolveCustomArtwork(request, customRevision, directories);
     // Assets can paint on the first frame when their decoded image is cached.
     if (resolution is SynchronousFuture<ArtworkResource?>) return resolution;
 
@@ -173,6 +198,23 @@ class ArtworkPipeline {
     });
     _resolving[key] = pending;
     return pending;
+  }
+
+  Future<ArtworkResource?> _resolveCustomArtwork(
+    ArtworkRequest request,
+    int revision,
+    DirectoryMusicLibrary? directories,
+  ) async {
+    final key = request.customArtworkKey;
+    final bytes = await _customArtwork!.read(key, revision);
+    if (bytes == null) {
+      return _resolver.resolveRequest(request, directories: directories);
+    }
+    return ArtworkResource(
+      identity: key,
+      sourceKey: jsonEncode(['custom', key, revision]),
+      image: MemoryImage(bytes),
+    );
   }
 
   /// 根据目标物理尺寸生成原图解码和 Xerox 输出请求。

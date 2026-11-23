@@ -91,7 +91,9 @@ private class LegacyFocusManager(
             // Mix sound with others
             null
         } else {
-            AudioManager.OnAudioFocusChangeListener { handleFocusResult(it) }
+            AudioManager.OnAudioFocusChangeListener { change ->
+                player.playbackHandler.post { handleFocusResult(change) }
+            }
         }
     }
 
@@ -137,8 +139,10 @@ private class ModernFocusManager(
             // Mix sound with others
             null
         } else {
-            AudioFocusRequest.Builder(context.audioFocus).setAudioAttributes(context.buildAttributes())
-                .setOnAudioFocusChangeListener { handleFocusResult(it) }.build()
+            AudioFocusRequest.Builder(context.audioFocus)
+                .setAudioAttributes(context.buildAttributes())
+                .setOnAudioFocusChangeListener({ handleFocusResult(it) }, player.playbackHandler)
+                .build()
         }
     }
 

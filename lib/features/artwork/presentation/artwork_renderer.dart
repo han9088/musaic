@@ -40,6 +40,9 @@ class ArtworkRenderer extends StatelessWidget {
   final Widget placeholder;
   final ui.Image? processedImage;
 
+  ImageProvider<Object> get originalImageProvider =>
+      _resize(plan.originalDecodeResolution);
+
   @override
   Widget build(BuildContext context) {
     if (xerox) {
@@ -61,7 +64,7 @@ class ArtworkRenderer extends StatelessWidget {
     }
 
     return _originalImage(
-      _resize(plan.originalDecodeResolution),
+      originalImageProvider,
       frameBuilder: (context, child, frame, _) {
         if (frame != null) return child;
         final cached = _cachedOriginal(context);

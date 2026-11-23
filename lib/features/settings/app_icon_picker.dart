@@ -1,12 +1,12 @@
 // 文件职责：设置项展示与系统能力控制。
 
 import 'package:material_ui/material_ui.dart';
-import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 import '../../services/diagnostics/diagnostic_log.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_selection_dot.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 
 /// 封装或定义应用图标选择器相关类型与行为，负责设置项展示与系统能力控制。
@@ -256,22 +256,9 @@ class _AppIconTile extends StatelessWidget {
                   ),
                   if (selected)
                     const Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.black87,
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.all(4),
-                          child: Icon(
-                            PhosphorIcons.checkBold,
-                            size: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
+                      right: 2,
+                      bottom: 2,
+                      child: AppSelectionDot(),
                     ),
                 ],
               ),

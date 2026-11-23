@@ -1,11 +1,17 @@
-import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/features/artwork/presentation/artwork_source_view.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/coverflow/coverflow_flip_card.dart';
+import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
+import 'package:musaic/features/music/catalog/album_track_list.dart';
+import 'package:musaic/features/music/playback/album_play_button.dart';
+import 'package:musaic/features/music/playback/album_playback.dart';
+import 'package:musaic/l10n/generated/app_localizations.dart';
+import 'package:musaic/services/music/music_models.dart';
 
 void main() {
   testWidgets('portrait anchors the covers above the bottom edge', (
@@ -52,7 +58,7 @@ void main() {
     expect(cover.top + cover.width / 2, closeTo(400 * 0.52, 0.01));
   });
 
-  testWidgets('portrait flips one cover up and returns it to the same slot', (
+  testWidgets('a single track flips to its artwork and returns to its slot', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;
@@ -61,9 +67,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     await tester.pumpWidget(
       const MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: AlbumCoverFlow(
           albums: [
-            {'asset': 'local:first', 'artist': 'Artist', 'title': 'First'},
+            {
+              'asset': 'assets/albums/0.jpg',
+              'artist': 'Artist',
+              'title': 'First',
+              'trackCount': 1,
+            },
             {'asset': 'local:second', 'artist': 'Artist', 'title': 'Second'},
           ],
         ),
@@ -74,9 +87,10 @@ void main() {
     final face = find
         .descendant(of: flip, matching: find.byType(GestureDetector))
         .first;
-    final artwork = find
-        .descendant(of: face, matching: find.byType(ColoredBox))
-        .first;
+    final artwork = find.descendant(
+      of: flip,
+      matching: find.byType(ArtworkSourceView),
+    );
     final center = find.byKey(const ValueKey('cover-0'));
     final neighbor = find.byKey(const ValueKey('cover-1'));
     final restingRect = tester.getRect(face);
@@ -104,15 +118,16 @@ void main() {
     await drag.moveBy(Offset(0, -travel * (0.85 - card.progress.value)));
     await tester.pump();
     expect(card.progress.value, closeTo(0.85, 0.001));
-    final finishingArtwork = tester.getRect(artwork);
-    expect(finishingArtwork.height, closeTo(finishingArtwork.width, 0.01));
+    expect(artwork, findsOneWidget);
+    final finishingFace = tester.getRect(artwork);
+    expect(finishingFace.height, closeTo(finishingFace.width, 0.01));
 
     await drag.up();
     await tester.pumpAndSettle();
 
-    final expanded = tester.getRect(face);
-    final expandedArtwork = tester.getRect(artwork);
-    expect(expandedArtwork.height, closeTo(expandedArtwork.width, 0.01));
+    expect(find.byType(AlbumTrackList), findsNothing);
+    final expanded = tester.getRect(artwork);
+    expect(expanded.height, closeTo(expanded.width, 0.01));
     expect(expanded.width, greaterThan(restingRect.width * 2));
     expect(expanded.top + expanded.width, lessThan(restingRect.top));
     expect(center, findsOneWidget);
@@ -141,7 +156,7 @@ void main() {
     expect(tester.getRect(center), landscapeRect);
   });
 
-  testWidgets('only the opened cover requests full preview pixels', (
+  testWidgets('the expanded back scrolls tracks and controls album playback', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 3;
@@ -161,72 +176,111 @@ void main() {
     final bytes = (await tester.runAsync(
       () => rootBundle.load('assets/albums/0.jpg'),
     ))!.buffer.asUint8List();
-    final preview = Completer<Uint8List>();
-    final previewQueries = <(int, int)>[];
+    final artworkSizes = <int>[];
     messenger.setMockMethodCallHandler(artworkChannel, (call) async {
       expect(call.method, 'queryArtwork');
-      final size = call.arguments['size'] as int;
-      if (size == 512) return bytes;
-      previewQueries.add((call.arguments['id'] as int, size));
-      return preview.future;
+      artworkSizes.add(call.arguments['size'] as int);
+      return bytes;
     });
     addTearDown(() => messenger.setMockMethodCallHandler(artworkChannel, null));
+
+    MusicReference reference(MusicKind kind, String id) => (
+      provider: 'local',
+      id: id,
+      kind: kind,
+      source: MusicSource.library,
+      storefront: null,
+    );
+    final albums = mapProviderAlbums([
+      (
+        reference: reference(MusicKind.album, '9'),
+        title: 'First',
+        artist: 'Artist',
+        artworkUrl: 'media-store:17',
+        trackCount: 20,
+        tracks: [
+          for (var i = 1; i <= 20; i++)
+            (
+              reference: reference(MusicKind.song, '$i'),
+              title: 'Track $i',
+              artist: null,
+              duration: null,
+              artworkUrl: null,
+              playable: true,
+            ),
+        ],
+      ),
+    ]);
+    final playback = AlbumPlayback();
+    addTearDown(playback.dispose);
     await tester.pumpWidget(
-      const MaterialApp(
-        home: AlbumCoverFlow(
-          albums: [
-            {'asset': 'media-store:17', 'artist': 'Artist', 'title': 'First'},
-            {'asset': 'media-store:18', 'artist': 'Artist', 'title': 'Second'},
-          ],
-        ),
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AlbumCoverFlow(albums: albums, playback: playback),
       ),
     );
     await tester.pump();
     final cover = find.byType(CoverFlowFlipCard);
-    final coverImages = find.descendant(
+    final coverPlay = find.descendant(
       of: cover,
-      matching: find.byType(Image),
+      matching: find.byType(AlbumPlayButton),
     );
-    final original = tester.widget<Image>(coverImages.first).image;
-    await tester.runAsync(() => precacheImage(original, tester.element(cover)));
-    await tester.pump();
-    final painted = find.descendant(
-      of: cover,
-      matching: find.byWidgetPredicate((w) => w is RawImage && w.image != null),
-    );
-    expect(painted, findsWidgets);
-    expect(coverImages, findsNWidgets(2));
+    expect(coverPlay, findsOneWidget);
+    expect(artworkSizes, isNotEmpty);
+    expect(find.text('Track 1'), findsNothing);
 
     final touch = tester.widget<CoverFlowFlipCard>(cover).source.center;
-    final drag = await tester.startGesture(touch);
-    await drag.moveBy(const Offset(0, -24));
-    await drag.moveBy(const Offset(0, -150));
-    await tester.pump();
-    expect(previewQueries, isEmpty);
-    await drag.up();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 80));
-    expect(previewQueries, isEmpty);
-
+    await tester.dragFrom(touch, const Offset(0, -200));
     await tester.pumpAndSettle();
-    expect(previewQueries, [(17, 1024)]);
-    expect(painted, findsWidgets);
-    expect(coverImages, findsNWidgets(2));
-    preview.complete(bytes);
-    await tester.pump();
-    await tester.pump();
-    expect(coverImages, findsNWidgets(3));
-    expect(
-      tester
-          .widgetList<Image>(coverImages)
-          .map((w) => (w.image as ResizeImage).width),
-      unorderedEquals([512, 512, 1024]),
+    final back = find.byType(AlbumTrackList);
+    final backPlay = find.descendant(
+      of: back,
+      matching: find.byType(AlbumPlayButton),
     );
-    final card = tester.widget<CoverFlowFlipCard>(cover);
-    await tester.dragFrom(card.destination.center, const Offset(0, 200));
+    final artist = find.descendant(of: back, matching: find.text('Artist'));
+    expect(artist, findsOne);
+    expect(find.descendant(of: back, matching: find.text('01')), findsOne);
+    expect(find.text('Track 1'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Track 2')).dy,
+      greaterThan(tester.getTopLeft(find.text('Track 1')).dy),
+    );
+    expect(backPlay, findsOneWidget);
+    expect(
+      tester.getCenter(backPlay).dx,
+      greaterThan(tester.getCenter(back).dx),
+    );
+    expect(backPlay.hitTestable(), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
-    expect(coverImages, findsNWidgets(2));
-    expect(previewQueries, [(17, 1024)]);
+    expect(backPlay.hitTestable(), findsNothing);
+    await tester.tapAt(tester.getCenter(artist));
+    await tester.pumpAndSettle();
+    expect(backPlay.hitTestable(), findsOneWidget);
+    expect(artworkSizes, everyElement(512));
+
+    final scrollable = find.descendant(
+      of: back,
+      matching: find.byType(Scrollable),
+    );
+    final lastTrack = find.text('Track 20');
+    await tester.scrollUntilVisible(lastTrack, 120, scrollable: scrollable);
+    await tester.drag(scrollable, const Offset(0, -44));
+    await tester.pumpAndSettle();
+    expect(lastTrack.hitTestable(), findsOneWidget);
+    await tester.tap(lastTrack);
+    expect(playback.playing, isFalse);
+    await tester.tap(backPlay);
+    await tester.pump();
+    expect(playback.isPlaying('media-store:17', 'First'), isTrue);
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(back, findsNothing);
+    expect(coverPlay, findsOneWidget);
+    await tester.tap(coverPlay);
+    await tester.pump();
+    expect(playback.playing, isFalse);
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 

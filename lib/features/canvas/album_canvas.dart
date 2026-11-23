@@ -1,8 +1,10 @@
 // 文件职责：绘制无限专辑网格并处理超出布局边界的点击。
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
+import 'album_grid_snapshot.dart';
 import 'portrait_tilt.dart';
 
 class AlbumCanvas extends Stack {
@@ -12,6 +14,7 @@ class AlbumCanvas extends Stack {
     required this.tiltPadding,
     required this.transform,
     required this.isTransitioning,
+    required this.albumAt,
     required Iterable<Widget> tiles,
     Widget? selected,
     this.hiddenTileOffset,
@@ -30,6 +33,7 @@ class AlbumCanvas extends Stack {
   final bool isTransitioning;
   final bool hasSelected;
   final Offset? hiddenTileOffset;
+  final Object Function(int row, int column) albumAt;
 
   @override
   RenderStack createRenderObject(BuildContext context) => _RenderAlbumCanvas(
@@ -37,6 +41,7 @@ class AlbumCanvas extends Stack {
     tiltPadding: tiltPadding,
     transform: transform,
     isTransitioning: isTransitioning,
+    albumAt: albumAt,
     hasSelected: hasSelected,
     hiddenTileOffset: hiddenTileOffset,
   );
@@ -48,9 +53,11 @@ class AlbumCanvas extends Stack {
       ..tiltPadding = tiltPadding
       ..transform = transform
       ..isTransitioning = isTransitioning
+      ..albumAt = albumAt
       ..hasSelected = hasSelected
       ..hiddenTileOffset = hiddenTileOffset
-      ..markNeedsPaint();
+      ..markNeedsPaint()
+      ..markNeedsSemanticsUpdate();
   }
 }
 
@@ -60,6 +67,7 @@ class _RenderAlbumCanvas extends RenderStack {
     required this.tiltPadding,
     required this.transform,
     required this.isTransitioning,
+    required this.albumAt,
     required this.hasSelected,
     required this.hiddenTileOffset,
   }) : super(clipBehavior: Clip.none);
@@ -67,8 +75,82 @@ class _RenderAlbumCanvas extends RenderStack {
   Offset tiltPadding;
   TransformationController transform;
   bool isTransitioning;
+  Object Function(int row, int column) albumAt;
   bool hasSelected;
   Offset? hiddenTileOffset;
+
+  bool get _groupRepeatedAlbums =>
+      !isTransitioning && !hasSelected && hiddenTileOffset == null;
+  var _albumRepresentatives = <Object, RenderBox>{};
+  Set<RenderBox>? _semanticTiles;
+
+  Rect _sceneViewport(Offset padding) {
+    final matrix = transform.value;
+    final scale = matrix.getColumn(0).length;
+    final x = matrix.entry(0, 3);
+    final y = matrix.entry(1, 3);
+    return Rect.fromLTRB(
+      (-padding.dx - x) / scale,
+      (-padding.dy - y) / scale,
+      (size.width + padding.dx - x) / scale,
+      (size.height + padding.dy - y) / scale,
+    );
+  }
+
+  Set<RenderBox> _chooseSemanticTiles(Rect viewport) {
+    final center = viewport.center;
+    final innerViewport = _sceneViewport(-tiltPadding);
+    final representatives = <Object, RenderBox>{};
+    final distances = <Object, double>{};
+    final edgeTiles = <(Object, RenderBox)>[];
+    var tile = childAfter(firstChild!);
+    while (tile != null) {
+      final data = tile.parentData! as StackParentData;
+      final rect = data.offset & tile.size;
+      if (viewport.overlaps(rect)) {
+        final album = albumAt(
+          (data.offset.dy / albumGridExtent).round(),
+          (data.offset.dx / albumGridExtent).round(),
+        );
+        if (innerViewport.contains(rect.center)) {
+          // Keep the same node until it nears a projected edge.
+          final distance = identical(tile, _albumRepresentatives[album])
+              ? -1.0
+              : (rect.center - center).distanceSquared;
+          if (distance < (distances[album] ?? double.infinity)) {
+            representatives[album] = tile;
+            distances[album] = distance;
+          }
+        } else {
+          edgeTiles.add((album, tile));
+        }
+      }
+      tile = data.nextSibling;
+    }
+    _albumRepresentatives = representatives;
+    return {
+      ...representatives.values,
+      // Let Flutter clip albums that appear only along the tilted edges.
+      for (final (album, tile) in edgeTiles)
+        if (!representatives.containsKey(album)) tile,
+    };
+  }
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (!_groupRepeatedAlbums || !hasSize || firstChild == null) {
+      super.visitChildrenForSemantics(visitor);
+      return;
+    }
+    final tiles = _semanticTiles ??= _chooseSemanticTiles(
+      _sceneViewport(tiltPadding),
+    );
+    var tile = childAfter(firstChild!);
+    while (tile != null) {
+      if (tiles.contains(tile)) visitor(tile);
+      tile = (tile.parentData! as StackParentData).nextSibling;
+    }
+  }
 
   @override
   void paintStack(PaintingContext context, Offset offset) {
@@ -76,16 +158,14 @@ class _RenderAlbumCanvas extends RenderStack {
       super.paintStack(context, offset);
       return;
     }
-    final matrix = transform.value;
-    final scale = matrix.getColumn(0).length;
-    final x = matrix.entry(0, 3);
-    final y = matrix.entry(1, 3);
-    final viewport = Rect.fromLTRB(
-      (-tiltPadding.dx - x) / scale,
-      (-tiltPadding.dy - y) / scale,
-      (size.width + tiltPadding.dx - x) / scale,
-      (size.height + tiltPadding.dy - y) / scale,
-    );
+    final viewport = _sceneViewport(tiltPadding);
+    if (_groupRepeatedAlbums && owner?.semanticsOwner != null) {
+      final tiles = _chooseSemanticTiles(viewport);
+      if (!setEquals(tiles, _semanticTiles)) {
+        _semanticTiles = tiles;
+        markNeedsSemanticsUpdate();
+      }
+    }
     // Keep the guard-ring covers mounted without recording paint for them.
     var tile = childAfter(firstChild!);
     while (tile != null) {

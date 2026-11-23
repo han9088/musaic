@@ -65,13 +65,16 @@ class HomeSheet extends StatefulWidget {
 /// 封装或定义首页弹层状态相关类型与行为，负责页面状态组织与业务流程协调。
 class _HomeSheetState extends State<HomeSheet> {
   final _usageGuide = UsageGuidePreference();
-  bool _open = false;
+  String? _sheetId;
+  bool _sheetExpanded = false;
   bool _xeroxChangePending = false;
   bool _sourceSelectionPending = false;
+  Completer<bool>? _xeroxSheetCollapse;
   Completer<void>? _sourceSheetDismissed;
   Timer? _hideTimer;
   bool _visible = true;
 
+  bool get _open => _sheetId != null;
   bool get _playbackAvailable => widget.enabled && widget.playbackReady;
 
   @override
@@ -133,6 +136,7 @@ class _HomeSheetState extends State<HomeSheet> {
   void dispose() {
     _hideTimer?.cancel();
     _usageGuide.dispose();
+    _finishXeroxCollapse(false);
     final dismissed = _sourceSheetDismissed;
     if (dismissed != null && !dismissed.isCompleted) dismissed.complete();
     super.dispose();
@@ -143,7 +147,7 @@ class _HomeSheetState extends State<HomeSheet> {
     _hideTimer?.cancel();
     final landscape =
         MediaQuery.orientationOf(context) == Orientation.landscape;
-    DeskBottomSheet.of(context).present(
+    final sheetId = DeskBottomSheet.of(context).present(
       SettingsSheet(
         sources: widget.sources,
         sourceSwitching: widget.sourceSwitching,
@@ -167,19 +171,28 @@ class _HomeSheetState extends State<HomeSheet> {
         dismissOnScrimPress: true,
         enableContentPanningGesture: true,
         showHandle: true,
+        onAnimate: (_, index) {
+          if (index > 0) _sheetExpanded = true;
+        },
+        onChange: (index) {
+          _sheetExpanded = index > 0;
+          _finishXeroxCollapse(index == 0);
+        },
         onDismiss: () {
+          _sheetExpanded = false;
+          _finishXeroxCollapse(false);
           final dismissed = _sourceSheetDismissed;
           if (dismissed != null && !dismissed.isCompleted) {
             dismissed.complete();
           }
           if (mounted) {
-            setState(() => _open = false);
+            setState(() => _sheetId = null);
             _reveal();
           }
         },
       ),
     );
-    setState(() => _open = true);
+    setState(() => _sheetId = sheetId);
   }
 
   void _openSettings(BuildContext source, SettingsSection section) {
@@ -248,6 +261,12 @@ class _HomeSheetState extends State<HomeSheet> {
     );
   }
 
+  void _finishXeroxCollapse(bool settled) {
+    final collapse = _xeroxSheetCollapse;
+    _xeroxSheetCollapse = null;
+    collapse?.complete(settled);
+  }
+
   Future<void> _changeXerox(bool enabled) async {
     final onChanged = widget.onXeroxChanged;
     if (!_open ||
@@ -258,7 +277,17 @@ class _HomeSheetState extends State<HomeSheet> {
     }
     _xeroxChangePending = true;
     try {
-      if (!enabled) await DeskBottomSheet.of(context).dismissAll();
+      final sheet = DeskBottomSheet.of(context);
+      final controller = sheet.topSheetController;
+      if (_sheetExpanded &&
+          sheet.topSheetId == _sheetId &&
+          controller != null) {
+        final collapse = _xeroxSheetCollapse = Completer<bool>();
+        controller.collapse();
+        if (!await collapse.future) return;
+      } else if (!enabled) {
+        await sheet.dismissAll();
+      }
       if (mounted) await onChanged(enabled);
     } finally {
       _xeroxChangePending = false;

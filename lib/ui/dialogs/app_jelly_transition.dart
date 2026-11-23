@@ -33,14 +33,11 @@ class AppJellyTransition extends StatelessWidget {
         final double scaleX;
         final double scaleY;
         final Offset offset;
-        final double opacity;
-
         if (closing) {
           final eased = Curves.easeOutCubic.transform(t);
           scaleX = 0.94 + (0.06 * eased);
           scaleY = 0.96 + (0.04 * eased);
           offset = openingOffset * (0.5 * (1 - eased));
-          opacity = t;
         } else {
           final spring = const _JellySpringCurve().transform(t);
           final wobble = math.sin(t * math.pi * 3) * math.exp(-5.8 * t) * 0.032;
@@ -48,11 +45,11 @@ class AppJellyTransition extends StatelessWidget {
           scaleX = baseScale + wobble;
           scaleY = baseScale - wobble;
           offset = openingOffset * (1 - Curves.easeOutCubic.transform(t));
-          opacity = const Interval(0, 0.22, curve: Curves.easeOut).transform(t);
         }
 
         return Opacity(
-          opacity: opacity.clamp(0, 1),
+          // A partial group opacity can isolate the glass from its backdrop.
+          opacity: closing ? t : 1.0,
           child: Transform.translate(
             offset: offset,
             child: Transform(

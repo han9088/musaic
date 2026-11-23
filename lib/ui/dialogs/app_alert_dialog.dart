@@ -22,6 +22,7 @@ Future<T?> showAppDialog<T>({
   Widget Function(BuildContext, Animation<double>, Widget)? layoutBuilder,
   bool barrierDismissible = true,
   bool useRootNavigator = true,
+  bool waitForDismissal = false,
   Duration? autoDismissAfter,
   T? autoDismissResult,
 }) {
@@ -71,7 +72,12 @@ Future<T?> showAppDialog<T>({
           // 定时器触发时不能误关闭那个无关界面。
           if (route.isCurrent) navigator.pop<T>(autoDismissResult);
         });
-  return result.whenComplete(() => dismissTimer?.cancel());
+  final popped = result.whenComplete(() => dismissTimer?.cancel());
+  if (!waitForDismissal) return popped;
+  return popped.then((value) async {
+    await route.completed;
+    return value;
+  });
 }
 
 /// 封装或定义应用对话框route相关类型与行为，负责对话框、通知及其转场和展示管理。
@@ -207,6 +213,11 @@ class AppDialogSurface extends StatelessWidget {
   final Widget child;
   final BorderRadius borderRadius;
 
+  static final _blur = ImageFilter.blur(
+    sigmaX: appDialogBlurSigma,
+    sigmaY: appDialogBlurSigma,
+  );
+
   @override
   Widget build(BuildContext context) => DecoratedBox(
     decoration: BoxDecoration(
@@ -222,10 +233,7 @@ class AppDialogSurface extends StatelessWidget {
     child: ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: appDialogBlurSigma,
-          sigmaY: appDialogBlurSigma,
-        ),
+        filter: _blur,
         child: Stack(
           children: [
             DecoratedBox(
@@ -236,27 +244,16 @@ class AppDialogSurface extends StatelessWidget {
               ),
               child: SizedBox(width: double.infinity, child: child),
             ),
-            Positioned.fill(
+            const Positioned.fill(
               child: IgnorePointer(
-                child: Opacity(
-                  key: const Key('app-alert-dialog-noise'),
-                  opacity: appDialogNoiseOpacity,
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      return Image(
-                        image: ResizeImage(
-                          const AssetImage(appDialogNoiseAsset),
-                          width: constraints.maxWidth.ceil(),
-                          height: constraints.maxHeight.ceil(),
-                        ),
-                        fit: BoxFit.cover,
-                        color: Colors.white,
-                        colorBlendMode: BlendMode.difference,
-                        filterQuality: FilterQuality.low,
-                        excludeFromSemantics: true,
-                      );
-                    },
-                  ),
+                // Draw the shared grain directly with alpha during the transition.
+                child: Image(
+                  key: Key('app-alert-dialog-noise'),
+                  image: AssetImage(appDialogNoiseAsset),
+                  fit: BoxFit.cover,
+                  opacity: AlwaysStoppedAnimation(appDialogNoiseOpacity),
+                  filterQuality: FilterQuality.low,
+                  excludeFromSemantics: true,
                 ),
               ),
             ),

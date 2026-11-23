@@ -6,10 +6,12 @@ import 'package:flutter/foundation.dart';
 import 'package:musaic_query/musaic_query.dart';
 
 import '../storage/music/music_index.dart';
+import '../storage/music/custom_artwork_store.dart';
 import '../storage/settings/app_language_preference.dart';
 import '../services/music/directory_music_library.dart';
 import '../services/music/music_source_controller.dart';
 import '../features/artwork/presentation/directory_artwork.dart';
+import '../features/artwork/presentation/custom_artwork_scope.dart';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -37,6 +39,12 @@ class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
   final _sources = MusicSourceController();
   late final _language = AppLanguagePreference(widget.initialLanguage);
+  final _customArtwork =
+      !kIsWeb &&
+          (defaultTargetPlatform == TargetPlatform.android ||
+              defaultTargetPlatform == TargetPlatform.iOS)
+      ? CustomArtworkStore.instance
+      : null;
   DirectoryMusicLibrary? _directories;
   late final AppLifecycleListener _lifecycle;
 
@@ -92,7 +100,13 @@ class _MusaicAppState extends State<MusaicApp> {
       },
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_restoreMusic());
+      if (!mounted) return;
+      unawaited(_restoreMusic());
+      unawaited(
+        _customArtwork?.load().catchError((Object error) {
+          debugPrint('Could not load custom cover index: ${error.runtimeType}');
+        }),
+      );
     });
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
@@ -108,6 +122,10 @@ class _MusaicAppState extends State<MusaicApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
+      builder: _customArtwork == null
+          ? null
+          : (_, child) =>
+                CustomArtworkScope(store: _customArtwork, child: child!),
       home: DirectoryArtworkScope(
         library: _directories,
         child: AppBottomSheetHost(

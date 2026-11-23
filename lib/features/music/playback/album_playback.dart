@@ -42,6 +42,11 @@ class AlbumPlayback extends ChangeNotifier {
   bool isPlaying(String asset, String title) =>
       this.asset == asset && this.title == title && playing;
 
+  bool canPlayTrack(ProviderSong track) =>
+      _provider != null &&
+      track.playable &&
+      _tracks.containsKey(track.reference);
+
   /// 执行当前模块中的bind操作，用于音乐源、媒体库、播放及切换流程。
   void bind(MusicProvider? provider, List<ProviderAlbum>? albums) {
     _generation++;
@@ -139,6 +144,22 @@ class AlbumPlayback extends ChangeNotifier {
     if (currentAsset != null && currentAlbum != null) {
       toggle(currentAsset, currentAlbum, artist: _albumArtist);
     }
+  }
+
+  void playTrack(List<ProviderSong> tracks, int index) {
+    if (!canPlayTrack(tracks[index])) return;
+    unawaited(
+      _runProviderCommand((provider) async {
+        final queue = <MusicReference>[];
+        var startIndex = 0;
+        for (final (position, track) in tracks.indexed) {
+          if (position == index) startIndex = queue.length;
+          if (canPlayTrack(track)) queue.add(track.reference);
+        }
+        await provider.play(queue, startIndex: startIndex);
+        diagnosticLog.record(DiagnosticEvent.playbackStarted);
+      }),
+    );
   }
 
   void skip({required bool forward}) {

@@ -6,6 +6,7 @@ import '../../services/diagnostics/diagnostic_log.dart';
 import '../../services/diagnostics/diagnostic_report.dart';
 import '../../ui/dialogs/app_notification.dart';
 import '../../ui/theme/app_colors.dart';
+import '../../ui/theme/app_spacing.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 
@@ -126,8 +127,9 @@ class _DiagnosticsSettingsState extends State<DiagnosticsSettings> {
           child: Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
-              padding: settingsItemPadding.add(
-                const EdgeInsets.symmetric(vertical: 16),
+              padding: settingsItemPadding.copyWith(
+                top: AppSpacing.sm,
+                bottom: AppSpacing.md,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

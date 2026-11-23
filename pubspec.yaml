@@ -64,6 +64,7 @@ flutter:
     - assets/branding/
     - assets/sounds/
     - assets/albums/
+    - assets/usage_guide/camera_sky.jpg
     - assets/google_fonts/
     - assets/textures/dialog_noise.png
   fonts:

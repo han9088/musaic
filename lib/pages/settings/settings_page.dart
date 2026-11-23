@@ -8,6 +8,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/transitions/directional_push_route.dart';
+import '../../ui/widgets/app_navigation_back_button.dart';
 
 PageRoute<void> pushSettingsPage({
   required BuildContext source,
@@ -33,7 +34,7 @@ PageRoute<void> pushSettingsPage({
       bodyIsSliver: bodyIsSliver,
       footer: footer,
       fixedFooter: fixedFooter,
-      backIcon: PhosphorIcons.caretDown,
+      backIcon: PhosphorIcons.caretDownBold,
       pullToDismiss: (
         distance: distance,
         onPull: route.updateDismissGesture,
@@ -60,7 +61,7 @@ void pushSettingsDetail(BuildContext source, String title, Widget body) {
         builder: (_) => SettingsPage(
           title: title,
           body: body,
-          backIcon: PhosphorIcons.caretLeft,
+          backIcon: PhosphorIcons.caretLeftBold,
         ),
       ),
     ),
@@ -94,6 +95,11 @@ class SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const backPadding =
+        settingsContentInset -
+        (AppNavigationBackButton.hitSize -
+                AppNavigationBackButton.circleDiameter) /
+            2;
     final bottomAction = fixedFooter;
     final slivers = <Widget>[
       SliverAppBar(
@@ -102,17 +108,19 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         scrolledUnderElevation: 0,
-        leading: IconButton(
-          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-          iconSize: appNavigationBackIconSize,
-          icon: Icon(backIcon),
-          onPressed: () => Navigator.of(context).pop(),
+        leadingWidth: backPadding + AppNavigationBackButton.hitSize,
+        leading: Padding(
+          padding: const EdgeInsetsDirectional.only(start: backPadding),
+          child: AppNavigationBackButton(
+            icon: backIcon,
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
         title: Text(title, style: const TextStyle(color: Colors.white)),
       ),
       SliverSafeArea(
         top: false,
-        bottom: footer == null,
+        bottom: footer == null && !bodyIsSliver,
         sliver: SettingsInteractionTheme(
           child: bodyIsSliver ? body : SliverToBoxAdapter(child: body),
         ),
@@ -127,6 +135,14 @@ class SettingsPage extends StatelessWidget {
         ),
     ];
     final pull = pullToDismiss;
+    final scrollView = pull == null
+        ? CustomScrollView(slivers: slivers)
+        : SettingsBackScrollView(
+            distance: pull.distance,
+            onPull: pull.onPull,
+            onRelease: pull.onRelease,
+            slivers: slivers,
+          );
     return Theme(
       data: Theme.of(context).copyWith(
         listTileTheme: const ListTileThemeData(
@@ -149,14 +165,10 @@ class SettingsPage extends StatelessWidget {
         bottomNavigationBar: bottomAction == null
             ? null
             : SafeArea(top: false, child: bottomAction),
-        body: pull == null
-            ? CustomScrollView(slivers: slivers)
-            : SettingsBackScrollView(
-                distance: pull.distance,
-                onPull: pull.onPull,
-                onRelease: pull.onRelease,
-                slivers: slivers,
-              ),
+        // Keep filling slivers above the system inset even while scrolling.
+        body: bodyIsSliver
+            ? SafeArea(top: false, left: false, right: false, child: scrollView)
+            : scrollView,
       ),
     );
   }

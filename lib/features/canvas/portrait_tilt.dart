@@ -52,7 +52,12 @@ class PortraitTiltMotion {
 
 /// 封装或定义纵向倾斜相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class PortraitTilt extends StatefulWidget {
-  const PortraitTilt({super.key, required this.child, this.events});
+  const PortraitTilt({
+    super.key,
+    required this.child,
+    this.events,
+    this.paused = false,
+  });
 
   // 先额外绘制视口周边的专辑，再执行倾斜投影；只在屏幕边界进行裁剪。
   /// 执行当前模块中的overscan操作，用于专辑墙无限画布的布局、视口与交互状态。
@@ -86,6 +91,7 @@ class PortraitTilt extends StatefulWidget {
 
   final Widget child;
   final Stream<AccelerometerEvent>? events;
+  final bool paused;
 
   @override
   State<PortraitTilt> createState() => _PortraitTiltState();
@@ -177,7 +183,7 @@ class _PortraitTiltState extends State<PortraitTilt>
         if (next == null) return;
         _receivedUsableSample = true;
         _canReconnect = true;
-        if ((next - _target).distance < 0.0002) return;
+        if (widget.paused || (next - _target).distance < 0.0002) return;
         setState(() => _target = next);
       },
       onError: (Object error) => sensorUnavailable(),

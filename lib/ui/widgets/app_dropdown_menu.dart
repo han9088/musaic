@@ -8,6 +8,7 @@ import '../dialogs/app_jelly_transition.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_theme.dart';
+import 'app_selection_dot.dart';
 
 const _itemHeight = 44.0;
 
@@ -270,14 +271,14 @@ class _DropdownOptionsState<T extends Object>
                   ),
                   textColor: foreground,
                   selectedColor: foreground,
-                  title: Text(
-                    entry.label,
-                    style: const TextStyle(fontSize: textSize),
+                  title: AppSelectionTitle(
+                    selected: entry.value == menu.value,
+                    child: Text(
+                      entry.label,
+                      style: const TextStyle(fontSize: textSize),
+                    ),
                   ),
                   selected: entry.value == menu.value,
-                  trailing: entry.value == menu.value
-                      ? const Icon(PhosphorIcons.check, size: 16)
-                      : null,
                   onTap: () => Navigator.of(context).pop(entry.value),
                 ),
             ],

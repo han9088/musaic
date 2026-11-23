@@ -1,14 +1,88 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musaic/features/artwork/model/artwork_request.dart';
 import 'package:musaic/features/artwork/model/artwork_resource.dart';
 import 'package:musaic/features/artwork/pipeline/artwork_pipeline.dart';
+import 'package:musaic/features/artwork/source/artwork_resolver.dart';
 import 'package:musaic/features/artwork/xerox/xerox_raster_request.dart';
+import 'package:musaic/services/music/directory_music_library.dart';
+
+class _MediaStoreResolver extends ArtworkResolver {
+  ArtworkResource? result;
+  bool fail = false;
+  int calls = 0;
+
+  @override
+  Future<ArtworkResource?> resolveRequest(
+    ArtworkRequest request, {
+    required DirectoryMusicLibrary? directories,
+  }) async {
+    calls++;
+    if (fail) throw StateError('Temporary artwork error');
+    return result;
+  }
+}
 
 void main() {
   final resource = ArtworkResource(
     identity: 'apple:album:42',
     sourceKey: 'original-file:v1',
     image: AssetImage('assets/albums/cover.png'),
+  );
+
+  const mediaStoreRequest = ArtworkRequest(source: 'media-store:42?modified=1');
+
+  test(
+    'entering grid tiles reuse a missing cover while it is displayed',
+    () async {
+      final resolver = _MediaStoreResolver();
+      final pipeline = ArtworkPipeline(resolver: resolver);
+      ArtworkResourceLease tile() => pipeline.acquireForDisplay(
+        mediaStoreRequest,
+        directories: null,
+        directoryRevision: 0,
+      );
+
+      final existing = tile();
+      expect(await existing.future, isNull);
+      final entering = tile();
+      expect(entering.isMissing, isTrue);
+      expect(await entering.future, isNull);
+      expect(resolver.calls, 1);
+
+      existing.release();
+      entering.release();
+      resolver.result = resource;
+      final reopened = tile();
+      expect(reopened.isMissing, isFalse);
+      expect(await reopened.future, same(resource));
+      expect(resolver.calls, 2);
+      reopened.release();
+    },
+  );
+
+  test(
+    'a failed local cover read can retry while an old tile is mounted',
+    () async {
+      final resolver = _MediaStoreResolver()..fail = true;
+      final pipeline = ArtworkPipeline(resolver: resolver);
+      ArtworkResourceLease tile() => pipeline.acquireForDisplay(
+        mediaStoreRequest,
+        directories: null,
+        directoryRevision: 0,
+      );
+
+      final existing = tile();
+      await expectLater(existing.future, throwsStateError);
+      resolver
+        ..fail = false
+        ..result = resource;
+      final entering = tile();
+      expect(await entering.future, same(resource));
+      expect(resolver.calls, 2);
+      existing.release();
+      entering.release();
+    },
   );
 
   test(

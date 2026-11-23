@@ -27,6 +27,7 @@ import '../../features/artwork/pipeline/artwork_pipeline.dart';
 import '../../features/artwork/model/artwork_identity.dart';
 import '../../features/artwork/model/artwork_request.dart';
 import '../../features/artwork/mode/artwork_mode_controller.dart';
+import '../../features/artwork/presentation/custom_artwork_menu.dart';
 import '../../features/artwork/presentation/xerox_palette.dart';
 import '../../features/artwork/presentation/xerox_palette_picker.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
@@ -283,7 +284,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final album =
           albums[gridAlbumIndex(cell.row, cell.column, albums.length)];
       final source = album['asset'] as String;
-      if (source.startsWith('local:')) continue;
       final rawIdentity = album['id'] as String?;
       final rawVersion = album['artworkVersion'] as String?;
       requests.add(
@@ -654,6 +654,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         !_interaction.touching &&
         _interaction.pressedPointers.isEmpty &&
         !_interaction.selectionPaused &&
+        !customArtworkMenuVisible.value &&
         !_sourceTransition.preparing &&
         _sourceTransition.phase == null &&
         !_artworkMode.preparing &&
@@ -777,7 +778,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       future: future,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return const Center(child: Text('Unable to load album covers.'));
+          return Center(
+            child: Text(AppLocalizations.of(context).albumCoversLoadFailed),
+          );
         }
         final loaded = snapshot.data;
         if (loaded == null) {
@@ -818,18 +821,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
     if (_landscape) {
-      return AlbumCoverFlow(
-        albums: _albumLayout.flowAlbums ?? albums,
-        haptics: _haptics,
-        playback: _playback,
-        xerox: _artworkMode.enabled,
-        initialPosition: _albumLayout.flowPosition,
-        initialTilt: _albumLayout.flowTilt,
-        retainedLandscapeViewport: retainedLandscapeViewport,
-        onMotionChanged: (position, tilt) {
-          _albumLayout.flowPosition = position;
-          _albumLayout.flowTilt = tilt;
-        },
+      return ValueListenableBuilder(
+        valueListenable: customArtworkMenuVisible,
+        builder: (_, menuVisible, flow) =>
+            TickerMode(enabled: !menuVisible, child: flow!),
+        child: AlbumCoverFlow(
+          albums: _albumLayout.flowAlbums ?? albums,
+          haptics: _haptics,
+          playback: _playback,
+          xerox: _artworkMode.enabled,
+          initialPosition: _albumLayout.flowPosition,
+          initialTilt: _albumLayout.flowTilt,
+          retainedLandscapeViewport: retainedLandscapeViewport,
+          onMotionChanged: (position, tilt) {
+            _albumLayout.flowPosition = position;
+            _albumLayout.flowTilt = tilt;
+          },
+        ),
       );
     }
     return AlbumCanvasViewport(

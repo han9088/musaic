@@ -3,8 +3,8 @@ package xyz.luan.audioplayers.player
 import android.content.Context
 import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Handler
 import xyz.luan.audioplayers.AudioContextAndroid
-import xyz.luan.audioplayers.AudioplayersPlugin
 import xyz.luan.audioplayers.EventHandler
 import xyz.luan.audioplayers.PlayerMode
 import xyz.luan.audioplayers.PlayerMode.LOW_LATENCY
@@ -17,7 +17,8 @@ import kotlin.math.min
 private const val MEDIA_ERROR_SYSTEM = -2147483648
 
 class WrappedPlayer internal constructor(
-    private val ref: AudioplayersPlugin,
+    val applicationContext: Context,
+    internal val playbackHandler: Handler,
     val eventHandler: EventHandler,
     var context: AudioContextAndroid,
     private val soundPoolManager: SoundPoolManager,
@@ -62,7 +63,7 @@ class WrappedPlayer internal constructor(
                     previous?.dispose()
                 }
             } else {
-                ref.handlePrepared(this, true)
+                eventHandler.success("audio.onPrepared", mapOf("value" to true))
             }
         }
 
@@ -131,7 +132,7 @@ class WrappedPlayer internal constructor(
         set(value) {
             if (field != value) {
                 field = value
-                ref.handlePrepared(this, value)
+                eventHandler.success("audio.onPrepared", mapOf("value" to value))
             }
         }
 
@@ -222,11 +223,8 @@ class WrappedPlayer internal constructor(
         return if (prepared) player?.getCurrentPosition() else null
     }
 
-    val applicationContext: Context
-        get() = ref.getApplicationContext()
-
     val audioManager: AudioManager
-        get() = ref.getAudioManager()
+        get() = applicationContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     /**
      * Playback handling methods
@@ -309,7 +307,7 @@ class WrappedPlayer internal constructor(
      */
     fun onPrepared() {
         prepared = true
-        ref.handleDuration(this)
+        eventHandler.success("audio.onDuration", mapOf("value" to (getDuration() ?: 0)))
         if (playing) {
             requestFocusAndStart()
         }
@@ -322,7 +320,7 @@ class WrappedPlayer internal constructor(
         if (releaseMode != ReleaseMode.LOOP) {
             stop()
         }
-        ref.handleComplete(this)
+        eventHandler.success("audio.onComplete")
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -331,15 +329,15 @@ class WrappedPlayer internal constructor(
     }
 
     fun onSeekComplete() {
-        ref.handleSeekComplete(this)
+        eventHandler.success("audio.onSeekComplete")
     }
 
     fun handleLog(message: String) {
-        ref.handleLog(this, message)
+        eventHandler.success("audio.onLog", mapOf("value" to message))
     }
 
     fun handleError(errorCode: String?, errorMessage: String?, errorDetails: Any?) {
-        ref.handleError(this, errorCode, errorMessage, errorDetails)
+        eventHandler.error(errorCode, errorMessage, errorDetails)
     }
 
     fun onError(what: Int, extra: Int): Boolean {
@@ -409,10 +407,5 @@ class WrappedPlayer internal constructor(
         val leftVolume = min(1f, 1f - balance) * volume
         val rightVolume = min(1f, 1f + balance) * volume
         setVolume(leftVolume, rightVolume)
-    }
-
-    fun dispose() {
-        release()
-        eventHandler.dispose()
     }
 }

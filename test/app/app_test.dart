@@ -120,17 +120,11 @@ void main() {
     expect(controller.value, selectedPosition);
     final popupPlay = find.descendant(
       of: popup,
-      matching: find.byIcon(PhosphorIcons.playFill),
+      matching: find.byType(AlbumPlayButton),
     );
-    expect(tester.getSize(popupPlay).width, greaterThan(32));
-    await tester.tap(popupPlay);
-    await tester.pump();
-    final popupPause = find.descendant(
-      of: popup,
-      matching: find.byIcon(PhosphorIcons.pauseFill),
-    );
-    await tester.tap(popupPause);
-    await tester.pump();
+    expect(tester.widget<AlbumPlayButton>(popupPlay).diameter, 34);
+    expect(tester.getSize(popupPlay), const Size.square(44));
+    expect(find.text('Track list unavailable.'), findsOneWidget);
     await dismissAlbum(hiddenOffset);
     expect(find.byType(SelectedAlbum), findsOneWidget);
     expect(canvas().hiddenTileOffset, isNull);

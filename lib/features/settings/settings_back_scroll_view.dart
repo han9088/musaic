@@ -21,20 +21,33 @@ class SettingsBackScrollView extends StatefulWidget {
 }
 
 class _SettingsBackScrollViewState extends State<SettingsBackScrollView> {
+  static const _pullStartSlop = 40.0;
+
+  double? _remainingPullSlop;
   double _pull = 0;
 
   double _applyDragOffset(ScrollMetrics position, double offset) {
+    final remainingSlop = _remainingPullSlop;
+    if (remainingSlop == null || position.extentBefore > 0) {
+      _remainingPullSlop = null;
+      return offset;
+    }
+
+    if (offset > 0) {
+      final slop = math.min(offset, remainingSlop);
+      _remainingPullSlop = remainingSlop - slop;
+      offset -= slop;
+    }
+
     final previousPull = _pull;
-    // Scroll to the top first, then hand the remaining drag to the route.
-    final pullDelta = offset > 0
-        ? math.max(0.0, offset - position.extentBefore)
-        : offset;
-    _pull = (_pull + pullDelta).clamp(0.0, widget.distance);
+    _pull = (_pull + offset).clamp(0.0, widget.distance);
     if (_pull != previousPull) widget.onPull(_pull / widget.distance);
+    if (offset < 0 && _pull == 0) _remainingPullSlop = _pullStartSlop;
     return offset - (_pull - previousPull);
   }
 
   void _finishPull({required bool canceled}) {
+    _remainingPullSlop = null;
     if (_pull == 0) return;
     final fraction = _pull / widget.distance;
     _pull = 0;
@@ -44,9 +57,16 @@ class _SettingsBackScrollViewState extends State<SettingsBackScrollView> {
   @override
   Widget build(BuildContext context) => Listener(
     onPointerCancel: (_) => _finishPull(canceled: true),
-    child: NotificationListener<ScrollEndNotification>(
+    child: NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (notification.depth == 0) _finishPull(canceled: false);
+        if (notification.depth != 0) return false;
+        if (notification is ScrollStartNotification &&
+            notification.dragDetails != null &&
+            notification.metrics.extentBefore == 0) {
+          _remainingPullSlop = _pullStartSlop;
+        } else if (notification is ScrollEndNotification) {
+          _finishPull(canceled: false);
+        }
         return false;
       },
       child: CustomScrollView(

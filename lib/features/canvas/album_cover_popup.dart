@@ -9,8 +9,9 @@ import '../artwork/presentation/xerox_palette.dart';
 Future<void> showAlbumCoverPopup({
   required BuildContext source,
   required Widget artwork,
-  required Widget playButton,
   required VoidCallback onReturned,
+  Widget? trackList,
+  GestureLongPressStartCallback? onCoverLongPress,
 }) async {
   final navigator = Navigator.of(source, rootNavigator: true);
   final origin = RectFlipTransition.originOf(source, navigator);
@@ -28,23 +29,23 @@ Future<void> showAlbumCoverPopup({
     // The cover's transform is the complete transition. Skip the route fade.
     transitionBuilder: (_, _, _, child) => child,
     pageBuilder: (context, animation, _) {
+      final front = ColoredBox(color: Colors.black, child: artwork);
       final content = _AlbumCoverPopup(
         origin: origin,
         animation: animation,
-        child: ColoredBox(
-          color: Colors.black,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              artwork,
-              AnimatedBuilder(
-                animation: animation,
-                child: playButton,
-                builder: (_, child) =>
-                    animation.isCompleted ? child! : const SizedBox.shrink(),
-              ),
-            ],
-          ),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onLongPressStart: onCoverLongPress,
+          child: trackList == null
+              ? front
+              : AnimatedBuilder(
+                  animation: animation,
+                  child: front,
+                  builder: (_, child) =>
+                      RectFlipTransition.curve.transform(animation.value) >= 0.5
+                      ? trackList
+                      : child!,
+                ),
         ),
       );
       return DirectoryArtworkScope(

@@ -295,17 +295,17 @@ void main() {
         await tester.pump(const Duration(milliseconds: 450));
         final tile = find.widgetWithText(
           SwitchListTile,
-          'Show layout switch button',
+          'Show layout switcher',
         );
         expect(
-          find.textContaining('Use Cover Flow in portrait.'),
+          find.text('Switch to Cover Flow in portrait mode.'),
           findsOneWidget,
         );
         expect(tester.widget<SwitchListTile>(tile).value, !enabled);
         await tester.tap(tile);
         await tester.pump();
         expect(tester.widget<SwitchListTile>(tile).value, enabled);
-        await tester.tap(find.byIcon(PhosphorIcons.caretDown));
+        await tester.tap(find.byIcon(PhosphorIcons.caretDownBold));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 450));
         sheet.dismiss();

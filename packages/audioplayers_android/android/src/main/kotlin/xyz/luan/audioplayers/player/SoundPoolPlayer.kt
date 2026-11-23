@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import xyz.luan.audioplayers.AudioContextAndroid
-import xyz.luan.audioplayers.AudioplayersPlugin
 import xyz.luan.audioplayers.source.Source
 import xyz.luan.audioplayers.source.UrlSource
 import java.util.Collections.synchronizedMap
@@ -21,7 +20,7 @@ class SoundPoolPlayer(
     val wrappedPlayer: WrappedPlayer,
     private val soundPoolManager: SoundPoolManager,
 ) : PlayerWrapper {
-    private val mainScope = CoroutineScope(Dispatchers.Main)
+    private val loadScope = CoroutineScope(Dispatchers.IO)
 
     /** The id of the sound of source which will be played */
     var soundId: Int? = null
@@ -115,11 +114,12 @@ class SoundPoolPlayer(
                         val soundPoolPlayer = this
                         wrappedPlayer.handleLog("Fetching actual URL for $value")
 
-                        // Need to load sound on another thread than main to avoid `NetworkOnMainThreadException`
-                        mainScope.launch(Dispatchers.IO) {
+                        loadScope.launch {
                             val actualUrl = value.getAudioPathForSoundPool()
-                            // Run on main thread again
-                            mainScope.launch(Dispatchers.Main) {
+                            wrappedPlayer.playbackHandler.post {
+                                if (soundPoolWrapper.urlToPlayers[value]?.contains(soundPoolPlayer) != true) {
+                                    return@post
+                                }
                                 wrappedPlayer.handleLog("Now loading $actualUrl")
                                 val intSoundId = soundPool.load(actualUrl, 1)
                                 soundPoolWrapper.soundIdToPlayer[intSoundId] = soundPoolPlayer
@@ -206,7 +206,7 @@ class SoundPoolPlayer(
 }
 
 class SoundPoolManager(
-    private val ref: AudioplayersPlugin,
+    private val log: (String) -> Unit,
 ) {
 
     // Only needed for legacy apps with SDK < 21
@@ -233,10 +233,10 @@ class SoundPoolManager(
                     .setAudioAttributes(attrs)
                     .setMaxStreams(maxStreams)
                     .build()
-                ref.handleGlobalLog("Create SoundPool with $attrs")
+                log("Create SoundPool with $attrs")
                 val soundPoolWrapper = SoundPoolWrapper(soundPool)
                 soundPoolWrapper.soundPool.setOnLoadCompleteListener { _, sampleId, _ ->
-                    ref.handleGlobalLog("Loaded $sampleId")
+                    log("Loaded $sampleId")
                     val loadingPlayer = soundPoolWrapper.soundIdToPlayer[sampleId]
                     val urlSource = loadingPlayer?.urlSource
                     if (urlSource != null) {
@@ -260,7 +260,7 @@ class SoundPoolManager(
         } else if (legacySoundPoolWrapper == null) {
             @Suppress("DEPRECATION")
             val soundPool = SoundPool(maxStreams, AudioManager.STREAM_MUSIC, 0)
-            ref.handleGlobalLog("Create legacy SoundPool")
+            log("Create legacy SoundPool")
             legacySoundPoolWrapper = SoundPoolWrapper(soundPool)
         }
     }

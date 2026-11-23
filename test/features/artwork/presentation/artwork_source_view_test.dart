@@ -77,9 +77,9 @@ class _Rasterizer extends XeroxRasterizer {
   }
 }
 
-Future<MemoryImage> _wideImage() async {
+Future<MemoryImage> _wideImage({Color color = const Color(0xffffffff)}) async {
   final recorder = ui.PictureRecorder();
-  ui.Canvas(recorder).drawColor(const ui.Color(0xffffffff), ui.BlendMode.src);
+  ui.Canvas(recorder).drawColor(color, ui.BlendMode.src);
   final picture = recorder.endRecording();
   final image = picture.toImageSync(512, 256);
   picture.dispose();
@@ -92,6 +92,53 @@ Future<MemoryImage> _wideImage() async {
 }
 
 void main() {
+  testWidgets('the artwork accent uses the original color in Xerox mode', (
+    tester,
+  ) async {
+    const original = Color(0xff397ace);
+    final image = (await tester.runAsync(() => _wideImage(color: original)))!;
+    final pipeline = ArtworkPipeline(
+      resolver: _Resolver(
+        ArtworkResource(
+          identity: 'accent-album',
+          sourceKey: 'accent-original',
+          image: image,
+        ),
+      ),
+      rasterCache: XeroxRasterCache(
+        rasterizer: _Rasterizer(),
+        diskCache: _NoDisk(),
+      ),
+      backgroundProcessor: _NoBackgroundProcessing(),
+    );
+    Color? accent;
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: ArtworkSourceView(
+            request: const ArtworkRequest(
+              source: 'accent-cover',
+              fixedResolution: 128,
+            ),
+            placeholder: const SizedBox.shrink(),
+            pipeline: pipeline,
+            xerox: true,
+            accentBuilder: (_, child, color) {
+              accent = color;
+              return child;
+            },
+          ),
+        ),
+      );
+      for (var frame = 0; accent == null && frame < 50; frame++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await tester.pump();
+      }
+    });
+    expect(accent?.toARGB32(), original.toARGB32());
+  });
+
   testWidgets('a replacement cover can paint an already resolved source', (
     tester,
   ) async {

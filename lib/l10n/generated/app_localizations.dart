@@ -106,6 +106,48 @@ abstract class AppLocalizations {
   /// **'Musaic'**
   String get appTitle;
 
+  /// No description provided for @albumCoversLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法加载专辑封面。'**
+  String get albumCoversLoadFailed;
+
+  /// No description provided for @albumTracksUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无曲目信息。'**
+  String get albumTracksUnavailable;
+
+  /// No description provided for @artworkAddCover.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加封面'**
+  String get artworkAddCover;
+
+  /// No description provided for @artworkChangeCover.
+  ///
+  /// In zh, this message translates to:
+  /// **'更换封面'**
+  String get artworkChangeCover;
+
+  /// No description provided for @artworkRestoreCover.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复原封面'**
+  String get artworkRestoreCover;
+
+  /// No description provided for @artworkRestoreFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法恢复原封面。'**
+  String get artworkRestoreFailed;
+
+  /// No description provided for @artworkSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法保存封面，请换一张图片试试。'**
+  String get artworkSaveFailed;
+
   /// No description provided for @settings.
   ///
   /// In zh, this message translates to:
@@ -139,7 +181,7 @@ abstract class AppLocalizations {
   /// No description provided for @usageGuideBrowse.
   ///
   /// In zh, this message translates to:
-  /// **'拖动画布浏览专辑，点一下封面选中，再点一次放大。在 Cover Flow 中左右滑动切换专辑，从中间封面向上拖动可展开，向下拖动可收起。'**
+  /// **'拖动画布浏览音乐，点一下封面选中，再点一次翻转。在 Cover Flow 中左右滑动浏览，向上拖动中间的封面可翻转。多首歌的专辑会显示曲目列表。'**
   String get usageGuideBrowse;
 
   /// No description provided for @usageGuidePlaybackTitle.
@@ -157,7 +199,7 @@ abstract class AppLocalizations {
   /// No description provided for @usageGuideReplayDemo.
   ///
   /// In zh, this message translates to:
-  /// **'重播拖拽演示'**
+  /// **'重播演示'**
   String get usageGuideReplayDemo;
 
   /// No description provided for @usageGuideDragHint.

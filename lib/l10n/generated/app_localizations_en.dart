@@ -15,23 +15,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get albumCoversLoadFailed => 'Couldn’t load album covers.';
+
+  @override
+  String get albumTracksUnavailable => 'Track list unavailable.';
+
+  @override
+  String get artworkAddCover => 'Add cover';
+
+  @override
+  String get artworkChangeCover => 'Change cover';
+
+  @override
+  String get artworkRestoreCover => 'Restore original cover';
+
+  @override
+  String get artworkRestoreFailed => 'Couldn’t restore the original cover.';
+
+  @override
+  String get artworkSaveFailed => 'Couldn’t save the cover. Try another image.';
+
+  @override
   String get settings => 'Settings';
 
   @override
   String get settingsAboutAndHelp => 'About & help';
 
   @override
-  String get settingsUsageGuide => 'User guide';
+  String get settingsUsageGuide => 'Wizard';
 
   @override
-  String get usageGuideDismiss => 'Close and don’t show again';
+  String get usageGuideDismiss => 'Don’t show again';
 
   @override
   String get usageGuideBrowseTitle => 'Browse albums';
 
   @override
   String get usageGuideBrowse =>
-      'Drag the album canvas to browse. Tap a cover to select it, then tap it again to enlarge it. In Cover Flow, swipe left or right to browse albums. Drag up on the center cover to expand it, and drag down to close the preview.';
+      'Drag the canvas to browse music. Tap a cover to select it, then tap again to flip it. In Cover Flow, swipe left or right to browse and drag the center cover up to flip it. Albums with multiple tracks show a track list.';
 
   @override
   String get usageGuidePlaybackTitle => 'Play music';
@@ -40,11 +61,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get usageGuidePlaybackBar => 'Playback bar';
 
   @override
-  String get usageGuideReplayDemo => 'Replay the drag demo';
+  String get usageGuideReplayDemo => 'Replay the demo';
 
   @override
   String get usageGuideDragHint =>
-      'Pull briefly to skip. Pull and hold to seek.';
+      'Drag and release to skip tracks. Drag and hold to rewind or fast-forward.';
 
   @override
   String get usageGuideDragFastForward => 'Fast-forward';
@@ -54,29 +75,29 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get usageGuidePlayback =>
-      'Use the play button on an album cover to start playback. Pause or resume from the playback bar at the bottom of the canvas. While playing a track from your device library, drag the bar left for the previous track or right for the next one.';
+      'Tap the play button on an album cover to start listening. Use the playback bar at the bottom to pause or resume. When playing music from your device, give the bar a quick drag left for the previous track or right for the next one. Drag and hold to rewind or fast-forward.';
 
   @override
   String get usageGuideMusic =>
-      'Open Music source in Settings to switch between the built-in demo collections. The demos simulate playback.';
+      'Go to Settings > Music source to try a built-in demo collection. The demos let you explore the playback controls without sound.';
 
   @override
   String get usageGuideMusicMobile =>
-      'Choose Local music and grant access to browse your device library, or use Add folder to scan music files in a folder.';
+      'Choose Local music and allow access when prompted. To play music from a specific folder, tap Add folder and choose the folder.';
 
   @override
   String get usageGuideLayoutTitle => 'Switch layouts';
 
   @override
   String get usageGuideLayout =>
-      'In Appearance & display, turn on Show layout switch button. Use that button to switch between the album canvas and Cover Flow.';
+      'In Appearance & display, turn on Show layout switcher. Tap the switcher to move between the album canvas and Cover Flow.';
 
   @override
   String get usageGuideCameraTitle => 'Camera background';
 
   @override
   String get usageGuideCamera =>
-      'Press and hold the Cover Flow title to turn the camera background on or off. With the camera on, tap an empty part of the screen to take a photo and save it to your photo library.';
+      'Press and hold the Cover Flow title to turn the camera background on or off. When it’s on, tap a blank area to take a photo. Musaic saves it to your photo library.';
 
   @override
   String get settingsSupport => 'Support';
@@ -98,14 +119,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsContactEmailUnavailable =>
-      'Couldn’t open or send this email. Check your mail app and try again.';
+      'Couldn’t open your email app. Check that it’s set up and try again.';
 
   @override
   String get settingsReviewUnavailable =>
-      'The store review page is currently unavailable.';
+      'Couldn’t open the ratings page. Try again later.';
 
   @override
-  String get settingsShareLinkCopied => 'Musaic link copied.';
+  String get settingsShareLinkCopied => 'Link copied.';
 
   @override
   String get settingsShareUnavailable =>
@@ -116,33 +137,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diagnosticsPrivacy =>
-      'Musaic generates this report on your device to help diagnose issues. It includes recent app events, your device model, and OS and app versions. It excludes account details, device IDs, music information, photos, and local file paths. You can export and review it before sending.';
+      'Musaic creates this report on your device. It includes recent app activity, your device model, and OS and app versions. It leaves out account details, device IDs, music data, photos, and local file paths. You can save and review it before sending.';
 
   @override
-  String get diagnosticsDescription => 'Problem description (optional)';
+  String get diagnosticsDescription => 'What happened? (optional)';
 
   @override
   String get diagnosticsDescriptionHint =>
-      'Describe what happened and, if you can, how to reproduce it.';
+      'Describe what happened and how to reproduce it.';
 
   @override
-  String get diagnosticsAttachment => 'Log attachment (.txt)';
+  String get diagnosticsAttachment => 'Diagnostic log (.txt)';
 
   @override
   String get diagnosticsExport => 'Export logs';
 
   @override
-  String get diagnosticsExported => 'Diagnostic logs exported.';
+  String get diagnosticsExported => 'Log saved.';
 
   @override
   String get diagnosticsExportFailed => 'Couldn’t export the logs. Try again.';
 
   @override
-  String get diagnosticsEmail => 'Agree and send by email';
+  String get diagnosticsEmail => 'Agree and email report';
 
   @override
   String get diagnosticsEmailSubtitle =>
-      'The log is attached and your description goes in the email body.';
+      'We’ll attach the log and add your description to the email.';
 
   @override
   String get diagnosticsEmailSubject => 'Musaic feedback';
@@ -161,11 +182,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get diagnosticsMailUnavailable =>
-      'Couldn’t open a mail composer with attachments. You can export the log and attach it to an email manually.';
+      'Couldn’t open an email app that supports attachments. Export the log and attach it to an email yourself.';
 
   @override
   String get diagnosticsMailFailed =>
-      'Couldn’t open the feedback email. Try again.';
+      'Couldn’t start a feedback email. Try again.';
 
   @override
   String get settingsAbout => 'About Musaic';
@@ -180,10 +201,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCheckUpdate => 'Check for updates';
 
   @override
-  String get settingsNoRelease => 'No public releases are available yet.';
+  String get settingsNoRelease => 'There are no public releases yet.';
 
   @override
-  String get settingsUpToDate => 'You’re on the latest published version.';
+  String get settingsUpToDate => 'You’re up to date.';
 
   @override
   String settingsUpdateAvailable(String version) {
@@ -195,21 +216,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t check for updates. Try again later.';
 
   @override
-  String get settingsViewRelease => 'View release';
+  String get settingsViewRelease => 'View on GitHub';
 
   @override
   String get settingsPrivacyPolicy => 'Privacy policy';
 
   @override
   String get settingsPrivacyDetails =>
-      'Musaic reads the music library you authorize and the folders you select to show albums and artwork. Library indexes, artwork caches, and preferences are stored on your device.\n\nThe Cover Flow camera uses your camera permission. Photos you take can be saved to your photo library. You can manage these permissions in system settings.\n\nWhen you check for updates, Musaic requests public release information from GitHub. Your music, photos, and library contents are not included in the request.';
+      'Musaic uses your music library and the folders you choose to show your albums and artwork. Your library index, cached artwork, and preferences stay on your device.\n\nThe live background in Cover Flow uses your camera. You can save photos you take to your photo library. Manage camera and photo access in your device settings.\n\nWhen you check for updates, Musaic asks GitHub for public release information. The request contains none of your music, photos, or library contents.';
 
   @override
   String get settingsWhatsNew => 'What’s New';
 
   @override
   String get settingsWhatsNewDetails =>
-      '• Use Cover Flow in portrait and tap the rotate button to return to the canvas from landscape.\n\n• Enlarged Cover Flow previews load higher-resolution artwork when available.\n\n• The canvas reuses loaded local artwork when returning from Cover Flow.';
+      '• Cover Flow now works in portrait mode. In landscape, tap the rotate button to return to the canvas.\n\n• Album previews in Cover Flow use sharper artwork when it’s available.\n\n• The canvas reuses artwork from your device when you switch back from Cover Flow.';
 
   @override
   String get settingsAppearance => 'Appearance & display';
@@ -227,33 +248,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageNoResults => 'No languages found';
 
   @override
-  String get settingsShowLayoutSwitch => 'Show layout switch button';
+  String get settingsShowLayoutSwitch => 'Show layout switcher';
 
   @override
   String get settingsShowLayoutSwitchDescription =>
-      'Use Cover Flow in portrait.';
+      'Switch to Cover Flow in portrait mode.';
 
   @override
   String get coverFlowCameraDenied =>
-      'Allow camera access in system settings to use the live background.';
+      'To use the live background, allow camera access in your device settings.';
 
   @override
-  String get coverFlowCameraFailed =>
-      'Could not open the camera. Please try again.';
+  String get coverFlowCameraFailed => 'Couldn’t open the camera. Try again.';
 
   @override
   String get coverFlowPhotoSaveFailed =>
-      'Could not save the photo. Check photo access and available storage, then try again.';
+      'Couldn’t save the photo. Check photo library permissions and available storage, then try again.';
 
   @override
-  String get coverFlowPhotoPreview => 'Open captured photo';
+  String get coverFlowPhotoPreview => 'View photo';
 
   @override
   String get coverFlowPhotoDelete => 'Delete photo';
 
   @override
   String get coverFlowPhotoDeleteFailed =>
-      'Could not delete the photo. Check photo access and try again.';
+      'Couldn’t delete the photo. Check photo library permissions and try again.';
 
   @override
   String get appIcon => 'App icon';
@@ -268,14 +288,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appIconMosaic => 'Mosaic';
 
   @override
-  String get appIconLoadFailed => 'Could not load app icons.';
+  String get appIconLoadFailed => 'Couldn’t load app icons.';
 
   @override
-  String get appIconChangeFailed =>
-      'Could not change the app icon. Please try again.';
+  String get appIconChangeFailed => 'Couldn’t change the app icon. Try again.';
 
   @override
-  String get appIconUnsupported => 'App icon switching is not supported.';
+  String get appIconUnsupported =>
+      'You can’t change the app icon on this device.';
 
   @override
   String get retry => 'Retry';
@@ -296,54 +316,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicSourceDemoGroup => 'Demo';
 
   @override
-  String get musicSourceDeviceGroup => 'Device music';
+  String get musicSourceDeviceGroup => 'On this device';
 
   @override
-  String get musicSourceMock => 'Demo music (Mock)';
+  String get musicSourceMock => 'Demo collection 1';
 
   @override
-  String get musicSourceMock2 => 'Demo music (Mock 2)';
+  String get musicSourceMock2 => 'Demo collection 2';
 
   @override
   String get musicSourceLocal => 'Local music';
 
   @override
-  String get musicSourceLocalHint =>
-      'Allow access and scan the device music library';
+  String get musicSourceLocalHint => 'Browse and play music from your device';
 
   @override
-  String get musicSourceScanning => 'Authorizing or scanning…';
+  String get musicSourceScanning => 'Getting your music library ready…';
 
   @override
   String get musicSourceRescan => 'Rescan';
 
   @override
   String musicSourceAlbumCount(int count) {
-    return '$count albums';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count albums',
+      one: '1 album',
+    );
+    return '$_temp0';
   }
 
   @override
   String get musicSourceDenied =>
-      'Music access was not granted. Source unchanged. Retry or allow access in system settings.';
+      'Allow access to your music library in your device settings, then try again.';
 
   @override
   String get musicSourceRestricted =>
-      'Music library access is restricted. Source unchanged.';
+      'Your device restricts access to the music library.';
 
   @override
   String get musicSourceUnavailable =>
-      'The local music library is not supported on this platform.';
+      'Local music isn’t available on this platform.';
 
   @override
-  String get musicSourceScanFailed =>
-      'Could not scan or switch music source. Please retry.';
+  String get musicSourceScanFailed => 'Couldn’t load your music. Try again.';
 
   @override
-  String get musicSourceEmpty => 'No albums in the local music library';
+  String get musicSourceEmpty => 'No albums found in your music library';
 
   @override
   String get musicPlaybackFailed =>
-      'Could not play this local album. Check the file and music access.';
+      'Couldn’t play this album. Check that the music files are available and Musaic has access.';
 
   @override
   String get musicNotPlaying => 'Not playing';
@@ -361,10 +385,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicNextTrack => 'Next track';
 
   @override
-  String get musicRewind => 'Rewind five seconds';
+  String get musicRewind => 'Go back 5 seconds';
 
   @override
-  String get musicFastForward => 'Fast-forward five seconds';
+  String get musicFastForward => 'Skip ahead 5 seconds';
 
   @override
   String get musicDirectories => 'Music folders';
@@ -376,7 +400,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicCancelScan => 'Cancel scan';
 
   @override
-  String get musicForceRefresh => 'Re-read all metadata';
+  String get musicForceRefresh => 'Rescan all files';
 
   @override
   String get musicReauthorize => 'Restore folder access';
@@ -386,7 +410,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get musicScanCancelled =>
-      'Scan cancelled. Saved music is still available.';
+      'Scan canceled. Previously scanned music is still available.';
 
   @override
   String musicScanCounts(
@@ -396,28 +420,35 @@ class AppLocalizationsEn extends AppLocalizations {
     int deleted,
     int failed,
   ) {
-    return 'Added $added · Updated $updated · Unchanged $skipped · Removed $deleted · Failed $failed';
+    return '$added added · $updated updated · $skipped unchanged · $deleted removed · $failed failed';
   }
 
   @override
   String musicFolderSummary(int count, String size) {
-    return '$count audio files · $size';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count audio files',
+      one: '1 audio file',
+    );
+    return '$_temp0 · $size';
   }
 
   @override
-  String get musicFolderIncomplete => 'Scan incomplete; saved music retained';
+  String get musicFolderIncomplete =>
+      'Scan didn’t finish. Previously scanned music is still available.';
 
   @override
-  String get enterFullscreen => 'Enter fullscreen';
+  String get enterFullscreen => 'Enter full screen';
 
   @override
-  String get exitFullscreen => 'Exit fullscreen';
+  String get exitFullscreen => 'Exit full screen';
 
   @override
-  String get fullscreenFailed => 'Could not change fullscreen mode. Try again.';
+  String get fullscreenFailed => 'Couldn’t change full-screen mode. Try again.';
 
   @override
-  String get xeroxMode => 'Xerox mode';
+  String get xeroxMode => 'Xerox';
 
   @override
   String get xeroxPaperColor => 'Paper color';
