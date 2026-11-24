@@ -97,7 +97,7 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   Timer? _startTimer;
   Completer<void>? _cancelFocusHold;
   bool _eligible = false;
-  bool _interrupted = false;
+  final Set<int> _activePointers = {};
   bool _playing = false;
 
   bool get _canPlay {
@@ -120,9 +120,7 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   Future<void> _restore() async {
     final revision = UsageGuidePreference.introReset.value;
     final eligible = await UsageGuidePreference.shouldPlayIntro(widget.intro);
-    if (!mounted ||
-        _interrupted ||
-        revision != UsageGuidePreference.introReset.value) {
+    if (!mounted || revision != UsageGuidePreference.introReset.value) {
       return;
     }
     _eligible = eligible;
@@ -130,8 +128,10 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   }
 
   void _onIntroReset() {
-    _interrupt();
-    _interrupted = false;
+    _startTimer?.cancel();
+    _startTimer = null;
+    _eligible = false;
+    _stop();
     unawaited(_restore());
   }
 
@@ -148,7 +148,7 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   }
 
   void _schedule() {
-    if (!_canPlay) {
+    if (!_canPlay || _activePointers.isNotEmpty) {
       _startTimer?.cancel();
       _startTimer = null;
       _stop();
@@ -188,11 +188,46 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   }
 
   void _interrupt() {
-    _interrupted = true;
     _eligible = false;
     _startTimer?.cancel();
     _startTimer = null;
     _stop();
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointers.add(event.pointer);
+    _deferForInput();
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    _activePointers.remove(event.pointer);
+    _schedule();
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _activePointers.remove(event.pointer);
+    _schedule();
+  }
+
+  void _handlePointerSignal(PointerSignalEvent event) {
+    _deferForInput();
+    _schedule();
+  }
+
+  void _handlePointerPanZoomStart(PointerPanZoomStartEvent event) {
+    _activePointers.add(event.pointer);
+    _deferForInput();
+  }
+
+  void _handlePointerPanZoomEnd(PointerPanZoomEndEvent event) {
+    _activePointers.remove(event.pointer);
+    _schedule();
+  }
+
+  void _deferForInput() {
+    _startTimer?.cancel();
+    _startTimer = null;
+    if (_playing) _interrupt();
   }
 
   void _stop() {
@@ -216,13 +251,12 @@ class _FirstUseGestureGuideState extends State<FirstUseGestureGuide>
   @override
   Widget build(BuildContext context) => Listener(
     behavior: HitTestBehavior.translucent,
-    onPointerDown: _handleInput,
-    onPointerSignal: _handleInput,
-    onPointerPanZoomStart: _handleInput,
+    onPointerDown: _handlePointerDown,
+    onPointerUp: _handlePointerUp,
+    onPointerCancel: _handlePointerCancel,
+    onPointerSignal: _handlePointerSignal,
+    onPointerPanZoomStart: _handlePointerPanZoomStart,
+    onPointerPanZoomEnd: _handlePointerPanZoomEnd,
     child: widget.builder(context, _playing ? _preview : null),
   );
-
-  void _handleInput(PointerEvent _) {
-    if (_playing || _canPlay) _interrupt();
-  }
 }

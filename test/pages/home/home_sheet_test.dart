@@ -114,6 +114,38 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('first-use guide waits for input to finish before starting', (
+    tester,
+  ) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    final playback = AlbumPlayback();
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(playback: playback, child: const SizedBox.expand()),
+        ),
+      ),
+    );
+
+    final spotlight = find.byType(GestureGuideSpotlight);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 900));
+    await tester.tapAt(const Offset(100, 100));
+    await tester.pump();
+    expect(spotlight, findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1799));
+    expect(spotlight, findsNothing);
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pump(const Duration(milliseconds: 680));
+    expect(spotlight, findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('first-use guide reveals and closes the first settings detent', (
     tester,
   ) async {
@@ -270,6 +302,8 @@ void main() {
       expect(find.text('Wizard'), findsNothing);
       sheet.dismiss();
       await tester.pumpAndSettle();
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pump();
       await tester.pump(const Duration(seconds: 2));
       expect(find.byType(GestureGuideSpotlight), findsOneWidget);
 
