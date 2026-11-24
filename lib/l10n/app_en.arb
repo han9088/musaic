@@ -1,6 +1,8 @@
 {
   "@@locale": "en",
   "appTitle": "Musaic",
+  "desktopWallpaperSet": "Set as Wallpaper",
+  "desktopWallpaperRestore": "Restore Window",
   "albumCoversLoadFailed": "Couldn’t load album covers.",
   "albumTracksUnavailable": "Track list unavailable.",
   "artworkAddCover": "Add cover",

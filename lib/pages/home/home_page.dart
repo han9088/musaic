@@ -34,8 +34,10 @@ import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
 import '../../features/coverflow/album_coverflow.dart';
+import '../../features/desktop_wallpaper/desktop_wallpaper.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
+import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/transitions/source_tile_motion.dart';
 import '../../features/music/transition/home_source_transition.dart';
 import '../../features/music/playback/album_playback.dart';
@@ -499,6 +501,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _drift = CanvasDrift();
   late final _interaction = CanvasInteractionState(_drift);
   bool _reduceMotion = false;
+  bool _desktopWallpaperEnabled = false;
+  Locale? _desktopWallpaperMenuLocale;
   bool _landscape = false;
   bool _lastAutomaticLandscape = false;
   bool? _manualLayout;
@@ -512,6 +516,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    DesktopWallpaper.setHandlers(
+      onPrepare: _prepareDesktopWallpaper,
+      onRestore: _restoreDesktopWallpaperControls,
+    );
     _ticker = createTicker(_advance);
     _layout = AnimationController(
       vsync: this,
@@ -579,9 +587,41 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  Future<bool> _prepareDesktopWallpaper() async {
+    if (_desktopWallpaperEnabled ||
+        ModalRoute.isCurrentOf(context) == false ||
+        BottomSheetScope.maybeOf(context)?.sheetStore.snapshot.isPresented ==
+            true) {
+      return false;
+    }
+    setState(() {
+      _desktopWallpaperEnabled = true;
+      _albumLayout.selectedAlbum = null;
+      _interaction.resetForLayoutChange();
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    return mounted;
+  }
+
+  void _restoreDesktopWallpaperControls() =>
+      setState(() => _desktopWallpaperEnabled = false);
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (DesktopWallpaper.isAvailable) {
+      final locale = Localizations.localeOf(context);
+      if (_desktopWallpaperMenuLocale != locale) {
+        _desktopWallpaperMenuLocale = locale;
+        final l10n = AppLocalizations.of(context);
+        unawaited(
+          DesktopWallpaper.setMenuTitles(
+            setWallpaper: l10n.desktopWallpaperSet,
+            restoreWindow: l10n.desktopWallpaperRestore,
+          ),
+        );
+      }
+    }
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
     final automaticLandscape = _automaticLandscape;
     if (automaticLandscape) {
@@ -665,6 +705,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    DesktopWallpaper.clearHandlers();
     unawaited(_haptics.dispose());
     _stopSourceListener();
     _stopManualRotationListener();
@@ -724,7 +765,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     Widget homeSheet(({Widget button, bool visible})? layoutSwitch) =>
         HomeSheet(
-          enabled: !_landscape && !_lastAutomaticLandscape,
+          enabled:
+              !_desktopWallpaperEnabled &&
+              !_landscape &&
+              !_lastAutomaticLandscape,
           playbackReady: _landscapeFlowViewport == null || !_layout.isAnimating,
           sources: _sources,
           playback: _playback,
@@ -743,7 +787,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         );
     return SignalBuilder(
       builder: (context) => LayoutSwitchOverlay(
-        enabled: _manualRotation.enabled.value,
+        enabled: !_desktopWallpaperEnabled && _manualRotation.enabled.value,
         coverFlow: _landscape,
         screenLandscape: _lastAutomaticLandscape,
         onSwitch: () {

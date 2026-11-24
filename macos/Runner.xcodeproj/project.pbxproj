@@ -31,6 +31,7 @@
 		A11400020000000000000001 /* MusaicText.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000002 /* MusaicText.icon */; };
 		A11800020000000000000001 /* MusaicVinylPrimary.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11800020000000000000002 /* MusaicVinylPrimary.icon */; };
 		A11400020000000000000003 /* AppIconPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000004 /* AppIconPlugin.swift */; };
+		A11400020000000000000005 /* DesktopWallpaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11400020000000000000006 /* DesktopWallpaper.swift */; };
 		A11400040000000000000001 /* MusaicMosaic.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11400040000000000000002 /* MusaicMosaic.icon */; };
 		A11500040000000000000001 /* MusaicVinyl.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11500040000000000000002 /* MusaicVinyl.icon */; };
 		A11600020000000000000001 /* MuasicMosaiclXerox.icon in Resources */ = {isa = PBXBuildFile; fileRef = A11600020000000000000002 /* MuasicMosaiclXerox.icon */; };
@@ -90,6 +91,7 @@
 		A11400020000000000000002 /* MusaicText.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicText.icon; sourceTree = "<group>"; };
 		A11800020000000000000002 /* MusaicVinylPrimary.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinylPrimary.icon; sourceTree = "<group>"; };
 		A11400020000000000000004 /* AppIconPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconPlugin.swift; sourceTree = "<group>"; };
+		A11400020000000000000006 /* DesktopWallpaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopWallpaper.swift; sourceTree = "<group>"; };
 		A11400040000000000000002 /* MusaicMosaic.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicMosaic.icon; sourceTree = "<group>"; };
 		A11500040000000000000002 /* MusaicVinyl.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MusaicVinyl.icon; sourceTree = "<group>"; };
 		A11600020000000000000002 /* MuasicMosaiclXerox.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = MuasicMosaiclXerox.icon; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				A11400020000000000000004 /* AppIconPlugin.swift */,
+				A11400020000000000000006 /* DesktopWallpaper.swift */,
 				A11400020000000000000002 /* MusaicText.icon */,
 				A11800020000000000000002 /* MusaicVinylPrimary.icon */,
 				A11400040000000000000002 /* MusaicMosaic.icon */,
@@ -383,6 +386,7 @@
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				A11400020000000000000003 /* AppIconPlugin.swift in Sources */,
+				A11400020000000000000005 /* DesktopWallpaper.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);

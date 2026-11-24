@@ -106,6 +106,18 @@ abstract class AppLocalizations {
   /// **'Musaic'**
   String get appTitle;
 
+  /// No description provided for @desktopWallpaperSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置成壁纸'**
+  String get desktopWallpaperSet;
+
+  /// No description provided for @desktopWallpaperRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复窗口'**
+  String get desktopWallpaperRestore;
+
   /// No description provided for @albumCoversLoadFailed.
   ///
   /// In zh, this message translates to:

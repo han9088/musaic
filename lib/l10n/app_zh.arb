@@ -1,6 +1,8 @@
 {
   "@@locale": "zh",
   "appTitle": "Musaic",
+  "desktopWallpaperSet": "设置成壁纸",
+  "desktopWallpaperRestore": "恢复窗口",
   "albumCoversLoadFailed": "无法加载专辑封面。",
   "albumTracksUnavailable": "暂无曲目信息。",
   "artworkAddCover": "添加封面",

@@ -15,6 +15,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get desktopWallpaperSet => 'Set as Wallpaper';
+
+  @override
+  String get desktopWallpaperRestore => 'Restore Window';
+
+  @override
   String get albumCoversLoadFailed => 'Couldn’t load album covers.';
 
   @override

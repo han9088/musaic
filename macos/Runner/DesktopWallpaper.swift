@@ -1,0 +1,103 @@
+import Cocoa
+import FlutterMacOS
+
+final class DesktopWallpaper {
+  private unowned let mainWindow: NSWindow
+  private let channel: FlutterMethodChannel
+  private var session: (window: NSWindow, originalFrame: NSRect)?
+  private var preparing = false
+  private var menuTitles = (set: "Set as Wallpaper", restore: "Restore Window")
+
+  init(window: NSWindow, messenger: FlutterBinaryMessenger) {
+    mainWindow = window
+    channel = FlutterMethodChannel(
+      name: "com.deskbtm.musaic/desktop_wallpaper", binaryMessenger: messenger)
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "setMenuTitles",
+        let titles = call.arguments as? [String: String],
+        let set = titles["set"], let restore = titles["restore"]
+      else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      self?.menuTitles = (set: set, restore: restore)
+      result(nil)
+    }
+  }
+
+  var isActive: Bool { session != nil }
+
+  var menuTitle: String { isActive ? menuTitles.restore : menuTitles.set }
+
+  var canToggle: Bool { !preparing && (isActive || canShow) }
+
+  private var canShow: Bool {
+    mainWindow.isVisible && !mainWindow.isMiniaturized
+      && !mainWindow.styleMask.contains(.fullScreen) && mainWindow.attachedSheet == nil
+      && NSApp.modalWindow == nil
+  }
+
+  func toggle() {
+    guard canToggle else { return }
+    if isActive {
+      restoreWindow()
+      return
+    }
+    preparing = true
+    channel.invokeMethod("prepare", arguments: nil) { [weak self] response in
+      guard let self else { return }
+      self.preparing = false
+      guard response as? Bool == true else {
+        NSSound.beep()
+        return
+      }
+      if !self.showWallpaper() {
+        self.channel.invokeMethod("didRestore", arguments: nil)
+        NSSound.beep()
+      }
+    }
+  }
+
+  private func showWallpaper() -> Bool {
+    guard canShow,
+      let controller = mainWindow.contentViewController,
+      let screen = mainWindow.screen ?? NSScreen.main
+    else { return false }
+
+    let window = NSWindow(
+      contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
+    // Place the live view above the system wallpaper and below Finder's icons.
+    window.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) - 1)
+    window.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
+    window.backgroundColor = .black
+    window.hasShadow = false
+    window.hidesOnDeactivate = false
+    window.ignoresMouseEvents = true
+    window.isExcludedFromWindowsMenu = true
+
+    session = (window, mainWindow.frame)
+    mainWindow.orderOut(nil)
+    mainWindow.contentViewController = nil
+    window.contentViewController = controller
+    window.setFrame(screen.frame, display: false)
+    window.orderFrontRegardless()
+    return true
+  }
+
+  private func restoreWindow() {
+    guard let session else { return }
+    let controller = session.window.contentViewController
+    session.window.contentViewController = nil
+    mainWindow.contentViewController = controller
+    mainWindow.setFrame(session.originalFrame, display: false)
+    mainWindow.makeKeyAndOrderFront(nil)
+    session.window.orderOut(nil)
+    self.session = nil
+    channel.invokeMethod("didRestore", arguments: nil)
+  }
+
+  func updateScreenFrame() {
+    guard let window = session?.window, let screen = window.screen ?? NSScreen.main else { return }
+    window.setFrame(screen.frame, display: true)
+  }
+}

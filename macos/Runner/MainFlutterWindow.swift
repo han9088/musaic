@@ -2,6 +2,8 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
+  private(set) var desktopWallpaper: DesktopWallpaper?
+
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
@@ -16,6 +18,7 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     AppIconPlugin.register(with: flutterViewController.registrar(forPlugin: "AppIconPlugin"))
+    desktopWallpaper = DesktopWallpaper(window: self, messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

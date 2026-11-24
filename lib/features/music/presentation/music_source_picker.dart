@@ -42,6 +42,8 @@ class MusicSourcePicker extends StatelessWidget {
         final busy = sources.busy.value;
         final problem = sources.problem.value;
         final directorySelected = sources.directorySelected.value;
+        final windows =
+            !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
         final localSelected = albums != null && !directorySelected;
         final mock2Selected = sources.mock2Selected.value;
         final firstDemoSelected = albums == null && !mock2Selected;
@@ -49,7 +51,7 @@ class MusicSourcePicker extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!demoOnly)
+            if (!demoOnly && !windows)
               ListTile(
                 key: const ValueKey('music-source-apple-music'),
                 leading: const Icon(
@@ -102,7 +104,7 @@ class MusicSourcePicker extends StatelessWidget {
               ),
               onTap: () => _select(sources.selectMock2),
             ),
-            if (!demoOnly && !kIsWeb) ...[
+            if (!demoOnly && !kIsWeb && !windows) ...[
               SettingsSectionHeading(l10n.musicSourceDeviceGroup),
               ListTile(
                 key: const ValueKey('music-source-local'),
