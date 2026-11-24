@@ -16,6 +16,23 @@ const settingsItemPadding = EdgeInsets.symmetric(
 const settingsItemArrowSize = 12.0;
 const settingsItemTitleGap = 12.0;
 
+/// Shared foreground and control colors for the settings sheet and detail pages.
+ThemeData buildSettingsContentTheme(ThemeData base) => base.copyWith(
+  listTileTheme: base.listTileTheme.copyWith(
+    contentPadding: settingsItemPadding,
+    horizontalTitleGap: settingsItemTitleGap,
+    textColor: Colors.white,
+    iconColor: Colors.white70,
+    selectedColor: Colors.white,
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(
+      foregroundColor: Colors.white,
+      disabledForegroundColor: Colors.white38,
+    ),
+  ),
+);
+
 /// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildAppTheme({double fontScale = 1.0}) {
   final base = FlexThemeData.light(

@@ -144,21 +144,7 @@ class SettingsPage extends StatelessWidget {
             slivers: slivers,
           );
     return Theme(
-      data: Theme.of(context).copyWith(
-        listTileTheme: const ListTileThemeData(
-          contentPadding: settingsItemPadding,
-          horizontalTitleGap: settingsItemTitleGap,
-          textColor: Colors.white,
-          iconColor: Colors.white70,
-          selectedColor: Colors.white,
-        ),
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.white,
-            disabledForegroundColor: Colors.white38,
-          ),
-        ),
-      ),
+      data: buildSettingsContentTheme(Theme.of(context)),
       child: Scaffold(
         backgroundColor: Colors.black,
         extendBody: bottomAction != null,

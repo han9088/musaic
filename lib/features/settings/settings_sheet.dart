@@ -58,8 +58,6 @@ class SettingsSheet extends StatelessWidget {
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
         builder: (origin) => ListTile(
-          iconColor: Colors.white70,
-          textColor: Colors.white,
           leading: Icon(icon),
           title: Text(title),
           trailing: const Icon(
@@ -74,35 +72,30 @@ class SettingsSheet extends StatelessWidget {
       SignalBuilder(
         builder: (context) {
           final l10n = AppLocalizations.of(context);
-          return ListTileTheme.merge(
-            iconColor: Colors.white70,
-            textColor: Colors.white,
-            selectedColor: Colors.white,
-            child: AppDropdownMenu<AppLanguage>(
-              leading: const Icon(PhosphorIcons.translate),
-              title: l10n.settingsLanguage,
-              value: preference.selected.value,
-              entries: [
-                AppDropdownMenuEntry(
-                  AppLanguage.system,
-                  l10n.settingsLanguageSystem,
-                  keywords: 'System default 跟随系统',
-                ),
-                const AppDropdownMenuEntry(
-                  AppLanguage.simplifiedChinese,
-                  '简体中文',
-                  keywords: 'Simplified Chinese zh Hans',
-                ),
-                const AppDropdownMenuEntry(
-                  AppLanguage.english,
-                  'English',
-                  keywords: '英文 英语 en',
-                ),
-              ],
-              onSelected: preference.select,
-              searchLabel: l10n.settingsLanguageSearch,
-              emptyLabel: l10n.settingsLanguageNoResults,
-            ),
+          return AppDropdownMenu<AppLanguage>(
+            leading: const Icon(PhosphorIcons.translate),
+            title: l10n.settingsLanguage,
+            value: preference.selected.value,
+            entries: [
+              AppDropdownMenuEntry(
+                AppLanguage.system,
+                l10n.settingsLanguageSystem,
+                keywords: 'System default 跟随系统',
+              ),
+              const AppDropdownMenuEntry(
+                AppLanguage.simplifiedChinese,
+                '简体中文',
+                keywords: 'Simplified Chinese zh Hans',
+              ),
+              const AppDropdownMenuEntry(
+                AppLanguage.english,
+                'English',
+                keywords: '英文 英语 en',
+              ),
+            ],
+            onSelected: preference.select,
+            searchLabel: l10n.settingsLanguageSearch,
+            emptyLabel: l10n.settingsLanguageNoResults,
           );
         },
       );
@@ -192,14 +185,11 @@ class SettingsSheet extends StatelessWidget {
                                               key: const ValueKey(
                                                 'xerox-toggle',
                                               ),
-                                              iconColor: Colors.white70,
-                                              textColor: Colors.white,
                                               title: AppSelectionTitle(
                                                 selected: enabled,
                                                 child: Text(l10n.xeroxMode),
                                               ),
                                               selected: enabled,
-                                              selectedColor: Colors.white,
                                               onTap: () => onChanged(!enabled),
                                             ),
                                             if (enabled && picker != null)
@@ -281,9 +271,8 @@ class SettingsSheet extends StatelessWidget {
         },
       ),
     );
-    return ListTileTheme.merge(
-      contentPadding: settingsItemPadding,
-      horizontalTitleGap: settingsItemTitleGap,
+    return Theme(
+      data: buildSettingsContentTheme(Theme.of(context)),
       child: content,
     );
   }

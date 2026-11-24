@@ -190,32 +190,28 @@ class _SettingsSupportSectionState extends State<SettingsSupportSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return ListTileTheme.merge(
-      iconColor: Colors.white70,
-      textColor: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SettingsSectionHeading(l10n.settingsSupport),
-          ListTile(
-            leading: const Icon(PhosphorIcons.star),
-            title: Text(l10n.settingsRateApp),
-            onTap: _rate,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSectionHeading(l10n.settingsSupport),
+        ListTile(
+          leading: const Icon(PhosphorIcons.star),
+          title: Text(l10n.settingsRateApp),
+          onTap: _rate,
+        ),
+        Builder(
+          builder: (origin) => ListTile(
+            leading: const Icon(PhosphorIcons.share),
+            title: Text(l10n.settingsShareApp),
+            onTap: () => _share(origin),
           ),
-          Builder(
-            builder: (origin) => ListTile(
-              leading: const Icon(PhosphorIcons.share),
-              title: Text(l10n.settingsShareApp),
-              onTap: () => _share(origin),
-            ),
-          ),
-          ListTile(
-            leading: const Icon(PhosphorIcons.chatCircleDots),
-            title: Text(l10n.settingsContactUs),
-            onTap: _showContactDialog,
-          ),
-        ],
-      ),
+        ),
+        ListTile(
+          leading: const Icon(PhosphorIcons.chatCircleDots),
+          title: Text(l10n.settingsContactUs),
+          onTap: _showContactDialog,
+        ),
+      ],
     );
   }
 }

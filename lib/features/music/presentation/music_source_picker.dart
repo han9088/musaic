@@ -74,16 +74,10 @@ class MusicSourcePicker extends StatelessWidget {
               key: const ValueKey('music-source-mock'),
               enabled: !busy && !switching,
               selected: firstDemoSelected,
-              leading: const Icon(
-                PhosphorIcons.squaresFour,
-                color: Colors.white70,
-              ),
+              leading: const Icon(PhosphorIcons.squaresFour),
               title: AppSelectionTitle(
                 selected: firstDemoSelected,
-                child: Text(
-                  l10n.musicSourceMock,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                child: Text(l10n.musicSourceMock),
               ),
               onTap: () => _select(sources.selectMock),
             ),
@@ -97,10 +91,7 @@ class MusicSourcePicker extends StatelessWidget {
               ),
               title: AppSelectionTitle(
                 selected: secondDemoSelected,
-                child: Text(
-                  l10n.musicSourceMock2,
-                  style: const TextStyle(color: Colors.white),
-                ),
+                child: Text(l10n.musicSourceMock2),
               ),
               onTap: () => _select(sources.selectMock2),
             ),
@@ -110,16 +101,10 @@ class MusicSourcePicker extends StatelessWidget {
                 key: const ValueKey('music-source-local'),
                 enabled: !busy && !switching,
                 selected: localSelected,
-                leading: const Icon(
-                  PhosphorIcons.musicNotes,
-                  color: Colors.white70,
-                ),
+                leading: const Icon(PhosphorIcons.musicNotes),
                 title: AppSelectionTitle(
                   selected: localSelected && !busy,
-                  child: Text(
-                    l10n.musicSourceLocal,
-                    style: const TextStyle(color: Colors.white),
-                  ),
+                  child: Text(l10n.musicSourceLocal),
                 ),
                 subtitle: Text(
                   busy
@@ -151,16 +136,10 @@ class MusicSourcePicker extends StatelessWidget {
             ],
             if (sources.directories case final library? when !demoOnly) ...[
               ListTile(
-                leading: const Icon(
-                  PhosphorIcons.folder,
-                  color: Colors.white70,
-                ),
+                leading: const Icon(PhosphorIcons.folder),
                 title: AppSelectionTitle(
                   selected: directorySelected,
-                  child: Text(
-                    l10n.musicDirectories,
-                    style: const TextStyle(color: Colors.white),
-                  ),
+                  child: Text(l10n.musicDirectories),
                 ),
                 selected: directorySelected,
                 onTap: busy || switching
@@ -204,10 +183,7 @@ class MusicSourcePicker extends StatelessWidget {
                     title: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          root.name,
-                          style: const TextStyle(color: Colors.white),
-                        ),
+                        Text(root.name),
                         for (final folder in library.folders.value.where(
                           (f) => f.id == root.id,
                         ))
