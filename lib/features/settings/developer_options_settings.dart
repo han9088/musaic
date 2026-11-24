@@ -58,17 +58,16 @@ class _DeveloperOptionsSettingsState extends State<DeveloperOptionsSettings> {
     };
     return Column(
       children: [
-        if (kDebugMode)
-          SwitchListTile(
-            secondary: const Icon(PhosphorIcons.monitor, color: Colors.white70),
-            title: Text(l10n.developerScreensaverDemo),
-            subtitle: Text(
-              l10n.developerScreensaverDemoDescription,
-              style: const TextStyle(fontSize: 12, color: Colors.white60),
-            ),
-            value: _previewingScreensaver,
-            onChanged: _previewScreensaver,
+        SwitchListTile(
+          secondary: const Icon(PhosphorIcons.monitor, color: Colors.white70),
+          title: Text(l10n.developerScreensaverDemo),
+          subtitle: Text(
+            l10n.developerScreensaverDemoDescription,
+            style: const TextStyle(fontSize: 12, color: Colors.white60),
           ),
+          value: _previewingScreensaver,
+          onChanged: _previewScreensaver,
+        ),
         ListTile(
           leading: const Icon(PhosphorIcons.arrowCounterClockwise),
           title: Text(l10n.developerResetDemos),
