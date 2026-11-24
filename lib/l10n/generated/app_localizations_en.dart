@@ -273,6 +273,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDeveloperOptions => 'Developer options';
 
   @override
+  String get developerScreensaverDemo => 'Screensaver demo';
+
+  @override
+  String get developerScreensaverDemoDescription =>
+      'Preview immediately. Tap the screen to return.';
+
+  @override
   String get developerResetDemos => 'Reset demos';
 
   @override

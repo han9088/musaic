@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="了解 Musaic 怎样处理本地曲库、音乐文件夹、Apple Music、封面和诊断信息，以及如何行使你的隐私权利。" data-en="How Musaic handles your local music library, folders, Apple Music, artwork, and diagnostics, and how to exercise your privacy rights.">
+  <meta name="theme-color" content="#000000">
+  <title>隐私政策 · Musaic</title>
+  <script>
+    (() => {
+      const supportedLanguage = (value) => {
+        const code = value?.trim().toLowerCase().split(/[-_]/)[0];
+        return code === 'zh' || code === 'en' ? code : null;
+      };
+      const url = new URL(window.location.href);
+      const language = supportedLanguage(url.searchParams.get('lang'))
+        || (navigator.languages || [navigator.language]).map(supportedLanguage).find(Boolean)
+        || 'en';
+      document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+
+      if (language === 'en') {
+        document.title = 'Privacy Policy · Musaic';
+        const description = document.querySelector('meta[name="description"]');
+        description.content = description.dataset.en;
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const picker = document.querySelector('#language');
+        picker.value = language;
+        picker.setAttribute('aria-label', language === 'zh' ? '语言' : 'Language');
+        picker.addEventListener('change', () => {
+          const target = new URL(window.location.href);
+          target.searchParams.set('lang', picker.value);
+          window.location.assign(target.href);
+        });
+        for (const link of document.querySelectorAll('[data-keep-language]')) {
+          const target = new URL(link.getAttribute('href'), window.location.href);
+          target.searchParams.set('lang', language);
+          link.href = target.href;
+        }
+      });
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #000;
+      --surface: #181818;
+      --heading: #fff;
+      --text: #ccc;
+      --muted: #999;
+      --rule: #282828;
+      --accent: #c20040;
+      --reading-width: min(44rem, 100% - 3rem);
+      --header-width: min(58rem, 100% - 3rem);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      font-size: 100%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html[lang="zh-CN"] [data-language="en"],
+    html[lang="en"] [data-language="zh"] { display: none !important; }
+    html { scroll-padding-top: 5rem; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.75;
+    }
+    a { color: var(--heading); text-underline-offset: 0.22em; }
+    a:hover { text-decoration-thickness: 2px; }
+    :is(a, select, summary):focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 3px;
+    }
+    p, ul { margin: 0 0 1rem; }
+    ul { padding-inline-start: 1.25em; }
+    li + li { margin-block-start: 0.35em; }
+
+    .wrap { width: var(--reading-width); margin-inline: auto; }
+    .skip {
+      position: fixed;
+      z-index: 2;
+      inset: 0.75rem auto auto 0.75rem;
+      padding: 0.4rem 0.8rem;
+      background: var(--surface);
+      clip-path: inset(50%);
+    }
+    .skip:focus { clip-path: none; }
+
+    .topbar {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      background: var(--background);
+      border-bottom: 1px solid var(--rule);
+    }
+    .topbar .wrap {
+      width: var(--header-width);
+      min-height: 3.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .wordmark {
+      justify-self: start;
+      color: var(--accent);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      text-decoration: none;
+    }
+    .page-title {
+      margin: 0;
+      color: var(--heading);
+      font-size: 1.08rem;
+      font-weight: 650;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .language-picker {
+      position: relative;
+      justify-self: end;
+      display: flex;
+      max-inline-size: 100%;
+    }
+    .language-picker::after {
+      content: "";
+      position: absolute;
+      inset: calc(50% - 0.24rem) 0.65rem auto auto;
+      width: 0.4rem;
+      height: 0.4rem;
+      border: solid var(--muted);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+      pointer-events: none;
+    }
+    .language-picker select {
+      appearance: none;
+      field-sizing: content;
+      min-inline-size: 0;
+      max-inline-size: 100%;
+      min-block-size: 2.75rem;
+      padding: 0 1.65rem 0 0.7rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.875rem;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .language-picker select:hover,
+    .language-picker select:focus-visible { background: var(--surface); color: var(--heading); }
+    .language-picker option { background: var(--surface); color: var(--heading); }
+
+    main.wrap { padding-block: clamp(1.55rem, 4vw, 3rem) 3rem; }
+    .lede {
+      margin-bottom: 0.5rem;
+      font-size: 1.04rem;
+      text-wrap: pretty;
+    }
+    .updated { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+    .contents {
+      margin-block: 1.5rem 2rem;
+      border-block: 1px solid var(--rule);
+    }
+    .contents summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      min-block-size: 2.75rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      list-style: none;
+      cursor: pointer;
+    }
+    .contents summary::-webkit-details-marker { display: none; }
+    .contents summary:hover, .contents[open] summary { color: var(--heading); }
+    .contents summary::after {
+      content: "";
+      width: 0.42rem;
+      height: 0.42rem;
+      margin-inline-end: 0.68rem;
+      border: solid currentColor;
+      border-width: 0 1.5px 1.5px 0;
+      transform: translateY(-0.1rem) rotate(45deg);
+    }
+    .contents[open] summary::after {
+      transform: translateY(0.1rem) rotate(225deg);
+    }
+    .contents ul { margin: 0 0 0.65rem; padding: 0; list-style: none; }
+    .contents li + li { margin-block-start: 0; }
+    .contents a {
+      display: inline-block;
+      padding-block: 0.3rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .contents a:hover { color: var(--heading); text-decoration: underline; }
+
+    .prose { overflow-wrap: break-word; }
+    .prose section {
+      margin-top: 2rem;
+      padding-top: 1.65rem;
+      border-top: 1px solid var(--rule);
+    }
+    .prose h2, .prose h3, .prose strong { color: var(--heading); }
+    .prose h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.27rem;
+      font-weight: 650;
+      line-height: 1.4;
+    }
+    .prose h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+    .prose section > div > :last-child,
+    .prose .summary :last-child,
+    .source :last-child { margin-bottom: 0; }
+    .source + .source { margin-top: 1.25rem; }
+    .source p + p { margin-top: -0.35rem; }
+    .contact-email { overflow-wrap: anywhere; }
+
+    footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.85rem; }
+    footer .wrap {
+      padding-block: 1rem 1.4rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.4rem 1rem;
+    }
+    footer a { color: var(--text); }
+
+    @media (max-width: 360px) {
+      :root {
+        --reading-width: calc(100% - 2.5rem);
+        --header-width: var(--reading-width);
+      }
+      .topbar .wrap { grid-template-columns: minmax(0, 1fr) auto; }
+      .wordmark { display: none; }
+      .page-title { text-align: start; }
+    }
+
+    @media (min-width: 761px) {
+      .language-picker select { max-inline-size: 10rem; }
+    }
+
+    @media print {
+      :root {
+        color-scheme: light;
+        --background: white;
+        --heading: black;
+        --text: black;
+        --muted: #4d4d4d;
+        --rule: #ccc;
+        --reading-width: 100%;
+        --header-width: 100%;
+      }
+      .topbar { position: static; }
+      .topbar .wrap { display: block; padding-block: 0.75rem; }
+      .page-title { text-align: start; font-size: 1.5rem; }
+      .wordmark, .language-picker, .contents, .skip { display: none; }
+      main.wrap { padding-block: 1rem; }
+      h2, h3 { break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content"><span data-language="zh">跳到正文</span><span data-language="en">Skip to content</span></a>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="wordmark" href="https://musaic.deskbtm.com/">Musaic</a>
+      <h1 class="page-title"><span data-language="zh">隐私政策</span><span data-language="en">Privacy Policy</span></h1>
+      <div class="language-picker">
+        <select id="language" name="lang" aria-label="语言">
+          <option value="zh" lang="zh-CN">中文</option>
+          <option value="en" lang="en">English</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="content">
+    <div class="introduction">
+      <p class="lede"><span data-language="zh">你的音乐从哪里来，Musaic 会读取什么，哪些信息留在设备上。你可以在这里找到答案，并了解如何管理授权和删除数据。</span><span data-language="en">Find out what Musaic reads from each music source, what stays on your device, and how to manage permissions and delete data.</span></p>
+      <p class="updated">
+        <span data-language="zh">更新于 <time datetime="2026-11-24">2026 年 11 月 24 日</time></span>
+        <span data-language="en">Updated <time datetime="2026-11-24">November 24, 2026</time></span>
+      </p>
+    </div>
+
+    <details class="contents">
+      <summary id="contents-title"><span data-language="zh">目录</span><span data-language="en">On this page</span></summary>
+      <nav aria-labelledby="contents-title">
+        <ul>
+          <li><a href="#scope"><span data-language="zh">适用范围</span><span data-language="en">Scope</span></a></li>
+          <li><a href="#music-sources"><span data-language="zh">音乐源和曲库数据</span><span data-language="en">Music sources and library data</span></a></li>
+          <li><a href="#other-data"><span data-language="zh">封面、相机与故障反馈</span><span data-language="en">Artwork, camera, and diagnostics</span></a></li>
+          <li><a href="#purposes"><span data-language="zh">处理目的与依据</span><span data-language="en">Purposes and legal bases</span></a></li>
+          <li><a href="#network"><span data-language="zh">联网与第三方服务</span><span data-language="en">Network requests and third-party services</span></a></li>
+          <li><a href="#retention"><span data-language="zh">保存期限与清理</span><span data-language="en">Retention and deletion</span></a></li>
+          <li><a href="#security"><span data-language="zh">信息安全</span><span data-language="en">Information security</span></a></li>
+          <li><a href="#rights"><span data-language="zh">你的隐私权利和选择</span><span data-language="en">Your privacy rights and choices</span></a></li>
+          <li><a href="#minors"><span data-language="zh">未成年人</span><span data-language="en">Children and minors</span></a></li>
+          <li><a href="#contact"><span data-language="zh">政策变更与联系</span><span data-language="en">Changes and contact</span></a></li>
+        </ul>
+      </nav>
+    </details>
+
+    <article class="prose">
+<div class="summary">
+          <h2><span data-language="zh">使用音乐源前，先了解这三件事</span><span data-language="en">Three things to know before choosing a music source</span></h2>
+          <ul data-language="zh">
+            <li>连接 Apple Music 需要你授权。搜索和播放请求通过 Apple 的服务处理。</li>
+            <li>本地曲库和音乐文件夹在设备上扫描、整理和播放。Musaic 不会把本地曲库或原始音频上传到自己的服务器。</li>
+            <li>切换音乐源、移除文件夹和撤销系统权限各有不同作用。下文说明怎样停止访问及清理已保存的数据。</li>
+          </ul>
+          <ul data-language="en">
+            <li>Connecting Apple Music requires your permission. Search and playback requests go through Apple’s services.</li>
+            <li>Musaic scans, organizes, and plays local music on your device. It does not upload your local library or original audio to its own servers.</li>
+            <li>Switching sources, removing a folder, and revoking system permissions do different things. This policy explains how to stop access and clear stored data.</li>
+          </ul>
+        </div>
+
+        <section id="scope">
+          <h2><span data-language="zh">适用范围</span><span data-language="en">Scope</span></h2>
+          <div data-language="zh">
+            <p>本政策说明 <a href="https://deskbtm.com/">deskbtm</a> 发布的 Musaic 如何处理个人信息。它适用于 Musaic 的移动端、桌面端和网页版，具体功能和权限以你所用的平台和版本为准。文中的「我们」指 Musaic 的发布者 <a href="https://deskbtm.com/">deskbtm</a>。</p>
+            <p>当你使用 Apple Music、从应用商店购买或打开外部链接时，相关服务对其自行处理的信息适用各自的隐私规则。</p>
+          </div>
+          <div data-language="en">
+            <p>This policy explains how <a href="https://deskbtm.com/">deskbtm</a>, the publisher of Musaic, handles personal information. It covers the mobile, desktop, and web versions of Musaic. Features and permissions vary by platform and version. In this policy, “we” means <a href="https://deskbtm.com/">deskbtm</a>, the publisher of Musaic.</p>
+            <p>Apple Music, app stores, and external sites apply their own privacy policies to the information they process for their services.</p>
+          </div>
+        </section>
+
+        <section id="music-sources">
+          <h2><span data-language="zh">音乐源和曲库数据</span><span data-language="en">Music sources and library data</span></h2>
+          <div data-language="zh">
+            <div class="source">
+              <h3>本地音乐（设备的系统曲库）</h3>
+              <p>当你在支持的平台主动选择「本地音乐」时，Musaic 会通过系统媒体接口检查或请求音乐访问权限。Android 通过系统媒体库访问获准的音频，iOS 通过系统音乐资料库读取获准的条目。权限范围由系统决定，和通过文件选择器选定一个文件夹的授权范围不同。</p>
+              <p>授权后，Musaic 会按需读取<strong>曲名、专辑、艺人、曲序、时长、媒体标识及播放地址</strong>，以及可用的专辑封面，用于分组、显示和播放。播放时，Musaic 通过设备的媒体播放器打开被选中的音频。系统曲库扫描结果作为当前会话的内存快照使用，不写入音乐文件夹的数据库。能否播放取决于系统提供的文件、权限和版权保护状态。</p>
+              <p>你可以通过系统设置撤销该权限，使后续读取停止。切换到其他音乐源只会改变 App 当前使用的来源。系统权限需要在设备上单独管理。</p>
+            </div>
+            <div class="source">
+              <h3>音乐文件夹</h3>
+              <p>你通过系统文件选择器添加文件夹后，Musaic 会读取该文件夹及其可访问的子目录，以识别音频和相关封面，建立专辑列表，并播放你选择的文件。对于音频，Musaic 会读取文件名、路径或系统文件标识、文件大小、修改时间，以及可用的曲名、艺人、专辑、曲序、时长等标签。封面可能取自音频内嵌图片或同目录的封面文件。</p>
+              <p>为让你重新打开 App 时继续浏览，Musaic 会在设备上保留选定文件夹的访问凭据、曲库索引和封面缓存。扫描和播放使用文件所在位置。若文件由 iCloud Drive 或其他文件提供方管理，打开文件时该提供方可能联网取得内容，并按其自己的规则处理请求。</p>
+              <p>保留文件夹授权后，Musaic 可以在恢复该来源或刷新索引时重新读取选定目录。扫描会使用文件位置、修改时间等信息判断条目是否变化。只需授权你想纳入曲库的目录。</p>
+            </div>
+            <div class="source">
+              <h3>Apple Music</h3>
+              <p><strong>授权与读取范围。</strong>选择 Apple Music 音乐源后，你可以通过 Apple 的授权流程将其连接到 Musaic。授权后，Musaic 通过 MusicKit 读取用于显示和播放的信息，包括 Apple Music 商店地区、播放权限、已加入资料库的专辑和可访问的曲目，以及名称、艺人、时长、内容标识、静态封面和 Apple 提供的动态封面。Apple 负责处理你的 Apple 账户密码和验证码。</p>
+              <p><strong>搜索、封面和播放请求。</strong>你浏览、搜索或播放时，Musaic 会通过 Apple 的服务发出相应请求。请求可能包含搜索词、商店地区、曲目或专辑标识，以及用于确认授权的 Apple 访问凭据。Apple 提供曲库、封面和音频串流，并按自己的规则处理收到的搜索、播放与账号服务信息。<a href="https://www.apple.com/legal/privacy/data/zh-cn/apple-music/">Apple Music 与隐私</a></p>
+              <p><strong>撤回授权。</strong>你可以在系统或 Apple 账户的授权设置中撤回 Musaic 的访问权限。依赖该授权的资料库和播放功能将无法使用。Apple Music 资料库与播放记录由 Apple 管理，可在 Apple Music 或 Apple 账户中查看相关选项。</p>
+            </div>
+          </div>
+          <div data-language="en">
+            <div class="source">
+              <h3>Local music (your device’s system library)</h3>
+              <p>When you choose Local Music on a supported platform, Musaic checks or requests music permission through the operating system. Android grants access to eligible audio through its system media library, and iOS grants access to eligible items through its system music library. The operating system determines the scope of this permission, which differs from access to a folder you choose in the file picker.</p>
+              <p>Once authorized, Musaic reads <strong>track titles, albums, artists, track numbers, durations, media identifiers, and playback addresses</strong> as needed, along with available artwork. It uses these to group, show, and play your music. To play a track, Musaic opens the selected audio through the device media player. The system library scan is kept in memory for the current session and is not written to the music folder database. Playback depends on file availability, permissions, and content protection.</p>
+              <p>You can revoke this permission in system settings to stop further access. Switching to a different source changes the source in use. You manage system permissions separately on your device.</p>
+            </div>
+            <div class="source">
+              <h3>Music folders</h3>
+              <p>When you add a folder with the system file picker, Musaic reads it and its accessible subfolders to find audio and artwork, build your album list, and play the files you choose. It reads file names, paths or system file identifiers, sizes, modification times, and available tags such as track title, artist, album, track number, and duration. Artwork may come from embedded images or cover files in the same folder.</p>
+              <p>Musaic keeps folder access credentials, a library index, and an artwork cache on your device so you can resume browsing when you reopen the app. It scans and plays audio from where the files are stored. If iCloud Drive or another file provider manages a file, that provider may retrieve the file over the internet and handle the request under its own policy.</p>
+              <p>While folder access is active, Musaic can read the selected folder again when it restores that source or refreshes the index. It uses information such as file locations and modification times to detect changes. Choose only folders you want included in your library.</p>
+            </div>
+            <div class="source">
+              <h3>Apple Music</h3>
+              <p><strong>Authorization and access.</strong> When you choose Apple Music as your music source, you can connect it to Musaic through Apple’s authorization flow. Once authorized, Musaic uses MusicKit to read information needed to show and play music. This includes your Apple Music storefront, playback eligibility, albums added to your library and accessible tracks, and details such as titles, artists, durations, content identifiers, still artwork, and animated artwork provided by Apple. Apple handles your Apple Account password and verification codes.</p>
+              <p><strong>Search, artwork, and playback requests.</strong> When you browse, search, or play music, Musaic makes the corresponding requests through Apple’s services. Requests may include search terms, your storefront, track or album identifiers, and Apple credentials used to verify authorization. Apple supplies the library, artwork, and audio stream and handles the search, playback, and account service information it receives under its own policy. <a href="https://www.apple.com/legal/privacy/data/en/apple-music/">Apple Music &amp; Privacy</a></p>
+              <p><strong>Revoking access.</strong> You can revoke Musaic’s access in your system or Apple Account authorization settings. Library and playback features that depend on that authorization will become unavailable. Apple manages your Apple Music library and listening history. Look for the relevant controls in Apple Music or your Apple Account.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="other-data">
+          <h2><span data-language="zh">封面、相机与故障反馈</span><span data-language="en">Artwork, camera, and diagnostics</span></h2>
+          <div data-language="zh">
+            <p><strong>自定义封面。</strong>当你在系统图片选择器中选取图片时，Musaic 读取你选中的图片并在设备上保存用于替换的封面。你可以在 App 中还原原封面。通过相册删除原图和在 Musaic 中还原封面是各自独立的操作。</p>
+            <p><strong>相机与相册。</strong>Cover Flow 的相机背景在你启用后使用相机。选择保存画面时，Musaic 在设备上将相机图像和可见的界面元素合成并写入相册。授权相机只用于开启该功能。已保存的照片由你在相册中管理。你通过系统分享或其他 App 发送照片时，你选定的接收方会收到相应图像。</p>
+            <p><strong>本地诊断。</strong>Musaic 保存最近最多 300 条应用事件，可能包括事件时间、类别、扫描计数、错误类型和相关代码位置。生成报告时会加入设备型号、系统版本和 App 版本。报告会在你主动发送或分享时交给你选择的接收方。你也可以只导出文件并在发送前查看内容。</p>
+            <p><strong>支持和偏好。</strong>你联系我们时，我们会处理你的邮箱地址、往来邮件和你附上的截图、报告或订单参考信息，用于回复、排查或处理请求。语言、外观和音乐源选择由 App 在设备上保存，用于恢复你的设置。</p>
+          </div>
+          <div data-language="en">
+            <p><strong>Custom artwork.</strong> When you choose an image in the system picker, Musaic reads the selected image and saves the replacement cover on your device. You can restore the original cover in the app. Deleting the source image from your photo library and restoring a cover in Musaic are separate actions.</p>
+            <p><strong>Camera and photo library.</strong> The Cover Flow camera background uses the camera when you turn the feature on. When you choose to save a scene, Musaic combines the camera image and visible interface elements on your device and writes the result to your photo library. Camera permission enables this feature. You manage saved photos in your photo library. If you send a photo through system sharing or another app, it goes to the recipient you choose.</p>
+            <p><strong>Local diagnostics.</strong> Musaic stores up to 300 recent app events. These may include timestamps, event categories, scan counts, error types, and relevant code locations. When you generate a report, it includes your device model, operating system version, and app version. A report goes to the recipient you choose when you send or share it. You can export a copy and review it before sending.</p>
+            <p><strong>Support and preferences.</strong> When you contact us, we process your email address, our correspondence, and any screenshots, reports, or order references you include to respond, investigate, or handle your request. The app saves language, appearance, and music source preferences on your device to restore your settings.</p>
+          </div>
+        </section>
+
+        <section id="purposes">
+          <h2><span data-language="zh">处理目的与依据</span><span data-language="en">Purposes and legal bases</span></h2>
+          <div data-language="zh">
+            <ul>
+              <li><strong>提供你选择的功能。</strong>为浏览、索引、搜索和播放音乐，Musaic 处理相关来源提供或你允许访问的信息。音乐、相机、照片和文件夹访问按系统及服务提供方的授权范围进行。</li>
+              <li><strong>履行购买约定与处理请求。</strong>我们使用必要的交易资料验证和恢复 Pro 权益，并使用你主动提供的联系资料处理支持、退款协助、隐私请求与版权申诉。</li>
+              <li><strong>保护服务和履行法定义务。</strong>在适用法律允许或要求的范围内，我们处理必要的信息，以核实交易和投诉、处理安全事件、保留法定记录以及应对争议。</li>
+            </ul>
+            <p>处理依据取决于适用法律和具体用途，包括你的同意、提供你请求的服务或履行合同所需，以及履行法定义务所需。需要单独同意的事项会依适用法律另行征得同意。</p>
+          </div>
+          <div data-language="en">
+            <ul>
+              <li><strong>Provide the features you choose.</strong> To browse, index, search, and play music, Musaic processes information from the source you select or authorize. Access to music, camera, photos, and folders follows the permissions granted through the system or service provider.</li>
+              <li><strong>Fulfill purchases and handle requests.</strong> We use necessary transaction information to verify and restore Pro benefits and use the information you send to handle support, refund assistance, privacy requests, and copyright reports.</li>
+              <li><strong>Protect the service and meet legal duties.</strong> Where applicable law permits or requires it, we process information necessary to verify transactions and complaints, respond to security incidents, keep legally required records, and handle disputes.</li>
+            </ul>
+            <p>The legal basis depends on applicable law and the purpose. This may include your consent, taking steps you request to provide a service or perform a contract, or compliance with a legal obligation. We obtain separate consent where applicable law requires it.</p>
+          </div>
+        </section>
+
+        <section id="network">
+          <h2><span data-language="zh">联网与第三方服务</span><span data-language="en">Network requests and third-party services</span></h2>
+          <div data-language="zh">
+            <ul>
+              <li><strong>Apple Music 和文件提供方。</strong>Apple 收到为目录、资料库、封面和播放所需的请求。你使用由云端或其他提供方管理的音乐文件时，该提供方可能接收打开文件的请求。各提供方应用自己的政策处理相应数据。</li>
+              <li><strong>Musaic Pro 与商店。</strong>购买平台处理账单、付款和退款。Musaic 可接收交易标识、订阅状态和有效期，用于验证、提供与恢复权益。银行卡等付款凭据由购买平台处理。</li>
+              <li><strong>更新检查与网页。</strong>你在 App 内检查更新时，Musaic 向 GitHub 查询公开版本信息。查询不包含音乐、封面或曲库清单。访问网页时，站点托管服务为交付页面可能收到 IP 地址、浏览器信息、请求路径和 URL 中的参数。网页版可能保留网页资源，供再次访问或离线使用。</li>
+              <li><strong>邮件、外部链接与申诉。</strong>邮件由所使用的邮件服务传递。打开商店、X、GitHub 或小红书等外部链接时，相关平台处理自己的访问数据。依法需要转送版权通知、回应有权机关请求或处理争议时，我们仅提供相关程序所需的信息。</li>
+            </ul>
+            <p>代表我们处理信息的服务提供方应按约定的目的处理信息并采取相应保护措施。Apple、应用商店和你选择的云文件服务在为你提供其自身服务时，各自负责其处理活动。处理地点取决于相关服务，若由我们向境外提供个人信息，我们会依适用法律履行告知、保护和其他必要义务。</p>
+          </div>
+          <div data-language="en">
+            <ul>
+              <li><strong>Apple Music and file providers.</strong> Apple receives the requests needed to deliver the catalog, library, artwork, and playback. When you use music stored with a cloud or other file provider, that provider may receive a request to open the file. Each provider applies its own policy to the information it processes.</li>
+              <li><strong>Musaic Pro and app stores.</strong> The purchase platform handles billing, payments, and refunds. Musaic may receive transaction identifiers, subscription status, and expiry information to verify, deliver, and restore benefits. The purchase platform handles payment credentials such as card details.</li>
+              <li><strong>Update checks and web access.</strong> When you check for updates in the app, Musaic asks GitHub for public version information. The request contains no music, artwork, or library list. To serve the website, hosting services may receive your IP address, browser information, request path, and URL parameters. The web app may retain web assets for later visits or offline use.</li>
+              <li><strong>Mail, external links, and complaints.</strong> Your mail provider delivers your messages. App stores, X, GitHub, Xiaohongshu, and other linked services handle their own visit data. When we must forward a copyright notice, respond to a competent authority, or handle a dispute under applicable law, we provide only the information needed for the relevant process.</li>
+            </ul>
+            <p>Providers that process information on our behalf are expected to use it for the agreed purposes and apply appropriate safeguards. Apple, app stores, and cloud file providers you choose are responsible for the processing they carry out for their own services. Processing locations depend on the relevant services. When we arrange an international transfer of personal information, we will comply with applicable notice, safeguard, and other legal requirements.</p>
+          </div>
+        </section>
+
+        <section id="retention">
+          <h2><span data-language="zh">保存期限与清理</span><span data-language="en">Retention and deletion</span></h2>
+          <div data-language="zh">
+            <ul>
+              <li><strong>撤销系统曲库权限。</strong>在系统设置中撤销 Musaic 的音乐权限后，App 将无法继续读取需要该权限的系统曲库数据。系统曲库的扫描结果作为当前会话的内存数据使用。</li>
+              <li><strong>移除音乐文件夹。</strong>在「设置 → 音乐源 → 音乐文件夹」中移除文件夹，会移除关联的授权记录以及其他已添加文件夹不再引用的索引。涉及重叠文件夹时，仍获准访问的目录可以保留同一文件的索引。你在文件管理器或存储服务中管理原音乐文件。</li>
+              <li><strong>清理 App 数据。</strong>切换音乐源和撤回访问权限不会自动清理已有索引与缓存。已保存的封面、索引、偏好和滚动诊断记录由设备管理，你可以通过系统清除 App 数据或删除 App，具体取决于平台和备份设置。网页数据可在浏览器中清除。</li>
+              <li><strong>处理独立副本。</strong>你在相册中保存的照片、导出的报告、邮件附件和设备备份可能在清理 App 后继续保存。请在对应位置管理这些副本。撤销 Musaic 对 Apple Music 的授权会停止受授权的访问。你的 Apple Music 资料库和 Apple 保留的播放记录可在 Apple 的服务里管理。</li>
+              <li><strong>我们收到的记录。</strong>我们只在回复支持请求、核实交易、处理版权或隐私申诉及解决争议所需的期限内保留相关资料，或者依法定期限保存。达到保存目的或期限后，依法删除或匿名化。法律要求继续保留的信息依法律规定限制用途。商店、Apple Music 和邮件服务管理各自保存的信息。</li>
+            </ul>
+          </div>
+          <div data-language="en">
+            <ul>
+              <li><strong>Revoke system library access.</strong> Revoking Musaic’s music permission in system settings stops access to system library information that requires that permission. System library scan results are used in memory for the current session.</li>
+              <li><strong>Remove a music folder.</strong> Remove a folder in Settings → Music source → Music folders to remove its authorization record and index entries that other added folders no longer reference. An overlapping folder that remains authorized can keep a reference to the same file. Manage the original files with your file manager or storage provider.</li>
+              <li><strong>Clear app data.</strong> Switching music sources or withdrawing access does not automatically clear existing indexes or caches. Stored covers, indexes, preferences, and recent diagnostics are kept on the device. Use system settings to clear app data or delete the app, depending on your platform and backup settings. Clear web data in your browser.</li>
+              <li><strong>Manage independent copies.</strong> Photos saved to your photo library, exported reports, mail attachments, and device backups can remain after clearing app data. Manage these copies where you saved them. Revoking Musaic’s Apple Music authorization stops access that depends on it. Manage your Apple Music library and the listening history Apple retains in Apple’s services.</li>
+              <li><strong>Records we receive.</strong> We keep information for the period needed to respond to support, verify transactions, handle copyright or privacy complaints, and resolve disputes, or for a period required by law. We delete or anonymize it in accordance with applicable law after the purpose or retention period ends. When retention is required by law, we restrict use as the law requires. Stores, Apple Music, and email services manage the information they retain.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section id="security">
+          <h2><span data-language="zh">信息安全</span><span data-language="en">Information security</span></h2>
+          <div data-language="zh">
+            <p>我们按信息类型和风险采取适当措施，保护我们处理的信息免于未获授权的访问、泄露和篡改。我们限制对支持、交易和申诉资料的访问，按处理请求所需范围使用资料。发生个人信息安全事件时，我们会采取补救措施，并在适用法律要求的情形下通知受影响的用户和有关机构。</p>
+            <p>通过邮件联系时，可先发送定位问题所需的最少信息。请保管好账户密码、验证码和支付凭据，提交截图或订单凭证前可遮挡无关信息。</p>
+          </div>
+          <div data-language="en">
+            <p>We use safeguards appropriate to the type of information and the risks to protect the information we process from unauthorized access, disclosure, or alteration. We restrict access to support, transaction, and complaint records and use them to the extent needed to handle the request. If a personal information security incident occurs, we take corrective action and notify affected users and authorities where applicable law requires it.</p>
+            <p>When emailing us, start with the minimum information needed to identify the issue. Keep passwords, verification codes, and payment credentials private. You can redact unrelated details from screenshots or receipts before sending them.</p>
+          </div>
+        </section>
+
+        <section id="rights">
+          <h2><span data-language="zh">你的隐私权利和选择</span><span data-language="en">Your privacy rights and choices</span></h2>
+          <div data-language="zh">
+            <p><strong>自行管理授权。</strong>你可以通过系统设置撤回音乐、相机或照片权限，并按<a href="#retention">保存与清理说明</a>移除文件夹或清理本地数据。撤回同意自撤回时生效，依赖相应授权的功能可能停止。</p>
+            <p><strong>提交请求。</strong>在适用法律规定的条件下，你可以要求查阅、复制、更正或补充、删除、限制或拒绝处理个人信息，获取可携带副本、撤回同意，或要求说明本政策与处理方式。请通过 <a href="#contact">下方的联系方式</a> 提交，说明所涉服务、数据类型和希望采取的措施。如委托他人代办，我们可能按法律要求核实授权。</p>
+            <p><strong>核验和回复。</strong>为避免向他人披露你的资料，我们可能要求你通过原联系邮箱回复，或补充与请求有关的最少信息。我们将按适用法律规定的期限处理和回复。依法需要延长或无法满足请求时，我们会在法律要求的范围内说明理由。你可以要求复核，或向当地主管机关投诉和依法寻求救济。</p>
+            <p><strong>由第三方管理的信息。</strong>若请求涉及 Apple Music 播放历史、商店账单或你保存在第三方云服务中的文件，请通过管理该数据的服务行使相关权利。你可以联系我们处理我们收到的相应副本。</p>
+          </div>
+          <div data-language="en">
+            <p><strong>Manage permissions yourself.</strong> You can revoke music, camera, and photo permissions in system settings, and remove folders or clear local data as described under <a href="#retention">Retention and deletion</a>. Withdrawal takes effect when you revoke consent, and features that rely on those permissions may stop working.</p>
+            <p><strong>Make a request.</strong> Subject to applicable law, you can request access, a copy, correction or completion, deletion, restriction, objection, portability, withdrawal of consent, or an explanation of this policy and our processing. Use the <a href="#contact">contact details below</a> and describe the service, the type of information, and what you want us to do. If someone acts for you, we may verify their authority as required by law.</p>
+            <p><strong>Verification and response.</strong> To avoid disclosing your information to someone else, we may ask you to reply from the email address originally used or provide the minimum additional information relevant to your request. We handle and respond to requests within the time required by applicable law. Where the law requires it, we will explain any extension or refusal. You may ask for review or complain to your local authority and seek remedies under applicable law.</p>
+            <p><strong>Information held by third parties.</strong> If your request concerns Apple Music listening history, an app store bill, or a file you keep with a cloud provider, exercise your rights through the service that manages the information. You can contact us about any related copies we receive.</p>
+          </div>
+        </section>
+
+        <section id="minors">
+          <h2><span data-language="zh">未成年人</span><span data-language="en">Children and minors</span></h2>
+          <div data-language="zh">
+            <p>未达到所在地区可独立同意的年龄时，请由家长或其他监护人阅读本政策，并在法律要求时提供同意。适用中国个人信息保护法时，处理未满十四周岁未成年人的个人信息需要其父母或其他监护人的同意。</p>
+            <p>如果你是监护人，发现未成年人在缺少所需同意的情况下向我们提供了信息，请联系我们。我们会在核实后按适用法律采取措施，包括在法律要求时停止处理和删除相关信息。</p>
+          </div>
+          <div data-language="en">
+            <p>If you are below the age at which you can consent on your own where you live, ask a parent or guardian to read this policy and provide consent where required. Where China’s Personal Information Protection Law applies, processing personal information of a child under 14 requires consent from a parent or other guardian.</p>
+            <p>If you are a guardian and learn that a child sent us information without the required consent, contact us. After verifying the request, we will act as applicable law requires, including stopping processing and deleting the information where required.</p>
+          </div>
+        </section>
+
+        <section id="contact">
+          <h2><span data-language="zh">政策变更与联系</span><span data-language="en">Changes and contact</span></h2>
+          <div data-language="zh">
+            <p>本政策自随适用版本正式发布之日起生效。我们会在本页更新政策和日期。涉及处理目的、范围或权限的实质变化时，我们会依适用法律提供通知，并在需要时重新取得同意。</p>
+            <p>如需提交隐私请求或咨询 Musaic 的数据处理，请邮件联系 <a href="https://deskbtm.com/">deskbtm</a>。你也可以从 App 的「设置 → 支持 → 联系我们」打开邮件。</p>
+            <p><a class="contact-email" href="mailto:deskbtm@gmail.com?subject=Musaic%20Privacy">deskbtm@gmail.com</a></p>
+          </div>
+          <div data-language="en">
+            <p>This policy takes effect when it is published with the version it applies to. We will post revisions and their dates on this page. If we materially change the purposes, scope, or permissions for processing, we will provide notice and obtain consent again where applicable law requires it.</p>
+            <p>For privacy requests or questions about how Musaic handles data, email <a href="https://deskbtm.com/">deskbtm</a>. You can also open your email app from Settings → Support → Contact us in Musaic.</p>
+            <p><a class="contact-email" href="mailto:deskbtm@gmail.com?subject=Musaic%20Privacy">deskbtm@gmail.com</a></p>
+          </div>
+        </section>
+      </article>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 <a href="https://deskbtm.com/">deskbtm</a></span>
+      <a href="./terms-of-service.html" data-keep-language><span data-language="zh">查看服务条款</span><span data-language="en">Read the Terms of Service</span></a>
+    </div>
+  </footer>
+</body>
+</html>

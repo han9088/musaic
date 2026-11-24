@@ -77,6 +77,8 @@
   "diagnosticsMailFailed": "Couldn’t start a feedback email. Try again.",
   "settingsAbout": "About Musaic",
   "settingsDeveloperOptions": "Developer options",
+  "developerScreensaverDemo": "Screensaver demo",
+  "developerScreensaverDemoDescription": "Preview immediately. Tap the screen to return.",
   "developerResetDemos": "Reset demos",
   "developerResetDemosDescription": "Replay the first-time gestures on the home screen and in Cover Flow.",
   "developerResetDemosDone": "Demos reset. Return home to see them again.",

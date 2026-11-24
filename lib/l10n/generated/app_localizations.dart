@@ -566,6 +566,18 @@ abstract class AppLocalizations {
   /// **'开发者选项'**
   String get settingsDeveloperOptions;
 
+  /// No description provided for @developerScreensaverDemo.
+  ///
+  /// In zh, this message translates to:
+  /// **'屏保演示'**
+  String get developerScreensaverDemo;
+
+  /// No description provided for @developerScreensaverDemoDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开后立即预览，点屏返回。'**
+  String get developerScreensaverDemoDescription;
+
   /// No description provided for @developerResetDemos.
   ///
   /// In zh, this message translates to:

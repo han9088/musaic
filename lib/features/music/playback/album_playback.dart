@@ -30,6 +30,12 @@ class AlbumPlayback extends ChangeNotifier {
 
   String? get currentTitle => _currentSong?.title ?? title;
   MusicReference? get currentTrack => _playbackState?.currentItem;
+  bool get buffering => _playbackState?.isBuffering ?? false;
+  Duration? get currentPosition {
+    final state = _playbackState;
+    return state?.currentItem == null ? null : state?.position;
+  }
+
   String? get currentArtist {
     final name = (_currentSong?.artist ?? _albumArtist)?.trim();
     return switch (name?.toLowerCase()) {
@@ -74,10 +80,12 @@ class AlbumPlayback extends ChangeNotifier {
       (state) {
         if (generation != _generation) return;
         final trackChanged = currentTrack != state.currentItem;
+        final bufferingChanged = buffering != state.isBuffering;
         // Keep the seek position current without rebuilding on position ticks.
         _playbackState = state;
         final track = _tracks[state.currentItem];
         if (!trackChanged &&
+            !bufferingChanged &&
             _currentSong == track?.song &&
             playing == state.isPlaying) {
           return;
@@ -101,6 +109,7 @@ class AlbumPlayback extends ChangeNotifier {
           DiagnosticEvent.playbackStreamFailed,
           error: error,
         );
+        _playbackState = null;
         playing = false;
         notifyListeners();
         onError?.call();

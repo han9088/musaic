@@ -260,6 +260,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDeveloperOptions => '开发者选项';
 
   @override
+  String get developerScreensaverDemo => '屏保演示';
+
+  @override
+  String get developerScreensaverDemoDescription => '打开后立即预览，点屏返回。';
+
+  @override
   String get developerResetDemos => '重置演示';
 
   @override

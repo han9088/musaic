@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="了解 Musaic 的音乐来源、播放与封面使用限制、著作权、Musaic Pro 和消费者权益。" data-en="Learn about music sources, playback and artwork, copyright, Musaic Pro, and your consumer rights.">
+  <meta name="theme-color" content="#000000">
+  <title>服务条款 · Musaic</title>
+  <script>
+    (() => {
+      const supportedLanguage = (value) => {
+        const code = value?.trim().toLowerCase().split(/[-_]/)[0];
+        return code === 'zh' || code === 'en' ? code : null;
+      };
+      const url = new URL(window.location.href);
+      const language = supportedLanguage(url.searchParams.get('lang'))
+        || (navigator.languages || [navigator.language]).map(supportedLanguage).find(Boolean)
+        || 'en';
+      document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+
+      if (language === 'en') {
+        document.title = 'Terms of Service · Musaic';
+        const description = document.querySelector('meta[name="description"]');
+        description.content = description.dataset.en;
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const picker = document.querySelector('#language');
+        picker.value = language;
+        picker.setAttribute('aria-label', language === 'zh' ? '语言' : 'Language');
+        picker.addEventListener('change', () => {
+          const target = new URL(window.location.href);
+          target.searchParams.set('lang', picker.value);
+          window.location.assign(target.href);
+        });
+        for (const link of document.querySelectorAll('[data-keep-language]')) {
+          const target = new URL(link.getAttribute('href'), window.location.href);
+          target.searchParams.set('lang', language);
+          link.href = target.href;
+        }
+      });
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #000;
+      --surface: #181818;
+      --heading: #fff;
+      --text: #ccc;
+      --muted: #999;
+      --rule: #282828;
+      --accent: #c20040;
+      --reading-width: min(44rem, 100% - 3rem);
+      --header-width: min(58rem, 100% - 3rem);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+      font-size: 100%;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html[lang="zh-CN"] [data-language="en"],
+    html[lang="en"] [data-language="zh"] { display: none !important; }
+    html { scroll-padding-top: 5rem; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.75;
+    }
+    a { color: var(--heading); text-underline-offset: 0.22em; }
+    a:hover { text-decoration-thickness: 2px; }
+    :is(a, select, summary):focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+      border-radius: 3px;
+    }
+    p, ul { margin: 0 0 1rem; }
+    ul { padding-inline-start: 1.25em; }
+    li + li { margin-block-start: 0.35em; }
+
+    .wrap { width: var(--reading-width); margin-inline: auto; }
+    .skip {
+      position: fixed;
+      z-index: 2;
+      inset: 0.75rem auto auto 0.75rem;
+      padding: 0.4rem 0.8rem;
+      background: var(--surface);
+      clip-path: inset(50%);
+    }
+    .skip:focus { clip-path: none; }
+
+    .topbar {
+      position: sticky;
+      z-index: 1;
+      top: 0;
+      background: var(--background);
+      border-bottom: 1px solid var(--rule);
+    }
+    .topbar .wrap {
+      width: var(--header-width);
+      min-height: 3.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .wordmark {
+      justify-self: start;
+      color: var(--accent);
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      text-decoration: none;
+    }
+    .page-title {
+      margin: 0;
+      color: var(--heading);
+      font-size: 1.08rem;
+      font-weight: 650;
+      text-align: center;
+      line-height: 1.3;
+    }
+    .language-picker {
+      position: relative;
+      justify-self: end;
+      display: flex;
+      max-inline-size: 100%;
+    }
+    .language-picker::after {
+      content: "";
+      position: absolute;
+      inset: calc(50% - 0.24rem) 0.65rem auto auto;
+      width: 0.4rem;
+      height: 0.4rem;
+      border: solid var(--muted);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+      pointer-events: none;
+    }
+    .language-picker select {
+      appearance: none;
+      field-sizing: content;
+      min-inline-size: 0;
+      max-inline-size: 100%;
+      min-block-size: 2.75rem;
+      padding: 0 1.65rem 0 0.7rem;
+      border: 0;
+      border-radius: 0.5rem;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.875rem;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      cursor: pointer;
+    }
+    .language-picker select:hover,
+    .language-picker select:focus-visible { background: var(--surface); color: var(--heading); }
+    .language-picker option { background: var(--surface); color: var(--heading); }
+
+    main.wrap { padding-block: clamp(1.55rem, 4vw, 3rem) 3rem; }
+    .lede {
+      margin-bottom: 0.5rem;
+      font-size: 1.04rem;
+      text-wrap: pretty;
+    }
+    .updated { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+    .contents {
+      margin-block: 1.5rem 2rem;
+      border-block: 1px solid var(--rule);
+    }
+    .contents summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      min-block-size: 2.75rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      list-style: none;
+      cursor: pointer;
+    }
+    .contents summary::-webkit-details-marker { display: none; }
+    .contents summary:hover, .contents[open] summary { color: var(--heading); }
+    .contents summary::after {
+      content: "";
+      width: 0.42rem;
+      height: 0.42rem;
+      margin-inline-end: 0.68rem;
+      border: solid currentColor;
+      border-width: 0 1.5px 1.5px 0;
+      transform: translateY(-0.1rem) rotate(45deg);
+    }
+    .contents[open] summary::after {
+      transform: translateY(0.1rem) rotate(225deg);
+    }
+    .contents ul { margin: 0 0 0.65rem; padding: 0; list-style: none; }
+    .contents li + li { margin-block-start: 0; }
+    .contents a {
+      display: inline-block;
+      padding-block: 0.3rem;
+      color: var(--text);
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .contents a:hover { color: var(--heading); text-decoration: underline; }
+
+    .prose { overflow-wrap: break-word; }
+    .prose section {
+      margin-top: 2rem;
+      padding-top: 1.65rem;
+      border-top: 1px solid var(--rule);
+    }
+    .prose h2, .prose h3, .prose strong { color: var(--heading); }
+    .prose h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.27rem;
+      font-weight: 650;
+      line-height: 1.4;
+    }
+    .prose h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      font-weight: 650;
+      line-height: 1.45;
+    }
+    .prose section > div > :last-child,
+    .prose .summary :last-child,
+    .source :last-child { margin-bottom: 0; }
+    .source + .source { margin-top: 1.25rem; }
+    .source p + p { margin-top: -0.35rem; }
+    .contact-email { overflow-wrap: anywhere; }
+
+    footer { border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.85rem; }
+    footer .wrap {
+      padding-block: 1rem 1.4rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.4rem 1rem;
+    }
+    footer a { color: var(--text); }
+
+    @media (max-width: 360px) {
+      :root {
+        --reading-width: calc(100% - 2.5rem);
+        --header-width: var(--reading-width);
+      }
+      .topbar .wrap { grid-template-columns: minmax(0, 1fr) auto; }
+      .wordmark { display: none; }
+      .page-title { text-align: start; }
+    }
+
+    @media (min-width: 761px) {
+      .language-picker select { max-inline-size: 10rem; }
+    }
+
+    @media print {
+      :root {
+        color-scheme: light;
+        --background: white;
+        --heading: black;
+        --text: black;
+        --muted: #4d4d4d;
+        --rule: #ccc;
+        --reading-width: 100%;
+        --header-width: 100%;
+      }
+      .topbar { position: static; }
+      .topbar .wrap { display: block; padding-block: 0.75rem; }
+      .page-title { text-align: start; font-size: 1.5rem; }
+      .wordmark, .language-picker, .contents, .skip { display: none; }
+      main.wrap { padding-block: 1rem; }
+      h2, h3 { break-after: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#content"><span data-language="zh">跳到正文</span><span data-language="en">Skip to content</span></a>
+  <header class="topbar">
+    <div class="wrap">
+      <a class="wordmark" href="https://musaic.deskbtm.com/">Musaic</a>
+      <h1 class="page-title"><span data-language="zh">服务条款</span><span data-language="en">Terms of Service</span></h1>
+      <div class="language-picker">
+        <select id="language" name="lang" aria-label="语言">
+          <option value="zh" lang="zh-CN">中文</option>
+          <option value="en" lang="en">English</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="content">
+    <div class="introduction">
+      <p class="lede"><span data-language="zh">了解如何使用 Musaic 浏览和播放音乐，以及你对音乐、封面、订阅和自己的内容享有哪些权利。</span><span data-language="en">Learn how you can browse and play music in Musaic and what rights you have in music, artwork, subscriptions, and your own content.</span></p>
+      <p class="updated">
+        <span data-language="zh">更新于 <time datetime="2026-11-24">2026 年 11 月 24 日</time></span>
+        <span data-language="en">Updated <time datetime="2026-11-24">November 24, 2026</time></span>
+      </p>
+    </div>
+
+    <details class="contents">
+      <summary id="contents-title"><span data-language="zh">目录</span><span data-language="en">On this page</span></summary>
+      <nav aria-labelledby="contents-title">
+        <ul>
+          <li><a href="#scope"><span data-language="zh">本条款与 Musaic</span><span data-language="en">These terms and Musaic</span></a></li>
+          <li><a href="#music-sources"><span data-language="zh">音乐源、播放与下载</span><span data-language="en">Music sources, playback, and downloads</span></a></li>
+          <li><a href="#content-rights"><span data-language="zh">音乐、封面与自己的内容</span><span data-language="en">Music, artwork, and your own content</span></a></li>
+          <li><a href="#acceptable-use"><span data-language="zh">使用规则</span><span data-language="en">Acceptable use</span></a></li>
+          <li><a href="#pro"><span data-language="zh">Musaic Pro、取消与退款</span><span data-language="en">Musaic Pro, cancellation, and refunds</span></a></li>
+          <li><a href="#copyright"><span data-language="zh">版权申诉</span><span data-language="en">Copyright reports</span></a></li>
+          <li><a href="#enforcement"><span data-language="zh">限制使用与复核</span><span data-language="en">Restrictions and review</span></a></li>
+          <li><a href="#availability"><span data-language="zh">可用性、变更与消费者权益</span><span data-language="en">Availability, changes, and consumer rights</span></a></li>
+          <li><a href="#contact"><span data-language="zh">条款更新与联系</span><span data-language="en">Updates and contact</span></a></li>
+        </ul>
+      </nav>
+    </details>
+
+    <article class="prose">
+<div class="summary">
+          <h2><span data-language="zh">选择音乐源时，请留意</span><span data-language="en">What to know when choosing a source</span></h2>
+          <ul data-language="zh">
+            <li>Musaic 提供浏览和播放工具。你能否播放、复制或分享某项内容，取决于来源和你已有的权利。</li>
+            <li>本地音乐和文件夹来自你的设备或你授权的存储位置。</li>
+            <li>如购买 Musaic Pro，权益以购买页面为准。第三方音乐服务的订阅由该服务单独管理。</li>
+          </ul>
+          <ul data-language="en">
+            <li>Musaic provides tools to browse and play music. Whether you may play, copy, or share content depends on its source and the rights you already have.</li>
+            <li>Local music and folders come from your device or storage you authorize.</li>
+            <li>If you buy Musaic Pro, the purchase screen describes your benefits. Third-party music services manage their own subscriptions.</li>
+          </ul>
+        </div>
+
+        <section id="scope">
+          <h2><span data-language="zh">本条款与 Musaic</span><span data-language="en">These terms and Musaic</span></h2>
+          <div data-language="zh">
+            <p>本条款由 Musaic 的发布者 <a href="https://deskbtm.com/">deskbtm</a> 提供，适用于你使用 Musaic 的移动端、桌面端和网页版。你可以依本条款和适用法律，在兼容设备上使用 Musaic 浏览专辑、管理显示方式及播放支持的音乐。未达到所在地可独立订立本条款的年龄时，请由监护人阅读并在法律要求时同意。</p>
+            <p>应用商店、系统服务和第三方音乐服务可能有各自的条款。个人信息的处理方式见 <a href="./privacy-policy.html" data-keep-language>Musaic 隐私政策</a>。</p>
+          </div>
+          <div data-language="en">
+            <p>These terms are provided by <a href="https://deskbtm.com/">deskbtm</a>, the publisher of Musaic, and apply to the mobile, desktop, and web versions. Under these terms and applicable law, you may use Musaic on compatible devices to browse albums, customize how they appear, and play supported music. If you are below the age at which you can agree to these terms on your own, ask a parent or guardian to read and agree where the law requires it.</p>
+            <p>App stores, operating system services, and third-party music services may have their own terms. See the <a href="./privacy-policy.html" data-keep-language>Musaic Privacy Policy</a> for how we handle personal information.</p>
+          </div>
+        </section>
+
+        <section id="music-sources">
+          <h2><span data-language="zh">音乐源、播放与下载</span><span data-language="en">Music sources, playback, and downloads</span></h2>
+          <div data-language="zh">
+            <div class="source">
+              <h3>本地音乐与音乐文件夹</h3>
+              <p>本地音乐读取操作系统允许访问的媒体。音乐文件夹使用你选定的目录及其可访问的子目录。请只添加和播放你有权使用的文件。App 依赖系统授权、文件位置、文件格式和相应解码能力。云端文件尚未下载、磁盘断开、文件被移动、格式不支持或受数字版权保护时，曲目可能可以显示但无法播放。</p>
+              <p>导入文件夹是在 Musaic 中建立供浏览和播放使用的索引。移除文件夹会更新该索引，原音乐文件仍由你和原存储服务管理。Musaic 的曲库索引与封面缓存不等同于音乐备份。</p>
+              <p>你可以依法使用已有音乐文件。购买文件、获得访问权限和获得公开播放或商业使用许可可能是不同的权利。请自行保管原始文件及备份，并确认组织、家庭或云端共享目录的授权范围。</p>
+            </div>
+            <div class="source">
+              <h3>Apple Music 与其他第三方音乐服务</h3>
+              <p>将 Apple Music 连接为音乐源后，你可以浏览 Apple 提供的音乐目录和已授权的资料库，并使用播放队列和播放控件。完整曲目的播放取决于你的 Apple 账户、订阅资格、商店地区以及曲目的可用性。Musaic Pro 和 Apple Music 是独立订阅，分别购买和管理。</p>
+              <p>Apple Music 的串流经 Apple 的播放服务提供，由你发起播放。资费、账号和服务资格由 Apple 管理。曲目或封面在 Musaic 中可见、曾经可以播放或出现在缓存中，均不会授予永久访问、音频导出或再次分发的权利。</p>
+              <p>第三方播放权限允许的离线功能以该服务提供的功能为准。请勿借助 Musaic 提取受保护音频、绕过订阅或地区限制、规避数字版权保护，或将仅供个人使用的音乐用于公开播放、重新分发或商业用途。涉及 Apple Music 时，请查看你所在地区的 <a href="https://www.apple.com/legal/internet-services/itunes/ww/">Apple 媒体服务条款</a>。</p>
+            </div>
+          </div>
+          <div data-language="en">
+            <div class="source">
+              <h3>Local music and music folders</h3>
+              <p>Local Music uses media the operating system lets Musaic access. Music Folders uses the directories you choose and their accessible subfolders. Add and play files you have the right to use. The app depends on system permissions, file locations, formats, and decoding support. A track may be visible but unplayable if a cloud file is not downloaded, a drive is disconnected, the file has moved, the format is unsupported, or digital rights protection applies.</p>
+              <p>Adding a folder creates an index for browsing and playback in Musaic. Removing the folder updates that index. You and your storage provider continue to manage the original files. The index and artwork cache are not backups of your music.</p>
+              <p>You may use your existing music files as the law permits. Buying a file, obtaining access, and obtaining a license for public performance or commercial use can involve different rights. Keep your original files and backups, and check the permissions that apply to organizational, family, or cloud-shared folders.</p>
+            </div>
+            <div class="source">
+              <h3>Apple Music and other third-party music services</h3>
+              <p>When you connect Apple Music as a music source, you can browse Apple’s catalog and the library you authorize, and use the playback queue and controls. Full-track playback depends on your Apple Account, subscription eligibility, storefront, and track availability. Musaic Pro and Apple Music are separate subscriptions that you purchase and manage separately.</p>
+              <p>Apple Music streams through Apple’s playback service when you initiate playback. Apple manages its own pricing, accounts, and service eligibility. A track or cover being visible, previously playable, or cached in Musaic does not grant permanent access or a right to export audio or redistribute it.</p>
+              <p>Offline features for third-party playback depend on what that service permits and provides. Do not use Musaic to extract protected audio, bypass subscription or regional restrictions, defeat digital rights protection, or publicly play, redistribute, or commercially use music licensed solely for personal use. For Apple Music, see the <a href="https://www.apple.com/legal/internet-services/itunes/ww/">Apple Media Services Terms</a> for your region.</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="content-rights">
+          <h2><span data-language="zh">音乐、封面与自己的内容</span><span data-language="en">Music, artwork, and your own content</span></h2>
+          <div data-language="zh">
+            <h3>音乐和第三方素材</h3>
+            <p>录音、词曲、表演、专辑封面、动态封面和其他第三方素材的权利由相应权利人享有。Musaic 根据你的操作显示信息与播放可用内容。复制、公开播放、重新分发、商用或将音乐与影像合成时，你需要具有覆盖该用途的许可或适用法律依据。通过其他渠道合法取得的权利按原许可和适用法律行使。</p>
+            <h3>你选择的文件和照片</h3>
+            <p>你保有对自有文件、自定义封面和原创照片本来享有的权利。你只在有权提供与使用时才应选择相关文件、图片和其他素材。Musaic 根据你在设备上的操作读取、显示和保存这些材料。将封面合成进 Cover Flow 照片不改变封面的权利归属。公开分享、用作宣传或销售合成内容之前，请确认所含封面、人物肖像及其他受保护的元素均可用于该目的。</p>
+            <h3>Musaic 软件和品牌</h3>
+            <p>你可以在兼容设备上安装和使用 Musaic 提供的功能，使用范围受适用法律和本条款约束。Musaic 的名称、标识、软件与界面素材按各自的权利归属受到保护。随 App 分发的开源组件按各自许可证使用。</p>
+          </div>
+          <div data-language="en">
+            <h3>Music and third-party material</h3>
+            <p>Rights in recordings, compositions, performances, album artwork, animated artwork, and other third-party material belong to their respective rights holders. Musaic displays information and plays available content as you direct. Copying, public performance, redistribution, commercial use, or combining music with visuals requires a license that covers that use or a basis under applicable law. Rights you obtained lawfully elsewhere are governed by the original license and the applicable law.</p>
+            <h3>Files and photos you choose</h3>
+            <p>You keep the rights you already have in your files, custom covers, and original photos. Choose files, images, and other material only where you have the right to provide and use them. Musaic reads, displays, and saves them on your device as you direct. Compositing artwork into a Cover Flow photo does not change who owns the artwork. Before publicly sharing, promoting, or selling a composite, make sure you may use the artwork, anyone’s likeness, and any other protected elements for that purpose.</p>
+            <h3>Musaic software and brand</h3>
+            <p>You may install and use the features Musaic provides on compatible devices under these terms and applicable law. The Musaic name, marks, software, and interface assets are protected according to their respective ownership. Open-source components distributed with the app are governed by their own licenses.</p>
+          </div>
+        </section>
+
+        <section id="acceptable-use">
+          <h2><span data-language="zh">使用规则</span><span data-language="en">Acceptable use</span></h2>
+          <div data-language="zh">
+            <p>请在授权范围内使用音乐源、App 和购买权益，并依法尊重他人的著作权、隐私权和其他权益。请勿从事以下行为：</p>
+            <ul>
+              <li>未经授权访问他人的账号、曲库、共享目录或交易信息，冒用他人身份，或向支持渠道提交无权提供的个人信息。</li>
+              <li>以录制、抓取、批量导出或其他方式绕过访问控制、版权保护、地区或订阅限制，或在授权范围外重新分发音乐、封面和目录数据。</li>
+              <li>伪造订单、收据、恢复购买凭据或退款材料，使用未经授权的支付方式，或出售、出租、转让受购买平台限制的订阅权益。</li>
+              <li>未经许可干扰 App 或相关服务的正常运行，滥用接口造成负载，传播恶意内容，或提交明知虚假的版权通知或反通知。</li>
+            </ul>
+            <p>适用法律和随软件提供的开源许可证允许的行为，按其相应规则行使。</p>
+          </div>
+          <div data-language="en">
+            <p>Use music sources, the app, and purchase benefits within the scope of your authorization. Respect the copyright, privacy, and other rights of others. Do not:</p>
+            <ul>
+              <li>Access someone else’s account, library, shared folder, or transaction information without permission, impersonate someone, or submit personal information to support that you have no right to provide.</li>
+              <li>Record, scrape, bulk export, or otherwise bypass access controls, content protection, regional restrictions, or subscription restrictions, or redistribute music, artwork, or catalog data beyond your authorization.</li>
+              <li>Falsify orders, receipts, purchase restoration credentials, or refund materials, use a payment method without authorization, or sell, rent, or transfer subscription benefits that the purchase platform restricts.</li>
+              <li>Interfere with the app or a related service without permission, overload interfaces through misuse, distribute malicious material, or knowingly submit false copyright notices or counter-notices.</li>
+            </ul>
+            <p>You may exercise rights granted by applicable law or the open-source licenses supplied with the software in accordance with their terms.</p>
+          </div>
+        </section>
+
+        <section id="pro">
+          <h2><span data-language="zh">Musaic Pro、取消与退款</span><span data-language="en">Musaic Pro, cancellation, and refunds</span></h2>
+          <div data-language="zh">
+            <p><strong>确认订阅。</strong>Musaic Pro 提供在购买页面列明的 Musaic 功能。确认前请核对价格、币种、税费、计费周期、权益和续订条件。Apple Music 会员和曲目播放资格由 Apple 单独管理。</p>
+            <p><strong>续订与价格变更。</strong>自动续订由购买平台按你确认的周期和规则收费。续费前的提醒、价格调整和需要你再次确认的事项，将按购买平台规则与适用法律处理。请在下一次扣费前，通过购买账号在平台显示的期限内关闭续订。</p>
+            <p><strong>取消与生效时间。</strong>取消续订用于停止下一次续费。已付费周期内的可用期限以购买平台显示的状态为准。删除 App、移除文件夹、换设备或撤销音乐权限不会取消订阅。恢复购买可校验原购买账号下仍有效且可恢复的权益。</p>
+            <p><strong>退款及扣费异常。</strong>取消续订与申请已扣款退款分别处理。你可以按购买平台流程或适用法律申请退款。遇到重复扣款、未经授权的付款或已购买但权益未生效时，请核对购买账单。可向平台或我们提供购买渠道、购买日期和必要的订单参考信息。处理退款或撤销交易后，权益状态以购买平台确认的结果为准。请保管好密码、验证码和完整卡号。</p>
+            <p>购买渠道的官方帮助。<a href="https://support.apple.com/zh-cn/118428">取消 App Store 订阅</a> · <a href="https://support.apple.com/zh-cn/118223">申请 App Store 退款</a> · <a href="https://support.google.com/googleplay/answer/7018481?hl=zh-Hans">管理 Google Play 订阅</a> · <a href="https://support.google.com/googleplay/answer/15574897?hl=zh-Hans">申请 Google Play 退款</a></p>
+          </div>
+          <div data-language="en">
+            <p><strong>Confirming your subscription.</strong> Musaic Pro provides the Musaic features listed on the purchase screen. Before you confirm, review the price, currency, taxes, billing period, benefits, and renewal terms. Apple manages Apple Music membership and eligibility for track playback separately.</p>
+            <p><strong>Renewal and price changes.</strong> The purchase platform charges for automatic renewals according to the billing period and terms you confirmed. Renewal notices, price changes, and any further confirmation are handled under the platform’s rules and applicable law. To stop the next charge, turn off renewal in the original purchase account before the deadline shown by the platform.</p>
+            <p><strong>Cancellation and timing.</strong> Canceling renewal stops the next renewal. The purchase platform shows how long you can use the period you have paid for. Deleting the app, removing a folder, changing devices, or revoking music permissions does not cancel your subscription. Restoring purchases verifies benefits that are still active and eligible to be restored under the original purchase account.</p>
+            <p><strong>Refunds and billing issues.</strong> Canceling a renewal and requesting a refund for a charge are separate actions. You may request a refund through the purchase platform or as permitted by applicable law. If you see a duplicate or unauthorized charge or an unavailable benefit you bought, check your receipt. Give the platform or us the purchase channel, date, and any necessary order reference. After a refund or reversal, benefit status follows the purchase platform’s confirmed result. Keep passwords, verification codes, and full card numbers private.</p>
+            <p>Official help for your purchase platform. <a href="https://support.apple.com/en-us/118428">Cancel an App Store subscription</a> · <a href="https://support.apple.com/en-us/118223">Request an App Store refund</a> · <a href="https://support.google.com/googleplay/answer/7018481?hl=en">Manage a Google Play subscription</a> · <a href="https://support.google.com/googleplay/answer/15574897?hl=en">Request a Google Play refund</a></p>
+          </div>
+        </section>
+
+        <section id="copyright">
+          <h2><span data-language="zh">版权申诉</span><span data-language="en">Copyright reports</span></h2>
+          <div data-language="zh">
+            <p><strong>提交申诉。</strong>权利人或获授权的代理人可发送邮件至 <a href="mailto:deskbtm@gmail.com?subject=Musaic%20Copyright">deskbtm@gmail.com</a>。请尽可能提供以下内容，以便确认为哪项内容及哪种使用：</p>
+            <ul>
+              <li>作品名称或唯一标识、被申诉内容的链接或在 App 中的准确位置，以及它来自哪个音乐源。截图或目录标识可帮助定位。</li>
+              <li>你所主张的权利、你有权提出申诉的依据和可供核实的材料，以及认为该使用未经授权的具体理由。</li>
+              <li>权利人或代理人的姓名或名称、可回复的联系方式，以及法律要求的其他信息。请先提交足以识别问题和核验权利的资料。</li>
+            </ul>
+            <p><strong>处理与复核。</strong>我们会根据收到的资料、内容来源和适用法律核实。必要时可要求补充材料，并在能够控制的范围内更正内容、限制访问或移除相关内容。对于由第三方音乐服务提供的目录或由用户在设备上管理的文件，可同时向该服务或相应管理方报告。法律要求转送通知或声明时，我们会依法办理。</p>
+            <p>如果你认为内容被错误识别或限制，可通过同一邮箱提交复核，说明涉及的内容、你享有的权利或合法依据，并提供必要证明。我们会依适用法律处理并告知结果。</p>
+          </div>
+          <div data-language="en">
+            <p><strong>Submit a report.</strong> A rights holder or authorized representative can email <a href="mailto:deskbtm@gmail.com?subject=Musaic%20Copyright">deskbtm@gmail.com</a>. Include enough detail to identify the content and explain the alleged use:</p>
+            <ul>
+              <li>The work’s title or identifier, a link to the reported material or its exact location in the app, and the music source it comes from. A screenshot or catalog identifier can help locate it.</li>
+              <li>The right you claim, why you are entitled to make the report, relevant evidence, and the specific reason you believe the use is unauthorized.</li>
+              <li>The name of the rights holder or representative, contact information for a reply, and any additional information required by law. Start with what is needed to identify the issue and verify your authority.</li>
+            </ul>
+            <p><strong>Handling and review.</strong> We assess the report based on the evidence, content source, and applicable law. We may request more information and, where we have control, correct the content, restrict access, or remove it as appropriate. Material supplied by a third-party music service or stored under a user’s control on a device can also be reported to the relevant provider or party. We forward notices or statements where required by law.</p>
+            <p>If you believe material was misidentified or restricted in error, email us at the same address to request a review. Identify the material, explain the rights or lawful basis for its use, and provide relevant evidence. We will handle the review and communicate the outcome in accordance with applicable law.</p>
+          </div>
+        </section>
+
+        <section id="enforcement">
+          <h2><span data-language="zh">限制使用与复核</span><span data-language="en">Restrictions and review</span></h2>
+          <div data-language="zh">
+            <p>出现有事实依据的严重或重复违规、交易欺诈、紧急安全风险或法定要求时，我们可在法律允许的范围内采取与问题相称的措施，包括暂停受影响的功能、拒绝无法核实的权益请求，或协助购买平台核实交易。限制的范围和时限取决于违规或风险的性质、严重程度和持续状态。</p>
+            <p>在法律允许且情况可行时，我们会说明采取措施的原因和可用的复核方式。为防止正在发生的损害或满足法定要求，必要措施可先实施。你可以根据下方联系方式提交复核和相关说明。因限制影响已付费权益的，按适用法律和购买约定处理。</p>
+          </div>
+          <div data-language="en">
+            <p>If facts support a serious or repeated violation, transaction fraud, an urgent security risk, or a legal requirement, we may take measures proportionate to the issue where the law allows. These may include suspending affected features, declining an entitlement claim that cannot be verified, or helping the purchase platform verify a transaction. The scope and duration of a restriction depend on the nature, severity, and continuing status of the violation or risk.</p>
+            <p>Where lawful and practical, we will explain the reason for the action and how you can request a review. We may take necessary action first to prevent ongoing harm or meet a legal requirement. Use the contact details below to request a review and send any supporting information. We handle any impact on paid benefits in accordance with applicable law and the purchase terms.</p>
+          </div>
+        </section>
+
+        <section id="availability">
+          <h2><span data-language="zh">可用性、变更与消费者权益</span><span data-language="en">Availability, changes, and consumer rights</span></h2>
+          <div data-language="zh">
+            <p><strong>功能和内容可用性。</strong>功能依赖适用平台、设备、权限、文件位置和服务运行状态。文件移动、权限变化或系统清理后，Musaic 可能需要重新建立索引或缓存。第三方曲目、封面或播放资格可能随服务和版权变更。你可以随时停止使用 App，并依 <a href="./privacy-policy.html" data-keep-language>隐私政策</a> 管理本地数据。订阅续费请通过购买渠道另行取消。</p>
+            <p><strong>付费服务调整。</strong>功能调整或停止可能实质影响已购买权益时，我们会依适用法律和购买约定提供通知，并根据具体情况处理继续履行、变更、取消或退款等事项。我们按适用法律对自身应承担的服务责任负责。</p>
+            <p><strong>责任范围和救济。</strong>责任依适用法律、有关行为和损害之间的因果关系及对应义务确定。你依法享有的消费者权利与救济继续有效。依法不得排除或限制的责任，包括适用法律规定的人身损害以及因故意或重大过失造成损失的责任，仍由依法应承担的一方承担。</p>
+            <p>涉及争议时，你可以联系支持、向有权处理的机构投诉，或向有管辖权的法院或其他机构寻求救济。任何条款在某一情形下依法不能执行时，其余可执行条款在法律允许的范围内继续适用。</p>
+          </div>
+          <div data-language="en">
+            <p><strong>Availability of features and content.</strong> Features depend on supported platforms, devices, permissions, file locations, and service operation. Musaic may need to rebuild indexes or caches after files move, permissions change, or the system clears data. Third-party tracks, covers, or playback eligibility can change with service availability and rights. You can stop using the app at any time and manage local data under the <a href="./privacy-policy.html" data-keep-language>Privacy Policy</a>. Cancel subscription renewal separately through your purchase platform.</p>
+            <p><strong>Changes to paid service.</strong> If a change or discontinuation could materially affect purchased benefits, we will provide notice under applicable law and the purchase terms and address continued service, changes, cancellation, or refunds as the circumstances require. We remain responsible for the obligations applicable law places on us.</p>
+            <p><strong>Responsibility and remedies.</strong> Responsibility is determined under applicable law according to the relevant duties and the causal connection between conduct and loss. Your statutory consumer rights and remedies continue to apply. The party responsible under the law remains liable wherever liability cannot lawfully be excluded or limited, including for personal injury or loss caused by intentional misconduct or gross negligence where applicable law so provides.</p>
+            <p>For a dispute, you can contact support, complain to an authority that can handle it, or seek a remedy from a court or other body with jurisdiction. If a term is unenforceable in a particular situation, the other enforceable terms continue to apply to the extent the law allows.</p>
+          </div>
+        </section>
+
+        <section id="contact">
+          <h2><span data-language="zh">条款更新与联系</span><span data-language="en">Updates and contact</span></h2>
+          <div data-language="zh">
+            <p>本条款自随适用版本正式发布之日起生效。我们会在本页公布更新及日期。对你有实质影响的变更将按适用法律通知你，并在依法需要时征得同意。</p>
+            <p>关于本条款、音乐内容和购买权益的问题，请邮件联系 <a href="https://deskbtm.com/">deskbtm</a>。你也可以从 App 的「设置 → 支持 → 联系我们」打开邮件。</p>
+            <p><a class="contact-email" href="mailto:deskbtm@gmail.com?subject=Musaic%20Support">deskbtm@gmail.com</a></p>
+          </div>
+          <div data-language="en">
+            <p>These terms take effect when published with the version they apply to. We will post revisions and their dates here. We will notify you of material changes and obtain consent where applicable law requires it.</p>
+            <p>For questions about these terms, music content, or purchase benefits, email <a href="https://deskbtm.com/">deskbtm</a>. You can also open your email app from Settings → Support → Contact us in Musaic.</p>
+            <p><a class="contact-email" href="mailto:deskbtm@gmail.com?subject=Musaic%20Support">deskbtm@gmail.com</a></p>
+          </div>
+        </section>
+      </article>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>© 2026 <a href="https://deskbtm.com/">deskbtm</a></span>
+      <a href="./privacy-policy.html" data-keep-language><span data-language="zh">查看隐私政策</span><span data-language="en">Read the Privacy Policy</span></a>
+    </div>
+  </footer>
+</body>
+</html>

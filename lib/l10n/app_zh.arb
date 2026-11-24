@@ -89,6 +89,8 @@
   "diagnosticsMailFailed": "无法打开反馈邮件，请重试。",
   "settingsAbout": "关于 Musaic",
   "settingsDeveloperOptions": "开发者选项",
+  "developerScreensaverDemo": "屏保演示",
+  "developerScreensaverDemoDescription": "打开后立即预览，点屏返回。",
   "developerResetDemos": "重置演示",
   "developerResetDemosDescription": "重新观看首页和 Cover Flow 的首次手势演示。",
   "developerResetDemosDone": "演示已重置，返回首页即可重看。",

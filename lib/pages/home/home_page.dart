@@ -38,6 +38,7 @@ import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
 import '../../features/desktop_wallpaper/desktop_wallpaper.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
+import '../../features/music/playback/screensaver/now_playing_screensaver.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/transitions/source_tile_motion.dart';
 import '../../features/music/transition/home_source_transition.dart';
@@ -816,25 +817,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           child: canvas,
         );
-    return SignalBuilder(
-      builder: (context) => LayoutSwitchOverlay(
-        enabled: !_desktopWallpaperEnabled && _manualRotation.enabled.value,
-        coverFlow: _landscape,
-        screenLandscape: _lastAutomaticLandscape,
-        onSwitch: () {
-          if (_lastAutomaticLandscape ||
-              _catalog == null ||
-              _catalog!.isEmpty) {
-            return;
-          }
-          setState(() {
-            _landscapeFlowViewport = null;
-            _manualLayout = !_landscape;
-            _updateLayout(_manualLayout!);
-          });
-        },
-        builder: (button, visible) => homeSheet(
-          button == null ? null : (button: button, visible: visible),
+    return NowPlayingScreensaver(
+      playback: _playback,
+      enabled: !_desktopWallpaperEnabled,
+      child: SignalBuilder(
+        builder: (context) => LayoutSwitchOverlay(
+          enabled: !_desktopWallpaperEnabled && _manualRotation.enabled.value,
+          coverFlow: _landscape,
+          screenLandscape: _lastAutomaticLandscape,
+          onSwitch: () {
+            if (_lastAutomaticLandscape ||
+                _catalog == null ||
+                _catalog!.isEmpty) {
+              return;
+            }
+            setState(() {
+              _landscapeFlowViewport = null;
+              _manualLayout = !_landscape;
+              _updateLayout(_manualLayout!);
+            });
+          },
+          builder: (button, visible) => homeSheet(
+            button == null ? null : (button: button, visible: visible),
+          ),
         ),
       ),
     );

@@ -13,6 +13,7 @@ import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette_picker.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
+import 'package:musaic/features/music/playback/screensaver/screensaver_view.dart';
 import 'package:musaic/features/onboarding/gesture_guide_spotlight.dart';
 import 'package:musaic/features/settings/developer_options_unlock.dart';
 import 'package:musaic/features/settings/settings_sheet.dart';
@@ -234,6 +235,22 @@ void main() {
       await tester.tap(logo);
       await tester.pumpAndSettle();
       expect(find.text('Developer options'), findsOneWidget);
+      final demoSwitch = find.widgetWithText(
+        SwitchListTile,
+        'Screensaver demo',
+      );
+      expect(tester.widget<SwitchListTile>(demoSwitch).value, isFalse);
+      await tester.tap(demoSwitch);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(ScreensaverView), findsOneWidget);
+      expect(find.textContaining(RegExp(r'^\d+:\d{2}$')), findsOneWidget);
+      expect(playback.playing, isFalse);
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pumpAndSettle();
+      expect(find.byType(ScreensaverView), findsNothing);
+      expect(tester.widget<SwitchListTile>(demoSwitch).value, isFalse);
+
       await tester.tap(find.widgetWithText(ListTile, 'Reset demos'));
       await tester.pumpAndSettle();
       expect(

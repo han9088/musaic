@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/rendering.dart' show ImageFilterLayer, RenderBox;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
@@ -9,6 +10,8 @@ import 'package:musaic/features/music/catalog/album_track_list.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/features/music/playback/now_playing_controls.dart';
+import 'package:musaic/features/music/playback/screensaver/now_playing_screensaver.dart';
+import 'package:musaic/features/music/playback/screensaver/screensaver_view.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/services/music/music_provider.dart';
 import 'package:musaic/ui/widgets/frosted_control_surface.dart';
@@ -57,6 +60,124 @@ void main() {
     playback.bind(null, null);
     expect(playback.currentTitle, isNull);
     expect(playback.currentArtist, isNull);
+  });
+
+  testWidgets(
+    'inactivity shows monochrome artwork and live progress through a queue change',
+    (tester) async {
+      final playback = AlbumPlayback();
+      final provider = _Player();
+      addTearDown(provider.events.close);
+      addTearDown(playback.dispose);
+      final first = _song('1', 'First song', 'First singer');
+      final second = _song('2', 'Second song', 'Second singer');
+      const firstCover = 'assets/albums/0.jpg';
+      const secondCover = 'assets/albums/1.jpg';
+      playback.bind(provider, [
+        _album([first], artwork: firstCover),
+        _album([second], id: 'second', artwork: secondCover),
+      ]);
+      var homeTaps = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: NowPlayingScreensaver(
+            playback: playback,
+            enabled: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => homeTaps++,
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+
+      final screen = find.byType(ScreensaverView);
+      await tester.pump(const Duration(minutes: 1));
+      expect(screen, findsNothing);
+      provider.emit(
+        first.reference,
+        playing: true,
+        position: const Duration(seconds: 42),
+        duration: const Duration(minutes: 3, seconds: 1),
+      );
+      await tester.pump(const Duration(seconds: 59));
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pump(const Duration(seconds: 59));
+      expect(screen, findsNothing);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('First song'), findsNothing);
+      expect(tester.widget<ScreensaverView>(screen).artwork, firstCover);
+      expect(
+        find.descendant(of: screen, matching: find.byType(ColorFiltered)),
+        findsOneWidget,
+      );
+      expect(find.text('0:42'), findsOneWidget);
+      expect(find.text('3:01'), findsNothing);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      provider.emit(
+        first.reference,
+        playing: true,
+        position: const Duration(seconds: 43),
+        duration: const Duration(minutes: 3, seconds: 1),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('0:43'), findsOneWidget);
+
+      provider.emit(second.reference, playing: false, buffering: true);
+      await tester.pump();
+      expect(tester.widget<ScreensaverView>(screen).artwork, secondCover);
+      expect(find.text('Second song'), findsNothing);
+      provider.emit(second.reference, playing: true);
+      await tester.pump();
+      expect(screen, findsOneWidget);
+      await tester.tapAt(const Offset(100, 100));
+      await tester.pump();
+      expect(screen, findsNothing);
+      expect(homeTaps, 1);
+      expect(playback.playing, isTrue);
+      expect(provider.pauses, 0);
+
+      await tester.pump(const Duration(minutes: 1));
+      expect(screen, findsOneWidget);
+      provider.emit(second.reference, playing: false);
+      await tester.pump();
+      expect(screen, findsNothing);
+    },
+  );
+
+  testWidgets('backgrounding cancels idle entry and a key wakes the screen', (
+    tester,
+  ) async {
+    final playback = AlbumPlayback()..bind(null, null);
+    addTearDown(playback.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: NowPlayingScreensaver(
+          playback: playback,
+          enabled: true,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    final screen = find.byType(ScreensaverView);
+    playback.toggle('assets/albums/0.jpg', 'Demo');
+    await tester.pump(const Duration(seconds: 59));
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    await tester.pump(const Duration(minutes: 2));
+    expect(screen, findsNothing);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(const Duration(seconds: 59));
+    expect(screen, findsNothing);
+    await tester.pump(const Duration(seconds: 1));
+    expect(screen, findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(screen, findsNothing);
+    expect(playback.playing, isTrue);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets(
@@ -360,11 +481,15 @@ ProviderSong _song(
   playable: playable,
 );
 
-ProviderAlbum _album(List<ProviderSong> tracks) => (
-  reference: _reference('album', MusicKind.album),
+ProviderAlbum _album(
+  List<ProviderSong> tracks, {
+  String id = 'album',
+  String? artwork,
+}) => (
+  reference: _reference(id, MusicKind.album),
   title: 'Album',
   artist: 'Album artist',
-  artworkUrl: null,
+  artworkUrl: artwork,
   trackCount: tracks.length,
   tracks: tracks,
 );
@@ -415,18 +540,21 @@ class _Player extends Fake implements MusicProvider {
   void emit(
     MusicReference song, {
     required bool playing,
+    bool buffering = false,
     Duration position = Duration.zero,
     Duration? duration,
   }) {
     _state = (
       status: playing
           ? MusicPlaybackStatus.playing
+          : buffering
+          ? MusicPlaybackStatus.buffering
           : MusicPlaybackStatus.paused,
       currentItem: song,
       position: position,
       duration: duration,
       isPlaying: playing,
-      isBuffering: false,
+      isBuffering: buffering,
       error: null,
     );
     events.add(_state);
