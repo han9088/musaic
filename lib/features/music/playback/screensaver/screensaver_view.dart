@@ -87,8 +87,9 @@ class _ScreensaverViewState extends State<ScreensaverView>
     );
     _positionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       final seconds = widget.readPosition()?.inSeconds;
-      if (seconds != _playbackSeconds)
+      if (seconds != _playbackSeconds) {
         setState(() => _playbackSeconds = seconds);
+      }
     });
   }
 
