@@ -29,6 +29,8 @@ dependencies:
   sqflite: ^2.4.6
   musaic_query:
     path: packages/musaic_query/packages/musaic_query
+  musaic_updater:
+    path: packages/musaic_updater
 
 dependency_overrides:
   audioplayers_android:
