@@ -235,14 +235,20 @@ class MusaicUpdateChecker with WidgetsBindingObserver {
   /// 仅在应用恢复前台时检查；错误交由宿主捕获，不伪装成“已是最新”。
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed || !checkOnResume) return;
-    check().then((result) {
+    if (state == AppLifecycleState.resumed && checkOnResume) {
+      _checkOnResume();
+    }
+  }
+
+  Future<void> _checkOnResume() async {
+    try {
+      final result = await check();
       onUpdateChecked?.call(result);
-    }).catchError((Object error, StackTrace stackTrace) {
+    } catch (error) {
       if (debugLogging) {
         print('musaic_updater: resume check failed: $error');
       }
-    });
+    }
   }
 
   /// 释放生命周期观察者。HTTP Client 由调用方提供时不自动关闭。
