@@ -10,8 +10,9 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 /// 封装或定义纵向倾斜动效相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class PortraitTiltMotion {
-  static const maxAngle = 10 * math.pi / 180;
+  static const maxAngle = 12 * math.pi / 180;
   Offset? _neutral;
+  Offset _smoothedTarget = Offset.zero;
   Offset _filtered = Offset.zero;
 
   /// Returns null when the reading is unsuitable for estimating gravity.
@@ -34,18 +35,21 @@ class PortraitTiltMotion {
           math.atan2(math.sin(pitch), math.cos(pitch)),
           -(angles.dy - neutral.dy),
         ) *
-        0.32;
+        0.38;
     // Approach the limit smoothly so large tilts still respond to movement.
     final normalizedAngle = target.distance / maxAngle;
     target /= math.sqrt(1 + normalizedAngle * normalizedAngle);
     if (target.distance < 0.001) target = Offset.zero;
-    _filtered = Offset.lerp(_filtered, target, 0.25)!;
+    // Dampen brief accelerometer shake before it moves the canvas perspective.
+    _smoothedTarget = Offset.lerp(_smoothedTarget, target, 0.27)!;
+    _filtered = Offset.lerp(_filtered, _smoothedTarget, 0.25)!;
     return _filtered;
   }
 
   /// 移除、清理或重置相关状态与资源，用于专辑墙无限画布的布局、视口与交互状态。
   void reset() {
     _neutral = null;
+    _smoothedTarget = Offset.zero;
     _filtered = Offset.zero;
   }
 }
@@ -101,6 +105,7 @@ class PortraitTilt extends StatefulWidget {
 class _PortraitTiltState extends State<PortraitTilt>
     with WidgetsBindingObserver {
   static const _sampleWindow = Duration(milliseconds: 500);
+  static const _steadyAngle = 0.14 * math.pi / 180;
 
   final _motion = PortraitTiltMotion();
   StreamSubscription<AccelerometerEvent>? _subscription;
@@ -183,13 +188,25 @@ class _PortraitTiltState extends State<PortraitTilt>
         if (next == null) return;
         _receivedUsableSample = true;
         _canReconnect = true;
-        if (widget.paused || (next - _target).distance < 0.0002) return;
-        setState(() => _target = next);
+        if (!widget.paused) _updateTarget(next);
       },
       onError: (Object error) => sensorUnavailable(),
       onDone: sensorUnavailable,
     );
     _watchSamples();
+  }
+
+  void _updateTarget(Offset next) {
+    if (next.distance <= _steadyAngle) {
+      if (_target != Offset.zero) setState(() => _target = Offset.zero);
+      return;
+    }
+
+    // Follow only the motion outside the band around the current tilt.
+    final delta = next - _target;
+    final distance = delta.distance;
+    if (distance <= _steadyAngle + 0.0002) return;
+    setState(() => _target = next - delta * (_steadyAngle / distance));
   }
 
   void _watchSamples() {

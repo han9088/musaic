@@ -22,8 +22,9 @@ class DesktopWallpaper {
  private:
   static LRESULT CALLBACK HostProc(HWND window, UINT message, WPARAM wparam,
                                   LPARAM lparam);
+  void EmbedWindow();
+  void RestoreWindow();
 
-  void Prepare();
   bool Show();
   void Restore();
   bool AttachViewToWindow();
@@ -40,9 +41,11 @@ class DesktopWallpaper {
   const UINT taskbar_created_;
   HWND host_ = nullptr;
   bool preparing_ = false;
+  bool close_to_background_ = false;
   bool tray_icon_added_ = false;
   std::wstring set_title_ = L"Set as Wallpaper";
   std::wstring restore_title_ = L"Restore Window";
+  std::wstring quit_title_ = L"Quit Musaic";
 };
 
 #endif  // RUNNER_DESKTOP_WALLPAPER_H_

@@ -7,20 +7,30 @@ final class DesktopWallpaper {
   private var session: (window: NSWindow, originalFrame: NSRect)?
   private var preparing = false
   private var menuTitles = (set: "Set as Wallpaper", restore: "Restore Window")
+  private(set) var closeToBackground = false
 
   init(window: NSWindow, messenger: FlutterBinaryMessenger) {
     mainWindow = window
     channel = FlutterMethodChannel(
       name: "com.deskbtm.musaic/desktop_wallpaper", binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
-      guard call.method == "setMenuTitles",
-        let titles = call.arguments as? [String: String],
-        let set = titles["set"], let restore = titles["restore"]
-      else {
+      guard let self else {
         result(FlutterMethodNotImplemented)
         return
       }
-      self?.menuTitles = (set: set, restore: restore)
+      switch call.method {
+      case "setMenuTitles":
+        if let titles = call.arguments as? [String: String],
+           let set = titles["set"], let restore = titles["restore"] {
+          self.menuTitles = (set: set, restore: restore)
+        }
+      case "setCloseToBackground": self.closeToBackground = call.arguments as? Bool == true
+      case "embedWindow": self.embedWindow()
+      case "restoreWindow": self.restoreWindow()
+      default:
+        result(FlutterMethodNotImplemented)
+        return
+      }
       result(nil)
     }
   }
@@ -38,11 +48,15 @@ final class DesktopWallpaper {
   }
 
   func toggle() {
-    guard canToggle else { return }
     if isActive {
       restoreWindow()
-      return
+    } else {
+      embedWindow()
     }
+  }
+
+  func embedWindow() {
+    guard !isActive, canToggle else { return }
     preparing = true
     channel.invokeMethod("prepare", arguments: nil) { [weak self] response in
       guard let self else { return }
@@ -84,16 +98,25 @@ final class DesktopWallpaper {
     return true
   }
 
-  private func restoreWindow() {
-    guard let session else { return }
-    let controller = session.window.contentViewController
-    session.window.contentViewController = nil
-    mainWindow.contentViewController = controller
-    mainWindow.setFrame(session.originalFrame, display: false)
+  func restoreWindow() {
+    if NSApp.activationPolicy() == .accessory { NSApp.setActivationPolicy(.regular) }
+    if NSApp.isHidden { NSApp.unhide(nil) }
+    if let session {
+      let controller = session.window.contentViewController
+      session.window.contentViewController = nil
+      mainWindow.contentViewController = controller
+      mainWindow.setFrame(session.originalFrame, display: false)
+      session.window.orderOut(nil)
+      self.session = nil
+      channel.invokeMethod("didRestore", arguments: nil)
+    }
+    if mainWindow.isMiniaturized { mainWindow.deminiaturize(nil) }
     mainWindow.makeKeyAndOrderFront(nil)
-    session.window.orderOut(nil)
-    self.session = nil
-    channel.invokeMethod("didRestore", arguments: nil)
+    if #available(macOS 14.0, *) {
+      NSApp.activate()
+    } else {
+      NSApp.activate(ignoringOtherApps: true)
+    }
   }
 
   func updateScreenFrame() {

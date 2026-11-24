@@ -3,8 +3,10 @@ import FlutterMacOS
 
 @main
 class AppDelegate: FlutterAppDelegate, NSMenuItemValidation {
+  private var windowKeptInBackground: MainFlutterWindow?
+
   private var desktopWallpaper: DesktopWallpaper? {
-    (mainFlutterWindow as? MainFlutterWindow)?.desktopWallpaper
+    (windowKeptInBackground ?? mainFlutterWindow as? MainFlutterWindow)?.desktopWallpaper
   }
 
   @IBAction func toggleDesktopWallpaper(_ sender: NSMenuItem) {
@@ -18,7 +20,11 @@ class AppDelegate: FlutterAppDelegate, NSMenuItemValidation {
   }
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-    desktopWallpaper?.isActive != true
+    if !flag, windowKeptInBackground != nil, let desktopWallpaper, !desktopWallpaper.isActive {
+      desktopWallpaper.restoreWindow()
+      return false
+    }
+    return desktopWallpaper?.isActive != true
   }
 
   override func applicationDidChangeScreenParameters(_ notification: Notification) {
@@ -26,7 +32,17 @@ class AppDelegate: FlutterAppDelegate, NSMenuItemValidation {
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-    return true
+    guard let window = mainFlutterWindow as? MainFlutterWindow,
+      window.desktopWallpaper?.closeToBackground == true
+    else { return true }
+
+    windowKeptInBackground = window
+    // Switch Dock visibility after AppKit finishes closing the visible window.
+    DispatchQueue.main.async { [weak window] in
+      guard window?.isVisible == false else { return }
+      sender.setActivationPolicy(.accessory)
+    }
+    return false
   }
 
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

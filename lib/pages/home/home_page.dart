@@ -34,6 +34,7 @@ import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
 import '../../features/artwork/xerox/xerox_raster_request.dart';
 import '../../features/coverflow/album_coverflow.dart';
+import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
 import '../../features/desktop_wallpaper/desktop_wallpaper.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
@@ -68,6 +69,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _haptics = AlbumHaptics();
   final _playback = AlbumPlayback();
+  DesktopShortcuts? _desktopShortcuts;
   final _manualRotation = ManualRotationPreference();
   late final VoidCallback _stopManualRotationListener;
   late final _sources = widget.sources ?? MusicSourceController();
@@ -502,6 +504,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final _interaction = CanvasInteractionState(_drift);
   bool _reduceMotion = false;
   bool _desktopWallpaperEnabled = false;
+  PageRoute<void>? _keyboardShortcutsRoute;
   Locale? _desktopWallpaperMenuLocale;
   bool _landscape = false;
   bool _lastAutomaticLandscape = false;
@@ -516,6 +519,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    if (DesktopShortcuts.isAvailable) {
+      _desktopShortcuts = DesktopShortcuts(_playback);
+    }
     DesktopWallpaper.setHandlers(
       onPrepare: _prepareDesktopWallpaper,
       onRestore: _restoreDesktopWallpaperControls,
@@ -587,9 +593,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
   }
 
+  void _trackKeyboardShortcutsRoute(PageRoute<void> route) {
+    _keyboardShortcutsRoute = route;
+    unawaited(
+      route.completed.whenComplete(() {
+        if (identical(_keyboardShortcutsRoute, route)) {
+          _keyboardShortcutsRoute = null;
+        }
+      }),
+    );
+  }
+
   Future<bool> _prepareDesktopWallpaper() async {
-    if (_desktopWallpaperEnabled ||
-        ModalRoute.isCurrentOf(context) == false ||
+    if (_desktopWallpaperEnabled) return false;
+    if (_keyboardShortcutsRoute case final route? when route.isCurrent) {
+      if (!SchedulerBinding.instance.framesEnabled) return false;
+      route.navigator!.pop();
+      await route.completed;
+      if (!mounted) return false;
+      await BottomSheetScope.maybeOf(context)?.dismissAll();
+      if (!mounted) return false;
+    }
+    if (ModalRoute.isCurrentOf(context) == false ||
         BottomSheetScope.maybeOf(context)?.sheetStore.snapshot.isPresented ==
             true) {
       return false;
@@ -599,7 +624,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       _albumLayout.selectedAlbum = null;
       _interaction.resetForLayoutChange();
     });
-    await WidgetsBinding.instance.endOfFrame;
+    if (SchedulerBinding.instance.framesEnabled) {
+      await SchedulerBinding.instance.endOfFrame;
+    }
     return mounted;
   }
 
@@ -618,6 +645,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           DesktopWallpaper.setMenuTitles(
             setWallpaper: l10n.desktopWallpaperSet,
             restoreWindow: l10n.desktopWallpaperRestore,
+            quit: l10n.desktopShortcutsQuit,
           ),
         );
       }
@@ -705,6 +733,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    unawaited(_desktopShortcuts?.dispose());
     DesktopWallpaper.clearHandlers();
     unawaited(_haptics.dispose());
     _stopSourceListener();
@@ -772,6 +801,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           playbackReady: _landscapeFlowViewport == null || !_layout.isAnimating,
           sources: _sources,
           playback: _playback,
+          desktopShortcuts: _desktopShortcuts,
+          onKeyboardShortcutsOpened: _trackKeyboardShortcutsRoute,
           layoutSwitch: layoutSwitch,
           sourceSwitching: _sourceTransition.switching,
           onSourceSelection: _selectMusicSource,

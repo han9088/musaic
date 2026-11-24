@@ -21,6 +21,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopWallpaperRestore => 'Restore Window';
 
   @override
+  String get settingsKeyboardShortcuts => 'Keyboard Shortcuts';
+
+  @override
+  String get desktopShortcutsPlayback => 'Playback';
+
+  @override
+  String get desktopShortcutsWindow => 'Window';
+
+  @override
+  String get desktopShortcutPlayPause => 'Play / Pause';
+
+  @override
+  String get desktopShortcutUnavailable =>
+      'The system couldn’t register this shortcut';
+
+  @override
+  String get desktopShortcutRecord =>
+      'Press a new combination that includes Ctrl, Alt, or Command.';
+
+  @override
+  String get desktopShortcutDuplicate =>
+      'Another Musaic action already uses this shortcut.';
+
+  @override
+  String get desktopShortcutSaveFailed =>
+      'The new shortcut works for this session, but couldn’t be saved.';
+
+  @override
+  String get desktopShortcutUseDefault => 'Restore default';
+
+  @override
+  String get desktopShortcutSave => 'Save';
+
+  @override
+  String get desktopShortcutsCloseMac =>
+      'Closing the window hides the Dock icon and keeps Musaic running in the background. Restore the window and press ⌘Q to quit.';
+
+  @override
+  String get desktopShortcutsCloseWindows =>
+      'Closing the window keeps Musaic running in the background. To quit, restore the window and choose Quit Musaic from the window menu.';
+
+  @override
+  String get desktopShortcutsQuit => 'Quit Musaic';
+
+  @override
   String get albumCoversLoadFailed => 'Couldn’t load album covers.';
 
   @override

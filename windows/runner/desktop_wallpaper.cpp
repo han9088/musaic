@@ -12,6 +12,7 @@
 
 namespace {
 constexpr UINT kWallpaperCommand = 0x1F00;
+constexpr UINT kQuitCommand = 0x1F10;
 constexpr UINT kTrayMessage = WM_APP + 1;
 constexpr UINT kHostLost = WM_APP + 2;
 constexpr UINT kTrayIconId = 1;
@@ -99,8 +100,25 @@ DesktopWallpaper::DesktopWallpaper(HWND window,
   if (const HMENU menu = GetSystemMenu(window_, FALSE)) {
     InsertMenuW(menu, SC_CLOSE, MF_BYCOMMAND | MF_STRING | MF_GRAYED,
                 kWallpaperCommand, set_title_.c_str());
+    AppendMenuW(menu, MF_STRING, kQuitCommand, quit_title_.c_str());
   }
   channel_.SetMethodCallHandler([this](const auto& call, auto result) {
+    if (call.method_name() == "setCloseToBackground") {
+      const auto* enabled = std::get_if<bool>(call.arguments());
+      close_to_background_ = enabled && *enabled;
+      result->Success();
+      return;
+    }
+    if (call.method_name() == "restoreWindow") {
+      RestoreWindow();
+      result->Success();
+      return;
+    }
+    if (call.method_name() == "embedWindow") {
+      EmbedWindow();
+      result->Success();
+      return;
+    }
     if (call.method_name() != "setMenuTitles") {
       result->NotImplemented();
       return;
@@ -115,6 +133,12 @@ DesktopWallpaper::DesktopWallpaper(HWND window,
         if (set_text && restore_text) {
           set_title_ = WideString(*set_text);
           restore_title_ = WideString(*restore_text);
+        }
+      }
+      const auto quit = titles->find(flutter::EncodableValue("quit"));
+      if (quit != titles->end()) {
+        if (const auto* text = std::get_if<std::string>(&quit->second)) {
+          quit_title_ = WideString(*text);
         }
       }
     }
@@ -132,14 +156,23 @@ DesktopWallpaper::~DesktopWallpaper() {
 std::optional<LRESULT> DesktopWallpaper::HandleMessage(UINT message,
                                                        WPARAM wparam,
                                                        LPARAM lparam) {
+  if (message == WM_CLOSE && close_to_background_) {
+    ShowWindow(window_, SW_HIDE);
+    return 0;
+  }
   if ((message == WM_INITMENU || message == WM_INITMENUPOPUP) &&
       reinterpret_cast<HMENU>(wparam) == GetSystemMenu(window_, FALSE)) {
     ModifyMenuW(reinterpret_cast<HMENU>(wparam), kWallpaperCommand,
                 MF_BYCOMMAND | MF_STRING | (preparing_ ? MF_GRAYED : MF_ENABLED),
                 kWallpaperCommand, set_title_.c_str());
+    ModifyMenuW(reinterpret_cast<HMENU>(wparam), kQuitCommand,
+                MF_BYCOMMAND | MF_STRING, kQuitCommand, quit_title_.c_str());
   } else if (message == WM_SYSCOMMAND &&
              (wparam & 0xFFF0) == kWallpaperCommand) {
-    Prepare();
+    EmbedWindow();
+    return 0;
+  } else if (message == WM_SYSCOMMAND && (wparam & 0xFFF0) == kQuitCommand) {
+    DestroyWindow(window_);
     return 0;
   } else if (message == kTrayMessage) {
     const UINT event = LOWORD(lparam);
@@ -156,7 +189,7 @@ std::optional<LRESULT> DesktopWallpaper::HandleMessage(UINT message,
   return std::nullopt;
 }
 
-void DesktopWallpaper::Prepare() {
+void DesktopWallpaper::EmbedWindow() {
   if (preparing_ || host_ || !IsWindowVisible(window_) || IsIconic(window_)) return;
   preparing_ = true;
   const std::weak_ptr<int> lifetime = lifetime_;
@@ -183,6 +216,7 @@ void DesktopWallpaper::Prepare() {
 }
 
 bool DesktopWallpaper::Show() {
+  if (!IsWindowVisible(window_) || IsIconic(window_)) return false;
   const DesktopLayer layer = FindDesktopLayer();
   MONITORINFO monitor{};
   monitor.cbSize = sizeof(monitor);
@@ -250,6 +284,15 @@ void DesktopWallpaper::Restore() {
   channel_.InvokeMethod("didRestore", nullptr);
 }
 
+void DesktopWallpaper::RestoreWindow() {
+  if (host_) {
+    Restore();
+  } else {
+    ShowWindow(window_, IsIconic(window_) ? SW_RESTORE : SW_SHOW);
+    SetForegroundWindow(window_);
+  }
+}
+
 void DesktopWallpaper::CloseHost() {
   if (const HWND host = std::exchange(host_, nullptr)) DestroyWindow(host);
 }
@@ -285,6 +328,7 @@ void DesktopWallpaper::ShowTrayMenu(POINT anchor) {
   const HMENU menu = CreatePopupMenu();
   if (!menu) return;
   AppendMenuW(menu, MF_STRING, kWallpaperCommand, restore_title_.c_str());
+  AppendMenuW(menu, MF_STRING, kQuitCommand, quit_title_.c_str());
   SetForegroundWindow(window_);
   const UINT command = static_cast<UINT>(TrackPopupMenu(
       menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
@@ -292,6 +336,7 @@ void DesktopWallpaper::ShowTrayMenu(POINT anchor) {
   DestroyMenu(menu);
   PostMessageW(window_, WM_NULL, 0, 0);
   if (command == kWallpaperCommand && host_) Restore();
+  if (command == kQuitCommand) PostMessageW(window_, WM_SYSCOMMAND, kQuitCommand, 0);
 }
 
 LRESULT CALLBACK DesktopWallpaper::HostProc(HWND window, UINT message,

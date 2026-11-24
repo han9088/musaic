@@ -118,6 +118,84 @@ abstract class AppLocalizations {
   /// **'恢复窗口'**
   String get desktopWallpaperRestore;
 
+  /// No description provided for @settingsKeyboardShortcuts.
+  ///
+  /// In zh, this message translates to:
+  /// **'键盘快捷键'**
+  String get settingsKeyboardShortcuts;
+
+  /// No description provided for @desktopShortcutsPlayback.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放控制'**
+  String get desktopShortcutsPlayback;
+
+  /// No description provided for @desktopShortcutsWindow.
+  ///
+  /// In zh, this message translates to:
+  /// **'窗口控制'**
+  String get desktopShortcutsWindow;
+
+  /// No description provided for @desktopShortcutPlayPause.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放 / 暂停'**
+  String get desktopShortcutPlayPause;
+
+  /// No description provided for @desktopShortcutUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统未能注册此快捷键'**
+  String get desktopShortcutUnavailable;
+
+  /// No description provided for @desktopShortcutRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'按下新的组合键，至少包含 Ctrl、Alt 或 Command。'**
+  String get desktopShortcutRecord;
+
+  /// No description provided for @desktopShortcutDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'此组合键已用于 Musaic 的其他操作。'**
+  String get desktopShortcutDuplicate;
+
+  /// No description provided for @desktopShortcutSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'新组合键当前可用，但保存失败。'**
+  String get desktopShortcutSaveFailed;
+
+  /// No description provided for @desktopShortcutUseDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get desktopShortcutUseDefault;
+
+  /// No description provided for @desktopShortcutSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get desktopShortcutSave;
+
+  /// No description provided for @desktopShortcutsCloseMac.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭窗口后，Musaic 会隐藏 Dock 图标并在后台运行。恢复窗口后，按 ⌘Q 即可退出。'**
+  String get desktopShortcutsCloseMac;
+
+  /// No description provided for @desktopShortcutsCloseWindows.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭窗口后，Musaic 会在后台运行。要退出，请恢复窗口，然后在窗口菜单中选择「退出 Musaic」。'**
+  String get desktopShortcutsCloseWindows;
+
+  /// No description provided for @desktopShortcutsQuit.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出 Musaic'**
+  String get desktopShortcutsQuit;
+
   /// No description provided for @albumCoversLoadFailed.
   ///
   /// In zh, this message translates to:

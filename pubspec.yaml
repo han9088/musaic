@@ -27,6 +27,7 @@ dependencies:
   talker_dio_logger: 5.2.0
   google_fonts: 9.0.0
   phosphoricons_flutter: 1.1.1
+  hotkey_manager: ^0.3.0
   pulsar_haptics: 0.1.1
   audioplayers: 6.8.1
   sensors_plus: 7.1.1

@@ -343,6 +343,70 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets('sensor shake does not reverse slow minimum-zoom drift', (
+    tester,
+  ) async {
+    final events = StreamController<AccelerometerEvent>.broadcast();
+    final originalSensors = SensorsPlatform.instance;
+    SensorsPlatform.instance = _ControlledSensors(events.stream);
+    final transform = TransformationController(
+      Matrix4.diagonal3Values(0.4, 0.4, 1),
+    );
+    final drift = CanvasDrift()..velocity = const Offset(0, -12);
+    final playback = AlbumPlayback();
+    tester.view.physicalSize = const Size(1280, 2772);
+    tester.view.devicePixelRatio = 3.25;
+    addTearDown(() async {
+      SensorsPlatform.instance = originalSensors;
+      await events.close();
+      transform.dispose();
+      playback.dispose();
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AlbumCanvasViewport(
+          albums: const [
+            {'asset': 'local:placeholder', 'title': 'Album'},
+          ],
+          layout: HomeAlbumLayoutState(),
+          transform: transform,
+          interaction: CanvasInteractionState(drift),
+          playback: playback,
+          xerox: false,
+          interactionBlocked: false,
+          onViewportSizeChanged: (_) {},
+          onTileSelected: (_, _) {},
+          animateSourceTile: (_, _, child) => child,
+        ),
+      ),
+    );
+
+    void sample(double z) =>
+        events.add(AccelerometerEvent(0, 9.81, z, DateTime(2026)));
+    sample(0);
+    await tester.pump();
+
+    // A cover near the screen edge is most sensitive to perspective changes.
+    final tile = find.byKey(const ValueKey((20, 4)));
+    var previousY = tester.getCenter(tile).dy;
+    var largestReverse = 0.0;
+    const frame = Duration(microseconds: 8333);
+    drift.advance(Duration.zero, transform, enabled: true);
+    for (var i = 1; i <= 120; i++) {
+      if (i % 4 == 0) sample(1.2 * math.sin(i * math.pi / 16));
+      drift.advance(frame * i, transform, enabled: true);
+      await tester.pump(frame);
+      final y = tester.getCenter(tile).dy;
+      largestReverse = math.max(largestReverse, y - previousY);
+      previousY = y;
+    }
+    expect(largestReverse, lessThan(1e-6));
+    expect(transform.value.entry(1, 3), closeTo(-12, 0.001));
+    await tester.pumpWidget(const SizedBox.shrink());
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   for (final transition in ['BottomSheet', 'Cover Flow']) {
     testWidgets('tilt responds after returning from $transition', (
       tester,

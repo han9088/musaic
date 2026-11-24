@@ -56,7 +56,8 @@ void main() {
     }
   });
 
-  test('all tilt directions stay within ten degrees and return to neutral', () {
+  test('all tilt directions stay within 12° and return to neutral', () {
+    expect(PortraitTiltMotion.maxAngle, 12 * math.pi / 180);
     for (final x in [-5.0, 0.0, 5.0]) {
       for (final z in [-5.0, 0.0, 5.0]) {
         final motion = PortraitTiltMotion();
@@ -90,6 +91,68 @@ void main() {
     expect(motion.update(30, 30, 30), isNull);
     motion.reset();
     expect(motion.update(0, 4, 8.96), Offset.zero);
+  });
+
+  testWidgets('a held tilt stays still through tiny sensor fluctuations', (
+    tester,
+  ) async {
+    final events = StreamController<AccelerometerEvent>.broadcast();
+    addTearDown(events.close);
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PortraitTilt(
+          events: events.stream,
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    Future<void> sample(double degrees) async {
+      final angle = degrees * math.pi / 180;
+      events.add(
+        AccelerometerEvent(
+          0,
+          9.81 * math.sin(angle),
+          9.81 * math.cos(angle),
+          DateTime(2026),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 32));
+    }
+
+    double pitch() => tester
+        .widget<Transform>(find.byKey(const ValueKey('portrait-sensor-plane')))
+        .transform
+        .entry(2, 1);
+
+    await sample(60);
+    for (var i = 0; i < 60; i++) {
+      await sample(74);
+    }
+    expect(pitch(), greaterThan(0.07));
+
+    double? heldPitch;
+    for (var i = 0; i < 64; i++) {
+      await sample(74 + (i % 10 < 5 ? 0.3 : -0.3));
+      if (i >= 20) {
+        heldPitch ??= pitch();
+        expect(pitch(), closeTo(heldPitch, 0.00002));
+      }
+    }
+
+    for (var i = 0; i <= 60; i++) {
+      await sample(74 + i * 0.05);
+    }
+    expect(pitch(), greaterThan(heldPitch! + 0.009));
+    for (var i = 0; i < 60; i++) {
+      await sample(60);
+    }
+    expect(pitch(), 0);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets(

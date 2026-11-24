@@ -16,6 +16,7 @@ import 'settings_support_section.dart';
 enum SettingsSection {
   musicSource,
   appearance,
+  keyboardShortcuts,
   usageGuide,
   diagnostics,
   about,
@@ -31,6 +32,7 @@ class SettingsSheet extends StatelessWidget {
     required this.onOpenSection,
     required this.usageGuideVisible,
     required this.developerOptionsEnabled,
+    this.keyboardShortcutsVisible = false,
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -42,6 +44,7 @@ class SettingsSheet extends StatelessWidget {
   final void Function(BuildContext, SettingsSection) onOpenSection;
   final ReadonlySignal<bool> usageGuideVisible;
   final ReadonlySignal<bool> developerOptionsEnabled;
+  final bool keyboardShortcutsVisible;
   final ValueListenable<bool>? xeroxEnabled;
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
@@ -168,6 +171,12 @@ class SettingsSheet extends StatelessWidget {
                                   l10n.settingsAppearance,
                                   SettingsSection.appearance,
                                 ),
+                                if (keyboardShortcutsVisible)
+                                  _section(
+                                    PhosphorIcons.keyboard,
+                                    l10n.settingsKeyboardShortcuts,
+                                    SettingsSection.keyboardShortcuts,
+                                  ),
                                 SettingsSectionHeading(
                                   l10n.settingsAboutAndHelp,
                                 ),

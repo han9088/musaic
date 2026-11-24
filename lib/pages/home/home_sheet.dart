@@ -5,6 +5,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
+import '../../features/desktop_shortcuts/desktop_shortcuts_settings.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
@@ -36,6 +38,8 @@ class HomeSheet extends StatefulWidget {
     this.playbackReady = true,
     this.sources,
     this.playback,
+    this.desktopShortcuts,
+    this.onKeyboardShortcutsOpened,
     this.layoutSwitch,
     this.sourceSwitching,
     this.onSourceSelection,
@@ -52,6 +56,8 @@ class HomeSheet extends StatefulWidget {
   final bool playbackReady;
   final MusicSourceController? sources;
   final AlbumPlayback? playback;
+  final DesktopShortcuts? desktopShortcuts;
+  final ValueChanged<PageRoute<void>>? onKeyboardShortcutsOpened;
   final ({Widget button, bool visible})? layoutSwitch;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
@@ -157,6 +163,7 @@ class _HomeSheetState extends State<HomeSheet> {
     onOpenSection: _openSettings,
     usageGuideVisible: _usageGuide.visible,
     developerOptionsEnabled: _developerOptions.enabled,
+    keyboardShortcutsVisible: widget.desktopShortcuts != null,
     xeroxEnabled: widget.xeroxEnabled,
     onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
     xeroxPalettePicker: widget.xeroxPalettePicker,
@@ -236,6 +243,11 @@ class _HomeSheetState extends State<HomeSheet> {
           manualRotation: widget.manualRotation,
         ),
       ),
+      SettingsSection.keyboardShortcuts => (
+        '/settings/keyboard-shortcuts',
+        (AppLocalizations l10n) => l10n.settingsKeyboardShortcuts,
+        DesktopShortcutsSettings(shortcuts: widget.desktopShortcuts!),
+      ),
       SettingsSection.usageGuide => (
         '/settings/usage-guide',
         (AppLocalizations l10n) => l10n.settingsUsageGuide,
@@ -280,6 +292,9 @@ class _HomeSheetState extends State<HomeSheet> {
             )
           : null,
     );
+    if (section == SettingsSection.keyboardShortcuts) {
+      widget.onKeyboardShortcutsOpened?.call(route);
+    }
   }
 
   void _openDeveloperOptions(BuildContext source) {

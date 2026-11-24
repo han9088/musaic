@@ -12,12 +12,23 @@ abstract final class DesktopWallpaper {
       (defaultTargetPlatform == TargetPlatform.macOS ||
           defaultTargetPlatform == TargetPlatform.windows);
 
+  static Future<void> setCloseToBackground(bool enabled) =>
+      _channel.invokeMethod<void>('setCloseToBackground', enabled);
+
+  static Future<void> embedWindow() =>
+      _channel.invokeMethod<void>('embedWindow');
+
+  static Future<void> restoreWindow() =>
+      _channel.invokeMethod<void>('restoreWindow');
+
   static Future<void> setMenuTitles({
     required String setWallpaper,
     required String restoreWindow,
+    required String quit,
   }) => _channel.invokeMethod<void>('setMenuTitles', {
     'set': setWallpaper,
     'restore': restoreWindow,
+    'quit': quit,
   });
 
   static void setHandlers({

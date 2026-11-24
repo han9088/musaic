@@ -21,6 +21,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopWallpaperRestore => '恢复窗口';
 
   @override
+  String get settingsKeyboardShortcuts => '键盘快捷键';
+
+  @override
+  String get desktopShortcutsPlayback => '播放控制';
+
+  @override
+  String get desktopShortcutsWindow => '窗口控制';
+
+  @override
+  String get desktopShortcutPlayPause => '播放 / 暂停';
+
+  @override
+  String get desktopShortcutUnavailable => '系统未能注册此快捷键';
+
+  @override
+  String get desktopShortcutRecord => '按下新的组合键，至少包含 Ctrl、Alt 或 Command。';
+
+  @override
+  String get desktopShortcutDuplicate => '此组合键已用于 Musaic 的其他操作。';
+
+  @override
+  String get desktopShortcutSaveFailed => '新组合键当前可用，但保存失败。';
+
+  @override
+  String get desktopShortcutUseDefault => '恢复默认';
+
+  @override
+  String get desktopShortcutSave => '保存';
+
+  @override
+  String get desktopShortcutsCloseMac =>
+      '关闭窗口后，Musaic 会隐藏 Dock 图标并在后台运行。恢复窗口后，按 ⌘Q 即可退出。';
+
+  @override
+  String get desktopShortcutsCloseWindows =>
+      '关闭窗口后，Musaic 会在后台运行。要退出，请恢复窗口，然后在窗口菜单中选择「退出 Musaic」。';
+
+  @override
+  String get desktopShortcutsQuit => '退出 Musaic';
+
+  @override
   String get albumCoversLoadFailed => '无法加载专辑封面。';
 
   @override
