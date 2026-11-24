@@ -56,6 +56,7 @@ class AlbumCanvas extends Stack {
       ..albumAt = albumAt
       ..hasSelected = hasSelected
       ..hiddenTileOffset = hiddenTileOffset
+      .._semanticCoverage = null
       ..markNeedsPaint()
       ..markNeedsSemanticsUpdate();
   }
@@ -83,6 +84,27 @@ class _RenderAlbumCanvas extends RenderStack {
       !isTransitioning && !hasSelected && hiddenTileOffset == null;
   var _albumRepresentatives = <Object, RenderBox>{};
   Set<RenderBox>? _semanticTiles;
+  (Rect, Rect)? _semanticCoverage;
+
+  static const _tileConstraints = BoxConstraints.tightFor(
+    width: albumGridExtent,
+    height: albumGridExtent,
+  );
+
+  @override
+  void performLayout() {
+    final viewport = firstChild!;
+    viewport.layout(constraints, parentUsesSize: true);
+    size = viewport.size;
+    var tile = childAfter(viewport);
+    while (tile != null) {
+      final data = tile.parentData! as StackParentData;
+      assert(data.width == albumGridExtent && data.height == albumGridExtent);
+      tile.layout(_tileConstraints);
+      data.offset = Offset(data.left!, data.top!);
+      tile = data.nextSibling;
+    }
+  }
 
   Rect _sceneViewport(Offset padding) {
     final matrix = transform.value;
@@ -98,8 +120,27 @@ class _RenderAlbumCanvas extends RenderStack {
   }
 
   Set<RenderBox> _chooseSemanticTiles(Rect viewport) {
-    final center = viewport.center;
     final innerViewport = _sceneViewport(-tiltPadding);
+    // Each edge changes membership only when it crosses a cover or its center.
+    final coverage = (
+      Rect.fromLTRB(
+        (viewport.left / albumGridExtent).floorToDouble(),
+        (viewport.top / albumGridExtent).floorToDouble(),
+        (viewport.right / albumGridExtent).ceilToDouble(),
+        (viewport.bottom / albumGridExtent).ceilToDouble(),
+      ),
+      Rect.fromLTRB(
+        (innerViewport.left / albumGridExtent - .5).ceilToDouble(),
+        (innerViewport.top / albumGridExtent - .5).ceilToDouble(),
+        (innerViewport.right / albumGridExtent - .5).ceilToDouble(),
+        (innerViewport.bottom / albumGridExtent - .5).ceilToDouble(),
+      ),
+    );
+    if (coverage == _semanticCoverage && _semanticTiles != null) {
+      return _semanticTiles!;
+    }
+    _semanticCoverage = coverage;
+    final center = viewport.center;
     final representatives = <Object, RenderBox>{};
     final distances = <Object, double>{};
     final edgeTiles = <(Object, RenderBox)>[];

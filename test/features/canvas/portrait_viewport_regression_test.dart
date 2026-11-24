@@ -58,6 +58,20 @@ class _ControlledSensors extends SensorsPlatform {
   }) => events;
 }
 
+class _CountingAlbumLayout extends HomeAlbumLayoutState {
+  int lookups = 0;
+
+  @override
+  Map<String, dynamic> albumAt(
+    int row,
+    int column,
+    List<Map<String, dynamic>> albums,
+  ) {
+    lookups++;
+    return super.albumAt(row, column, albums);
+  }
+}
+
 void main() {
   testWidgets('the entire visible tilted canvas accepts pans at minimum zoom', (
     tester,
@@ -225,9 +239,11 @@ void main() {
   ) async {
     final handle = tester.ensureSemantics();
     final transform = TransformationController(
-      Matrix4.diagonal3Values(0.4, 0.4, 1),
+      Matrix4.diagonal3Values(0.4, 0.4, 1)
+        ..setEntry(0, 3, 13)
+        ..setEntry(1, 3, 17),
     );
-    final layout = HomeAlbumLayoutState();
+    final layout = _CountingAlbumLayout();
     final playback = AlbumPlayback();
     final selected = <String>[];
     const albums = [
@@ -259,6 +275,13 @@ void main() {
     final second = find.semantics.byLabel('Second album');
     expect(first, findsOneWidget);
     expect(second, findsOneWidget);
+
+    final initialNode = first.evaluate().single.id;
+    layout.lookups = 0;
+    transform.value = transform.value.clone()..setEntry(0, 3, 13.25);
+    await tester.pump();
+    expect(layout.lookups, isZero);
+    expect(first.evaluate().single.id, initialNode);
 
     transform.value = transform.value.clone()..setEntry(0, 3, -850);
     await tester.pump();

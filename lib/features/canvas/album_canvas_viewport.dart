@@ -169,7 +169,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
         builder: (context, constraints) {
           widget.onViewportSizeChanged(constraints.biggest);
           final tiltPadding = PortraitTilt.viewportPadding(constraints.biggest);
-          var tiles = const <(int, int), Widget>{};
+          var tiles = const <Widget>[];
           ({int left, int right, int top, int bottom})? previousBounds;
           (int, int)? previousSelection;
           AlbumCanvas? previousCanvas;
@@ -179,7 +179,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
             onPointerCancel: (event) => interaction.pointerUp(event.pointer),
             child: IgnorePointer(
               ignoring: widget.interactionBlocked || popup != null,
-              child: InteractiveViewer.builder(
+              child: InteractiveViewer(
+                constrained: false,
                 clipBehavior: Clip.none,
                 transformationController: transform,
                 // Use the smallest allowed coefficient to make the viewer's
@@ -191,55 +192,78 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
                 minScale: 0.4,
                 maxScale: 2.5,
                 boundaryMargin: const EdgeInsets.all(double.infinity),
-                builder: (context, viewport) {
-                  final rect = viewport;
-                  final scale = transform.value.getColumn(0).length;
-                  final padding = tiltPadding / scale;
-                  final previous = previousBounds;
-                  final (left, right) = _mountedRange(
-                    ((rect.point0.x - padding.dx) / albumGridExtent).floor(),
-                    ((rect.point2.x + padding.dx) / albumGridExtent).floor(),
-                    previous == null ? null : (previous.left, previous.right),
-                  );
-                  final (top, bottom) = _mountedRange(
-                    ((rect.point0.y - padding.dy) / albumGridExtent).floor(),
-                    ((rect.point2.y + padding.dy) / albumGridExtent).floor(),
-                    previous == null ? null : (previous.top, previous.bottom),
-                  );
-                  final bounds = (
-                    left: left,
-                    right: right,
-                    top: top,
-                    bottom: bottom,
-                  );
-                  final selected = widget.layout.selectedAlbum;
-                  if (bounds == previousBounds &&
-                      selected == previousSelection) {
-                    return previousCanvas!;
-                  }
-                  if (bounds != previousBounds) {
-                    tiles = {
-                      for (var row = bounds.top; row <= bounds.bottom; row++)
-                        for (var col = bounds.left; col <= bounds.right; col++)
-                          (row, col): tiles[(row, col)] ?? _tile(row, col),
-                    };
-                  }
-                  previousBounds = bounds;
-                  previousSelection = selected;
-                  return previousCanvas = AlbumCanvas(
-                    size: constraints.biggest,
-                    transform: transform,
-                    tiltPadding: tiltPadding,
-                    isTransitioning: widget.interactionBlocked,
-                    albumAt: (row, column) =>
-                        widget.layout.albumAt(row, column, widget.albums),
-                    hiddenTileOffset: hiddenOffset,
-                    tiles: tiles.values,
-                    selected: selected == null
-                        ? null
-                        : _selectedTile(selected.$1, selected.$2),
-                  );
-                },
+                // Pan and zoom update the tile window without a layout callback.
+                child: ListenableBuilder(
+                  listenable: transform,
+                  builder: (_, _) {
+                    final matrix = transform.value;
+                    final tileSize =
+                        matrix.getColumn(0).length * albumGridExtent;
+                    final x = matrix.entry(0, 3);
+                    final y = matrix.entry(1, 3);
+                    final previous = previousBounds;
+                    final (left, right) = _mountedRange(
+                      ((-tiltPadding.dx - x) / tileSize).floor(),
+                      ((constraints.maxWidth + tiltPadding.dx - x) / tileSize)
+                          .floor(),
+                      previous == null ? null : (previous.left, previous.right),
+                    );
+                    final (top, bottom) = _mountedRange(
+                      ((-tiltPadding.dy - y) / tileSize).floor(),
+                      ((constraints.maxHeight + tiltPadding.dy - y) / tileSize)
+                          .floor(),
+                      previous == null ? null : (previous.top, previous.bottom),
+                    );
+                    final bounds = (
+                      left: left,
+                      right: right,
+                      top: top,
+                      bottom: bottom,
+                    );
+                    final selected = widget.layout.selectedAlbum;
+                    if (bounds == previousBounds &&
+                        selected == previousSelection) {
+                      return previousCanvas!;
+                    }
+                    if (bounds != previous) {
+                      // The previous window is stored in row-major order.
+                      final previousTiles = tiles;
+                      final previousWidth = previous == null
+                          ? 0
+                          : previous.right - previous.left + 1;
+                      tiles = [
+                        for (var row = top; row <= bottom; row++)
+                          for (var column = left; column <= right; column++)
+                            if (previous != null &&
+                                row >= previous.top &&
+                                row <= previous.bottom &&
+                                column >= previous.left &&
+                                column <= previous.right)
+                              previousTiles[(row - previous.top) *
+                                      previousWidth +
+                                  column -
+                                  previous.left]
+                            else
+                              _tile(row, column),
+                      ];
+                    }
+                    previousBounds = bounds;
+                    previousSelection = selected;
+                    return previousCanvas = AlbumCanvas(
+                      size: constraints.biggest,
+                      transform: transform,
+                      tiltPadding: tiltPadding,
+                      isTransitioning: widget.interactionBlocked,
+                      albumAt: (row, column) =>
+                          widget.layout.albumAt(row, column, widget.albums),
+                      hiddenTileOffset: hiddenOffset,
+                      tiles: tiles,
+                      selected: selected == null
+                          ? null
+                          : _selectedTile(selected.$1, selected.$2),
+                    );
+                  },
+                ),
               ),
             ),
           );
