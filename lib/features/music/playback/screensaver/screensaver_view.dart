@@ -272,7 +272,7 @@ class _ScreensaverViewState extends State<ScreensaverView>
         final size = constraints.biggest;
         if (size.isEmpty) return const SizedBox.shrink();
         final shortSide = size.shortestSide;
-        final fontSize = math.min(shortSide * 0.32, 250.0);
+        final fontSize = math.min(shortSide * 0.40, 250.0);
         _layoutTitles(context, fontSize);
         final position = _playbackSeconds;
         final bands = _BandLayout(
@@ -326,7 +326,7 @@ class _ScreensaverViewState extends State<ScreensaverView>
                       _formatTime(position),
                       textDirection: TextDirection.ltr,
                       textScaler: TextScaler.noScaling,
-                      style: _bandTextStyle(fontSize * 0.30).copyWith(
+                      style: _bandTextStyle(fontSize * 0.34).copyWith(
                         color: const Color(0xFFACACAC),
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
@@ -359,10 +359,10 @@ class _BandLayout {
   final int randomSeed;
 
   double get halfWidth => size.width / 2 + size.height * 0.11;
-  double get rowHeight => lineHeight * 1.10;
-  double get coverSide => lineHeight * 0.87;
-  double get itemSpacing => fontSize * 0.18;
-  double get timeWidth => fontSize * 0.90;
+  double get rowHeight => lineHeight * 0.87;
+  double get coverSide => lineHeight * 0.75;
+  double get itemSpacing => fontSize * 0.045;
+  double get timeWidth => fontSize * 0.95;
   double get coverSlotWidth => coverSide + itemSpacing * 2;
   double get timeSlotWidth => timeWidth + itemSpacing * 2;
   double get cycleWidth =>
