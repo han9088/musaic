@@ -101,6 +101,8 @@
   "settingsShowLayoutSwitchDescription": "Switch to Cover Flow in portrait mode.",
   "settingsAppearance": "Appearance & display",
   "settingsLanguage": "Language",
+  "settingsMusic": "Music",
+  "settingsSystem": "System",
   "settingsLanguageSystem": "System default",
   "settingsLanguageSearch": "Search languages",
   "settingsLanguageNoResults": "No languages found",

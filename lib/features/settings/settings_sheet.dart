@@ -5,9 +5,11 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/music/music_source_controller.dart';
+import '../../storage/settings/app_language_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
+import '../../ui/widgets/app_dropdown_menu.dart';
 import '../../ui/widgets/app_selection_dot.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
@@ -16,7 +18,8 @@ import 'settings_support_section.dart';
 enum SettingsSection {
   pro,
   musicSource,
-  appearance,
+  music,
+  system,
   keyboardShortcuts,
   usageGuide,
   diagnostics,
@@ -37,6 +40,7 @@ class SettingsSheet extends StatelessWidget {
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
+    this.language,
   });
 
   final MusicSourceController? sources;
@@ -49,6 +53,7 @@ class SettingsSheet extends StatelessWidget {
   final ValueListenable<bool>? xeroxEnabled;
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
+  final AppLanguagePreference? language;
 
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
@@ -63,6 +68,38 @@ class SettingsSheet extends StatelessWidget {
           ),
           onTap: () => onOpenSection(origin, section),
         ),
+      );
+
+  Widget _languageSetting(AppLanguagePreference preference) =>
+      SignalBuilder(
+        builder: (context) {
+          final l10n = AppLocalizations.of(context);
+          return AppDropdownMenu<AppLanguage>(
+            leading: const Icon(PhosphorIcons.translate),
+            title: l10n.settingsLanguage,
+            value: preference.selected.value,
+            entries: [
+              AppDropdownMenuEntry(
+                AppLanguage.system,
+                l10n.settingsLanguageSystem,
+                keywords: 'System default 跟随系统',
+              ),
+              const AppDropdownMenuEntry(
+                AppLanguage.simplifiedChinese,
+                '简体中文',
+                keywords: 'Simplified Chinese zh Hans',
+              ),
+              const AppDropdownMenuEntry(
+                AppLanguage.english,
+                'English',
+                keywords: '英文 英语 en',
+              ),
+            ],
+            onSelected: preference.select,
+            searchLabel: l10n.settingsLanguageSearch,
+            emptyLabel: l10n.settingsLanguageNoResults,
+          );
+        },
       );
 
   @override
@@ -172,10 +209,20 @@ class SettingsSheet extends StatelessWidget {
                                     l10n.musicSource,
                                     SettingsSection.musicSource,
                                   ),
+                                SettingsSectionHeading(
+                                  l10n.settingsAppearance,
+                                ),
+                                if (language case final preference?)
+                                  _languageSetting(preference),
+                                _section(
+                                  PhosphorIcons.musicNoteSimple,
+                                  l10n.settingsMusic,
+                                  SettingsSection.music,
+                                ),
                                 _section(
                                   PhosphorIcons.monitor,
-                                  l10n.settingsAppearance,
-                                  SettingsSection.appearance,
+                                  l10n.settingsSystem,
+                                  SettingsSection.system,
                                 ),
                                 if (keyboardShortcutsVisible)
                                   _section(

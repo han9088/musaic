@@ -162,6 +162,7 @@ class _HomeSheetState extends State<HomeSheet> {
     sourceSwitching: widget.sourceSwitching,
     onSourceSelection: _selectSource,
     onOpenSection: _openSettings,
+    language: widget.language,
     usageGuideVisible: _usageGuide.visible,
     developerOptionsEnabled: _developerOptions.enabled,
     keyboardShortcutsVisible: widget.desktopShortcuts != null,
@@ -240,12 +241,16 @@ class _HomeSheetState extends State<HomeSheet> {
           },
         ),
       ),
-      SettingsSection.appearance => (
-        '/settings/appearance',
-        (AppLocalizations l10n) => l10n.settingsAppearance,
+      SettingsSection.music => (
+        '/settings/music',
+        (AppLocalizations l10n) => l10n.settingsMusic,
+        const SizedBox.shrink(),
+      ),
+      SettingsSection.system => (
+        '/settings/system',
+        (AppLocalizations l10n) => l10n.settingsSystem,
         AppearanceSettings(
           icons: widget.icons,
-          language: widget.language,
           manualRotation: widget.manualRotation,
         ),
       ),

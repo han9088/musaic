@@ -695,8 +695,20 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLanguage.
   ///
   /// In zh, this message translates to:
-  /// **'语言'**
+  /// **'语言设置'**
   String get settingsLanguage;
+
+  /// No description provided for @settingsMusic.
+  ///
+  /// In zh, this message translates to:
+  /// **'音乐'**
+  String get settingsMusic;
+
+  /// No description provided for @settingsSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统'**
+  String get settingsSystem;
 
   /// No description provided for @settingsLanguageSystem.
   ///

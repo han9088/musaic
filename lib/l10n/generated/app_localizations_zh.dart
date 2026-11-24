@@ -328,7 +328,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAppearance => '外观与显示';
 
   @override
-  String get settingsLanguage => '语言';
+  String get settingsLanguage => '语言设置';
+
+  @override
+  String get settingsMusic => '音乐';
+
+  @override
+  String get settingsSystem => '系统';
 
   @override
   String get settingsLanguageSystem => '跟随系统';

@@ -349,6 +349,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguage => 'Language';
 
   @override
+  String get settingsMusic => 'Music';
+
+  @override
+  String get settingsSystem => 'System';
+
+  @override
   String get settingsLanguageSystem => 'System default';
 
   @override
