@@ -74,30 +74,35 @@ class SettingsSheet extends StatelessWidget {
       SignalBuilder(
         builder: (context) {
           final l10n = AppLocalizations.of(context);
-          return AppDropdownMenu<AppLanguage>(
-            leading: const Icon(PhosphorIcons.translate),
-            title: l10n.settingsLanguage,
-            value: preference.selected.value,
-            entries: [
-              AppDropdownMenuEntry(
-                AppLanguage.system,
-                l10n.settingsLanguageSystem,
-                keywords: 'System default 跟随系统',
-              ),
-              const AppDropdownMenuEntry(
-                AppLanguage.simplifiedChinese,
-                '简体中文',
-                keywords: 'Simplified Chinese zh Hans',
-              ),
-              const AppDropdownMenuEntry(
-                AppLanguage.english,
-                'English',
-                keywords: '英文 英语 en',
-              ),
-            ],
-            onSelected: preference.select,
-            searchLabel: l10n.settingsLanguageSearch,
-            emptyLabel: l10n.settingsLanguageNoResults,
+          return ListTileTheme.merge(
+            iconColor: Colors.white70,
+            textColor: Colors.white,
+            selectedColor: Colors.white,
+            child: AppDropdownMenu<AppLanguage>(
+              leading: const Icon(PhosphorIcons.translate),
+              title: l10n.settingsLanguage,
+              value: preference.selected.value,
+              entries: [
+                AppDropdownMenuEntry(
+                  AppLanguage.system,
+                  l10n.settingsLanguageSystem,
+                  keywords: 'System default 跟随系统',
+                ),
+                const AppDropdownMenuEntry(
+                  AppLanguage.simplifiedChinese,
+                  '简体中文',
+                  keywords: 'Simplified Chinese zh Hans',
+                ),
+                const AppDropdownMenuEntry(
+                  AppLanguage.english,
+                  'English',
+                  keywords: '英文 英语 en',
+                ),
+              ],
+              onSelected: preference.select,
+              searchLabel: l10n.settingsLanguageSearch,
+              emptyLabel: l10n.settingsLanguageNoResults,
+            ),
           );
         },
       );
