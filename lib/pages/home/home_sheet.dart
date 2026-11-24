@@ -11,6 +11,7 @@ import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
 import '../../features/music/presentation/music_source_picker.dart';
+import '../../features/pro/pro_settings.dart';
 import '../../features/settings/about_settings.dart';
 import '../../features/settings/appearance_settings.dart';
 import '../../features/settings/developer_options_settings.dart';
@@ -220,6 +221,11 @@ class _HomeSheetState extends State<HomeSheet> {
     final navigator = Navigator.of(source, rootNavigator: true);
     late final PageRoute<void> route;
     final (path, title, body) = switch (section) {
+      SettingsSection.pro => (
+        '/settings/pro',
+        (AppLocalizations l10n) => l10n.settingsPro,
+        const ProSettings(),
+      ),
       SettingsSection.musicSource => (
         '/settings/music-source',
         (AppLocalizations l10n) => l10n.musicSource,

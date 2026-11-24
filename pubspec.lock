@@ -592,6 +592,15 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.5"
+  indiebase:
+    dependency: "direct main"
+    description:
+      path: "sdks/dart"
+      ref: bbae494458af9422d7eb23a06cf496c18e1b1b58
+      resolved-ref: bbae494458af9422d7eb23a06cf496c18e1b1b58
+      url: "https://github.com/han9088/indiebase3.git"
+    source: git
+    version: "0.0.1-alpha.5"
   integration_test:
     dependency: "direct dev"
     description: flutter

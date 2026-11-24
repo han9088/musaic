@@ -264,6 +264,39 @@ void main() {
     },
   );
 
+  testWidgets('Pro opens the annual subscription page without a fixed price', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        locale: Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(icons: _Icons(), child: SizedBox.expand()),
+        ),
+      ),
+    );
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+
+    final entry = find.widgetWithText(ListTile, 'Pro');
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    final page = find.byType(SettingsPage);
+    expect(tester.widget<SettingsPage>(page).title, 'Pro');
+    expect(find.text('Annual subscription'), findsOneWidget);
+    expect(find.text('Price unavailable'), findsOneWidget);
+    final restore = find.widgetWithText(TextButton, 'Restore purchases');
+    expect(tester.widget<TextButton>(restore).onPressed, isNull);
+
+    Navigator.of(tester.element(page)).pop();
+    await tester.pumpAndSettle();
+    expect(page, findsNothing);
+    expect(entry.hitTestable(), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('Appearance language updates the open settings page', (
     tester,
   ) async {
@@ -792,7 +825,7 @@ void main() {
             matching: find.byIcon(PhosphorIcons.caretLeft),
           ),
         );
-        expect(detailArrows.map((icon) => icon.size), [12, 12]);
+        expect(detailArrows.map((icon) => icon.size), [12, 12, 12]);
 
         Future<void> closeDialog() async {
           await tester.tap(find.text('Close'));
@@ -830,7 +863,11 @@ void main() {
           await closeDialog();
         }
 
-        for (final item in ['Privacy policy', 'What’s New']) {
+        for (final item in [
+          'Privacy policy',
+          'Terms of Service',
+          'What’s New',
+        ]) {
           final detail = find.byWidgetPredicate(
             (widget) => widget is SettingsPage && widget.title == item,
           );

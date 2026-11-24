@@ -261,6 +261,14 @@ class _AboutSettingsState extends State<AboutSettings> {
           ),
         ),
         ListTile(
+          title: Text(l10n.settingsTermsOfService),
+          trailing: arrow,
+          onTap: () => _openDetail(
+            l10n.settingsTermsOfService,
+            l10n.settingsTermsOfServiceDetails,
+          ),
+        ),
+        ListTile(
           title: Text(l10n.settingsWhatsNew),
           trailing: arrow,
           onTap: () =>

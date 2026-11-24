@@ -18,6 +18,17 @@ Settings → Troubleshooting exports a local diagnostic report and can attach it
 to a feedback email. Set `--dart-define=MUSAIC_FEEDBACK_EMAIL=<address>` to
 prefill the recipient in the native mail composer.
 
+## Indiebase client
+
+The Dart SDK is pinned to a source revision. Dependency resolution requires
+read access to the Indiebase Git repository. To enable the client, supply both
+`--dart-define=MUSAIC_INDIEBASE_BASE_URL=<project-runtime-url>` and
+`--dart-define=MUSAIC_INDIEBASE_API_KEY=<project-api-key>`. Use the Project
+Runtime URL and its client API key. Keep admin credentials server-side.
+
+Musaic creates the client on the first `IndiebaseScope.maybeOf(context)` lookup.
+App startup makes no Indiebase requests.
+
 ## Android variants
 
 Debug and Release can be installed side by side, following Loive's build-type setup:

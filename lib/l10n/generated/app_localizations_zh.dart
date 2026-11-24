@@ -86,6 +86,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
+  String get settingsPro => 'Pro';
+
+  @override
+  String get proAnnualPlan => '年度订阅';
+
+  @override
+  String get proPriceUnavailable => '暂未获取价格';
+
+  @override
+  String get proRestorePurchases => '恢复购买';
+
+  @override
+  String proAnnualPrice(String price) {
+    return '$price/年';
+  }
+
+  @override
   String get settingsAboutAndHelp => '关于与帮助';
 
   @override
@@ -286,6 +303,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsPrivacyDetails =>
       'Musaic 读取你授权的音乐库和选择的文件夹来展示专辑和封面。曲库索引、封面缓存和偏好设置保存在设备上。\n\nCover Flow 的相机功能需要相机权限。你拍摄的照片可以保存到系统相册。你可以在系统设置里管理相关权限。\n\n检查更新时，Musaic 会向 GitHub 请求公开发布信息。请求不会包含你的音乐、照片或曲库内容。';
+
+  @override
+  String get settingsTermsOfService => '服务条款';
+
+  @override
+  String get settingsTermsOfServiceDetails =>
+      '请使用 Musaic 浏览和播放你有权访问的音乐。音乐、专辑封面及其他第三方内容的权利归各自权利人所有。复制、分享或商用这些内容时，请确保你拥有相应权利。\n\n第三方音乐服务适用各自的条款。你能访问的内容和功能可能因平台、地区和服务可用性而异。\n\n如果你订阅 Musaic Pro，请在购买前查看显示的价格、计费周期和续订条件。你可以通过购买平台管理或取消订阅，也可以通过该平台申请退款。\n\n如对本条款有疑问，请通过「设置」中的「支持」联系我们。';
 
   @override
   String get settingsWhatsNew => '更新内容';

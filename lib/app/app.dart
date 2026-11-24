@@ -12,6 +12,7 @@ import '../services/music/directory_music_library.dart';
 import '../services/music/music_source_controller.dart';
 import '../features/artwork/presentation/directory_artwork.dart';
 import '../features/artwork/presentation/custom_artwork_scope.dart';
+import '../features/indiebase/indiebase_scope.dart';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -22,6 +23,7 @@ import '../ui/theme/app_theme.dart';
 import '../pages/home/home_page.dart';
 import '../services/mock_album_cache.dart';
 import '../services/diagnostics/diagnostic_log.dart';
+import '../services/indiebase_runtime.dart';
 import 'bottom_sheet_host.dart';
 
 /// 封装musaic应用相关的类型与行为，负责应用装配、全局依赖与页面宿主。
@@ -38,6 +40,7 @@ class MusaicApp extends StatefulWidget {
 class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
   final _sources = MusicSourceController();
+  final _indiebase = IndiebaseRuntime.fromEnvironment();
   late final _language = AppLanguagePreference(widget.initialLanguage);
   final _customArtwork =
       !kIsWeb &&
@@ -84,6 +87,7 @@ class _MusaicAppState extends State<MusaicApp> {
   void dispose() {
     _lifecycle.dispose();
     _language.dispose();
+    _indiebase?.close();
     unawaited(_sources.dispose());
     unawaited(_directories?.dispose());
     super.dispose();
@@ -111,6 +115,17 @@ class _MusaicAppState extends State<MusaicApp> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
+  Widget _buildScopes(BuildContext _, Widget? child) {
+    Widget content = child!;
+    if (_customArtwork case final store?) {
+      content = CustomArtworkScope(store: store, child: content);
+    }
+    if (_indiebase case final runtime?) {
+      content = IndiebaseScope(runtime: runtime, child: content);
+    }
+    return content;
+  }
+
   @override
   Widget build(BuildContext context) => SignalBuilder(
     builder: (context) => MaterialApp(
@@ -122,10 +137,9 @@ class _MusaicAppState extends State<MusaicApp> {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       theme: buildAppTheme(),
-      builder: _customArtwork == null
+      builder: _customArtwork == null && _indiebase == null
           ? null
-          : (_, child) =>
-                CustomArtworkScope(store: _customArtwork, child: child!),
+          : _buildScopes,
       home: DirectoryArtworkScope(
         library: _directories,
         child: AppBottomSheetHost(

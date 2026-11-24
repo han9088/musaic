@@ -14,6 +14,7 @@ import '../music/presentation/music_source_picker.dart';
 import 'settings_support_section.dart';
 
 enum SettingsSection {
+  pro,
   musicSource,
   appearance,
   keyboardShortcuts,
@@ -129,6 +130,11 @@ class SettingsSheet extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                _section(
+                                  PhosphorIcons.crownSimple,
+                                  l10n.settingsPro,
+                                  SettingsSection.pro,
+                                ),
                                 if ((xeroxEnabled, onXeroxChanged) case (
                                   final mode?,
                                   final onChanged?,

@@ -31,6 +31,7 @@ Flutter app, Android and iOS. Package: `com.deskbtm.musaic`.
 
 ## Code design
 
+- For app UI and static page styling, follow the [design guidelines](docs/design-guidelines.md).
 - Write elegant, readable code: use precise names, straightforward control flow, and explicit state transitions.
 - Keep cohesion high: each module owns one clear responsibility, with its related state and behavior kept together.
 - Keep coupling low: communicate through small, explicit interfaces, pass dependencies through constructors, and keep implementation details private.

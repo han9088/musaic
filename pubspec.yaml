@@ -14,6 +14,11 @@ dependencies:
     sdk: flutter
   flutter_cache_manager: ^3.4.8
   http: ^1.6.0
+  indiebase:
+    git:
+      url: https://github.com/han9088/indiebase3.git
+      ref: bbae494458af9422d7eb23a06cf496c18e1b1b58
+      path: sdks/dart
   package_info_plus: ^10.2.2
   pub_semver: ^2.2.1
   url_launcher: ^6.3.3

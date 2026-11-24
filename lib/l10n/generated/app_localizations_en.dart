@@ -90,6 +90,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
+  String get settingsPro => 'Pro';
+
+  @override
+  String get proAnnualPlan => 'Annual subscription';
+
+  @override
+  String get proPriceUnavailable => 'Price unavailable';
+
+  @override
+  String get proRestorePurchases => 'Restore purchases';
+
+  @override
+  String proAnnualPrice(String price) {
+    return '$price per year';
+  }
+
+  @override
   String get settingsAboutAndHelp => 'About & help';
 
   @override
@@ -303,6 +320,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsPrivacyDetails =>
       'Musaic uses your music library and the folders you choose to show your albums and artwork. Your library index, cached artwork, and preferences stay on your device.\n\nThe live background in Cover Flow uses your camera. You can save photos you take to your photo library. Manage camera and photo access in your device settings.\n\nWhen you check for updates, Musaic asks GitHub for public release information. The request contains none of your music, photos, or library contents.';
+
+  @override
+  String get settingsTermsOfService => 'Terms of Service';
+
+  @override
+  String get settingsTermsOfServiceDetails =>
+      'Use Musaic to browse and play music you have the right to access. Rights to music, album artwork, and other third-party content remain with their respective owners. Make sure you have the necessary rights before copying, sharing, or using that content commercially.\n\nThird-party music services have their own terms. The content and features you can access may vary by platform, region, and service availability.\n\nIf you subscribe to Musaic Pro, review the price, billing period, and renewal terms shown before purchase. Use the platform where you subscribed to manage or cancel your subscription or request a refund.\n\nFor questions about these terms, contact us through Support in Settings.';
 
   @override
   String get settingsWhatsNew => 'What’s New';
