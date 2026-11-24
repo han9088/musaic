@@ -1,15 +1,24 @@
 // 文件职责：专辑墙无限画布的布局、视口与交互状态。
 
+import 'dart:async';
+
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, listEquals;
 import 'package:material_ui/material_ui.dart';
 
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
+import '../artwork/model/artwork_request.dart';
 import '../artwork/presentation/artwork_placeholder.dart';
 import '../artwork/presentation/custom_artwork_menu.dart';
+import '../artwork/presentation/custom_artwork_scope.dart';
+import '../artwork/presentation/directory_artwork.dart';
 import '../music/catalog/album_catalog_mapper.dart';
 import '../music/catalog/album_track_list.dart';
 import '../music/playback/album_playback.dart';
+import 'album_artwork_atlas.dart';
 import 'album_canvas.dart';
+import 'album_sprite_canvas.dart';
 import 'album_cover_popup.dart';
 import 'album_grid_snapshot.dart';
 import 'canvas_interaction_state.dart';
@@ -33,6 +42,8 @@ class AlbumCanvasViewport extends StatefulWidget {
     required this.animateSourceTile,
   });
 
+  static bool useWidgetGridForBenchmark = false;
+
   final List<Map<String, dynamic>> albums;
   final HomeAlbumLayoutState layout;
   final TransformationController transform;
@@ -48,8 +59,142 @@ class AlbumCanvasViewport extends StatefulWidget {
   State<AlbumCanvasViewport> createState() => _AlbumCanvasViewportState();
 }
 
-class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
+class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
+    with WidgetsBindingObserver {
   (int, int)? _popupCell;
+  CanvasArtworkAtlas? _atlas;
+  CanvasArtworkAtlas? _readyAtlas;
+  List<Object?>? _atlasInput;
+  int _atlasGeneration = 0;
+  bool _atlasRequested = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncAtlas();
+  }
+
+  @override
+  void didUpdateWidget(covariant AlbumCanvasViewport oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncAtlas();
+  }
+
+  @override
+  void didHaveMemoryPressure() => setState(_discardAtlas);
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _discardAtlas();
+    super.dispose();
+  }
+
+  void _discardAtlas() {
+    _atlasGeneration++;
+    _readyAtlas?.dispose();
+    _readyAtlas = null;
+    final previous = _atlas;
+    _atlas = null;
+    // A picture from this frame can still refer to the outgoing texture.
+    if (previous != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
+    }
+  }
+
+  void _syncAtlas() {
+    final albums = widget.albums;
+    if (kIsWeb ||
+        defaultTargetPlatform != TargetPlatform.android ||
+        widget.xerox ||
+        albums.isEmpty ||
+        albums.length > CanvasArtworkAtlas.maxCovers) {
+      _atlasInput = null;
+      _atlasRequested = false;
+      _discardAtlas();
+      return;
+    }
+    final store = CustomArtworkScope.watch(context);
+    final directory =
+        albums.any(
+          (album) => (album['asset'] as String).startsWith('directory:'),
+        )
+        ? DirectoryArtworkScope.watch(context)
+        : (library: null, revision: 0);
+    final config = createLocalImageConfiguration(context);
+    final input = <Object?>[
+      albums,
+      config,
+      directory.library,
+      directory.revision,
+      store,
+      for (final album in albums)
+        store?.revisionOf((album['id'] ?? album['asset']) as String),
+    ];
+    if (!listEquals(input, _atlasInput)) {
+      _discardAtlas();
+      _atlasInput = input;
+      _atlasRequested = false;
+    }
+    if (_atlasRequested || widget.interactionBlocked) return;
+    _atlasRequested = true;
+
+    final generation = _atlasGeneration;
+    final covers = [
+      for (final album in albums)
+        (
+          album: album as Object,
+          request: ArtworkRequest(
+            source: album['asset'] as String,
+            identity: _artworkIdentityFor(album),
+            version: switch (album['artworkVersion']) {
+              final String version => ArtworkVersion(version),
+              _ => null,
+            },
+          ),
+        ),
+    ];
+    bool isCurrent() => mounted && generation == _atlasGeneration;
+    unawaited(() async {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!isCurrent()) return;
+      try {
+        final atlas = await CanvasArtworkAtlas.load(
+          covers: covers,
+          directories: directory.library,
+          configuration: config,
+          isCurrent: isCurrent,
+        );
+        if (atlas == null) return;
+        if (!isCurrent()) {
+          atlas.dispose();
+          return;
+        }
+        _readyAtlas = atlas;
+        _publishReadyAtlas();
+      } catch (error) {
+        // Keep the ordinary artwork pipeline in charge of unavailable covers.
+        debugPrint('Album atlas could not be prepared: $error');
+      }
+    }());
+  }
+
+  void _publishReadyAtlas() {
+    final ready = _readyAtlas;
+    if (!mounted ||
+        ready == null ||
+        widget.interaction.pressedPointers.isNotEmpty) {
+      return;
+    }
+    _readyAtlas = null;
+    setState(() => _atlas = ready);
+  }
 
   ArtworkIdentity? _artworkIdentityFor(Map<String, dynamic> album) {
     final id = album['id'] as String?;
@@ -127,26 +272,38 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
     );
   }
 
-  Widget _selectedTile(int row, int column) {
+  GestureLongPressStartCallback? _longPressAt(int row, int column) {
     final album = widget.layout.albumAt(row, column, widget.albums);
-    return Positioned(
-      key: ValueKey(('selected', (row, column))),
-      left: column * albumGridExtent,
-      top: row * albumGridExtent,
-      width: albumGridExtent,
-      height: albumGridExtent,
-      child: widget.animateSourceTile(
-        row,
-        column,
-        SelectedAlbum(
-          onOpen: (context) => _openAlbum(context, row, column),
-          playback: widget.playback,
-          xerox: widget.xerox,
-          asset: album['asset'] as String,
-          artworkIdentity: _artworkIdentityFor(album),
-          title: album['title'] as String,
-          artist: album['artist'] as String?,
-        ),
+    return customArtworkMenuAction(
+      context,
+      album['asset'] as String,
+      _artworkIdentityFor(album),
+    );
+  }
+
+  Widget _selectedTile(int row, int column) => Positioned(
+    key: ValueKey(('selected', (row, column))),
+    left: column * albumGridExtent,
+    top: row * albumGridExtent,
+    width: albumGridExtent,
+    height: albumGridExtent,
+    child: _selectedCover(row, column),
+  );
+
+  Widget _selectedCover(int row, int column) {
+    final album = widget.layout.albumAt(row, column, widget.albums);
+    return widget.animateSourceTile(
+      row,
+      column,
+      SelectedAlbum(
+        key: ValueKey(('selected-cover', (row, column))),
+        onOpen: (context) => _openAlbum(context, row, column),
+        playback: widget.playback,
+        xerox: widget.xerox,
+        asset: album['asset'] as String,
+        artworkIdentity: _artworkIdentityFor(album),
+        title: album['title'] as String,
+        artist: album['artist'] as String?,
       ),
     );
   }
@@ -156,6 +313,16 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
     final interaction = widget.interaction;
     final transform = widget.transform;
     final popup = _popupCell;
+    final selected = widget.layout.selectedAlbum;
+    final atlas =
+        widget.interactionBlocked ||
+            AlbumCanvasViewport.useWidgetGridForBenchmark
+        ? null
+        : _atlas;
+    final batch =
+        atlas != null && widget.layout.gridAlbums.values.every(atlas.contains)
+        ? atlas
+        : null;
     final hiddenOffset = popup == null
         ? null
         : Offset(popup.$2 * albumGridExtent, popup.$1 * albumGridExtent);
@@ -173,10 +340,17 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
           ({int left, int right, int top, int bottom})? previousBounds;
           (int, int)? previousSelection;
           AlbumCanvas? previousCanvas;
+          void finishPointer(PointerEvent event) {
+            interaction.pointerUp(event.pointer);
+            if (_readyAtlas != null && interaction.pressedPointers.isEmpty) {
+              scheduleMicrotask(_publishReadyAtlas);
+            }
+          }
+
           return Listener(
             onPointerDown: (event) => interaction.pointerDown(event.pointer),
-            onPointerUp: (event) => interaction.pointerUp(event.pointer),
-            onPointerCancel: (event) => interaction.pointerUp(event.pointer),
+            onPointerUp: finishPointer,
+            onPointerCancel: finishPointer,
             child: IgnorePointer(
               ignoring: widget.interactionBlocked || popup != null,
               child: InteractiveViewer(
@@ -193,77 +367,113 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport> {
                 maxScale: 2.5,
                 boundaryMargin: const EdgeInsets.all(double.infinity),
                 // Pan and zoom update the tile window without a layout callback.
-                child: ListenableBuilder(
-                  listenable: transform,
-                  builder: (_, _) {
-                    final matrix = transform.value;
-                    final tileSize =
-                        matrix.getColumn(0).length * albumGridExtent;
-                    final x = matrix.entry(0, 3);
-                    final y = matrix.entry(1, 3);
-                    final previous = previousBounds;
-                    final (left, right) = _mountedRange(
-                      ((-tiltPadding.dx - x) / tileSize).floor(),
-                      ((constraints.maxWidth + tiltPadding.dx - x) / tileSize)
-                          .floor(),
-                      previous == null ? null : (previous.left, previous.right),
-                    );
-                    final (top, bottom) = _mountedRange(
-                      ((-tiltPadding.dy - y) / tileSize).floor(),
-                      ((constraints.maxHeight + tiltPadding.dy - y) / tileSize)
-                          .floor(),
-                      previous == null ? null : (previous.top, previous.bottom),
-                    );
-                    final bounds = (
-                      left: left,
-                      right: right,
-                      top: top,
-                      bottom: bottom,
-                    );
-                    final selected = widget.layout.selectedAlbum;
-                    if (bounds == previousBounds &&
-                        selected == previousSelection) {
-                      return previousCanvas!;
-                    }
-                    if (bounds != previous) {
-                      // The previous window is stored in row-major order.
-                      final previousTiles = tiles;
-                      final previousWidth = previous == null
-                          ? 0
-                          : previous.right - previous.left + 1;
-                      tiles = [
-                        for (var row = top; row <= bottom; row++)
-                          for (var column = left; column <= right; column++)
-                            if (previous != null &&
-                                row >= previous.top &&
-                                row <= previous.bottom &&
-                                column >= previous.left &&
-                                column <= previous.right)
-                              previousTiles[(row - previous.top) *
-                                      previousWidth +
-                                  column -
-                                  previous.left]
-                            else
-                              _tile(row, column),
-                      ];
-                    }
-                    previousBounds = bounds;
-                    previousSelection = selected;
-                    return previousCanvas = AlbumCanvas(
-                      size: constraints.biggest,
-                      transform: transform,
-                      tiltPadding: tiltPadding,
-                      isTransitioning: widget.interactionBlocked,
-                      albumAt: (row, column) =>
-                          widget.layout.albumAt(row, column, widget.albums),
-                      hiddenTileOffset: hiddenOffset,
-                      tiles: tiles,
-                      selected: selected == null
-                          ? null
-                          : _selectedTile(selected.$1, selected.$2),
-                    );
-                  },
-                ),
+                child: batch != null
+                    ? AlbumSpriteCanvas(
+                        viewport: constraints.biggest,
+                        tiltPadding: tiltPadding,
+                        transform: transform,
+                        atlas: batch,
+                        selected: selected,
+                        hidden: popup,
+                        albumAt: (row, column) =>
+                            widget.layout.albumAt(row, column, widget.albums),
+                        titleAt: (row, column) =>
+                            widget.layout.albumAt(
+                                  row,
+                                  column,
+                                  widget.albums,
+                                )['title']
+                                as String,
+                        onTileSelected: widget.onTileSelected,
+                        longPressAt: _longPressAt,
+                        child: selected == null
+                            ? null
+                            : _selectedCover(selected.$1, selected.$2),
+                      )
+                    : ListenableBuilder(
+                        listenable: transform,
+                        builder: (_, _) {
+                          final matrix = transform.value;
+                          final tileSize =
+                              matrix.getColumn(0).length * albumGridExtent;
+                          final x = matrix.entry(0, 3);
+                          final y = matrix.entry(1, 3);
+                          final previous = previousBounds;
+                          final (left, right) = _mountedRange(
+                            ((-tiltPadding.dx - x) / tileSize).floor(),
+                            ((constraints.maxWidth + tiltPadding.dx - x) /
+                                    tileSize)
+                                .floor(),
+                            previous == null
+                                ? null
+                                : (previous.left, previous.right),
+                          );
+                          final (top, bottom) = _mountedRange(
+                            ((-tiltPadding.dy - y) / tileSize).floor(),
+                            ((constraints.maxHeight + tiltPadding.dy - y) /
+                                    tileSize)
+                                .floor(),
+                            previous == null
+                                ? null
+                                : (previous.top, previous.bottom),
+                          );
+                          final bounds = (
+                            left: left,
+                            right: right,
+                            top: top,
+                            bottom: bottom,
+                          );
+                          final selected = widget.layout.selectedAlbum;
+                          if (bounds == previousBounds &&
+                              selected == previousSelection) {
+                            return previousCanvas!;
+                          }
+                          if (bounds != previous) {
+                            // The previous window is stored in row-major order.
+                            final previousTiles = tiles;
+                            final previousWidth = previous == null
+                                ? 0
+                                : previous.right - previous.left + 1;
+                            tiles = [
+                              for (var row = top; row <= bottom; row++)
+                                for (
+                                  var column = left;
+                                  column <= right;
+                                  column++
+                                )
+                                  if (previous != null &&
+                                      row >= previous.top &&
+                                      row <= previous.bottom &&
+                                      column >= previous.left &&
+                                      column <= previous.right)
+                                    previousTiles[(row - previous.top) *
+                                            previousWidth +
+                                        column -
+                                        previous.left]
+                                  else
+                                    _tile(row, column),
+                            ];
+                          }
+                          previousBounds = bounds;
+                          previousSelection = selected;
+                          return previousCanvas = AlbumCanvas(
+                            size: constraints.biggest,
+                            transform: transform,
+                            tiltPadding: tiltPadding,
+                            isTransitioning: widget.interactionBlocked,
+                            albumAt: (row, column) => widget.layout.albumAt(
+                              row,
+                              column,
+                              widget.albums,
+                            ),
+                            hiddenTileOffset: hiddenOffset,
+                            tiles: tiles,
+                            selected: selected == null
+                                ? null
+                                : _selectedTile(selected.$1, selected.$2),
+                          );
+                        },
+                      ),
               ),
             ),
           );
