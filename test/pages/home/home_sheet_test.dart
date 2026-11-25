@@ -334,11 +334,11 @@ void main() {
     await tester.drag(capsule, const Offset(0, -140));
     await tester.pumpAndSettle();
 
-    final entry = find.widgetWithText(ListTile, 'Pro');
+    final entry = find.widgetWithText(ListTile, 'Musaic Pro');
     await tester.tap(entry);
     await tester.pumpAndSettle();
     final page = find.byType(SettingsPage);
-    expect(tester.widget<SettingsPage>(page).title, 'Pro');
+    expect(tester.widget<SettingsPage>(page).title, 'Musaic Pro');
     expect(find.text('Annual subscription'), findsOneWidget);
     expect(find.text('Price unavailable'), findsOneWidget);
     final restore = find.widgetWithText(TextButton, 'Restore purchases');
