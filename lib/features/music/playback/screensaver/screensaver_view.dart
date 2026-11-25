@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../../artwork/artwork_renderer.dart';
+import '../../../artwork/model/artwork_identity.dart';
 
 const _bandAngle = -0.18;
 
@@ -21,10 +22,12 @@ class ScreensaverView extends StatefulWidget {
     required this.title,
     required this.artwork,
     required this.readPosition,
+    this.artworkIdentity,
   });
 
   final String title;
   final String artwork;
+  final ArtworkIdentity? artworkIdentity;
   final Duration? Function() readPosition;
 
   @override
@@ -310,6 +313,7 @@ class _ScreensaverViewState extends State<ScreensaverView>
                   colorFilter: _grayscale,
                   child: albumArtwork(
                     widget.artwork,
+                    artworkIdentity: widget.artworkIdentity,
                     width: bands.coverSide,
                     height: bands.coverSide,
                     fit: BoxFit.cover,

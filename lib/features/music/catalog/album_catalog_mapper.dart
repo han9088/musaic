@@ -2,6 +2,9 @@
 
 import '../../../services/music/music_models.dart';
 
+String albumCatalogId(ProviderAlbum album) =>
+    '${album.reference.provider}:${album.reference.source.name}:${album.reference.id}';
+
 String albumArtworkSource(ProviderAlbum album) =>
     album.artworkUrl ?? 'local:${album.reference.id}';
 
@@ -16,8 +19,7 @@ bool albumHasSingleTrack(Map<String, dynamic> album) {
 List<Map<String, dynamic>> mapProviderAlbums(List<ProviderAlbum> albums) => [
   for (final album in albums)
     <String, dynamic>{
-      'id':
-          '${album.reference.provider}:${album.reference.source.name}:${album.reference.id}',
+      'id': albumCatalogId(album),
       'asset': albumArtworkSource(album),
       'title': album.title,
       'artist': album.artist ?? '',

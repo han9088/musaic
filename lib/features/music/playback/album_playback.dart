@@ -33,7 +33,20 @@ class AlbumPlayback extends ChangeNotifier {
 
   String? get currentTitle => _currentSong?.title ?? title;
   MusicReference? get currentTrack => _playbackState?.currentItem;
+  String? get currentAlbumId {
+    final track = _provider is AudiusMusicProvider
+        ? _audiusTrack(currentTrack)
+        : _tracks[currentTrack];
+    return track == null ? null : albumCatalogId(track.album);
+  }
+
   bool get buffering => _playbackState?.isBuffering ?? false;
+  bool get isLoading => switch (_playbackState?.status) {
+    MusicPlaybackStatus.loading || MusicPlaybackStatus.buffering => true,
+    MusicPlaybackStatus.completed || MusicPlaybackStatus.error => false,
+    // Some providers report buffering separately from the transport status.
+    _ => buffering,
+  };
   Duration? get currentPosition {
     final state = _playbackState;
     return state?.currentItem == null ? null : state?.position;
@@ -50,6 +63,11 @@ class AlbumPlayback extends ChangeNotifier {
   /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   bool isPlaying(String asset, String title) =>
       this.asset == asset && this.title == title && playing;
+
+  bool isAlbumLoading(String asset, String title) =>
+      isLoading &&
+      ((this.asset == asset && this.title == title) ||
+          (currentTrack != null && _albums[asset]?.reference == currentTrack));
 
   bool canPlayTrack(ProviderSong track, {String? albumAsset}) {
     if (_provider == null || !track.playable) return false;
@@ -134,6 +152,7 @@ class AlbumPlayback extends ChangeNotifier {
         if (generation != _generation) return;
         final trackChanged = currentTrack != state.currentItem;
         final bufferingChanged = buffering != state.isBuffering;
+        final wasLoading = isLoading;
         // Keep the seek position current without rebuilding on position ticks.
         _playbackState = state;
         final track = provider is AudiusMusicProvider
@@ -146,6 +165,7 @@ class AlbumPlayback extends ChangeNotifier {
         }
         if (!trackChanged &&
             !bufferingChanged &&
+            wasLoading == isLoading &&
             _currentSong == track?.song &&
             playing == state.isPlaying) {
           return;

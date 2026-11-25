@@ -6,6 +6,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../ui/widgets/frosted_control_surface.dart';
 import 'album_playback.dart';
 import 'now_playing_title.dart';
+import 'playback_loading_arc.dart';
 
 class NowPlayingCapsule extends StatelessWidget {
   const NowPlayingCapsule({
@@ -35,8 +36,28 @@ class NowPlayingCapsule extends StatelessWidget {
     final playback = this.playback;
     final title = playback?.currentTitle;
     final artist = playback?.currentArtist;
+    final loading =
+        visible && pullFeedbackIcon == null && (playback?.isLoading ?? false);
     final playing = playback?.playing ?? false;
     final l10n = AppLocalizations.of(context);
+
+    final playButton = IconButton(
+      tooltip: playing ? l10n.musicPause : l10n.musicPlay,
+      onPressed: title == null ? null : playback!.toggleCurrent,
+      color: Colors.white,
+      disabledColor: loading || pullFeedbackIcon != null
+          ? Colors.white
+          : Colors.white38,
+      iconSize: 14,
+      padding: EdgeInsets.zero,
+      icon: Icon(
+        pullFeedbackIcon ??
+            (!loading && playing
+                ? PhosphorIcons.pauseFill
+                : PhosphorIcons.playFill),
+        shadows: _textShadows,
+      ),
+    );
 
     final controls = Material(
       type: MaterialType.transparency,
@@ -100,22 +121,20 @@ class NowPlayingCapsule extends StatelessWidget {
           SizedBox(
             width: 36,
             height: FrostedControlSurface.compactHeight,
-            child: IconButton(
-              tooltip: playing ? l10n.musicPause : l10n.musicPlay,
-              onPressed: title == null ? null : playback!.toggleCurrent,
-              color: Colors.white,
-              disabledColor: pullFeedbackIcon == null
-                  ? Colors.white38
-                  : Colors.white,
-              iconSize: 14,
-              padding: EdgeInsets.zero,
-              icon: Icon(
-                pullFeedbackIcon ??
-                    (playing
-                        ? PhosphorIcons.pauseFill
-                        : PhosphorIcons.playFill),
-                shadows: _textShadows,
-              ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                playButton,
+                if (loading)
+                  const Center(
+                    child: IgnorePointer(
+                      child: SizedBox.square(
+                        dimension: 32,
+                        child: PlaybackLoadingArc(),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

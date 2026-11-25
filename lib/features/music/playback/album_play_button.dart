@@ -5,6 +5,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 import '../../../ui/widgets/glass_icon_button.dart';
 import 'album_playback.dart';
+import 'playback_loading_arc.dart';
 
 /// 封装或定义专辑播放按钮相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class AlbumPlayButton extends StatelessWidget {
@@ -26,18 +27,22 @@ class AlbumPlayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: playback,
-    builder: (context, child) => !playback.supportsPlayback
-        ? const SizedBox.shrink()
-        : Center(
-            child: GlassIconButton(
-              diameter: diameter,
-              iconSize: iconSize,
-              label: '${playback.isPlaying(asset, title) ? '暂停' : '播放'} $title',
-              icon: playback.isPlaying(asset, title)
-                  ? PhosphorIcons.pauseFill
-                  : PhosphorIcons.playFill,
-              onPressed: () => playback.toggle(asset, title, artist: artist),
-            ),
-          ),
+    builder: (context, child) {
+      if (!playback.supportsPlayback) return const SizedBox.shrink();
+      final loading = playback.isAlbumLoading(asset, title);
+      final playing = playback.isPlaying(asset, title);
+      return Center(
+        child: GlassIconButton(
+          diameter: diameter,
+          iconSize: iconSize,
+          label: '${playing ? '暂停' : '播放'} $title',
+          icon: !loading && playing
+              ? PhosphorIcons.pauseFill
+              : PhosphorIcons.playFill,
+          foreground: loading ? const PlaybackLoadingArc() : null,
+          onPressed: () => playback.toggle(asset, title, artist: artist),
+        ),
+      );
+    },
   );
 }

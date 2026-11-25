@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/rendering.dart' show ImageFilterLayer, RenderBox;
 import 'package:flutter/services.dart';
@@ -7,9 +8,11 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
 import 'package:musaic/features/music/catalog/album_track_edge_blur.dart';
 import 'package:musaic/features/music/catalog/album_track_list.dart';
+import 'package:musaic/features/music/playback/album_play_button.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 import 'package:musaic/features/music/playback/now_playing_controls.dart';
+import 'package:musaic/features/music/playback/playback_loading_arc.dart';
 import 'package:musaic/features/music/playback/screensaver/now_playing_screensaver.dart';
 import 'package:musaic/features/music/playback/screensaver/screensaver_view.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
@@ -18,6 +21,177 @@ import 'package:musaic/ui/widgets/frosted_control_surface.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 void main() {
+  testWidgets('album button paints one arc and follows playback status', (
+    tester,
+  ) async {
+    final playback = AlbumPlayback();
+    final provider = _Player();
+    addTearDown(provider.events.close);
+    addTearDown(playback.dispose);
+    final song = _song('1', 'First song', 'Singer');
+    final album = _album([song]);
+    const asset = 'local:album';
+    playback.bind(provider, [album]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Row(
+          children: [
+            AlbumPlayButton(asset: asset, title: 'Album', playback: playback),
+            AlbumPlayButton(
+              asset: 'local:other',
+              title: 'Other',
+              playback: playback,
+            ),
+          ],
+        ),
+      ),
+    );
+    final button = find.byType(AlbumPlayButton).first;
+    final arc = find.byType(PlaybackLoadingArc);
+    final canvasFinder = find.descendant(
+      of: arc,
+      matching: find.byType(CustomPaint),
+    );
+    Finder icon(IconData data) =>
+        find.descendant(of: button, matching: find.byIcon(data));
+    List<Object?> drawArc() {
+      final canvas = TestRecordingCanvas();
+      tester
+          .widget<CustomPaint>(canvasFinder)
+          .painter!
+          .paint(canvas, tester.getSize(canvasFinder));
+      final call = canvas.invocations.single.invocation;
+      expect(call.memberName, #drawArc);
+      return call.positionalArguments;
+    }
+
+    expect(icon(PhosphorIcons.playFill), findsOneWidget);
+    expect(arc, findsNothing);
+    final bounds = tester.getRect(button);
+
+    provider.emit(
+      album.reference,
+      playing: false,
+      status: MusicPlaybackStatus.loading,
+    );
+    await tester.pump();
+    expect(arc, findsOneWidget);
+    expect(tester.getRect(button), bounds);
+    expect(
+      tester.getCenter(canvasFinder),
+      tester.getCenter(icon(PhosphorIcons.playFill)),
+    );
+    final initial = drawArc();
+    final rect = initial[0]! as Rect;
+    final paint = initial[4]! as Paint;
+    expect(rect.center, const Offset(15, 15));
+    expect(rect.right + paint.strokeWidth / 2, lessThan(30));
+    expect(initial[2], inExclusiveRange(0, math.pi));
+    expect(initial[3], false);
+    expect(paint.color, Colors.white);
+    expect(paint.style, PaintingStyle.stroke);
+    expect(paint.strokeCap, StrokeCap.round);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    final beforeBuffering = drawArc()[1];
+    expect(beforeBuffering, isNot(initial[1]));
+    provider.emit(
+      song.reference,
+      playing: true,
+      status: MusicPlaybackStatus.buffering,
+    );
+    await tester.pump();
+    expect(drawArc()[1], beforeBuffering);
+    expect(icon(PhosphorIcons.playFill), findsOneWidget);
+    expect(tester.binding.transientCallbackCount, 1);
+
+    provider.emit(song.reference, playing: true);
+    await tester.pump();
+    expect(icon(PhosphorIcons.pauseFill), findsOneWidget);
+    expect(arc, findsNothing);
+    expect(tester.binding.transientCallbackCount, 0);
+    await tester.tap(icon(PhosphorIcons.pauseFill));
+    await tester.pumpAndSettle();
+    expect(provider.pauses, 1);
+
+    provider.emit(song.reference, playing: false);
+    await tester.pump();
+    expect(icon(PhosphorIcons.playFill), findsOneWidget);
+    await tester.tap(icon(PhosphorIcons.playFill));
+    await tester.pumpAndSettle();
+    expect(provider.resumes, 1);
+
+    for (final end in [
+      MusicPlaybackStatus.completed,
+      MusicPlaybackStatus.error,
+    ]) {
+      provider.emit(
+        song.reference,
+        playing: false,
+        status: MusicPlaybackStatus.loading,
+      );
+      await tester.pump();
+      expect(arc, findsOneWidget);
+      provider.emit(song.reference, playing: false, status: end);
+      await tester.pump();
+      expect(arc, findsNothing);
+      expect(tester.binding.transientCallbackCount, 0);
+    }
+
+    provider.emit(song.reference, playing: true, buffering: true);
+    await tester.pump();
+    expect(arc, findsOneWidget);
+    expect(icon(PhosphorIcons.playFill), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.binding.transientCallbackCount, 0);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('capsule keeps the arc static with reduced motion', (
+    tester,
+  ) async {
+    final playback = AlbumPlayback();
+    final provider = _Player();
+    addTearDown(provider.events.close);
+    addTearDown(playback.dispose);
+    final song = _song('1', 'First song', 'Singer');
+    playback.bind(provider, [
+      _album([song]),
+    ]);
+    provider.emit(song.reference, playing: false, buffering: true);
+
+    Widget capsule({required bool reduceMotion, IconData? feedback}) =>
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: reduceMotion),
+            child: Center(
+              child: NowPlayingCapsule(
+                playback: playback,
+                visible: true,
+                onOpenSheet: () {},
+                pullFeedbackIcon: feedback,
+              ),
+            ),
+          ),
+        );
+    final arc = find.byType(PlaybackLoadingArc);
+
+    await tester.pumpWidget(capsule(reduceMotion: false));
+    expect(arc, findsOneWidget);
+    expect(tester.binding.transientCallbackCount, greaterThan(0));
+    await tester.pumpWidget(capsule(reduceMotion: true));
+    await tester.pumpAndSettle();
+    expect(arc, findsOneWidget);
+    expect(tester.binding.transientCallbackCount, 0);
+    await tester.pumpWidget(
+      capsule(reduceMotion: false, feedback: PhosphorIcons.skipForwardFill),
+    );
+    expect(arc, findsNothing);
+    expect(find.byIcon(PhosphorIcons.skipForwardFill), findsOneWidget);
+  });
+
   test('browse-only catalog never falls back to simulated playback', () {
     final playback = AlbumPlayback();
     playback.bind(null, const []);
@@ -546,15 +720,18 @@ class _Player extends Fake implements MusicProvider {
     MusicReference song, {
     required bool playing,
     bool buffering = false,
+    MusicPlaybackStatus? status,
     Duration position = Duration.zero,
     Duration? duration,
   }) {
     _state = (
-      status: playing
-          ? MusicPlaybackStatus.playing
-          : buffering
-          ? MusicPlaybackStatus.buffering
-          : MusicPlaybackStatus.paused,
+      status:
+          status ??
+          (playing
+              ? MusicPlaybackStatus.playing
+              : buffering
+              ? MusicPlaybackStatus.buffering
+              : MusicPlaybackStatus.paused),
       currentItem: song,
       position: position,
       duration: duration,

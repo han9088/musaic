@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../../artwork/model/artwork_identity.dart';
 import '../album_playback.dart';
 import 'screensaver_view.dart';
 
@@ -26,7 +27,11 @@ class NowPlayingScreensaver extends StatefulWidget {
   State<NowPlayingScreensaver> createState() => _NowPlayingScreensaverState();
 }
 
-typedef _ScreenTrack = ({String artwork, String title});
+typedef _ScreenTrack = ({
+  String artwork,
+  ArtworkIdentity? artworkIdentity,
+  String title,
+});
 
 class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
   late final AppLifecycleListener _lifecycle;
@@ -94,7 +99,12 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
         _sheets?.snapshot.isPresented != true) {
       final playback = widget.playback;
       if (playback.asset case final artwork? when playback.playing) {
-        next = (artwork: artwork, title: playback.currentTitle ?? '');
+        final albumId = playback.currentAlbumId;
+        next = (
+          artwork: artwork,
+          artworkIdentity: albumId == null ? null : ArtworkIdentity(albumId),
+          title: playback.currentTitle ?? '',
+        );
       } else if (playback.buffering) {
         next = _screenTrack;
       }
@@ -169,6 +179,7 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
       key: ValueKey(track),
       title: track.title,
       artwork: track.artwork,
+      artworkIdentity: track.artworkIdentity,
       readPosition: () {
         final playback = widget.playback;
         if (_screenTrack == track && playback.playing) {
