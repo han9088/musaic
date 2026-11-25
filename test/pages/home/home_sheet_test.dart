@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_email_sender_method_channel/flutter_email_sender_method_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,6 +25,7 @@ import 'package:musaic/services/app_icon_service.dart';
 import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/settings/app_language_preference.dart';
+import 'package:musaic/storage/settings/screensaver_delay_preference.dart';
 import 'package:musaic/storage/settings/usage_guide_preference.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:musaic/ui/dialogs/app_alert_dialog.dart';
@@ -31,6 +33,7 @@ import 'package:musaic/ui/theme/app_colors.dart';
 import 'package:musaic/ui/thinking_orbs/thinking_orb.dart';
 import 'package:musaic/ui/widgets/app_navigation_back_button.dart';
 import 'package:musaic/ui/widgets/app_selection_dot.dart';
+import 'package:musaic/ui/widgets/horizontal_selection_wheel.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
@@ -347,6 +350,141 @@ void main() {
     expect(entry.hitTestable(), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  testWidgets('Music settings embed a compact wheel that snaps and restores', (
+    tester,
+  ) async {
+    final haptics = <String>[];
+    final messenger = tester.binding.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'HapticFeedback.vibrate') {
+        haptics.add(call.arguments as String);
+      }
+      return null;
+    });
+    addTearDown(
+      () => messenger.setMockMethodCallHandler(SystemChannels.platform, null),
+    );
+
+    final preference = ScreensaverDelayPreference();
+    addTearDown(preference.dispose);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.binding.setSurfaceSize(const Size(320, 680));
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(
+            screensaverDelay: preference,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    await tester.drag(capsule, const Offset(0, -140));
+    await tester.pumpAndSettle();
+    await tester.tap(settingsTab);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '音乐'));
+    await tester.pumpAndSettle();
+
+    final wheel = find.byType(HorizontalSelectionWheel);
+    final title = find.text('熄屏显示时间');
+    final row = find.widgetWithText(ListTile, '熄屏显示时间');
+    expect(find.descendant(of: row, matching: wheel), findsOneWidget);
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(find.text('秒'), findsOneWidget);
+    expect(preference.seconds.value, 30);
+
+    void expectCentered(int seconds) {
+      final option = find.descendant(
+        of: wheel,
+        matching: find.text('$seconds'),
+      );
+      expect(
+        tester.getCenter(option).dx,
+        closeTo(tester.getCenter(wheel).dx, 0.01),
+      );
+      expect(
+        tester
+            .widget<Opacity>(
+              find.ancestor(of: option, matching: find.byType(Opacity)).first,
+            )
+            .opacity,
+        closeTo(1, 0.001),
+      );
+    }
+
+    final titleHeight = tester.getSize(title).height;
+    for (final width in [320.0, 390.0, 900.0]) {
+      await tester.binding.setSurfaceSize(Size(width, 680));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(title).right, lessThan(tester.getRect(wheel).left));
+      expect(tester.getSize(wheel).width, lessThan(148));
+      expect(tester.getSize(title).height, titleHeight);
+      expect(tester.takeException(), isNull);
+      expectCentered(30);
+    }
+
+    haptics.clear();
+    await tester.tap(find.descendant(of: wheel, matching: find.text('40')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(haptics, ['HapticFeedbackType.selectionClick']);
+    expect(preference.seconds.value, 30);
+    await tester.pumpAndSettle();
+    expect(haptics, [
+      'HapticFeedbackType.selectionClick',
+      'HapticFeedbackType.lightImpact',
+    ]);
+    expect(preference.seconds.value, 40);
+    expectCentered(40);
+
+    final center = tester.getCenter(wheel);
+    Future<void> scrollWheel(double dy) => tester.sendEventToBinding(
+      PointerScrollEvent(
+        kind: PointerDeviceKind.mouse,
+        position: center,
+        scrollDelta: Offset(0, dy),
+      ),
+    );
+    await scrollWheel(20);
+    await scrollWheel(-20);
+    await tester.pumpAndSettle();
+    expectCentered(40);
+
+    await scrollWheel(20);
+    await tester.pumpAndSettle();
+    expect(preference.seconds.value, 60);
+    expectCentered(60);
+
+    await tester.fling(wheel, const Offset(-120, 0), 800);
+    await tester.pumpAndSettle();
+    expect(preference.seconds.value, 90);
+    expectCentered(90);
+
+    await tester.drag(
+      wheel,
+      const Offset(300, 0),
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pumpAndSettle();
+    expect(preference.seconds.value, 10);
+    expectCentered(10);
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    final restarted = ScreensaverDelayPreference();
+    addTearDown(restarted.dispose);
+    await restarted.restore();
+    expect(restarted.seconds.value, 10);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('Appearance language updates the open settings page', (
     tester,

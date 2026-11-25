@@ -117,6 +117,14 @@
   "settingsAppearance": "外观与显示",
   "settingsLanguage": "语言设置",
   "settingsMusic": "音乐",
+  "settingsScreensaverDelay": "熄屏显示时间",
+  "settingsScreensaverSecondsUnit": "秒",
+  "settingsScreensaverSeconds": "{seconds} 秒",
+  "@settingsScreensaverSeconds": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
   "settingsSystem": "系统",
   "settingsLanguageSystem": "跟随系统",
   "settingsLanguageSearch": "搜索语言",

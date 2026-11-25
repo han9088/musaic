@@ -13,11 +13,13 @@ class NowPlayingScreensaver extends StatefulWidget {
     super.key,
     required this.playback,
     required this.enabled,
+    required this.idleDelay,
     required this.child,
   });
 
   final AlbumPlayback playback;
   final bool enabled;
+  final Duration idleDelay;
   final Widget child;
 
   @override
@@ -25,8 +27,6 @@ class NowPlayingScreensaver extends StatefulWidget {
 }
 
 class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
-  static const _idleDelay = Duration(minutes: 1);
-
   late final AppLifecycleListener _lifecycle;
   late bool _foreground;
   bool _routeAvailable = false;
@@ -74,7 +74,12 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
       oldWidget.playback.removeListener(_syncPlayback);
       widget.playback.addListener(_syncPlayback);
       _recordActivity();
-    } else if (oldWidget.enabled != widget.enabled) {
+    } else if (oldWidget.enabled != widget.enabled ||
+        oldWidget.idleDelay != widget.idleDelay) {
+      if (oldWidget.idleDelay != widget.idleDelay) {
+        _idleTimer?.cancel();
+        _idleTimer = null;
+      }
       _syncPlayback();
     }
   }
@@ -100,7 +105,7 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
       _idleTimer?.cancel();
       _idleTimer = null;
     } else if (_screenArtwork == null) {
-      _idleTimer ??= Timer(_idleDelay, () {
+      _idleTimer ??= Timer(widget.idleDelay, () {
         _idleTimer = null;
         setState(() => _screenArtwork = _eligibleArtwork);
       });

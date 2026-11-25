@@ -10,6 +10,7 @@ import '../../features/desktop_shortcuts/desktop_shortcuts_settings.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
+import '../../features/music/presentation/music_settings.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../features/pro/pro_settings.dart';
 import '../../features/settings/about_settings.dart';
@@ -24,6 +25,7 @@ import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/developer_options_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
+import '../../storage/settings/screensaver_delay_preference.dart';
 import '../../storage/settings/usage_guide_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_spacing.dart';
@@ -46,6 +48,7 @@ class HomeSheet extends StatefulWidget {
     this.onSourceSelection,
     this.language,
     this.manualRotation,
+    this.screensaverDelay,
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -64,6 +67,7 @@ class HomeSheet extends StatefulWidget {
   final Future<void> Function(Future<void> Function())? onSourceSelection;
   final AppLanguagePreference? language;
   final ManualRotationPreference? manualRotation;
+  final ScreensaverDelayPreference? screensaverDelay;
   final ValueListenable<bool>? xeroxEnabled;
   final FutureOr<void> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
@@ -244,7 +248,10 @@ class _HomeSheetState extends State<HomeSheet> {
       SettingsSection.music => (
         '/settings/music',
         (AppLocalizations l10n) => l10n.settingsMusic,
-        const SizedBox.shrink(),
+        switch (widget.screensaverDelay) {
+          final delay? => MusicSettings(screensaverDelay: delay),
+          null => const SizedBox.shrink(),
+        },
       ),
       SettingsSection.system => (
         '/settings/system',

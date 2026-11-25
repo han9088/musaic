@@ -9,6 +9,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
+import '../../storage/settings/screensaver_delay_preference.dart';
 import '../../services/album_haptics.dart';
 import '../../services/diagnostics/diagnostic_log.dart';
 import '../../services/mock_album_cache.dart';
@@ -72,6 +73,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   final _playback = AlbumPlayback();
   DesktopShortcuts? _desktopShortcuts;
   final _manualRotation = ManualRotationPreference();
+  final _screensaverDelay = ScreensaverDelayPreference();
   late final VoidCallback _stopManualRotationListener;
   late final _sources = widget.sources ?? MusicSourceController();
   late final VoidCallback _stopSourceListener;
@@ -588,6 +590,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       });
     });
     unawaited(_manualRotation.restore());
+    unawaited(_screensaverDelay.restore());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_haptics.prepare());
@@ -740,6 +743,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _stopSourceListener();
     _stopManualRotationListener();
     _manualRotation.dispose();
+    _screensaverDelay.dispose();
     _playback.dispose();
     if (widget.sources == null) {
       unawaited(
@@ -809,6 +813,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           onSourceSelection: _selectMusicSource,
           language: widget.language,
           manualRotation: _manualRotation,
+          screensaverDelay: _screensaverDelay,
           xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,
           xeroxPalettePicker: XeroxPalettePicker(
@@ -817,30 +822,34 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
           child: canvas,
         );
-    return NowPlayingScreensaver(
-      playback: _playback,
-      enabled: !_desktopWallpaperEnabled,
-      child: SignalBuilder(
-        builder: (context) => LayoutSwitchOverlay(
-          enabled: !_desktopWallpaperEnabled && _manualRotation.enabled.value,
-          coverFlow: _landscape,
-          screenLandscape: _lastAutomaticLandscape,
-          onSwitch: () {
-            if (_lastAutomaticLandscape ||
-                _catalog == null ||
-                _catalog!.isEmpty) {
-              return;
-            }
-            setState(() {
-              _landscapeFlowViewport = null;
-              _manualLayout = !_landscape;
-              _updateLayout(_manualLayout!);
-            });
-          },
-          builder: (button, visible) => homeSheet(
-            button == null ? null : (button: button, visible: visible),
-          ),
+    final content = SignalBuilder(
+      builder: (context) => LayoutSwitchOverlay(
+        enabled: !_desktopWallpaperEnabled && _manualRotation.enabled.value,
+        coverFlow: _landscape,
+        screenLandscape: _lastAutomaticLandscape,
+        onSwitch: () {
+          if (_lastAutomaticLandscape ||
+              _catalog == null ||
+              _catalog!.isEmpty) {
+            return;
+          }
+          setState(() {
+            _landscapeFlowViewport = null;
+            _manualLayout = !_landscape;
+            _updateLayout(_manualLayout!);
+          });
+        },
+        builder: (button, visible) => homeSheet(
+          button == null ? null : (button: button, visible: visible),
         ),
+      ),
+    );
+    return SignalBuilder(
+      builder: (context) => NowPlayingScreensaver(
+        playback: _playback,
+        enabled: !_desktopWallpaperEnabled,
+        idleDelay: Duration(seconds: _screensaverDelay.seconds.value),
+        child: content,
       ),
     );
   }

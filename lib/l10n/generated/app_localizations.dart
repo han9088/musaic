@@ -704,6 +704,24 @@ abstract class AppLocalizations {
   /// **'音乐'**
   String get settingsMusic;
 
+  /// No description provided for @settingsScreensaverDelay.
+  ///
+  /// In zh, this message translates to:
+  /// **'熄屏显示时间'**
+  String get settingsScreensaverDelay;
+
+  /// No description provided for @settingsScreensaverSecondsUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'秒'**
+  String get settingsScreensaverSecondsUnit;
+
+  /// No description provided for @settingsScreensaverSeconds.
+  ///
+  /// In zh, this message translates to:
+  /// **'{seconds} 秒'**
+  String settingsScreensaverSeconds(int seconds);
+
   /// No description provided for @settingsSystem.
   ///
   /// In zh, this message translates to:

@@ -352,6 +352,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMusic => 'Music';
 
   @override
+  String get settingsScreensaverDelay => 'Screensaver delay';
+
+  @override
+  String get settingsScreensaverSecondsUnit => 's';
+
+  @override
+  String settingsScreensaverSeconds(int seconds) {
+    return '$seconds seconds';
+  }
+
+  @override
   String get settingsSystem => 'System';
 
   @override

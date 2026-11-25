@@ -334,6 +334,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMusic => '音乐';
 
   @override
+  String get settingsScreensaverDelay => '熄屏显示时间';
+
+  @override
+  String get settingsScreensaverSecondsUnit => '秒';
+
+  @override
+  String settingsScreensaverSeconds(int seconds) {
+    return '$seconds 秒';
+  }
+
+  @override
   String get settingsSystem => '系统';
 
   @override

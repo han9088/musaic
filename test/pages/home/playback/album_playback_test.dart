@@ -83,6 +83,7 @@ void main() {
           home: NowPlayingScreensaver(
             playback: playback,
             enabled: true,
+            idleDelay: const Duration(seconds: 30),
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => homeTaps++,
@@ -101,9 +102,9 @@ void main() {
         position: const Duration(seconds: 42),
         duration: const Duration(minutes: 3, seconds: 1),
       );
-      await tester.pump(const Duration(seconds: 59));
+      await tester.pump(const Duration(seconds: 29));
       await tester.tapAt(const Offset(100, 100));
-      await tester.pump(const Duration(seconds: 59));
+      await tester.pump(const Duration(seconds: 29));
       expect(screen, findsNothing);
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('First song'), findsNothing);
@@ -138,7 +139,7 @@ void main() {
       expect(playback.playing, isTrue);
       expect(provider.pauses, 0);
 
-      await tester.pump(const Duration(minutes: 1));
+      await tester.pump(const Duration(seconds: 30));
       expect(screen, findsOneWidget);
       provider.emit(second.reference, playing: false);
       await tester.pump();
@@ -156,6 +157,7 @@ void main() {
         home: NowPlayingScreensaver(
           playback: playback,
           enabled: true,
+          idleDelay: const Duration(seconds: 80),
           child: const SizedBox.expand(),
         ),
       ),
@@ -163,13 +165,13 @@ void main() {
 
     final screen = find.byType(ScreensaverView);
     playback.toggle('assets/albums/0.jpg', 'Demo');
-    await tester.pump(const Duration(seconds: 59));
+    await tester.pump(const Duration(seconds: 79));
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
     await tester.pump(const Duration(minutes: 2));
     expect(screen, findsNothing);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await tester.pump(const Duration(seconds: 59));
+    await tester.pump(const Duration(seconds: 79));
     expect(screen, findsNothing);
     await tester.pump(const Duration(seconds: 1));
     expect(screen, findsOneWidget);
