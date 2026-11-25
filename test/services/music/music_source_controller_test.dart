@@ -9,6 +9,7 @@ import 'package:musaic/services/music/directory_music_library.dart';
 import 'package:musaic/services/music/music_provider.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/music/music_index.dart';
+import 'package:musaic/ui/theme/app_theme.dart';
 import 'package:musaic_query/musaic_query.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -301,6 +302,7 @@ void main() {
       addTearDown(switching.dispose);
       var transitions = 0;
       Widget picker({bool demoOnly = false}) => MaterialApp(
+        theme: buildSettingsContentTheme(ThemeData()),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
@@ -318,8 +320,40 @@ void main() {
       await tester.pumpWidget(picker());
       await tester.pumpAndSettle();
       final row = find.byKey(const ValueKey('music-source-audius'));
+      final mock = find.byKey(const ValueKey('music-source-mock'));
+      Color? mockTitleColor() => tester
+          .widget<RichText>(
+            find.descendant(
+              of: mock,
+              matching: find.byWidgetPredicate(
+                (widget) =>
+                    widget is RichText &&
+                    widget.text.toPlainText() ==
+                        AppLocalizations.of(tester.element(mock))
+                            .musicSourceMock,
+              ),
+            ),
+          )
+          .text
+          .style
+          ?.color;
+
+      final local = find.byKey(const ValueKey('music-source-local'));
+      Color? leadingColor(Finder tile) => IconTheme.of(
+        tester.element(find.descendant(of: tile, matching: find.byType(Icon))),
+      ).color;
+      final mockIconColor = leadingColor(mock);
+      final localIconColor = leadingColor(local);
+
+      final titleColor = mockTitleColor();
       await tester.tap(row);
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(mockTitleColor(), titleColor);
+      expect(leadingColor(mock), mockIconColor);
+      expect(leadingColor(local), localIconColor);
+      expect(tester.widget<ListTile>(mock).onTap, isNull);
+      expect(tester.widget<ListTile>(local).onTap, isNull);
       expect(
         find.descendant(
           of: row,

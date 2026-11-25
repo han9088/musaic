@@ -178,32 +178,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewportSize,
         _transform.value,
       );
-      if (_artworkMode.enabled) {
-        final scale = _transform.value.getColumn(0).length;
-        final preparationSnapshot = AlbumGridSnapshot.capture(
-          viewportSize,
-          _transform.value,
-          overscan:
-              PortraitTilt.overscan(viewportSize) + albumGridExtent * scale,
-        );
-        final requests = await _buildXeroxRequests(
-          target,
-          preparationSnapshot.cells,
-          useLayout: false,
-          isActive: () => mounted,
-        );
-        sourceXeroxLeases.addAll(
-          await _artworkMode.scheduler.prepare(
-            requests,
+      // Audius covers load independently as the incoming tiles mount.
+      // Waiting for every remote cover can leave the old canvas on screen.
+      if (source != _HomeMusicSource.audius) {
+        if (_artworkMode.enabled) {
+          final scale = _transform.value.getColumn(0).length;
+          final preparationSnapshot = AlbumGridSnapshot.capture(
+            viewportSize,
+            _transform.value,
+            overscan:
+                PortraitTilt.overscan(viewportSize) + albumGridExtent * scale,
+          );
+          final requests = await _buildXeroxRequests(
+            target,
+            preparationSnapshot.cells,
+            useLayout: false,
             isActive: () => mounted,
-          ),
-        );
-      } else {
-        await _warmOriginalArtwork(
-          albums: target,
-          cells: snapshot.cells,
-          isActive: () => mounted,
-        );
+          );
+          sourceXeroxLeases.addAll(
+            await _artworkMode.scheduler.prepare(
+              requests,
+              isActive: () => mounted,
+            ),
+          );
+        } else {
+          await _warmOriginalArtwork(
+            albums: target,
+            cells: snapshot.cells,
+            isActive: () => mounted,
+          );
+        }
       }
       if (!mounted) return;
       final exit = SourceTileMotion.exit(

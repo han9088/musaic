@@ -40,6 +40,9 @@ class MusicSourcePicker extends StatelessWidget {
         final l10n = AppLocalizations.of(context);
         final albums = sources.catalog.value;
         final busy = sources.busy.value;
+        final audiusLoading = sources.audiusLoading.value;
+        final selectionBlocked = busy || switching;
+        final keepSourceStyle = audiusLoading && !demoOnly;
         final problem = sources.problem.value;
         final directorySelected = sources.directorySelected.value;
         final windows =
@@ -94,7 +97,7 @@ class MusicSourcePicker extends StatelessWidget {
                     ),
                   ),
                 ),
-                trailing: sources.audiusLoading.value
+                trailing: audiusLoading
                     ? const SizedBox.square(
                         dimension: 20,
                         child: CircularProgressIndicator(
@@ -108,18 +111,20 @@ class MusicSourcePicker extends StatelessWidget {
             if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
               key: const ValueKey('music-source-mock'),
-              enabled: !busy && !switching,
+              enabled: keepSourceStyle || !selectionBlocked,
               selected: firstDemoSelected,
               leading: const Icon(PhosphorIcons.squaresFour),
               title: AppSelectionTitle(
                 selected: firstDemoSelected,
                 child: Text(l10n.musicSourceMock),
               ),
-              onTap: () => _select(sources.selectMock),
+              onTap: selectionBlocked
+                  ? null
+                  : () => _select(sources.selectMock),
             ),
             ListTile(
               key: const ValueKey('music-source-mock2'),
-              enabled: !busy && !switching,
+              enabled: keepSourceStyle || !selectionBlocked,
               selected: secondDemoSelected,
               leading: const Icon(
                 PhosphorIcons.squaresFour,
@@ -129,28 +134,30 @@ class MusicSourcePicker extends StatelessWidget {
                 selected: secondDemoSelected,
                 child: Text(l10n.musicSourceMock2),
               ),
-              onTap: () => _select(sources.selectMock2),
+              onTap: selectionBlocked
+                  ? null
+                  : () => _select(sources.selectMock2),
             ),
             if (!demoOnly && !kIsWeb && !windows) ...[
               SettingsSectionHeading(l10n.musicSourceDeviceGroup),
               ListTile(
                 key: const ValueKey('music-source-local'),
-                enabled: !busy && !switching,
+                enabled: keepSourceStyle || !selectionBlocked,
                 selected: localSelected,
                 leading: const Icon(PhosphorIcons.musicNotes),
                 title: AppSelectionTitle(
-                  selected: localSelected && !busy,
+                  selected: localSelected && (!busy || keepSourceStyle),
                   child: Text(l10n.musicSourceLocal),
                 ),
                 subtitle: Text(
-                  busy && !sources.audiusLoading.value
+                  busy && !audiusLoading
                       ? l10n.musicSourceScanning
                       : localAlbums == null
                       ? l10n.musicSourceLocalHint
                       : l10n.musicSourceAlbumCount(localAlbums.length),
                   style: const TextStyle(color: Colors.white60),
                 ),
-                trailing: busy && !sources.audiusLoading.value
+                trailing: busy && !audiusLoading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -160,7 +167,9 @@ class MusicSourcePicker extends StatelessWidget {
                         ),
                       )
                     : null,
-                onTap: () => _select(sources.selectLocal),
+                onTap: selectionBlocked
+                    ? null
+                    : () => _select(sources.selectLocal),
               ),
               if (localSelected && !busy)
                 TextButton(
