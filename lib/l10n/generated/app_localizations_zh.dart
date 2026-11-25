@@ -334,6 +334,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMusic => '音乐';
 
   @override
+  String get settingsScreensaverEnabled => '开启熄屏显示';
+
+  @override
   String get settingsScreensaverDelay => '熄屏显示时间';
 
   @override

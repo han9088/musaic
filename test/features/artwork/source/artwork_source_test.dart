@@ -66,4 +66,20 @@ void main() {
       );
     },
   );
+
+  test('Audius artwork cache shares a content rendition across nodes', () {
+    String key(String host, String file, {String content = 'baeabc234'}) =>
+        OriginalArtworkCache.cacheKeyFor(
+          url: 'https://$host/content/$content/$file#audius-album',
+          identity: 'audius:catalog:album',
+        );
+
+    final cover = key('first.example', '480x480.jpg');
+    expect(cover, key('second.example', '480x480.jpg'));
+    expect(cover, isNot(key('second.example', '150x150.jpg')));
+    expect(
+      cover,
+      isNot(key('second.example', '480x480.jpg', content: 'baedef234')),
+    );
+  });
 }

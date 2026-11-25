@@ -26,14 +26,16 @@ class NowPlayingScreensaver extends StatefulWidget {
   State<NowPlayingScreensaver> createState() => _NowPlayingScreensaverState();
 }
 
+typedef _ScreenTrack = ({String artwork, String title});
+
 class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
   late final AppLifecycleListener _lifecycle;
   late bool _foreground;
   bool _routeAvailable = false;
   BottomSheetSheetStore? _sheets;
   Timer? _idleTimer;
-  String? _eligibleArtwork;
-  String? _screenArtwork;
+  _ScreenTrack? _eligibleTrack;
+  _ScreenTrack? _screenTrack;
   bool _keepAwake = false;
   Future<void> _wakeLockUpdate = Future.value();
 
@@ -85,33 +87,33 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
   }
 
   void _syncPlayback() {
-    String? next;
+    _ScreenTrack? next;
     if (widget.enabled &&
         _foreground &&
         _routeAvailable &&
         _sheets?.snapshot.isPresented != true) {
       final playback = widget.playback;
-      if (playback.playing) {
-        next = playback.asset;
-      } else if (_screenArtwork != null && playback.buffering) {
-        next = playback.asset ?? _screenArtwork;
+      if (playback.asset case final artwork? when playback.playing) {
+        next = (artwork: artwork, title: playback.currentTitle ?? '');
+      } else if (playback.buffering) {
+        next = _screenTrack;
       }
     }
 
-    _eligibleArtwork = next;
+    _eligibleTrack = next;
     // Start before the idle delay because system auto-lock can be shorter.
     _setKeepAwake(next != null);
     if (next == null) {
       _idleTimer?.cancel();
       _idleTimer = null;
-    } else if (_screenArtwork == null) {
+    } else if (_screenTrack == null) {
       _idleTimer ??= Timer(widget.idleDelay, () {
         _idleTimer = null;
-        setState(() => _screenArtwork = _eligibleArtwork);
+        setState(() => _screenTrack = _eligibleTrack);
       });
     }
-    if (_screenArtwork != null && _screenArtwork != next) {
-      setState(() => _screenArtwork = next);
+    if (_screenTrack != null && _screenTrack != next) {
+      setState(() => _screenTrack = next);
     }
   }
 
@@ -135,13 +137,17 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
   void _recordActivity([PointerEvent? _]) {
     _idleTimer?.cancel();
     _idleTimer = null;
-    if (_screenArtwork != null) setState(() => _screenArtwork = null);
+    if (_screenTrack != null) setState(() => _screenTrack = null);
     _syncPlayback();
   }
 
   bool _onKey(KeyEvent event) {
     if (event.synthesized || event is! KeyDownEvent) return false;
-    final wasShowing = _screenArtwork != null;
+    if (event.logicalKey == LogicalKeyboardKey.mediaTrackNext ||
+        event.logicalKey == LogicalKeyboardKey.mediaTrackPrevious) {
+      return false;
+    }
+    final wasShowing = _screenTrack != null;
     _recordActivity();
     return wasShowing;
   }
@@ -157,13 +163,29 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
     super.dispose();
   }
 
+  ScreensaverView _trackView(_ScreenTrack track) {
+    var position = widget.playback.currentPosition;
+    return ScreensaverView(
+      key: ValueKey(track),
+      title: track.title,
+      artwork: track.artwork,
+      readPosition: () {
+        final playback = widget.playback;
+        if (_screenTrack == track && playback.playing) {
+          position = playback.currentPosition;
+        }
+        return position;
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final artwork = _screenArtwork;
+    final track = _screenTrack;
     return PopScope(
-      canPop: artwork == null,
+      canPop: track == null,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && _screenArtwork != null) _recordActivity();
+        if (!didPop && _screenTrack != null) _recordActivity();
       },
       child: Listener(
         behavior: HitTestBehavior.opaque,
@@ -178,21 +200,24 @@ class _NowPlayingScreensaverState extends State<NowPlayingScreensaver> {
           fit: StackFit.expand,
           children: [
             TickerMode(
-              enabled: artwork == null,
+              enabled: track == null,
               child: ExcludeFocus(
-                excluding: artwork != null,
-                child: Offstage(offstage: artwork != null, child: widget.child),
+                excluding: track != null,
+                child: Offstage(offstage: track != null, child: widget.child),
               ),
             ),
-            if (artwork != null)
+            if (track != null)
               Semantics(
                 onTap: _recordActivity,
-                child: ListenableBuilder(
-                  listenable: widget.playback,
-                  builder: (context, _) => ScreensaverView(
-                    title: widget.playback.currentTitle ?? '',
-                    artwork: artwork,
-                    readPosition: () => widget.playback.currentPosition,
+                child: ColoredBox(
+                  color: Colors.black,
+                  child: AnimatedSwitcher(
+                    duration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 320),
+                    switchInCurve: Curves.easeInOut,
+                    switchOutCurve: Curves.easeInOut,
+                    child: _trackView(track),
                   ),
                 ),
               ),

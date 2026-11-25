@@ -704,6 +704,12 @@ abstract class AppLocalizations {
   /// **'音乐'**
   String get settingsMusic;
 
+  /// No description provided for @settingsScreensaverEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启熄屏显示'**
+  String get settingsScreensaverEnabled;
+
   /// No description provided for @settingsScreensaverDelay.
   ///
   /// In zh, this message translates to:

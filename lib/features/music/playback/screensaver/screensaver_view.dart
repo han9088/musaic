@@ -267,7 +267,7 @@ class _ScreensaverViewState extends State<ScreensaverView>
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.black,
+    type: MaterialType.transparency,
     child: LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
@@ -280,6 +280,10 @@ class _ScreensaverViewState extends State<ScreensaverView>
           size,
           fontSize,
           _fill.height,
+          // Inter ExtraBold cap height is 1490 units out of 2048 per em.
+          inkCenter:
+              _fill.computeDistanceToActualBaseline(TextBaseline.alphabetic) -
+              fontSize * 1490 / 4096,
           showTime: position != null,
           randomSeed: _randomSeed,
         );
@@ -347,6 +351,7 @@ class _BandLayout {
     this.size,
     this.fontSize,
     this.lineHeight, {
+    required this.inkCenter,
     required this.showTime,
     required this.randomSeed,
   });
@@ -356,6 +361,7 @@ class _BandLayout {
   final Size size;
   final double fontSize;
   final double lineHeight;
+  final double inkCenter;
   final bool showTime;
   final int randomSeed;
 
@@ -399,7 +405,8 @@ class _BandLayout {
       row: row,
       offset: Offset(
         (travel % cycleWidth - halfCycle) * _rowDirection(row),
-        rowTop(row, elapsed) + lineHeight / 2,
+        rowTop(row, elapsed) +
+            (item == _BandItem.cover ? inkCenter : lineHeight / 2),
       ),
     );
   }

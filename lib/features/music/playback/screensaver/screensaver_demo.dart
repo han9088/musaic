@@ -11,11 +11,14 @@ Future<void> showScreensaverDemo(BuildContext context) {
       builder: (context) => GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => Navigator.of(context).pop(),
-        child: ScreensaverView(
-          title: 'Random Access Memories',
-          artwork: 'assets/albums/7.jpg',
-          readPosition: () => Duration(
-            seconds: (42 + elapsed.elapsed.inSeconds) % duration.inSeconds,
+        child: ColoredBox(
+          color: Colors.black,
+          child: ScreensaverView(
+            title: 'Random Access Memories',
+            artwork: 'assets/albums/7.jpg',
+            readPosition: () => Duration(
+              seconds: (42 + elapsed.elapsed.inSeconds) % duration.inSeconds,
+            ),
           ),
         ),
       ),

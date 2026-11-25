@@ -352,6 +352,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMusic => 'Music';
 
   @override
+  String get settingsScreensaverEnabled => 'Enable screensaver';
+
+  @override
   String get settingsScreensaverDelay => 'Screensaver delay';
 
   @override

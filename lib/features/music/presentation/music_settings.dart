@@ -22,50 +22,72 @@ class MusicSettings extends StatelessWidget {
         theme.listTileTheme.textColor ?? theme.colorScheme.onSurface;
     const options = ScreensaverDelayPreference.options;
 
-    return LayoutBuilder(
-      builder: (context, constraints) => ListTile(
-        title: Text(l10n.settingsScreensaverDelay),
-        trailing: SizedBox(
-          width: math.min(
-            148,
-            math.max(0, constraints.maxWidth - settingsItemPadding.horizontal) *
-                0.44,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: SignalBuilder(
-                  builder: (context) => HorizontalSelectionWheel(
-                    labels: [for (final seconds in options) '$seconds'],
-                    selectedIndex: options.indexOf(
-                      screensaverDelay.seconds.value,
-                    ),
-                    onSettled: (index) =>
-                        unawaited(screensaverDelay.select(options[index])),
-                    semanticLabel: l10n.settingsScreensaverDelay,
-                    semanticValue: (index) =>
-                        l10n.settingsScreensaverSeconds(options[index]),
-                    textStyle: theme.textTheme.bodyMedium!.copyWith(
-                      color: foreground,
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              ExcludeSemantics(
-                child: Text(
-                  l10n.settingsScreensaverSecondsUnit,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: foreground.withValues(alpha: 0.65),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return SignalBuilder(
+      builder: (context) {
+        final enabled = screensaverDelay.enabled.value;
+        return Column(
+          children: [
+            SwitchListTile(
+              title: Text(l10n.settingsScreensaverEnabled),
+              value: enabled,
+              onChanged: (value) =>
+                  unawaited(screensaverDelay.setEnabled(value)),
+            ),
+            if (enabled) _delayPicker(l10n, theme, foreground, options),
+          ],
+        );
+      },
     );
   }
+
+  Widget _delayPicker(
+    AppLocalizations l10n,
+    ThemeData theme,
+    Color foreground,
+    List<int> options,
+  ) => LayoutBuilder(
+    builder: (context, constraints) => ListTile(
+      title: Text(l10n.settingsScreensaverDelay),
+      trailing: SizedBox(
+        width: math.min(
+          148,
+          math.max(0, constraints.maxWidth - settingsItemPadding.horizontal) *
+              0.44,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: SignalBuilder(
+                builder: (context) => HorizontalSelectionWheel(
+                  labels: [for (final seconds in options) '$seconds'],
+                  selectedIndex: options.indexOf(
+                    screensaverDelay.seconds.value,
+                  ),
+                  onSettled: (index) =>
+                      unawaited(screensaverDelay.select(options[index])),
+                  semanticLabel: l10n.settingsScreensaverDelay,
+                  semanticValue: (index) =>
+                      l10n.settingsScreensaverSeconds(options[index]),
+                  textStyle: theme.textTheme.bodyMedium!.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w600,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            ExcludeSemantics(
+              child: Text(
+                l10n.settingsScreensaverSecondsUnit,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: foreground.withValues(alpha: 0.65),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

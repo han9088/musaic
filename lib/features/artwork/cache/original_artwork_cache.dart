@@ -50,7 +50,22 @@ class OriginalArtworkCache extends CacheManager {
     ArtworkVersion? version,
   }) {
     if (identity == url && version == null) return url;
-    final value = jsonEncode([identity, version?.value, url]);
+    var source = url;
+    if (identity.startsWith('audius:catalog:')) {
+      final uri = Uri.tryParse(url);
+      if (uri != null &&
+          uri.scheme == 'https' &&
+          uri.hasAuthority &&
+          _audiusCoverPath.hasMatch(uri.path)) {
+        // Audius serves the same content ID and rendition from multiple nodes.
+        source = 'audius:${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+      }
+    }
+    final value = jsonEncode([identity, version?.value, source]);
     return base64Url.encode(utf8.encode(value)).replaceAll('=', '');
   }
+
+  static final _audiusCoverPath = RegExp(
+    r'^/content/b[a-z2-7]+/[0-9]+x[0-9]+[.][a-zA-Z0-9]+$',
+  );
 }

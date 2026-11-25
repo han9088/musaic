@@ -102,6 +102,7 @@
   "settingsAppearance": "Appearance & display",
   "settingsLanguage": "Language",
   "settingsMusic": "Music",
+  "settingsScreensaverEnabled": "Enable screensaver",
   "settingsScreensaverDelay": "Screensaver delay",
   "settingsScreensaverSecondsUnit": "s",
   "settingsScreensaverSeconds": "{seconds} seconds",
