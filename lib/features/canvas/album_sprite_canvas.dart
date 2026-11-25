@@ -26,6 +26,7 @@ class AlbumSpriteCanvas extends SingleChildRenderObjectWidget {
     required this.longPressAt,
     this.selected,
     this.hidden,
+    this.liftedCells,
   });
 
   final Size viewport;
@@ -39,6 +40,8 @@ class AlbumSpriteCanvas extends SingleChildRenderObjectWidget {
   longPressAt;
   final (int, int)? selected;
   final (int, int)? hidden;
+  // Non-null when the child is a viewport-sized overlay in scene coordinates.
+  final Set<(int, int)>? liftedCells;
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
@@ -68,7 +71,10 @@ class _RenderAlbumSprites extends RenderProxyBox {
     final old = _view;
     _view = view;
     _direction = direction;
-    if (old.viewport != view.viewport) markNeedsLayout();
+    if (old.viewport != view.viewport ||
+        (old.liftedCells == null) != (view.liftedCells == null)) {
+      markNeedsLayout();
+    }
     if (!identical(old.atlas, view.atlas)) _representatives.clear();
     _semanticCoverage = null;
     markNeedsPaint();
@@ -83,10 +89,12 @@ class _RenderAlbumSprites extends RenderProxyBox {
   void performLayout() {
     size = computeDryLayout(constraints);
     child?.layout(
-      const BoxConstraints.tightFor(
-        width: albumGridExtent,
-        height: albumGridExtent,
-      ),
+      _view.liftedCells != null
+          ? BoxConstraints.tight(size)
+          : const BoxConstraints.tightFor(
+              width: albumGridExtent,
+              height: albumGridExtent,
+            ),
     );
   }
 
@@ -96,7 +104,9 @@ class _RenderAlbumSprites extends RenderProxyBox {
   static const _tileSize = Size.square(albumGridExtent);
 
   Offset get _selectedOffset =>
-      _view.selected == null ? Offset.zero : _offset(_view.selected!);
+      _view.selected == null || _view.liftedCells != null
+      ? Offset.zero
+      : _offset(_view.selected!);
 
   Rect _sceneViewport(Offset padding) {
     final matrix = _view.transform.value;
@@ -154,7 +164,8 @@ class _RenderAlbumSprites extends RenderProxyBox {
     atlas.draw(canvas);
     canvas.restore();
 
-    if (child != null && _view.selected != _view.hidden) {
+    if (child != null &&
+        (_view.liftedCells != null || _view.selected != _view.hidden)) {
       context.paintChild(child!, offset + _selectedOffset);
     }
   }
@@ -167,15 +178,16 @@ class _RenderAlbumSprites extends RenderProxyBox {
 
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    final viewportPosition = position;
     if (result is TiltEdgeHitTestResult) {
       position +=
           result.viewportDelta / _view.transform.value.getColumn(0).length;
     }
     if (child != null &&
-        _view.selected != _view.hidden &&
+        (_view.liftedCells != null || _view.selected != _view.hidden) &&
         result.addWithPaintOffset(
           offset: _selectedOffset,
-          position: position,
+          position: _view.liftedCells != null ? viewportPosition : position,
           hitTest: (result, local) => child!.hitTest(result, position: local),
         )) {
       return true;
@@ -234,7 +246,7 @@ class _RenderAlbumSprites extends RenderProxyBox {
 
   @override
   void visitChildrenForSemantics(RenderObjectVisitor visitor) {
-    if (_view.selected != _view.hidden) {
+    if (_view.liftedCells != null || _view.selected != _view.hidden) {
       super.visitChildrenForSemantics(visitor);
     }
   }
@@ -269,7 +281,9 @@ class _RenderAlbumSprites extends RenderProxyBox {
     for (var row = range.top; row < range.bottom; row++) {
       for (var column = range.left; column < range.right; column++) {
         final cell = (row, column);
-        if (cell == _view.hidden) continue;
+        if (cell == _view.hidden || _view.liftedCells?.contains(cell) == true) {
+          continue;
+        }
         cells.add(cell);
         if (!groupRepeated) continue;
         final album = _view.albumAt(row, column);

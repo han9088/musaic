@@ -12,6 +12,7 @@ import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
+import 'package:musaic/features/canvas/selected_album.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 
 void main() {
@@ -32,11 +33,16 @@ void main() {
     final interaction = CanvasInteractionState(CanvasDrift());
     addTearDown(transform.dispose);
     addTearDown(playback.dispose);
+    const preparedAlbums = [
+      {'asset': 'assets/albums/0.jpg', 'title': 'Album'},
+    ];
     Widget app(String source) => MaterialApp(
       home: AlbumCanvasViewport(
-        albums: [
-          {'asset': source, 'title': 'Album'},
-        ],
+        albums: source == 'assets/albums/0.jpg'
+            ? preparedAlbums
+            : [
+                {'asset': source, 'title': 'Album'},
+              ],
         layout: layout,
         transform: transform,
         interaction: interaction,
@@ -58,6 +64,26 @@ void main() {
       await tester.pump();
     }
     expect(batched, findsOneWidget);
+
+    layout.selectedAlbum = (0, 0);
+    await tester.pumpWidget(app('assets/albums/0.jpg'));
+    await tester.pump(const Duration(milliseconds: 220));
+    final lifted = tester.widgetList<SelectedAlbum>(find.byType(SelectedAlbum));
+    expect(lifted.length, greaterThan(1));
+    final scale = lifted.first.liftScale;
+    expect(scale.value, closeTo(1.16, 0.001));
+    expect(lifted.every((album) => identical(album.liftScale, scale)), isTrue);
+    expect(batched, findsOneWidget);
+
+    layout.selectedAlbum = null;
+    await tester.pumpWidget(app('assets/albums/0.jpg'));
+    await tester.pump(const Duration(milliseconds: 70));
+    expect(find.byType(SelectedAlbum), findsWidgets);
+    expect(scale.value, greaterThan(1));
+    expect(scale.value, lessThan(1.16));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+    expect(find.byType(SelectedAlbum), findsNothing);
 
     await tester.pumpWidget(app('local:missing'));
     expect(batched, findsNothing);

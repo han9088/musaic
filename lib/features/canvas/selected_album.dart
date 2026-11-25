@@ -10,13 +10,14 @@ import '../music/playback/album_playback.dart';
 import 'album_grid_snapshot.dart';
 
 /// 封装或定义选中专辑相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
-class SelectedAlbum extends StatefulWidget {
+class SelectedAlbum extends StatelessWidget {
   const SelectedAlbum({
     super.key,
     required this.asset,
     required this.title,
     required this.playback,
     required this.onOpen,
+    required this.liftScale,
     this.artist,
     this.xerox = false,
     this.artworkIdentity,
@@ -29,28 +30,17 @@ class SelectedAlbum extends StatefulWidget {
   final AlbumPlayback playback;
   final ValueChanged<BuildContext> onOpen;
   final bool xerox;
+  final Animation<double> liftScale;
 
   @override
-  State<SelectedAlbum> createState() => _SelectedAlbumState();
-}
-
-/// 封装或定义选中专辑状态相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
-class _SelectedAlbumState extends State<SelectedAlbum> {
-  @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
-    tween: Tween(begin: 1, end: 1.16),
-    duration: MediaQuery.disableAnimationsOf(context)
-        ? Duration.zero
-        : const Duration(milliseconds: 220),
-    curve: Curves.easeOutCubic,
-    builder: (context, scale, child) =>
-        Transform.scale(scale: scale, child: child),
+  Widget build(BuildContext context) => ScaleTransition(
+    scale: liftScale,
     child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onLongPressStart: customArtworkMenuAction(
         context,
-        widget.asset,
-        widget.artworkIdentity,
+        asset,
+        artworkIdentity,
       ),
       child: DecoratedBox(
         decoration: const BoxDecoration(
@@ -68,22 +58,22 @@ class _SelectedAlbumState extends State<SelectedAlbum> {
             Builder(
               builder: (context) => GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTap: () => widget.onOpen(context),
+                onTap: () => onOpen(context),
                 child: albumArtwork(
-                  widget.asset,
-                  artworkIdentity: widget.artworkIdentity,
+                  asset,
+                  artworkIdentity: artworkIdentity,
                   fit: BoxFit.cover,
-                  semanticLabel: widget.title,
-                  xerox: widget.xerox,
+                  semanticLabel: title,
+                  xerox: xerox,
                   fixedResolution: albumCanvasArtworkResolution,
                 ),
               ),
             ),
             AlbumPlayButton(
-              asset: widget.asset,
-              title: widget.title,
-              artist: widget.artist,
-              playback: widget.playback,
+              asset: asset,
+              title: title,
+              artist: artist,
+              playback: playback,
             ),
           ],
         ),

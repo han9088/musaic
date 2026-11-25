@@ -16,15 +16,15 @@ class AlbumCanvas extends Stack {
     required this.isTransitioning,
     required this.albumAt,
     required Iterable<Widget> tiles,
-    Widget? selected,
+    List<Widget> selectedTiles = const [],
     this.hiddenTileOffset,
-  }) : hasSelected = selected != null,
+  }) : hasSelected = selectedTiles.isNotEmpty,
        super(
          clipBehavior: Clip.none,
          children: [
            SizedBox.fromSize(size: size),
            ...tiles,
-           ?selected,
+           ...selectedTiles,
          ],
        );
 
@@ -207,6 +207,10 @@ class _RenderAlbumCanvas extends RenderStack {
         markNeedsSemanticsUpdate();
       }
     }
+    // Lifted covers extend past their cell by half of the 16% scale increase.
+    final paintViewport = hasSelected
+        ? viewport.inflate(albumGridExtent * 0.08)
+        : viewport;
     // Keep the guard-ring covers mounted without recording paint for them.
     var tile = childAfter(firstChild!);
     while (tile != null) {
@@ -214,8 +218,7 @@ class _RenderAlbumCanvas extends RenderStack {
       // Both the grid tile and its lifted copy share this offset.
       if (data.offset != hiddenTileOffset &&
           (isTransitioning ||
-              (hasSelected && tile == lastChild) ||
-              viewport.overlaps(data.offset & tile.size))) {
+              paintViewport.overlaps(data.offset & tile.size))) {
         context.paintChild(tile, offset + data.offset);
       }
       tile = data.nextSibling;

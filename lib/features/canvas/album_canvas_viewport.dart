@@ -60,13 +60,75 @@ class AlbumCanvasViewport extends StatefulWidget {
 }
 
 class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   (int, int)? _popupCell;
   CanvasArtworkAtlas? _atlas;
   CanvasArtworkAtlas? _readyAtlas;
   List<Object?>? _atlasInput;
   int _atlasGeneration = 0;
   bool _atlasRequested = false;
+
+  final _lifts =
+      <Object, ({AnimationController controller, Animation<double> scale})>{};
+  Object? _liftedAlbum;
+
+  Object _albumKey(Map<String, dynamic> album) =>
+      (album['id'] as String?) ?? (album['asset'], album['title']);
+
+  Object? get _selectedAlbumKey {
+    final selected = widget.layout.selectedAlbum;
+    if (selected == null || widget.albums.isEmpty) return null;
+    return _albumKey(
+      widget.layout.albumAt(selected.$1, selected.$2, widget.albums),
+    );
+  }
+
+  void _syncLift() {
+    final album = _selectedAlbumKey;
+    final previous = _liftedAlbum;
+    _liftedAlbum = album;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    if (reduceMotion) {
+      for (final key in _lifts.keys.toList()) {
+        if (key != album) _lifts.remove(key)!.controller.dispose();
+      }
+    } else if (previous != null && previous != album) {
+      final returning = _lifts[previous]!.controller;
+      returning
+          .animateBack(
+            0,
+            duration: const Duration(milliseconds: 140),
+            curve: Curves.easeOutCubic,
+          )
+          .whenCompleteOrCancel(() {
+            scheduleMicrotask(() {
+              if (!mounted ||
+                  _liftedAlbum == previous ||
+                  _lifts[previous]?.controller != returning ||
+                  !returning.isDismissed) {
+                return;
+              }
+              setState(() => _lifts.remove(previous)!.controller.dispose());
+            });
+          });
+    }
+    if (album == null) return;
+    final lift = _lifts.putIfAbsent(album, () {
+      final controller = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 220),
+      );
+      return (
+        controller: controller,
+        scale: controller.drive(Tween<double>(begin: 1, end: 1.16)),
+      );
+    });
+    if (reduceMotion) {
+      lift.controller.value = 1;
+    } else if (album != previous) {
+      lift.controller.animateTo(1, curve: Curves.easeOutCubic);
+    }
+  }
 
   @override
   void initState() {
@@ -78,12 +140,14 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   void didChangeDependencies() {
     super.didChangeDependencies();
     _syncAtlas();
+    _syncLift();
   }
 
   @override
   void didUpdateWidget(covariant AlbumCanvasViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
     _syncAtlas();
+    _syncLift();
   }
 
   @override
@@ -93,6 +157,10 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _discardAtlas();
+    for (final lift in _lifts.values) {
+      lift.controller.dispose();
+    }
+    _lifts.clear();
     super.dispose();
   }
 
@@ -285,16 +353,24 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     );
   }
 
-  Widget _selectedTile(int row, int column) => Positioned(
+  Widget _selectedTile(
+    int row,
+    int column,
+    Animation<double> scale, {
+    required bool isSelected,
+  }) => Positioned(
     key: ValueKey(('selected', (row, column))),
     left: column * albumGridExtent,
     top: row * albumGridExtent,
     width: albumGridExtent,
     height: albumGridExtent,
-    child: _selectedCover(row, column),
+    child: IgnorePointer(
+      ignoring: !isSelected,
+      child: _selectedCover(row, column, scale),
+    ),
   );
 
-  Widget _selectedCover(int row, int column) {
+  Widget _selectedCover(int row, int column, Animation<double> scale) {
     final album = widget.layout.albumAt(row, column, widget.albums);
     return widget.animateSourceTile(
       row,
@@ -303,6 +379,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
         key: ValueKey(('selected-cover', (row, column))),
         onOpen: (context) => _openAlbum(context, row, column),
         playback: widget.playback,
+        liftScale: scale,
         xerox: widget.xerox,
         asset: album['asset'] as String,
         artworkIdentity: _artworkIdentityFor(album),
@@ -343,7 +420,27 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
           var tiles = const <Widget>[];
           ({int left, int right, int top, int bottom})? previousBounds;
           (int, int)? previousSelection;
-          AlbumCanvas? previousCanvas;
+          Widget? previousCanvas;
+          AlbumSpriteCanvas buildSprites({
+            Set<(int, int)>? liftedCells,
+            Widget? overlay,
+          }) => AlbumSpriteCanvas(
+            viewport: constraints.biggest,
+            tiltPadding: tiltPadding,
+            transform: transform,
+            atlas: batch!,
+            selected: selected,
+            hidden: popup,
+            liftedCells: liftedCells,
+            albumAt: (row, column) =>
+                widget.layout.albumAt(row, column, widget.albums),
+            titleAt: (row, column) =>
+                widget.layout.albumAt(row, column, widget.albums)['title']
+                    as String,
+            onTileSelected: widget.onTileSelected,
+            longPressAt: _longPressAt,
+            child: overlay,
+          );
           void finishPointer(PointerEvent event) {
             interaction.pointerUp(event.pointer);
             if (_readyAtlas != null && interaction.pressedPointers.isEmpty) {
@@ -371,29 +468,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                 maxScale: 2.5,
                 boundaryMargin: const EdgeInsets.all(double.infinity),
                 // Pan and zoom update the tile window without a layout callback.
-                child: batch != null
-                    ? AlbumSpriteCanvas(
-                        viewport: constraints.biggest,
-                        tiltPadding: tiltPadding,
-                        transform: transform,
-                        atlas: batch,
-                        selected: selected,
-                        hidden: popup,
-                        albumAt: (row, column) =>
-                            widget.layout.albumAt(row, column, widget.albums),
-                        titleAt: (row, column) =>
-                            widget.layout.albumAt(
-                                  row,
-                                  column,
-                                  widget.albums,
-                                )['title']
-                                as String,
-                        onTileSelected: widget.onTileSelected,
-                        longPressAt: _longPressAt,
-                        child: selected == null
-                            ? null
-                            : _selectedCover(selected.$1, selected.$2),
-                      )
+                child: batch != null && _lifts.isEmpty
+                    ? buildSprites()
                     : ListenableBuilder(
                         listenable: transform,
                         builder: (_, _) {
@@ -432,7 +508,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                               selected == previousSelection) {
                             return previousCanvas!;
                           }
-                          if (bounds != previous) {
+                          if (batch == null && bounds != previous) {
                             // The previous window is stored in row-major order.
                             final previousTiles = tiles;
                             final previousWidth = previous == null
@@ -460,7 +536,40 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                           }
                           previousBounds = bounds;
                           previousSelection = selected;
-                          return previousCanvas = AlbumCanvas(
+                          final liftedCells = <(int, int)>{};
+                          final returningTiles = <Widget>[];
+                          final selectedTiles = <Widget>[];
+                          if (_lifts.isNotEmpty) {
+                            for (var row = top; row <= bottom; row++) {
+                              for (
+                                var column = left;
+                                column <= right;
+                                column++
+                              ) {
+                                if ((row, column) == popup) continue;
+                                final album = widget.layout.albumAt(
+                                  row,
+                                  column,
+                                  widget.albums,
+                                );
+                                final key = _albumKey(album);
+                                final lift = _lifts[key];
+                                if (lift == null) continue;
+                                final isSelected = key == _liftedAlbum;
+                                if (isSelected) liftedCells.add((row, column));
+                                (isSelected ? selectedTiles : returningTiles)
+                                    .add(
+                                      _selectedTile(
+                                        row,
+                                        column,
+                                        lift.scale,
+                                        isSelected: isSelected,
+                                      ),
+                                    );
+                              }
+                            }
+                          }
+                          final canvas = AlbumCanvas(
                             size: constraints.biggest,
                             transform: transform,
                             tiltPadding: tiltPadding,
@@ -472,10 +581,17 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                             ),
                             hiddenTileOffset: hiddenOffset,
                             tiles: tiles,
-                            selected: selected == null
-                                ? null
-                                : _selectedTile(selected.$1, selected.$2),
+                            selectedTiles: [
+                              ...returningTiles,
+                              ...selectedTiles,
+                            ],
                           );
+                          return previousCanvas = batch == null
+                              ? canvas
+                              : buildSprites(
+                                  liftedCells: liftedCells,
+                                  overlay: canvas,
+                                );
                         },
                       ),
               ),
