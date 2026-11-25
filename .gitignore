@@ -17,7 +17,6 @@ local.properties
 **/Flutter/ephemeral/
 
 # Local configuration and signing
-.env
 .env.*
 !.env.example
 lib/config/env.g.dart

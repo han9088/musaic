@@ -199,7 +199,7 @@ class SettingsSheet extends StatelessWidget {
                                   ),
                                 if (controller != null)
                                   _section(
-                                    PhosphorIcons.musicNoteSimple,
+                                    PhosphorIcons.rss,
                                     l10n.musicSource,
                                     SettingsSection.musicSource,
                                   ),

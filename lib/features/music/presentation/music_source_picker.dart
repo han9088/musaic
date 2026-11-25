@@ -69,6 +69,25 @@ class MusicSourcePicker extends StatelessWidget {
                 ),
                 onTap: () {},
               ),
+            if (!demoOnly)
+              ListTile(
+                key: const ValueKey('music-source-audius'),
+                leading: Image.asset(
+                  'assets/branding/audius_glyph_color.png',
+                  width: 26,
+                  height: 26,
+                  excludeFromSemantics: true,
+                ),
+                title: Text(
+                  'Audius',
+                  style: AppTypography.inter(
+                    fontSize:
+                        Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
             if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
               key: const ValueKey('music-source-mock'),

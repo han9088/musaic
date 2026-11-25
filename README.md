@@ -7,6 +7,7 @@ Flutter app for Android, iOS, macOS, Windows, and Web with the application ID `c
 ```sh
 mise install
 mise exec -- flutter pub get
+mise exec -- dart run build_runner build
 mise exec -- flutter run
 ```
 
@@ -17,6 +18,11 @@ ID from App Store Connect as `--dart-define=MUSAIC_APP_STORE_ID=<id>`.
 Settings → Troubleshooting exports a local diagnostic report and can attach it
 to a feedback email. Set `--dart-define=MUSAIC_FEEDBACK_EMAIL=<address>` to
 prefill the recipient in the native mail composer.
+
+## Audius configuration
+
+Envied reads `AUDIUS_API_KEY` from the root `.env` file. Run
+`mise exec -- dart run build_runner build` after changing the key.
 
 ## Indiebase client
 
