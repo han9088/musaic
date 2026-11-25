@@ -159,15 +159,14 @@ XeroxRasterRequest _request(
   String identity, {
   int resolution = 4,
   XeroxRasterPriority priority = XeroxRasterPriority.background,
-}) =>
-    XeroxRasterRequest(
-      identity: identity,
-      image: AssetImage('assets/$identity.png'),
-      resolution: resolution,
-      fit: BoxFit.cover,
-      devicePixelRatio: 1,
-      priority: priority,
-    );
+}) => XeroxRasterRequest(
+  identity: identity,
+  image: AssetImage('assets/$identity.png'),
+  resolution: resolution,
+  fit: BoxFit.cover,
+  devicePixelRatio: 1,
+  priority: priority,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -375,69 +374,75 @@ void main() {
     },
   );
 
-  test('visible and selected jobs overtake queued background raster work', () async {
-    final rasterizer = _RecordingRasterizer(
-      delay: const Duration(milliseconds: 5),
-    );
-    final cache = XeroxRasterCache(
-      maxBytes: 1024 * 1024,
-      maxConcurrentJobs: 1,
-      rasterizer: rasterizer,
-      diskCache: _MemoryXeroxDiskCache(),
-    );
+  test(
+    'visible and selected jobs overtake queued background raster work',
+    () async {
+      final rasterizer = _RecordingRasterizer(
+        delay: const Duration(milliseconds: 5),
+      );
+      final cache = XeroxRasterCache(
+        maxBytes: 1024 * 1024,
+        maxConcurrentJobs: 1,
+        rasterizer: rasterizer,
+        diskCache: _MemoryXeroxDiskCache(),
+      );
 
-    final active = cache.request(_request('active'));
-    final background = cache.request(_request('background'));
-    final visible = cache.request(
-      _request('visible', priority: XeroxRasterPriority.visible),
-    );
-    final selected = cache.request(
-      _request('selected', priority: XeroxRasterPriority.selected),
-    );
+      final active = cache.request(_request('active'));
+      final background = cache.request(_request('background'));
+      final visible = cache.request(
+        _request('visible', priority: XeroxRasterPriority.visible),
+      );
+      final selected = cache.request(
+        _request('selected', priority: XeroxRasterPriority.selected),
+      );
 
-    final leases = await Future.wait([
-      active.future,
-      background.future,
-      visible.future,
-      selected.future,
-    ]);
-    expect(rasterizer.order, ['active', 'selected', 'visible', 'background']);
-    for (final lease in leases) {
-      lease.release();
-    }
-  });
+      final leases = await Future.wait([
+        active.future,
+        background.future,
+        visible.future,
+        selected.future,
+      ]);
+      expect(rasterizer.order, ['active', 'selected', 'visible', 'background']);
+      for (final lease in leases) {
+        lease.release();
+      }
+    },
+  );
 
-  test('bounded queue drops stale background work for a visible request', () async {
-    final rasterizer = _RecordingRasterizer(
-      delay: const Duration(milliseconds: 5),
-    );
-    final cache = XeroxRasterCache(
-      maxBytes: 1024 * 1024,
-      maxConcurrentJobs: 1,
-      maxQueuedJobs: 1,
-      rasterizer: rasterizer,
-      diskCache: _MemoryXeroxDiskCache(),
-    );
+  test(
+    'bounded queue drops stale background work for a visible request',
+    () async {
+      final rasterizer = _RecordingRasterizer(
+        delay: const Duration(milliseconds: 5),
+      );
+      final cache = XeroxRasterCache(
+        maxBytes: 1024 * 1024,
+        maxConcurrentJobs: 1,
+        maxQueuedJobs: 1,
+        rasterizer: rasterizer,
+        diskCache: _MemoryXeroxDiskCache(),
+      );
 
-    final active = cache.request(_request('active'));
-    final background = cache.request(_request('background'));
-    final backgroundCancelled = expectLater(
-      background.future,
-      throwsA(isA<XeroxRasterCancelled>()),
-    );
-    final visible = cache.request(
-      _request('visible', priority: XeroxRasterPriority.visible),
-    );
+      final active = cache.request(_request('active'));
+      final background = cache.request(_request('background'));
+      final backgroundCancelled = expectLater(
+        background.future,
+        throwsA(isA<XeroxRasterCancelled>()),
+      );
+      final visible = cache.request(
+        _request('visible', priority: XeroxRasterPriority.visible),
+      );
 
-    final activeLease = await active.future;
-    await backgroundCancelled;
-    final visibleLease = await visible.future;
+      final activeLease = await active.future;
+      await backgroundCancelled;
+      final visibleLease = await visible.future;
 
-    expect(rasterizer.order, ['active', 'visible']);
-    activeLease.release();
-    visibleLease.release();
-    expect(cache.queuedJobs, 0);
-  });
+      expect(rasterizer.order, ['active', 'visible']);
+      activeLease.release();
+      visibleLease.release();
+      expect(cache.queuedJobs, 0);
+    },
+  );
 
   test('the raster cache limits concurrent GPU jobs', () async {
     final rasterizer = _FakeRasterizer(delay: const Duration(milliseconds: 5));
@@ -517,9 +522,8 @@ void main() {
       diskCache: _MemoryXeroxDiskCache(),
     );
     await expectLater(
-      XeroxJobScheduler(cache: cache).prepare([
-        _request('broken', priority: XeroxRasterPriority.visible),
-      ]),
+      XeroxJobScheduler(cache: cache)
+          .prepare([_request('broken', priority: XeroxRasterPriority.visible)]),
       throwsStateError,
     );
     expect(errors, hasLength(1));

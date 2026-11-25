@@ -39,6 +39,7 @@ typedef MusicReference = ({
 
 /// 封装或定义音乐feature相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef MusicFeature = ({bool supported, String reason, String? detail});
+
 /// 封装或定义音乐features相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef MusicFeatures = ({
   MusicFeature playback,
@@ -49,6 +50,7 @@ typedef MusicFeatures = ({
 
 /// 封装或定义音乐page相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef MusicPage<T> = ({List<T> items, String? nextCursor});
+
 /// 封装或定义提供器song相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef ProviderSong = ({
   MusicReference reference,
@@ -58,6 +60,7 @@ typedef ProviderSong = ({
   Duration? duration,
   bool playable,
 });
+
 /// 封装或定义提供器专辑相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef ProviderAlbum = ({
   MusicReference reference,
@@ -68,6 +71,7 @@ typedef ProviderAlbum = ({
   // null 表示曲目尚未加载完成，并不代表专辑没有曲目。
   List<ProviderSong>? tracks,
 });
+
 /// 封装或定义音乐播放相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 typedef MusicPlayback = ({
   MusicPlaybackStatus status,

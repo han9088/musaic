@@ -357,7 +357,8 @@ void main() {
     final haptics = <String>[];
     final messenger = tester.binding.defaultBinaryMessenger;
     messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == 'HapticFeedback.vibrate') {
+      if (call.method == 'SystemSound.play' &&
+          call.arguments == 'SystemSoundType.tick') {
         haptics.add(call.arguments as String);
       }
       return null;
@@ -436,13 +437,10 @@ void main() {
     await tester.tap(find.descendant(of: wheel, matching: find.text('40')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 90));
-    expect(haptics, ['HapticFeedbackType.selectionClick']);
+    expect(haptics, ['SystemSoundType.tick']);
     expect(preference.seconds.value, 30);
     await tester.pumpAndSettle();
-    expect(haptics, [
-      'HapticFeedbackType.selectionClick',
-      'HapticFeedbackType.lightImpact',
-    ]);
+    expect(haptics, ['SystemSoundType.tick']);
     expect(preference.seconds.value, 40);
     expectCentered(40);
 

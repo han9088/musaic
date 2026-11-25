@@ -68,37 +68,36 @@ class SettingsSheet extends StatelessWidget {
         ),
       );
 
-  Widget _languageSetting(AppLanguagePreference preference) =>
-      SignalBuilder(
-        builder: (context) {
-          final l10n = AppLocalizations.of(context);
-          return AppDropdownMenu<AppLanguage>(
-            leading: const Icon(PhosphorIcons.translate),
-            title: l10n.settingsLanguage,
-            value: preference.selected.value,
-            entries: [
-              AppDropdownMenuEntry(
-                AppLanguage.system,
-                l10n.settingsLanguageSystem,
-                keywords: 'System default 跟随系统',
-              ),
-              const AppDropdownMenuEntry(
-                AppLanguage.simplifiedChinese,
-                '简体中文',
-                keywords: 'Simplified Chinese zh Hans',
-              ),
-              const AppDropdownMenuEntry(
-                AppLanguage.english,
-                'English',
-                keywords: '英文 英语 en',
-              ),
-            ],
-            onSelected: preference.select,
-            searchLabel: l10n.settingsLanguageSearch,
-            emptyLabel: l10n.settingsLanguageNoResults,
-          );
-        },
+  Widget _languageSetting(AppLanguagePreference preference) => SignalBuilder(
+    builder: (context) {
+      final l10n = AppLocalizations.of(context);
+      return AppDropdownMenu<AppLanguage>(
+        leading: const Icon(PhosphorIcons.translate),
+        title: l10n.settingsLanguage,
+        value: preference.selected.value,
+        entries: [
+          AppDropdownMenuEntry(
+            AppLanguage.system,
+            l10n.settingsLanguageSystem,
+            keywords: 'System default 跟随系统',
+          ),
+          const AppDropdownMenuEntry(
+            AppLanguage.simplifiedChinese,
+            '简体中文',
+            keywords: 'Simplified Chinese zh Hans',
+          ),
+          const AppDropdownMenuEntry(
+            AppLanguage.english,
+            'English',
+            keywords: '英文 英语 en',
+          ),
+        ],
+        onSelected: preference.select,
+        searchLabel: l10n.settingsLanguageSearch,
+        emptyLabel: l10n.settingsLanguageNoResults,
       );
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -204,9 +203,7 @@ class SettingsSheet extends StatelessWidget {
                                     l10n.musicSource,
                                     SettingsSection.musicSource,
                                   ),
-                                SettingsSectionHeading(
-                                  l10n.settingsAppearance,
-                                ),
+                                SettingsSectionHeading(l10n.settingsAppearance),
                                 if (language case final preference?)
                                   _languageSetting(preference),
                                 _section(

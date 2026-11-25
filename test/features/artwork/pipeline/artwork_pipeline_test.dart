@@ -120,21 +120,24 @@ void main() {
     },
   );
 
-  test('source decode and final Xerox output remain independent parameters', () {
-    final plan = ArtworkPipeline.instance.createDisplayPlan(
-      resource: resource,
-      targetSize: const Size.square(340),
-      devicePixelRatio: 1,
-      currentOriginalDecodeResolution: 256,
-      currentXeroxResolution: 512,
-    );
+  test(
+    'source decode and final Xerox output remain independent parameters',
+    () {
+      final plan = ArtworkPipeline.instance.createDisplayPlan(
+        resource: resource,
+        targetSize: const Size.square(340),
+        devicePixelRatio: 1,
+        currentOriginalDecodeResolution: 256,
+        currentXeroxResolution: 512,
+      );
 
-    // 340px 位于 256 升级与 512 降级的迟滞区间。
-    // Rasterizer 使用 256px 输入，最终仍可生成 512px 输出。
-    expect(plan.originalDecodeResolution, 256);
-    expect(plan.xeroxRequest.originalDecodeResolution, 256);
-    expect(plan.xeroxRequest.resolution, 512);
-  });
+      // 340px 位于 256 升级与 512 降级的迟滞区间。
+      // Rasterizer 使用 256px 输入，最终仍可生成 512px 输出。
+      expect(plan.originalDecodeResolution, 256);
+      expect(plan.xeroxRequest.originalDecodeResolution, 256);
+      expect(plan.xeroxRequest.resolution, 512);
+    },
+  );
 
   test('a fixed cover tier keeps one decode and Xerox key between zooms', () {
     final plans = [

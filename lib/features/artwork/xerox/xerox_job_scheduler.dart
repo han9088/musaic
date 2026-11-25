@@ -7,10 +7,8 @@ import 'xerox_raster_request.dart';
 
 /// 只调度 Xerox Raster 任务，不负责原图预热或模式状态。
 class XeroxJobScheduler {
-  XeroxJobScheduler({
-    this.maxConcurrentRequests = 2,
-    XeroxRasterCache? cache,
-  }) : cache = cache ?? XeroxRasterCache.instance {
+  XeroxJobScheduler({this.maxConcurrentRequests = 2, XeroxRasterCache? cache})
+    : cache = cache ?? XeroxRasterCache.instance {
     if (maxConcurrentRequests <= 0) {
       throw ArgumentError.value(maxConcurrentRequests, 'maxConcurrentRequests');
     }
@@ -70,9 +68,7 @@ class XeroxJobScheduler {
       final workerCount = values.length < maxConcurrentRequests
           ? values.length
           : maxConcurrentRequests;
-      await Future.wait([
-        for (var i = 0; i < workerCount; i++) worker(),
-      ]);
+      await Future.wait([for (var i = 0; i < workerCount; i++) worker()]);
       if (cancelled || (isActive != null && !isActive())) {
         throw StateError('Xerox preparation was cancelled.');
       }

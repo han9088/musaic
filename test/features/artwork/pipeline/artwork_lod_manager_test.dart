@@ -15,10 +15,7 @@ void main() {
   test('invalid physical sizes use the same safe default', () {
     expect(selectArtworkResolution(0), defaultArtworkResolution);
     expect(selectArtworkResolution(double.nan), defaultArtworkResolution);
-    expect(
-      selectArtworkResolution(double.infinity),
-      defaultArtworkResolution,
-    );
+    expect(selectArtworkResolution(double.infinity), defaultArtworkResolution);
     expect(selectArtworkResolution(double.nan, current: 512), 512);
   });
 

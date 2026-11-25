@@ -70,6 +70,7 @@ final class MusicIndex {
     for (final row in await database.query('sources'))
       AudioDirectory.fromMap(row),
   ];
+
   /// 执行当前模块中的nextgeneration操作，用于音乐源、媒体库、播放及切换流程。
   Future<String> nextGeneration() => database.transaction((txn) async {
     final rows = await txn.query(
@@ -101,6 +102,7 @@ final class MusicIndex {
   /// 执行当前模块中的来源states操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<Map<String, Object?>>> sourceStates() =>
       database.query('sources');
+
   /// 获取所需数据或资源，用于音乐源、媒体库、播放及切换流程。
   Future<Map<String, Map<String, Object?>>> lookup(
     List<AudioFileEntry> entries,
@@ -171,6 +173,7 @@ final class MusicIndex {
         );
         return removed;
       });
+
   /// 移除、清理或重置相关状态与资源，用于音乐源、媒体库、播放及切换流程。
   Future<void> removeSource(String id) => database.transaction((txn) async {
     await txn.delete('sources', where: 'id = ?', whereArgs: [id]);
@@ -225,6 +228,7 @@ final class MusicIndex {
         whereArgs: ['directoriesSelected'],
       )).firstOrNull?['value'] ==
       '1';
+
   /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioFolderSummary>> summaries({
     bool recursive = false,
@@ -241,4 +245,3 @@ final class MusicIndex {
   /// 执行当前模块中的close操作，用于音乐源、媒体库、播放及切换流程。
   Future<void> close() => database.close();
 }
-

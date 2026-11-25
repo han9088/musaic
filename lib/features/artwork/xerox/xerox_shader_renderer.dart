@@ -21,10 +21,7 @@ class XeroxShaderRenderer {
     required String identity,
     required XeroxConfig config,
   }) {
-    final imageSize = ui.Size(
-      image.width.toDouble(),
-      image.height.toDouble(),
-    );
+    final imageSize = ui.Size(image.width.toDouble(), image.height.toDouble());
     final fitted = applyBoxFit(fit, imageSize, size);
     final source = Alignment.center.inscribe(
       fitted.source,

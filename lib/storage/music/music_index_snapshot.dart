@@ -10,6 +10,7 @@ final class IndexedAudio {
   final AudioDirectory source;
   final AudioFileEntry file;
   final Map<String, Object?> metadata;
+
   /// 执行当前模块中的title操作，用于音乐源、媒体库、播放及切换流程。
   String get title => metadata['title'] as String? ?? file.name;
 }

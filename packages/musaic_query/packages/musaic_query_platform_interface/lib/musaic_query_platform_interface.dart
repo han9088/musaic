@@ -30,6 +30,7 @@ export 'package:musaic_query_platform_interface/src/musaic_query_core.dart';
 /// [MusaicQueryPlatform] methods.
 abstract class MusaicQueryPlatform extends PlatformInterface {
   AudioDirectoryPlatform get directories => const AudioDirectoryPlatform();
+
   /// Constructs a MusaicQueryPlatform.
   MusaicQueryPlatform() : super(token: _token);
 

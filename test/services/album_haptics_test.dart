@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/services/album_haptics.dart';
 import 'package:musaic/services/album_tick_sound.dart';
+import 'package:musaic/ui/widgets/horizontal_selection_wheel.dart';
 
 class SilentSound extends AlbumTickSound {
   final volumes = <double>[];
@@ -25,9 +26,23 @@ class SilentSound extends AlbumTickSound {
 class RecordingHaptics extends AlbumHaptics {
   RecordingHaptics() : super(sound: SilentSound());
   final directions = <bool>[];
+  final strengths = <double>[];
+  bool active = true;
+  int disposals = 0;
+
   @override
-  Future<void> tick({required bool movingLeft, double strength = 1}) async =>
+  Future<void> tick({required bool movingLeft, double strength = 1}) async {
+    if (active) {
       directions.add(movingLeft);
+      strengths.add(strength);
+    }
+  }
+
+  @override
+  Future<void> setActive(bool active) async => this.active = active;
+
+  @override
+  Future<void> dispose() async => disposals++;
 }
 
 void main() {
@@ -165,6 +180,46 @@ void main() {
       hasLength(10),
     );
   });
+
+  testWidgets('wheel ticks once when a drag crosses one index', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final haptics = RecordingHaptics();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 180,
+            child: HorizontalSelectionWheel(
+              labels: const ['10', '20', '30', '40', '60', '80', '90'],
+              selectedIndex: 2,
+              onSettled: (_) {},
+              semanticLabel: 'Delay',
+              semanticValue: (index) => '$index',
+              textStyle: const TextStyle(fontSize: 18),
+              haptics: haptics,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(haptics.directions, isEmpty);
+
+    final wheel = find.byType(HorizontalSelectionWheel);
+    final gesture = await tester.startGesture(tester.getCenter(wheel));
+    await gesture.moveBy(const Offset(-20, 0));
+      await gesture.moveBy(const Offset(-28, 0));
+    expect(haptics.directions, [true]);
+    expect(haptics.strengths.single, inInclusiveRange(0.15, 1.0));
+    await gesture.moveBy(const Offset(-2, 0));
+    expect(haptics.directions, [true]);
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(haptics.directions, [true]);
+    expect(haptics.disposals, 0);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(haptics.disposals, 0);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets(
     'ticks once per selected album without replaying skipped albums',

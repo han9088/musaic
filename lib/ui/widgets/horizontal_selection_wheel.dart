@@ -1,10 +1,11 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
+
+import '../../services/album_haptics.dart';
 
 class HorizontalSelectionWheel extends StatefulWidget {
   const HorizontalSelectionWheel({
@@ -15,6 +16,7 @@ class HorizontalSelectionWheel extends StatefulWidget {
     required this.semanticLabel,
     required this.semanticValue,
     required this.textStyle,
+    this.haptics,
   }) : assert(selectedIndex >= 0 && selectedIndex < labels.length);
 
   final List<String> labels;
@@ -23,15 +25,17 @@ class HorizontalSelectionWheel extends StatefulWidget {
   final String semanticLabel;
   final String Function(int index) semanticValue;
   final TextStyle textStyle;
+  final AlbumHaptics? haptics;
 
   @override
   State<HorizontalSelectionWheel> createState() =>
       _HorizontalSelectionWheelState();
 }
 
-class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
+class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel>
+    with WidgetsBindingObserver {
   static const _itemExtent = 36.0;
-  static const _hapticInterval = Duration(milliseconds: 85);
+  static const _hapticInterval = Duration(milliseconds: 40);
   static final _behavior = const MaterialScrollBehavior().copyWith(
     scrollbars: false,
     overscroll: false,
@@ -47,14 +51,35 @@ class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
     initialScrollOffset: widget.selectedIndex * _itemExtent,
     keepScrollOffset: false,
   )..addListener(_updateSelection);
+  late final AlbumHaptics _haptics = widget.haptics ?? AlbumHaptics();
+  late final bool _ownsHaptics = widget.haptics == null;
+  final _hapticClock = Stopwatch()..start();
   int? _targetIndex;
-  Duration? _lastHaptic;
+  Duration? _lastHapticTime;
+  Duration? _lastScrollTime;
+  double? _lastScrollOffset;
+  bool _userScrolling = false;
   bool _syncing = false;
+  bool _foreground = true;
 
-  bool get _hasHaptics =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.iOS ||
-          defaultTargetPlatform == TargetPlatform.android);
+  @override
+  void initState() {
+    super.initState();
+    final binding = WidgetsBinding.instance;
+    _foreground =
+        binding.lifecycleState == null ||
+        binding.lifecycleState == AppLifecycleState.resumed;
+    binding.addObserver(this);
+    if (_ownsHaptics && !_foreground) unawaited(_haptics.setActive(false));
+    if (_ownsHaptics) unawaited(_haptics.prepare());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (!_foreground) _userScrolling = false;
+    if (_ownsHaptics) unawaited(_haptics.setActive(_foreground));
+  }
 
   @override
   void didUpdateWidget(HorizontalSelectionWheel oldWidget) {
@@ -70,6 +95,9 @@ class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
         return;
       }
       _syncing = true;
+      _userScrolling = false;
+      _lastScrollTime = null;
+      _lastScrollOffset = null;
       _targetIndex = null;
       _index = _settledIndex = selected;
       _controller.jumpTo(selected * _itemExtent);
@@ -77,28 +105,50 @@ class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
     });
   }
 
-  void _haptic(Future<void> Function() feedback) {
-    if (!_hasHaptics) return;
-    final now = SchedulerBinding.instance.currentSystemFrameTimeStamp;
-    final last = _lastHaptic;
-    if (last != null && now - last < _hapticInterval) return;
-    _lastHaptic = now;
-    unawaited(feedback());
-  }
-
   void _updateSelection() {
-    final next = (_controller.offset / _itemExtent).round().clamp(
+    final offset = _controller.offset;
+    final now = _hapticClock.elapsed;
+    final previousTime = _lastScrollTime;
+    final previousOffset = _lastScrollOffset;
+    _lastScrollTime = now;
+    _lastScrollOffset = offset;
+    final next = (offset / _itemExtent).round().clamp(
       0,
       widget.labels.length - 1,
     );
     if (_index == next) return;
+    final previous = _index;
     _index = next;
-    if (!_syncing) _haptic(HapticFeedback.selectionClick);
+    if (!_syncing && _foreground && _userScrolling) {
+      final last = _lastHapticTime;
+      if (last == null || now - last >= _hapticInterval) {
+        _lastHapticTime = now;
+        final elapsed = previousTime == null
+            ? 0
+            : (now - previousTime).inMicroseconds;
+        final strength = previousOffset == null || elapsed <= 0
+            ? 0.35
+            : ((offset - previousOffset).abs() *
+                      Duration.microsecondsPerSecond /
+                      elapsed /
+                      _itemExtent /
+                      8)
+                  .clamp(0.15, 1.0);
+        final rtl = _controller.position.axisDirection == AxisDirection.left;
+        unawaited(
+          _haptics.tick(
+            movingLeft: (next > previous) != rtl,
+            strength: strength,
+          ),
+        );
+      }
+    }
   }
 
   void _scrollTo(int index) {
     final next = index.clamp(0, widget.labels.length - 1);
     final offset = next * _itemExtent;
+    if (_controller.offset != offset) _userScrolling = true;
     if (_controller.offset == offset ||
         MediaQuery.disableAnimationsOf(context)) {
       if (_targetIndex != null || _controller.offset != offset) {
@@ -119,16 +169,22 @@ class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
 
   bool _onScroll(ScrollNotification notification) {
     if (notification.depth != 0 || _syncing) return false;
+    if (notification is UserScrollNotification) {
+      _userScrolling = notification.direction != ScrollDirection.idle;
+    }
     if (notification is ScrollStartNotification &&
         notification.dragDetails != null) {
       _targetIndex = null;
+      _userScrolling = true;
     }
     if (notification is ScrollEndNotification &&
         (notification.metrics.pixels - _index * _itemExtent).abs() < 0.01) {
+      _userScrolling = false;
+      _lastScrollTime = null;
+      _lastScrollOffset = null;
       _targetIndex = null;
       if (_index != _settledIndex) {
         _settledIndex = _index;
-        _haptic(HapticFeedback.lightImpact);
         widget.onSettled(_index);
       }
     }
@@ -149,7 +205,9 @@ class _HorizontalSelectionWheelState extends State<HorizontalSelectionWheel> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
+    if (_ownsHaptics) unawaited(_haptics.dispose());
     super.dispose();
   }
 

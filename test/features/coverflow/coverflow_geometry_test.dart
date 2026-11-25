@@ -21,9 +21,9 @@ void main() {
       position: 0.5,
       size: 200,
     );
-    expect(result.anchor, closeTo(
-      (result.centers[0]! + result.centers[1]!) / 2,
-      1e-10,
-    ));
+    expect(
+      result.anchor,
+      closeTo((result.centers[0]! + result.centers[1]!) / 2, 1e-10),
+    );
   });
 }

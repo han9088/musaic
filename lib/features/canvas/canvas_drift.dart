@@ -7,10 +7,10 @@ import 'package:material_ui/material_ui.dart';
 /// 封装或定义画布漂移相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class CanvasDrift {
   CanvasDrift({math.Random? random})
-      : velocity = Offset.fromDirection(
-          (random ?? math.Random()).nextDouble() * math.pi * 2,
-          12,
-        );
+    : velocity = Offset.fromDirection(
+        (random ?? math.Random()).nextDouble() * math.pi * 2,
+        12,
+      );
 
   Offset velocity;
   Duration? lastTick;

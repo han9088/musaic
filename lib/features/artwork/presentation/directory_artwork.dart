@@ -19,12 +19,9 @@ class DirectoryArtworkScope extends StatefulWidget {
   static ({DirectoryMusicLibrary? library, int revision}) watch(
     BuildContext context,
   ) {
-    final scope = context.dependOnInheritedWidgetOfExactType<
-        _DirectoryArtworkInherited>();
-    return (
-      library: scope?.library,
-      revision: scope?.revision ?? 0,
-    );
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<_DirectoryArtworkInherited>();
+    return (library: scope?.library, revision: scope?.revision ?? 0);
   }
 
   @override

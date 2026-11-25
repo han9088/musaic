@@ -43,12 +43,7 @@ class HomePage extends StatelessWidget {
           ),
         ),
         body: const TabBarView(
-          children: [
-            SongsPage(),
-            PlaylistPage(),
-            AlbumsPage(),
-            ArtistsPage()
-          ],
+          children: [SongsPage(), PlaylistPage(), AlbumsPage(), ArtistsPage()],
         ),
       ),
     );

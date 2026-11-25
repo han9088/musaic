@@ -15,6 +15,7 @@ ResolvedBottomSheetTheme mergeTheme({
   /// 执行当前模块中的pickcolor操作，用于底部弹层的状态、布局、手势与动画引擎。
   Color pickColor(Color? a, Color? b, Color? c, Color fallback) =>
       a ?? b ?? c ?? fallback;
+
   /// 执行当前模块中的pickdouble操作，用于底部弹层的状态、布局、手势与动画引擎。
   double pickDouble(double? a, double? b, double? c, double fallback) =>
       a ?? b ?? c ?? fallback;

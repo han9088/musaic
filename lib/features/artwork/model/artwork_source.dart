@@ -78,7 +78,8 @@ class ArtworkSource {
   String get identity => artworkIdentity.value;
 
   /// 供资源缓存使用的身份与版本组合；不包含解码尺寸。
-  String get cacheKey => '${artworkIdentity.value}|${version?.value ?? ''}|$value';
+  String get cacheKey =>
+      '${artworkIdentity.value}|${version?.value ?? ''}|$value';
 
   bool get isDirectory => type == ArtworkSourceType.directory;
 }

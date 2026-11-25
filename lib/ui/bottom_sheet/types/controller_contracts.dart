@@ -6,12 +6,16 @@ part of '../types.dart';
 abstract class BottomSheetControllerApi {
   /// 执行当前模块中的close操作，用于底部弹层的状态、布局、手势与动画引擎。
   void close();
+
   /// 执行当前模块中的snaptoindex操作，用于底部弹层的状态、布局、手势与动画引擎。
   void snapToIndex(int index);
+
   /// 执行当前模块中的snapto位置操作，用于底部弹层的状态、布局、手势与动画引擎。
   void snapToPosition(double position);
+
   /// 执行当前模块中的expand操作，用于底部弹层的状态、布局、手势与动画引擎。
   void expand();
+
   /// 执行当前模块中的collapse操作，用于底部弹层的状态、布局、手势与动画引擎。
   void collapse();
 }
@@ -20,11 +24,13 @@ abstract class BottomSheetControllerApi {
 abstract class BottomSheetModalController extends BottomSheetControllerApi {
   /// 执行当前模块中的present操作，用于底部弹层的状态、布局、手势与动画引擎。
   void present();
+
   /// 执行当前模块中的dismiss操作，用于底部弹层的状态、布局、手势与动画引擎。
   void dismiss();
+
   /// 执行当前模块中的forceclose操作，用于底部弹层的状态、布局、手势与动画引擎。
   void forceClose();
+
   /// 执行当前模块中的dismissall操作，用于底部弹层的状态、布局、手势与动画引擎。
   void dismissAll();
 }
-

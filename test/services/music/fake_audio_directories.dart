@@ -66,7 +66,9 @@ class FakeDirectories extends AudioDirectoryPlatform {
         return {
           'entries': page,
           'done': offset + page.length >= all.length,
-          'errors': partialFailures.contains(id) ? ['entry unavailable'] : <String>[],
+          'errors': partialFailures.contains(id)
+              ? ['entry unavailable']
+              : <String>[],
         };
       case 'close':
         closes++;

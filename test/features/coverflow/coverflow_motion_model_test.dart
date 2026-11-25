@@ -5,10 +5,7 @@ void main() {
   test('Cover Flow motion keeps settled position and tilt', () {
     final motion = CoverFlowMotion(position: 2, tilt: 0);
     motion.target = 2;
-    expect(
-      motion.advance(Duration.zero, reduced: false).changed,
-      isFalse,
-    );
+    expect(motion.advance(Duration.zero, reduced: false).changed, isFalse);
     final frame = motion.advance(
       const Duration(milliseconds: 16),
       reduced: false,

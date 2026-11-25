@@ -45,8 +45,7 @@ class HomeAlbumLayoutState {
     if (next.cells.isEmpty) return;
     snapshot = next;
     final visible = [
-      for (final cell in next.cells)
-        albumAt(cell.row, cell.column, albums),
+      for (final cell in next.cells) albumAt(cell.row, cell.column, albums),
     ];
     final visibleAlbums = visible.toSet();
     flowAlbums = [

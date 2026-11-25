@@ -191,4 +191,3 @@ class ResolvedBottomSheetOptions {
   final BoxDecoration? sheetStyle;
   final String accessibilityLabel;
 }
-

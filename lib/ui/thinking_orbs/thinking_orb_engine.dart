@@ -8,6 +8,7 @@ part of 'thinking_orb.dart';
 
 /// 封装或定义modeopts相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 typedef _ModeOpts = Map<String, double>;
+
 /// 封装或定义projector相关类型与行为，负责思考光球的状态驱动、几何计算与绘制动画。
 typedef _Projector = _ProjectedPoint Function(double x, double y, double z);
 

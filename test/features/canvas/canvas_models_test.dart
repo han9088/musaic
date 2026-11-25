@@ -6,21 +6,32 @@ import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 
 void main() {
-  test('drift preserves the original 12px/s floor and pauses without moving', () {
-    final controller = TransformationController();
-    final drift = CanvasDrift(random: math.Random(1));
+  test(
+    'drift preserves the original 12px/s floor and pauses without moving',
+    () {
+      final controller = TransformationController();
+      final drift = CanvasDrift(random: math.Random(1));
 
-    drift.advance(Duration.zero, controller, enabled: true);
-    expect(controller.value.entry(0, 3), 0);
-    expect(controller.value.entry(1, 3), 0);
-    drift.advance(const Duration(milliseconds: 16), controller, enabled: false);
-    expect(controller.value.entry(0, 3), 0);
-    expect(controller.value.entry(1, 3), 0);
-    drift.advance(const Duration(milliseconds: 32), controller, enabled: true);
-    expect(drift.velocity.distance, closeTo(12, 1e-9));
-    expect(controller.value.entry(0, 3), isNot(0));
-    controller.dispose();
-  });
+      drift.advance(Duration.zero, controller, enabled: true);
+      expect(controller.value.entry(0, 3), 0);
+      expect(controller.value.entry(1, 3), 0);
+      drift.advance(
+        const Duration(milliseconds: 16),
+        controller,
+        enabled: false,
+      );
+      expect(controller.value.entry(0, 3), 0);
+      expect(controller.value.entry(1, 3), 0);
+      drift.advance(
+        const Duration(milliseconds: 32),
+        controller,
+        enabled: true,
+      );
+      expect(drift.velocity.distance, closeTo(12, 1e-9));
+      expect(controller.value.entry(0, 3), isNot(0));
+      controller.dispose();
+    },
+  );
 
   test('layout state resets album placement without changing catalog', () {
     final layout = HomeAlbumLayoutState();

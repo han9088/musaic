@@ -5,7 +5,7 @@ import 'dart:math' as math;
 /// 封装或定义封面流动动效相关类型与行为，负责Cover Flow 的几何计算、输入处理与动效。
 class CoverFlowMotion {
   CoverFlowMotion({required this.position, required this.tilt})
-      : gestureTilt = tilt;
+    : gestureTilt = tilt;
 
   static const friction = 1.8;
   static const dragSensitivity = 1.12;
@@ -129,8 +129,10 @@ class CoverFlowMotion {
   bool endDrag(double releaseDx, double stride) {
     dragging = false;
     recordShortSwipe();
-    final releaseVelocity =
-        (-releaseDx * dragSensitivity / stride).clamp(-12.0, 12.0);
+    final releaseVelocity = (-releaseDx * dragSensitivity / stride).clamp(
+      -12.0,
+      12.0,
+    );
     // 松手速度估算方向与当前运动相反时，保留近期运动趋势以避免突变。
     if (velocity * releaseVelocity >= 0) {
       velocity = releaseVelocity == 0
@@ -143,8 +145,7 @@ class CoverFlowMotion {
         ? 1.0
         : (now - previousRelease).inMicroseconds / 1000000;
     final cadence = (1 - interval / 0.7).clamp(0.0, 1.0);
-    coastGain = velocity.abs() >= 0.35 &&
-            velocity.sign == lastReleaseDirection
+    coastGain = velocity.abs() >= 0.35 && velocity.sign == lastReleaseDirection
         ? 1 + (coastGain * 0.35 + 0.3) * cadence
         : 1;
     lastReleaseTime = now;

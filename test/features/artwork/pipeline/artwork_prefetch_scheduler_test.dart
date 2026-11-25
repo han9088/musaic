@@ -13,10 +13,11 @@ void main() {
       const ArtworkRequest(source: 'assets/c.png'),
     ];
 
-    expect(
-      scheduler.deduplicate(requests).map((request) => request.source),
-      ['assets/a.png', 'assets/b.png', 'assets/c.png'],
-    );
+    expect(scheduler.deduplicate(requests).map((request) => request.source), [
+      'assets/a.png',
+      'assets/b.png',
+      'assets/c.png',
+    ]);
   });
 
   test('prefetch scheduler skips presentation placeholders', () {
@@ -26,10 +27,9 @@ void main() {
       const ArtworkRequest(source: 'https://example.com/cover.jpg'),
     ];
 
-    expect(
-      scheduler.deduplicate(requests).map((request) => request.source),
-      ['https://example.com/cover.jpg'],
-    );
+    expect(scheduler.deduplicate(requests).map((request) => request.source), [
+      'https://example.com/cover.jpg',
+    ]);
   });
 
   test('prefetch scheduler keeps identity and version in request equality', () {

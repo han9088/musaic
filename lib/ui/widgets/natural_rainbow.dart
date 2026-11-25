@@ -109,4 +109,3 @@ class _NaturalRainbowState extends State<NaturalRainbow>
     ),
   );
 }
-

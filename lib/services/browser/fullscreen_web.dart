@@ -27,6 +27,7 @@ class BrowserFullscreen extends ChangeNotifier {
 
   /// 执行当前模块中的supported操作，用于浏览器平台能力及其跨平台兼容实现。
   bool get supported => _enabled == true;
+
   /// 执行当前模块中的active操作，用于浏览器平台能力及其跨平台兼容实现。
   bool get active => _element != null;
 

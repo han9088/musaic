@@ -21,6 +21,7 @@ const MethodChannel _channel = MethodChannel('com.deskbtm.muasic.query');
 class MethodChannelMusaicQuery extends MusaicQueryPlatform {
   @override
   AudioDirectoryPlatform get directories => const MethodChannelAudioDirectory();
+
   /// The MethodChannel that is being used by this implementation of the plugin.
   MethodChannel get channel => _channel;
 

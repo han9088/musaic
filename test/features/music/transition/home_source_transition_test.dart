@@ -10,9 +10,7 @@ void main() {
     final phases = <SourceTransitionPhase?>[];
     var handoffs = 0;
     const viewport = Size(300, 600);
-    const cells = [
-      (row: 0, column: 0, rect: Rect.fromLTWH(0, 0, 100, 100)),
-    ];
+    const cells = [(row: 0, column: 0, rect: Rect.fromLTWH(0, 0, 100, 100))];
     final exit = SourceTileMotion.exit(cells, viewport);
     final enter = SourceTileMotion.enter(cells);
     late final HomeSourceTransition transition;
@@ -35,26 +33,25 @@ void main() {
     );
     expect(transition.phase, SourceTransitionPhase.exit);
     await tester.pump();
-    await tester.pump(
-      Duration(milliseconds: exit.durationMs.ceil() + 1),
-    );
+    await tester.pump(Duration(milliseconds: exit.durationMs.ceil() + 1));
     expect(transition.phase, SourceTransitionPhase.handoff);
     expect(handoffs, 0);
-    await tester.pump(
-      Duration(milliseconds: sourceHandoffMs.ceil() + 1),
-    );
+    await tester.pump(Duration(milliseconds: sourceHandoffMs.ceil() + 1));
     expect(transition.phase, SourceTransitionPhase.enter);
     expect(handoffs, 1);
     await tester.pump(const Duration(seconds: 1));
     await completed;
     expect(transition.phase, isNull);
     expect(handoffs, 1);
-    expect(phases, containsAllInOrder([
-      SourceTransitionPhase.exit,
-      SourceTransitionPhase.handoff,
-      SourceTransitionPhase.enter,
-      null,
-    ]));
+    expect(
+      phases,
+      containsAllInOrder([
+        SourceTransitionPhase.exit,
+        SourceTransitionPhase.handoff,
+        SourceTransitionPhase.enter,
+        null,
+      ]),
+    );
     transition.dispose();
   });
 }

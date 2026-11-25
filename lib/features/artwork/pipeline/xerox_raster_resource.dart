@@ -9,8 +9,10 @@ import 'artwork_pipeline.dart';
 import '../xerox/xerox_raster_cache.dart';
 import '../xerox/xerox_raster_request.dart';
 
-typedef XeroxRasterResourceBuilder =
-    Widget Function(ui.Image? image, Object? error);
+typedef XeroxRasterResourceBuilder = Widget Function(
+  ui.Image? image,
+  Object? error,
+);
 
 /// Pipeline 的 Xerox 资源适配器。
 ///
@@ -49,9 +51,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
     super.didUpdateWidget(oldWidget);
     final pipelineChanged = oldWidget.pipeline != widget.pipeline;
     final requestChanged = oldWidget.request.key != widget.request.key;
-    final sameArtwork = oldWidget.request.key.sameArtwork(
-      widget.request.key,
-    );
+    final sameArtwork = oldWidget.request.key.sameArtwork(widget.request.key);
 
     if (pipelineChanged || (requestChanged && !sameArtwork)) {
       _resetRequest(releaseLease: true);
@@ -126,10 +126,7 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
       if (!mounted || generation != _generation) return;
       _requestTimer = null;
       final hasSameArtwork = _lease?.key.sameArtwork(request.key) ?? false;
-      final task = _pipeline.requestXerox(
-        request,
-        exactOnly: hasSameArtwork,
-      );
+      final task = _pipeline.requestXerox(request, exactOnly: hasSameArtwork);
       _task = task;
       try {
         final next = await task.future;
@@ -219,9 +216,6 @@ class _XeroxRasterResourceState extends State<XeroxRasterResource> {
       _scheduledKey = null;
     }
 
-    return widget.builder(
-      sameArtwork ? currentLease!.image : null,
-      _error,
-    );
+    return widget.builder(sameArtwork ? currentLease!.image : null, _error);
   }
 }

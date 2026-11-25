@@ -37,19 +37,26 @@ class XeroxVisibleArtworkPlanner {
   }) async {
     if (cells.isEmpty && selectedAsset == null) return const [];
 
-    final specs = <({
-      String asset,
-      double scale,
-      ArtworkIdentity? identity,
-      ArtworkVersion? version,
-      XeroxRasterPriority priority,
-    })>[];
-    final specIndexes = <({
-      String asset,
-      double scale,
-      ArtworkIdentity? identity,
-      ArtworkVersion? version,
-    }), int>{};
+    final specs =
+        <
+          ({
+            String asset,
+            double scale,
+            ArtworkIdentity? identity,
+            ArtworkVersion? version,
+            XeroxRasterPriority priority,
+          })
+        >[];
+    final specIndexes =
+        <
+          ({
+            String asset,
+            double scale,
+            ArtworkIdentity? identity,
+            ArtworkVersion? version,
+          }),
+          int
+        >{};
 
     void addSpec(
       String asset,
@@ -164,9 +171,7 @@ class XeroxVisibleArtworkPlanner {
     }
 
     final workerCount = math.min(maxProviderConcurrency, specs.length);
-    await Future.wait([
-      for (var i = 0; i < workerCount; i++) resolveWorker(),
-    ]);
+    await Future.wait([for (var i = 0; i < workerCount; i++) resolveWorker()]);
     if (isActive != null && !isActive()) {
       throw StateError('Xerox artwork planning was cancelled.');
     }

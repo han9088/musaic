@@ -168,4 +168,3 @@ class BottomSheetLayoutOptions {
   final BottomSheetLayoutScrollOptions scroll;
   final BottomSheetLayoutDetentsOptions detents;
 }
-

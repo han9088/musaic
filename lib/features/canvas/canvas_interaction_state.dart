@@ -31,8 +31,7 @@ class CanvasInteractionState {
 
   /// 执行当前模块中的交互update操作，用于专辑墙无限画布的布局、视口与交互状态。
   void interactionUpdate(ScaleUpdateDetails details) {
-    if (details.pointerCount == 1 &&
-        details.focalPointDelta.distance > 0.1) {
+    if (details.pointerCount == 1 && details.focalPointDelta.distance > 0.1) {
       selectionPaused = false;
       drift.velocity = Offset.fromDirection(
         details.focalPointDelta.direction,
