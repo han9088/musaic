@@ -41,6 +41,8 @@ dependencies:
   shared_preferences: ^2.5.5
   musaic_query:
     path: packages/musaic_query/packages/musaic_query
+  musaic_updater:
+    path: packages/musaic_updater
   camera: ^0.12.2
   gal: ^3.0.1
   in_app_review: ^2.0.12
