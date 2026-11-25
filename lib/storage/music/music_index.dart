@@ -10,6 +10,8 @@ import 'music_index_snapshot.dart';
 
 export 'music_index_snapshot.dart';
 
+enum MusicIndexSource { none, directories, audius }
+
 /// 封装或定义音乐索引相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicIndex {
   MusicIndex(this.database);
@@ -212,22 +214,30 @@ final class MusicIndex {
     return entries.firstOrNull;
   }
 
-  /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
-  Future<void> setSelected(bool selected) async {
+  Future<void> setSelected(bool selected) => _writeSource(selected ? '1' : '0');
+
+  Future<void> setAudiusSelected() => _writeSource('audius');
+
+  Future<void> _writeSource(String value) async {
     await database.insert('settings', {
       'key': 'directoriesSelected',
-      'value': selected ? '1' : '0',
+      'value': value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
-  Future<bool> isSelected() async =>
-      (await database.query(
+  Future<MusicIndexSource> selectedSource() async =>
+      switch ((await database.query(
         'settings',
         where: 'key = ?',
         whereArgs: ['directoriesSelected'],
-      )).firstOrNull?['value'] ==
-      '1';
+      )).firstOrNull?['value']) {
+        '1' => MusicIndexSource.directories,
+        'audius' => MusicIndexSource.audius,
+        _ => MusicIndexSource.none,
+      };
+
+  Future<bool> isSelected() async =>
+      await selectedSource() == MusicIndexSource.directories;
 
   /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioFolderSummary>> summaries({

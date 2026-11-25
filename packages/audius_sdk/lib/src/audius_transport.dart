@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'audius_api_exception.dart';
+import 'audius_stream.dart';
 import 'json_utils.dart';
 
 /// 负责 URL、认证头、超时、JSON 解码和 HTTP 错误处理。
@@ -68,7 +69,7 @@ class AudiusTransport {
     }
 
     if (parameters.isEmpty) return endpoint;
-    return endpoint.replace(queryParametersAll: parameters);
+    return endpoint.replace(queryParameters: parameters);
   }
 
   Future<Map<String, Object?>> getJson(
@@ -76,10 +77,44 @@ class AudiusTransport {
     Map<String, Object?> query = const {},
   }) async {
     final uri = buildUri(path, query: query);
-    final response = await _client
-        .get(uri, headers: headers)
-        .timeout(_timeout);
+    final response = await _client.get(uri, headers: headers).timeout(_timeout);
+    return _readJson(response, uri);
+  }
 
+  Future<Uri> resolveStream(AudiusStream stream) async {
+    _ensureOpen();
+    if (stream.uri.origin != _baseUri.origin) {
+      throw ArgumentError('Stream must use the configured Audius API origin.');
+    }
+    final uri = stream.uri.replace(
+      queryParameters: {...stream.uri.queryParameters, 'no_redirect': 'true'},
+    );
+    final request = http.Request('GET', uri)
+      ..headers.addAll(stream.headers)
+      ..followRedirects = false;
+    final response = await (() async {
+      final streamed = await _client.send(request);
+      final contentType = streamed.headers['content-type'] ?? '';
+      if (streamed.statusCode >= 200 &&
+          streamed.statusCode < 300 &&
+          !contentType.toLowerCase().startsWith('application/json')) {
+        await streamed.stream.listen(null).cancel();
+        throw const FormatException('Audius did not return stream metadata.');
+      }
+      return http.Response.fromStream(streamed);
+    })().timeout(_timeout);
+    final data = _readJson(response, uri)['data'];
+    final audio = data is String ? Uri.tryParse(data) : null;
+    if (audio == null ||
+        audio.scheme != 'https' ||
+        audio.host.isEmpty ||
+        audio.userInfo.isNotEmpty) {
+      throw const FormatException('Invalid Audius audio stream URL.');
+    }
+    return audio;
+  }
+
+  Map<String, Object?> _readJson(http.Response response, Uri uri) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw _toApiException(response, uri);
     }
@@ -88,7 +123,7 @@ class AudiusTransport {
       throw const FormatException('Audius returned an empty JSON response.');
     }
 
-    final decoded = jsonDecode(response.body);
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
     return requireJsonMap(decoded, label: 'Audius response');
   }
 
@@ -106,7 +141,9 @@ class AudiusTransport {
 
   AudiusApiException _toApiException(http.Response response, Uri uri) {
     var message =
-        'Audius request failed with HTTP ' + response.statusCode.toString() + '.';
+        'Audius request failed with HTTP ' +
+        response.statusCode.toString() +
+        '.';
 
     try {
       final decoded = jsonDecode(response.body);

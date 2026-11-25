@@ -44,7 +44,9 @@ class MusicSourcePicker extends StatelessWidget {
         final directorySelected = sources.directorySelected.value;
         final windows =
             !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-        final localSelected = albums != null && !directorySelected;
+        final audiusSelected = sources.audiusSelected;
+        final localAlbums = directorySelected || audiusSelected ? null : albums;
+        final localSelected = localAlbums != null;
         final mock2Selected = sources.mock2Selected.value;
         final firstDemoSelected = albums == null && !mock2Selected;
         final secondDemoSelected = albums == null && mock2Selected;
@@ -72,21 +74,36 @@ class MusicSourcePicker extends StatelessWidget {
             if (!demoOnly)
               ListTile(
                 key: const ValueKey('music-source-audius'),
+                enabled: !busy && !switching && !audiusSelected,
+                selected: audiusSelected,
                 leading: Image.asset(
                   'assets/branding/audius_glyph_color.png',
                   width: 26,
                   height: 26,
                   excludeFromSemantics: true,
                 ),
-                title: Text(
-                  'Audius',
-                  style: AppTypography.inter(
-                    fontSize:
-                        Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                title: AppSelectionTitle(
+                  selected: audiusSelected,
+                  child: Text(
+                    'Audius',
+                    style: AppTypography.inter(
+                      fontSize:
+                          Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
+                trailing: sources.audiusLoading.value
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : null,
+                onTap: () => sources.selectAudius(transition: _select),
               ),
             if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
@@ -126,14 +143,14 @@ class MusicSourcePicker extends StatelessWidget {
                   child: Text(l10n.musicSourceLocal),
                 ),
                 subtitle: Text(
-                  busy
+                  busy && !sources.audiusLoading.value
                       ? l10n.musicSourceScanning
-                      : albums == null || directorySelected
+                      : localAlbums == null
                       ? l10n.musicSourceLocalHint
-                      : l10n.musicSourceAlbumCount(albums.length),
+                      : l10n.musicSourceAlbumCount(localAlbums.length),
                   style: const TextStyle(color: Colors.white60),
                 ),
-                trailing: busy
+                trailing: busy && !sources.audiusLoading.value
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -280,6 +297,11 @@ class MusicSourcePicker extends StatelessWidget {
                     MusicSourceProblem.unavailable =>
                       l10n.musicSourceUnavailable,
                     MusicSourceProblem.scanFailed => l10n.musicSourceScanFailed,
+                    MusicSourceProblem.audiusUnavailable =>
+                      l10n.audiusUnavailable,
+                    MusicSourceProblem.audiusRateLimited =>
+                      l10n.audiusRateLimited,
+                    MusicSourceProblem.audiusEmpty => l10n.audiusEmpty,
                   }, style: const TextStyle(color: Colors.white70)),
                 ),
               ),
@@ -292,7 +314,8 @@ class MusicSourcePicker extends StatelessWidget {
           ? buildPicker(false)
           : ValueListenableBuilder<bool>(
               valueListenable: switching,
-              builder: (context, value, _) => buildPicker(value),
+              builder: (context, value, _) =>
+                  SignalBuilder(builder: (_) => buildPicker(value)),
             );
     },
   );

@@ -134,14 +134,16 @@ class AudiusTracksApi {
   ///
   /// 该方法不主动下载音频。播放器请求 uri 时应同时传入返回的 headers，
   /// 以便服务端识别 API Key，并跟随 Audius 的音频节点重定向。
-  AudiusStream getTrackStream({
-    required String trackId,
-    String? userId,
-  }) {
+  AudiusStream getTrackStream({required String trackId, String? userId}) {
     final uri = _transport.buildUri(
       'tracks/' + pathSegment(trackId, 'trackId') + '/stream',
       query: <String, Object?>{'user_id': userId},
     );
     return AudiusStream(uri: uri, headers: _transport.streamHeaders);
   }
+
+  /// Resolve a stream for players that cannot attach headers to media requests.
+  /// The API key stays on the Audius request, including for redirected streams.
+  Future<Uri> resolveTrackStream(AudiusStream stream) =>
+      _transport.resolveStream(stream);
 }

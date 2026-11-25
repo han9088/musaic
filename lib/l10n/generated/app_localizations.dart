@@ -938,6 +938,24 @@ abstract class AppLocalizations {
   /// **'当前平台暂不支持本地音乐库。'**
   String get musicSourceUnavailable;
 
+  /// No description provided for @audiusUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法加载 Audius，请检查网络后重试。'**
+  String get audiusUnavailable;
+
+  /// No description provided for @audiusRateLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'Audius 请求过于频繁，请稍后重试。'**
+  String get audiusRateLimited;
+
+  /// No description provided for @audiusEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'Audius 暂无热门专辑。'**
+  String get audiusEmpty;
+
   /// No description provided for @musicSourceScanFailed.
   ///
   /// In zh, this message translates to:

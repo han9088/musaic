@@ -455,6 +455,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get musicSourceUnavailable => '当前平台暂不支持本地音乐库。';
 
   @override
+  String get audiusUnavailable => '无法加载 Audius，请检查网络后重试。';
+
+  @override
+  String get audiusRateLimited => 'Audius 请求过于频繁，请稍后重试。';
+
+  @override
+  String get audiusEmpty => 'Audius 暂无热门专辑。';
+
+  @override
   String get musicSourceScanFailed => '扫描或切换失败，请重试。';
 
   @override

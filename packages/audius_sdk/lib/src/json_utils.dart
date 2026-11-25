@@ -38,7 +38,11 @@ AudiusResponse<T> decodeSingleResponse<T>(
 ) {
   return AudiusResponse<T>.fromJson(
     json,
-    (value) => decodeItem(requireJsonMap(value)),
+    (value) => decodeItem(
+      requireJsonMap(
+        value is List<Object?> && value.length == 1 ? value.single : value,
+      ),
+    ),
   );
 }
 

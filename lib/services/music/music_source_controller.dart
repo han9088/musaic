@@ -2,32 +2,53 @@
 
 import 'dart:async';
 
-import 'directory_music_library.dart';
-
+import 'package:audius_sdk/audius_sdk.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../storage/music/music_index.dart';
 import '../diagnostics/diagnostic_log.dart';
+import 'audius_music_provider.dart';
+import 'directory_music_library.dart';
 import 'local_music_provider.dart';
 import 'music_provider.dart';
 
 /// 封装或定义音乐来源问题相关类型与行为，负责音乐源、媒体库、播放及切换流程。
-enum MusicSourceProblem { denied, restricted, unavailable, scanFailed }
+enum MusicSourceProblem {
+  denied,
+  restricted,
+  unavailable,
+  scanFailed,
+  audiusUnavailable,
+  audiusRateLimited,
+  audiusEmpty,
+}
 
 /// 封装或定义音乐来源控制器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicSourceController {
-  MusicSourceController({MusicProvider Function()? createLocal})
-    : _createLocal = createLocal ?? LocalMusicProvider.new;
+  MusicSourceController({
+    MusicProvider Function()? createLocal,
+    MusicProvider Function()? createAudius,
+  }) : _createLocal = createLocal ?? LocalMusicProvider.new,
+       _createAudius = createAudius ?? _defaultAudius;
+
+  static MusicProvider _defaultAudius() => AudiusMusicProvider(
+    sdk: AudiusSdk(apiKey: const String.fromEnvironment('AUDIUS_API_KEY')),
+  );
 
   final MusicProvider Function() _createLocal;
+  final MusicProvider Function() _createAudius;
   final catalog = signal<List<ProviderAlbum>?>(null);
   final mock2Selected = signal(false);
   final busy = signal(false);
+  final audiusLoading = signal(false);
   final problem = signal<MusicSourceProblem?>(null);
   MusicProvider? _provider;
+  MusicProvider? _pendingAudius;
 
   /// 获取当前选中的音乐源提供器。
   MusicProvider? get provider => _provider;
+  bool get audiusSelected => _provider?.id == AudiusMusicProvider.providerId;
   bool _disposed = false;
   bool _selectionTouched = false;
   final directoryLibrary = signal<DirectoryMusicLibrary?>(null);
@@ -46,7 +67,13 @@ final class MusicSourceController {
     _stopDirectories = library.tracks.subscribe((_) {
       if (!_disposed && directorySelected.value) _publishDirectories();
     });
-    if (await library.index.isSelected() && !_disposed && !_selectionTouched) {
+    final source = await library.index.selectedSource();
+    if (_disposed || _selectionTouched) return;
+    if (source == MusicIndexSource.audius) {
+      await selectAudius();
+      return;
+    }
+    if (source == MusicIndexSource.directories) {
       await library.loadCached();
       if (_disposed || _selectionTouched) return;
       directorySelected.value = true;
@@ -161,6 +188,91 @@ final class MusicSourceController {
     }
   }
 
+  /// Load a bounded page before dismissing the picker and switching the canvas.
+  Future<void> selectAudius({
+    Future<void> Function(Future<void> Function())? transition,
+  }) async {
+    if (_disposed || busy.value || audiusSelected) return;
+    busy.value = true;
+    audiusLoading.value = true;
+    problem.value = null;
+    try {
+      final next = _pendingAudius = _createAudius();
+      await next.initialize();
+      if (_disposed) return;
+      final albums = <String, ProviderAlbum>{};
+      String? cursor;
+      // Some servers return mixed playlist types even with the album filter.
+      for (var page = 0; page < 2 && albums.length < 24; page++) {
+        final result = await next.libraryAlbums(limit: 24, cursor: cursor);
+        if (_disposed) return;
+        for (final album in result.items) {
+          albums[album.reference.id] = album;
+        }
+        if (result.nextCursor == null || result.nextCursor == cursor) break;
+        cursor = result.nextCursor;
+      }
+      if (albums.isEmpty) {
+        problem.value = MusicSourceProblem.audiusEmpty;
+        return;
+      }
+
+      Future<void> activate() async {
+        if (_disposed || _pendingAudius != next) return;
+        // Keep the current provider and its catalog until the candidate is ready.
+        _selectionTouched = true;
+        await directories?.index.setAudiusSelected();
+        if (_disposed) return;
+        final old = _provider;
+        batch(() {
+          _provider = next;
+          _pendingAudius = null;
+          directorySelected.value = false;
+          mock2Selected.value = false;
+          catalog.value = List<ProviderAlbum>.unmodifiable(
+            albums.values.take(24),
+          );
+        });
+        await _disposeAudiusCandidate(old);
+      }
+
+      if (transition == null) {
+        await activate();
+      } else {
+        await transition(activate);
+      }
+    } catch (error) {
+      diagnosticLog.record(
+        DiagnosticEvent.musicSourceSwitchFailed,
+        error: error,
+      );
+      if (!_disposed) {
+        problem.value = error is AudiusApiException && error.statusCode == 429
+            ? MusicSourceProblem.audiusRateLimited
+            : MusicSourceProblem.audiusUnavailable;
+      }
+    } finally {
+      final candidate = _pendingAudius;
+      _pendingAudius = null;
+      await _disposeAudiusCandidate(candidate);
+      if (!_disposed) {
+        audiusLoading.value = false;
+        busy.value = false;
+      }
+    }
+  }
+
+  Future<void> _disposeAudiusCandidate(MusicProvider? provider) async {
+    try {
+      await provider?.dispose();
+    } catch (error) {
+      diagnosticLog.record(
+        DiagnosticEvent.musicSourceSwitchFailed,
+        error: error,
+      );
+    }
+  }
+
   /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectMock() => _selectMock(mock2: false);
 
@@ -206,12 +318,16 @@ final class MusicSourceController {
     directories?.cancel();
     directorySelected.dispose();
     directoryLibrary.dispose();
+    final candidate = _pendingAudius;
+    _pendingAudius = null;
     try {
+      await _disposeAudiusCandidate(candidate);
       await _provider?.dispose();
     } finally {
       catalog.dispose();
       mock2Selected.dispose();
       busy.dispose();
+      audiusLoading.dispose();
       problem.dispose();
     }
   }

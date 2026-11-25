@@ -487,6 +487,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Local music isn’t available on this platform.';
 
   @override
+  String get audiusUnavailable =>
+      'Couldn’t load Audius. Check your connection and try again.';
+
+  @override
+  String get audiusRateLimited =>
+      'Audius is rate limiting requests. Wait a moment and try again.';
+
+  @override
+  String get audiusEmpty => 'Audius has no trending albums right now.';
+
+  @override
   String get musicSourceScanFailed => 'Couldn’t load your music. Try again.';
 
   @override

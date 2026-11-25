@@ -2,11 +2,7 @@ import 'json_utils.dart';
 
 /// Audius 专辑封面或用户头像的多分辨率图片集合。
 class AudiusArtwork {
-  const AudiusArtwork({
-    this.small,
-    this.medium,
-    this.large,
-  });
+  const AudiusArtwork({this.small, this.medium, this.large});
 
   final String? small;
   final String? medium;
@@ -75,9 +71,7 @@ class AudiusUser {
       location: _readString(json, 'location'),
       website: _readString(json, 'website'),
       isVerified: _readBool(json['is_verified'] ?? json['isVerified']),
-      isDeactivated: _readBool(
-        json['is_deactivated'] ?? json['isDeactivated'],
-      ),
+      isDeactivated: _readBool(json['is_deactivated'] ?? json['isDeactivated']),
       profilePicture: _readArtwork(
         json['profile_picture'] ?? json['profilePicture'],
       ),
@@ -109,6 +103,7 @@ class AudiusTrack {
     this.favoriteCount,
     this.repostCount,
     this.isStreamable,
+    this.hasStreamAccess,
     this.isDownloadable,
     this.isStreamGated,
     this.releaseDate,
@@ -130,6 +125,7 @@ class AudiusTrack {
   final int? favoriteCount;
   final int? repostCount;
   final bool? isStreamable;
+  final bool? hasStreamAccess;
   final bool? isDownloadable;
   final bool? isStreamGated;
   final DateTime? releaseDate;
@@ -163,6 +159,10 @@ class AudiusTrack {
       favoriteCount: _readInt(json['favorite_count'] ?? json['favoriteCount']),
       repostCount: _readInt(json['repost_count'] ?? json['repostCount']),
       isStreamable: _readBool(json['is_streamable'] ?? json['isStreamable']),
+      hasStreamAccess: switch (json['access']) {
+        {'stream': final Object? stream} => _readBool(stream),
+        _ => null,
+      },
       isDownloadable: _readBool(
         json['is_downloadable'] ??
             json['downloadable'] ??
@@ -209,9 +209,7 @@ class AudiusPlaylist {
   factory AudiusPlaylist.fromJson(Map<String, Object?> json) {
     final userValue = json['user'];
     final user = userValue is Map<Object?, Object?>
-        ? AudiusUser.fromJson(
-            requireJsonMap(userValue, label: 'playlist user'),
-          )
+        ? AudiusUser.fromJson(requireJsonMap(userValue, label: 'playlist user'))
         : null;
     final trackValue = json['tracks'];
     final tracks = trackValue is List<Object?>
@@ -221,7 +219,8 @@ class AudiusPlaylist {
     return AudiusPlaylist(
       id: _readString(json, 'id') ?? '',
       playlistName:
-          _readString(json, 'playlist_name') ?? _readString(json, 'playlistName'),
+          _readString(json, 'playlist_name') ??
+          _readString(json, 'playlistName'),
       description: _readString(json, 'description'),
       permalink: _readString(json, 'permalink'),
       artwork: _readArtwork(
@@ -242,10 +241,7 @@ class AudiusPlaylist {
   }
 }
 
-enum AudiusResolvedResourceType {
-  track,
-  playlist,
-}
+enum AudiusResolvedResourceType { track, playlist }
 
 /// resolve API 返回的歌曲或歌单/专辑资源。
 class AudiusResolvedResource {
@@ -262,7 +258,8 @@ class AudiusResolvedResource {
   final Map<String, Object?> raw;
 
   factory AudiusResolvedResource.fromJson(Map<String, Object?> json) {
-    final isPlaylist = json.containsKey('playlist_name') ||
+    final isPlaylist =
+        json.containsKey('playlist_name') ||
         json.containsKey('playlistName') ||
         json.containsKey('playlist_contents') ||
         _readBool(json['is_album'] ?? json['isAlbum']) == true;

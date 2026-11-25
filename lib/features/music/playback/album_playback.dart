@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../../services/diagnostics/diagnostic_log.dart';
+import '../../../services/music/audius_music_provider.dart';
 import '../../../services/music/music_provider.dart';
 import '../catalog/album_catalog_mapper.dart';
 
@@ -18,6 +19,8 @@ class AlbumPlayback extends ChangeNotifier {
   StreamSubscription<MusicPlayback>? _subscription;
   Map<String, ProviderAlbum> _albums = {};
   Map<MusicReference, ({ProviderAlbum album, ProviderSong song})> _tracks = {};
+  ProviderAlbum? _playingAudiusAlbum;
+  Map<MusicReference, ProviderSong> _playingAudiusTracks = const {};
   MusicPlayback? _playbackState;
   ProviderSong? _currentSong;
   String? _albumArtist;
@@ -48,10 +51,58 @@ class AlbumPlayback extends ChangeNotifier {
   bool isPlaying(String asset, String title) =>
       this.asset == asset && this.title == title && playing;
 
-  bool canPlayTrack(ProviderSong track) =>
-      _provider != null &&
-      track.playable &&
-      _tracks.containsKey(track.reference);
+  bool canPlayTrack(ProviderSong track, {String? albumAsset}) {
+    if (_provider == null || !track.playable) return false;
+    if (_provider is AudiusMusicProvider && albumAsset != null) {
+      return _albums[albumAsset]?.tracks?.any(
+            (song) => song.reference == track.reference && song.playable,
+          ) ??
+          false;
+    }
+    return _tracks.containsKey(track.reference);
+  }
+
+  bool isCurrentAlbumTrack(ProviderSong track, String albumAsset) =>
+      currentTrack == track.reference &&
+      (_provider is! AudiusMusicProvider || asset == albumAsset);
+
+  /// Only remote albums need an on-demand track list.
+  Future<List<ProviderSong>>? loadAlbumTracks(String asset) {
+    final album = _albums[asset];
+    final provider = _provider;
+    if (provider is! AudiusMusicProvider || album == null) return null;
+    if (album.tracks case final tracks?) return Future.value(tracks);
+    return _loadAudiusAlbum(provider, album).then((album) => album.tracks!);
+  }
+
+  Future<ProviderAlbum> _loadAudiusAlbum(
+    AudiusMusicProvider provider,
+    ProviderAlbum album,
+  ) async {
+    if (album.tracks != null) return album;
+    final generation = _generation;
+    final detail = await provider.album(album.reference);
+    if (generation != _generation) {
+      throw StateError('Music source changed while loading tracks.');
+    }
+    _albums[albumArtworkSource(album)] = detail;
+    return detail;
+  }
+
+  void _playAudiusAlbum(ProviderAlbum album) {
+    _playingAudiusAlbum = album;
+    _playingAudiusTracks = {
+      for (final track in album.tracks!) track.reference: track,
+    };
+  }
+
+  ({ProviderAlbum album, ProviderSong song})? _audiusTrack(
+    MusicReference? reference,
+  ) {
+    final album = _playingAudiusAlbum;
+    final song = _playingAudiusTracks[reference];
+    return album != null && song != null ? (album: album, song: song) : null;
+  }
 
   /// 执行当前模块中的bind操作，用于音乐源、媒体库、播放及切换流程。
   void bind(MusicProvider? provider, List<ProviderAlbum>? albums) {
@@ -71,6 +122,8 @@ class AlbumPlayback extends ChangeNotifier {
     };
     asset = null;
     title = null;
+    _playingAudiusAlbum = null;
+    _playingAudiusTracks = const {};
     _playbackState = null;
     _currentSong = null;
     _albumArtist = null;
@@ -83,7 +136,14 @@ class AlbumPlayback extends ChangeNotifier {
         final bufferingChanged = buffering != state.isBuffering;
         // Keep the seek position current without rebuilding on position ticks.
         _playbackState = state;
-        final track = _tracks[state.currentItem];
+        final track = provider is AudiusMusicProvider
+            ? _audiusTrack(state.currentItem)
+            : _tracks[state.currentItem];
+        if (provider is AudiusMusicProvider &&
+            state.status == MusicPlaybackStatus.error &&
+            !_busy) {
+          onError?.call();
+        }
         if (!trackChanged &&
             !bufferingChanged &&
             _currentSong == track?.song &&
@@ -140,6 +200,13 @@ class AlbumPlayback extends ChangeNotifier {
           await provider.resume();
           diagnosticLog.record(DiagnosticEvent.playbackResumed);
         } else {
+          if (provider is AudiusMusicProvider) {
+            final detail = await _loadAudiusAlbum(provider, album);
+            if (!detail.tracks!.any((track) => track.playable)) {
+              throw StateError('Audius album has no playable tracks.');
+            }
+            _playAudiusAlbum(detail);
+          }
           await provider.play([album.reference]);
           diagnosticLog.record(DiagnosticEvent.playbackStarted);
         }
@@ -155,16 +222,29 @@ class AlbumPlayback extends ChangeNotifier {
     }
   }
 
-  void playTrack(List<ProviderSong> tracks, int index) {
-    if (!canPlayTrack(tracks[index])) return;
+  void playTrack(List<ProviderSong> tracks, int index, {String? albumAsset}) {
+    if (!canPlayTrack(tracks[index], albumAsset: albumAsset)) return;
     unawaited(
       _runProviderCommand((provider) async {
+        final audiusAlbum = provider is AudiusMusicProvider
+            ? _albums[albumAsset]
+            : null;
+        final songs = audiusAlbum?.tracks ?? tracks;
+        final position = identical(songs, tracks)
+            ? index
+            : songs.indexWhere(
+                (song) => song.reference == tracks[index].reference,
+              );
+        if (position < 0) return;
         final queue = <MusicReference>[];
         var startIndex = 0;
-        for (final (position, track) in tracks.indexed) {
-          if (position == index) startIndex = queue.length;
-          if (canPlayTrack(track)) queue.add(track.reference);
+        for (final (i, track) in songs.indexed) {
+          if (i == position) startIndex = queue.length;
+          if (audiusAlbum == null ? canPlayTrack(track) : track.playable) {
+            queue.add(track.reference);
+          }
         }
+        if (audiusAlbum != null) _playAudiusAlbum(audiusAlbum);
         await provider.play(queue, startIndex: startIndex);
         diagnosticLog.record(DiagnosticEvent.playbackStarted);
       }),

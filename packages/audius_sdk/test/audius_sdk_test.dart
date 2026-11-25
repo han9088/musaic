@@ -43,10 +43,7 @@ void main() {
         );
       });
 
-      final sdk = AudiusSdk(
-        apiKey: 'public-test-key',
-        httpClient: client,
-      );
+      final sdk = AudiusSdk(apiKey: 'public-test-key', httpClient: client);
 
       final response = await sdk.tracks.searchTracks(
         query: 'lofi',
@@ -70,6 +67,44 @@ void main() {
       client.close();
     });
 
+    test(
+      'album search requests the album category and parses its envelope',
+      () async {
+        final client = MockClient((request) async {
+          expect(request.url.path, '/v1/search/full');
+          expect(request.url.queryParameters, {
+            'query': 'Dub',
+            'kind': 'albums',
+            'offset': '2',
+            'limit': '10',
+          });
+          return http.Response(
+            jsonEncode({
+              'data': {
+                'albums': [
+                  {'id': 'album', 'is_album': true},
+                ],
+                'playlists': [
+                  {'id': 'playlist', 'is_album': false},
+                ],
+              },
+            }),
+            200,
+          );
+        });
+        final sdk = AudiusSdk(httpClient: client);
+        addTearDown(client.close);
+        addTearDown(sdk.close);
+        final result = await sdk.playlists.searchAlbums(
+          query: ' Dub ',
+          offset: 2,
+          limit: 10,
+        );
+        expect(result.data.single.id, 'album');
+        expect(result.data.single.isAlbum, isTrue);
+      },
+    );
+
     test('getTrackStream returns endpoint and API key headers', () {
       final client = MockClient((request) async {
         fail('Stream URL construction must not make an HTTP request.');
@@ -87,6 +122,79 @@ void main() {
 
       sdk.close();
       client.close();
+    });
+
+    test(
+      'single playlist and user endpoints accept the API array envelope',
+      () async {
+        final client = MockClient((request) async {
+          final id = request.url.pathSegments.last;
+          return http.Response(
+            jsonEncode({
+              'data': [
+                {'id': id},
+              ],
+            }),
+            200,
+          );
+        });
+        final sdk = AudiusSdk(httpClient: client);
+        addTearDown(client.close);
+        addTearDown(sdk.close);
+        expect(
+          (await sdk.playlists.getPlaylist(playlistId: 'playlist')).data.id,
+          'playlist',
+        );
+        expect((await sdk.users.getUser(id: 'artist')).data.id, 'artist');
+      },
+    );
+
+    test('resolves playback metadata with headers and no redirects', () async {
+      final client = MockClient((request) async {
+        expect(request.url.path, '/v1/tracks/T/stream');
+        expect(request.url.queryParameters['no_redirect'], 'true');
+        expect(request.headers['x-api-key'], 'test-key');
+        expect(request.followRedirects, isFalse);
+        return http.Response(
+          jsonEncode({'data': 'https://audio.example/track.mp3'}),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      });
+      final sdk = AudiusSdk(apiKey: 'test-key', httpClient: client);
+      addTearDown(client.close);
+      addTearDown(sdk.close);
+      final stream = sdk.tracks.getTrackStream(trackId: 'T');
+      expect(
+        await sdk.tracks.resolveTrackStream(stream),
+        Uri.parse('https://audio.example/track.mp3'),
+      );
+      await expectLater(
+        sdk.tracks.resolveTrackStream(
+          AudiusStream(
+            uri: Uri.https('other.example'),
+            headers: stream.headers,
+          ),
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects audio bodies from the stream metadata endpoint', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          'unexpected audio',
+          200,
+          headers: {'content-type': 'audio/mpeg'},
+        ),
+      );
+      final sdk = AudiusSdk(httpClient: client);
+      addTearDown(client.close);
+      addTearDown(sdk.close);
+      await expectLater(
+        sdk.tracks.resolveTrackStream(sdk.tracks.getTrackStream(trackId: 'T')),
+        throwsFormatException,
+      );
     });
 
     test('resolveUrl identifies a playlist resource', () async {

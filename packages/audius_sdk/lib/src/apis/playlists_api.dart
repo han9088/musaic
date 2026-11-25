@@ -98,6 +98,37 @@ class AudiusPlaylistsApi {
     return decodeListResponse(json, AudiusPlaylist.fromJson);
   }
 
+  /// Search the dedicated album category of Audius's full search API.
+  Future<AudiusResponse<List<AudiusPlaylist>>> searchAlbums({
+    required String query,
+    int? offset,
+    int? limit,
+  }) async {
+    validatePagination(offset: offset, limit: limit);
+    final term = query.trim();
+    if (term.isEmpty) {
+      throw ArgumentError.value(query, 'query', 'Must not be empty.');
+    }
+
+    final json = await _transport.getJson(
+      'search/full',
+      query: {
+        'query': term,
+        'kind': 'albums',
+        'offset': offset,
+        'limit': limit,
+      },
+    );
+    return AudiusResponse.fromJson(
+      json,
+      (value) => decodeJsonList(
+        requireJsonMap(value)['albums'],
+        AudiusPlaylist.fromJson,
+        label: 'albums',
+      ),
+    );
+  }
+
   /// 获取新发行的专辑/歌单。
   Future<AudiusResponse<List<AudiusPlaylist>>> getNewReleases({
     int? offset,

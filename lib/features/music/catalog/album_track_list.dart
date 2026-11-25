@@ -36,11 +36,27 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
 
   final _playButtonVisible = ValueNotifier(true);
   Timer? _hidePlayButton;
+  Future<List<ProviderSong>>? _remoteTracks;
+
+  Future<List<ProviderSong>>? _loadTracks() => widget.album['tracks'] != null
+      ? null
+      : widget.playback?.loadAlbumTracks(widget.album['asset'] as String);
 
   @override
   void initState() {
     super.initState();
+    _remoteTracks = _loadTracks();
     if (widget.playback != null) _revealPlayButton();
+  }
+
+  @override
+  void didUpdateWidget(covariant AlbumTrackList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.album['id'] != widget.album['id'] ||
+        oldWidget.album['asset'] != widget.album['asset'] ||
+        oldWidget.playback != widget.playback) {
+      _remoteTracks = _loadTracks();
+    }
   }
 
   void _revealPlayButton() {
@@ -60,6 +76,18 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
 
   @override
   Widget build(BuildContext context) {
+    final tracks = widget.album['tracks'] as List<ProviderSong>? ?? const [];
+    if (_remoteTracks == null) return _buildAlbum(tracks, loading: false);
+    return FutureBuilder<List<ProviderSong>>(
+      future: _remoteTracks,
+      builder: (context, snapshot) => _buildAlbum(
+        snapshot.data ?? const [],
+        loading: snapshot.connectionState != ConnectionState.done,
+      ),
+    );
+  }
+
+  Widget _buildAlbum(List<ProviderSong> tracks, {required bool loading}) {
     final album = widget.album;
     final id = album['id'] as String?;
     final content = Listener(
@@ -80,8 +108,13 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
             Material(
               type: MaterialType.transparency,
               child: LayoutBuilder(
-                builder: (context, constraints) =>
-                    _buildContents(context, constraints.maxWidth, accent),
+                builder: (context, constraints) => _buildContents(
+                  context,
+                  constraints.maxWidth,
+                  accent,
+                  tracks,
+                  loading: loading,
+                ),
               ),
             ),
           ],
@@ -91,10 +124,15 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
     return Semantics(onDismiss: widget.onClose, child: content);
   }
 
-  Widget _buildContents(BuildContext context, double side, Color? accent) {
+  Widget _buildContents(
+    BuildContext context,
+    double side,
+    Color? accent,
+    List<ProviderSong> tracks, {
+    required bool loading,
+  }) {
     final album = widget.album;
     final title = album['title'] as String;
-    final tracks = album['tracks'] as List<ProviderSong>? ?? const [];
     final artist = album['artist'] as String?;
     final hue = HSLColor.fromColor(accent ?? _fallbackAccent);
     final secondary = hue.withSaturation(hue.saturation.clamp(0.0, 0.56));
@@ -104,6 +142,22 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
     final trackSize = (side * 0.0425).clamp(13.0, 16.0);
     final numberWidth = MediaQuery.textScalerOf(context)
         .scale((side * 0.073).clamp(23.0, 32.0));
+    Widget trackBody(List<ProviderSong> songs) => songs.isEmpty
+        ? Center(
+            child: Text(
+              AppLocalizations.of(context).albumTracksUnavailable,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: artistColor, fontSize: 14),
+            ),
+          )
+        : _buildTrackScroller(
+            songs,
+            trackSize: trackSize,
+            numberWidth: numberWidth,
+            numberColor: trackColor,
+            activeColor: artistColor,
+          );
+
     return Padding(
       padding: EdgeInsets.all(inset),
       child: Column(
@@ -173,21 +227,9 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
           ),
           SizedBox(height: side * (tracks.isEmpty ? 0.053 : 0.014)),
           Expanded(
-            child: tracks.isEmpty
-                ? Center(
-                    child: Text(
-                      AppLocalizations.of(context).albumTracksUnavailable,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: artistColor, fontSize: 14),
-                    ),
-                  )
-                : _buildTrackScroller(
-                    tracks,
-                    trackSize: trackSize,
-                    numberWidth: numberWidth,
-                    numberColor: trackColor,
-                    activeColor: artistColor,
-                  ),
+            child: loading
+                ? const Center(child: CircularProgressIndicator())
+                : trackBody(tracks),
           ),
         ],
       ),
@@ -210,7 +252,8 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
       itemCount: tracks.length,
       itemBuilder: (context, index) {
         final track = tracks[index];
-        final selected = playback?.currentTrack == track.reference;
+        final asset = widget.album['asset'] as String;
+        final selected = playback?.isCurrentAlbumTrack(track, asset) ?? false;
         const radius = BorderRadius.all(Radius.circular(6));
         final row = Semantics(
           selected: selected,
@@ -221,8 +264,10 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
             borderRadius: radius,
             child: InkWell(
               borderRadius: radius,
-              onTap: playback != null && playback.canPlayTrack(track)
-                  ? () => playback.playTrack(tracks, index)
+              onTap:
+                  playback != null &&
+                      playback.canPlayTrack(track, albumAsset: asset)
+                  ? () => playback.playTrack(tracks, index, albumAsset: asset)
                   : null,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
