@@ -48,7 +48,6 @@ class _FullscreenControlState extends State<FullscreenControl> {
     return ListenableBuilder(
       listenable: _fullscreen,
       builder: (context, _) => ListTile(
-        enabled: !_pending,
         onTap: _pending ? null : _toggle,
         leading: Icon(
           _fullscreen.active ? PhosphorIcons.arrowsIn : PhosphorIcons.arrowsOut,

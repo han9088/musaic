@@ -590,6 +590,7 @@ class _AlbumCoverFlowState extends State<AlbumCoverFlow>
                             : AlbumTrackList(
                                 album: album,
                                 playback: widget.playback,
+                                xerox: widget.xerox,
                                 onClose: _closeFlip,
                               ),
                       ),

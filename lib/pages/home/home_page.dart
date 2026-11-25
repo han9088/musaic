@@ -428,23 +428,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       _catalog ??= albums;
       final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
-      final scale = _transform.value.getColumn(0).length;
       final visibleSnapshot = AlbumGridSnapshot.capture(
         viewport,
         _transform.value,
       );
-      final preparationSnapshot = AlbumGridSnapshot.capture(
-        viewport,
-        _transform.value,
-        overscan: PortraitTilt.overscan(viewport) + albumGridExtent * scale,
-      );
-      final requests = await _buildXeroxRequests(
-        albums,
-        preparationSnapshot.cells,
-        useLayout: true,
-        includeSelected: true,
-        isActive: () => mounted,
-      );
+      // Online covers are processed by the artwork view as they arrive.
+      // An unavailable Audius cover must not block the whole mode change.
+      var requests = const <XeroxRasterRequest>[];
+      if (_currentSource != _HomeMusicSource.audius) {
+        final scale = _transform.value.getColumn(0).length;
+        final preparationSnapshot = AlbumGridSnapshot.capture(
+          viewport,
+          _transform.value,
+          overscan: PortraitTilt.overscan(viewport) + albumGridExtent * scale,
+        );
+        requests = await _buildXeroxRequests(
+          albums,
+          preparationSnapshot.cells,
+          useLayout: true,
+          includeSelected: true,
+          isActive: () => mounted,
+        );
+      }
       if (!mounted) return;
 
       await _artworkMode.apply(

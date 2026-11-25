@@ -230,7 +230,11 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
         ),
         trackList: albumHasSingleTrack(album)
             ? null
-            : AlbumTrackList(album: album, playback: widget.playback),
+            : AlbumTrackList(
+                album: album,
+                playback: widget.playback,
+                xerox: widget.xerox,
+              ),
       );
     } finally {
       restoreSource();

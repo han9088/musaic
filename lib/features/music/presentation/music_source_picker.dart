@@ -42,7 +42,6 @@ class MusicSourcePicker extends StatelessWidget {
         final busy = sources.busy.value;
         final audiusLoading = sources.audiusLoading.value;
         final selectionBlocked = busy || switching;
-        final keepSourceStyle = audiusLoading && !demoOnly;
         final problem = sources.problem.value;
         final directorySelected = sources.directorySelected.value;
         final windows =
@@ -77,7 +76,6 @@ class MusicSourcePicker extends StatelessWidget {
             if (!demoOnly)
               ListTile(
                 key: const ValueKey('music-source-audius'),
-                enabled: !busy && !switching && !audiusSelected,
                 selected: audiusSelected,
                 leading: Image.asset(
                   'assets/branding/audius_glyph_color.png',
@@ -106,12 +104,13 @@ class MusicSourcePicker extends StatelessWidget {
                         ),
                       )
                     : null,
-                onTap: () => sources.selectAudius(transition: _select),
+                onTap: selectionBlocked || audiusSelected
+                    ? null
+                    : () => sources.selectAudius(transition: _select),
               ),
             if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
               key: const ValueKey('music-source-mock'),
-              enabled: keepSourceStyle || !selectionBlocked,
               selected: firstDemoSelected,
               leading: const Icon(PhosphorIcons.squaresFour),
               title: AppSelectionTitle(
@@ -124,7 +123,6 @@ class MusicSourcePicker extends StatelessWidget {
             ),
             ListTile(
               key: const ValueKey('music-source-mock2'),
-              enabled: keepSourceStyle || !selectionBlocked,
               selected: secondDemoSelected,
               leading: const Icon(
                 PhosphorIcons.squaresFour,
@@ -142,11 +140,10 @@ class MusicSourcePicker extends StatelessWidget {
               SettingsSectionHeading(l10n.musicSourceDeviceGroup),
               ListTile(
                 key: const ValueKey('music-source-local'),
-                enabled: keepSourceStyle || !selectionBlocked,
                 selected: localSelected,
                 leading: const Icon(PhosphorIcons.musicNotes),
                 title: AppSelectionTitle(
-                  selected: localSelected && (!busy || keepSourceStyle),
+                  selected: localSelected,
                   child: Text(l10n.musicSourceLocal),
                 ),
                 subtitle: Text(

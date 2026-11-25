@@ -17,11 +17,13 @@ class AlbumTrackList extends StatefulWidget {
     super.key,
     required this.album,
     this.playback,
+    this.xerox = false,
     this.onClose,
   });
 
   final Map<String, dynamic> album;
   final AlbumPlayback? playback;
+  final bool xerox;
   final VoidCallback? onClose;
 
   @override
@@ -98,6 +100,7 @@ class _AlbumTrackListState extends State<AlbumTrackList> {
         album['asset'] as String,
         artworkIdentity: id == null ? null : ArtworkIdentity(id),
         fit: BoxFit.cover,
+        xerox: widget.xerox,
         excludeFromSemantics: true,
         placeholder: const SizedBox.shrink(),
         prepareXerox: false,

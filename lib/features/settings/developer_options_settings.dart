@@ -78,8 +78,7 @@ class _DeveloperOptionsSettingsState extends State<DeveloperOptionsSettings> {
               style: const TextStyle(color: Colors.white60),
             ),
           ),
-          enabled: !_resetting,
-          onTap: _resetDemos,
+          onTap: _resetting ? null : _resetDemos,
         ),
       ],
     );
