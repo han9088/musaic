@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/ui/widgets/app_color_palette.dart';
 
 void main() {
-  testWidgets('the raised swatch stays colored from rainbow to solid', (
+  testWidgets('the raised swatch keeps its color until it nears the target', (
     tester,
   ) async {
     const swatches = [
@@ -39,12 +39,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     final raised = find.byKey(const ValueKey('palette-raised-swatch'));
-    final surface = tester.widget<DecoratedBox>(
-      find.descendant(of: raised, matching: find.byType(DecoratedBox)),
-    );
-    final fill = surface.decoration as BoxDecoration;
-    expect(fill.gradient!.colors.map((color) => color.a), everyElement(1.0));
+    List<Color> raisedColors() {
+      final surface = tester.widget<DecoratedBox>(
+        find.descendant(of: raised, matching: find.byType(DecoratedBox)),
+      );
+      return (surface.decoration as BoxDecoration).gradient!.colors;
+    }
 
+    const rainbow = [Colors.red, Colors.blue, Colors.red];
+    expect(raisedColors(), rainbow);
+
+    await tester.pump(const Duration(milliseconds: 70));
+    final arriving = raisedColors();
+    expect(arriving, isNot(rainbow));
+    expect(arriving.map((color) => color.a), everyElement(1.0));
     await tester.pumpAndSettle();
+    expect(raisedColors(), everyElement(Colors.orange));
   });
 }

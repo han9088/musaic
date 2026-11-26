@@ -78,7 +78,11 @@ class AppColorPalette<T> extends StatelessWidget {
                               scale: 1.16,
                               child: AnimatedContainer(
                                 duration: duration,
-                                curve: Curves.easeOutCubic,
+                                curve: const Interval(
+                                  0.65,
+                                  1,
+                                  curve: Curves.easeInOut,
+                                ),
                                 decoration: _raisedFill(fills, selected)
                                     .copyWith(
                                       boxShadow: const [
