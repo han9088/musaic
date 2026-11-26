@@ -546,7 +546,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool _reduceMotion = false;
   bool _desktopWallpaperEnabled = false;
   PageRoute<void>? _keyboardShortcutsRoute;
-  Locale? _desktopWallpaperMenuLocale;
   bool _landscape = false;
   bool _lastAutomaticLandscape = false;
   bool? _manualLayout;
@@ -679,20 +678,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (DesktopWallpaper.isAvailable) {
-      final locale = Localizations.localeOf(context);
-      if (_desktopWallpaperMenuLocale != locale) {
-        _desktopWallpaperMenuLocale = locale;
-        final l10n = AppLocalizations.of(context);
-        unawaited(
-          DesktopWallpaper.setMenuTitles(
-            setWallpaper: l10n.desktopWallpaperSet,
-            restoreWindow: l10n.desktopWallpaperRestore,
-            quit: l10n.desktopShortcutsQuit,
-          ),
-        );
-      }
-    }
     _reduceMotion = MediaQuery.disableAnimationsOf(context);
     final automaticLandscape = _automaticLandscape;
     if (automaticLandscape) {

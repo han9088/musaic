@@ -21,15 +21,11 @@ abstract final class DesktopWallpaper {
   static Future<void> restoreWindow() =>
       _channel.invokeMethod<void>('restoreWindow');
 
-  static Future<void> setMenuTitles({
-    required String setWallpaper,
-    required String restoreWindow,
-    required String quit,
-  }) => _channel.invokeMethod<void>('setMenuTitles', {
-    'set': setWallpaper,
-    'restore': restoreWindow,
-    'quit': quit,
-  });
+  /// 托盘创建成功后才允许原生窗口依赖它作为恢复入口。
+  static Future<void> setTrayReady(bool ready) =>
+      _channel.invokeMethod<void>('setTrayReady', ready);
+
+  static Future<void> quit() => _channel.invokeMethod<void>('quit');
 
   static void setHandlers({
     required Future<bool> Function() onPrepare,

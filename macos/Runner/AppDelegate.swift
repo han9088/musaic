@@ -2,21 +2,11 @@ import Cocoa
 import FlutterMacOS
 
 @main
-class AppDelegate: FlutterAppDelegate, NSMenuItemValidation {
+class AppDelegate: FlutterAppDelegate {
   private var windowKeptInBackground: MainFlutterWindow?
 
   private var desktopWallpaper: DesktopWallpaper? {
     (windowKeptInBackground ?? mainFlutterWindow as? MainFlutterWindow)?.desktopWallpaper
-  }
-
-  @IBAction func toggleDesktopWallpaper(_ sender: NSMenuItem) {
-    desktopWallpaper?.toggle()
-  }
-
-  func validateMenuItem(_ item: NSMenuItem) -> Bool {
-    guard item.action == #selector(toggleDesktopWallpaper(_:)) else { return true }
-    if let title = desktopWallpaper?.menuTitle { item.title = title }
-    return desktopWallpaper?.canToggle == true
   }
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

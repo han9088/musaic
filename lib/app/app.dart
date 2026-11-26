@@ -13,6 +13,7 @@ import '../services/music/music_source_controller.dart';
 import '../features/artwork/presentation/directory_artwork.dart';
 import '../features/artwork/presentation/custom_artwork_scope.dart';
 import '../features/indiebase/indiebase_scope.dart';
+import '../features/desktop_tray/desktop_tray_host.dart';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -140,13 +141,15 @@ class _MusaicAppState extends State<MusaicApp> {
       builder: _customArtwork == null && _indiebase == null
           ? null
           : _buildScopes,
-      home: DirectoryArtworkScope(
-        library: _directories,
-        child: AppBottomSheetHost(
-          child: HomePage(
-            albumCache: _albumCache,
-            sources: _sources,
-            language: _language,
+      home: DesktopTrayHost(
+        child: DirectoryArtworkScope(
+          library: _directories,
+          child: AppBottomSheetHost(
+            child: HomePage(
+              albumCache: _albumCache,
+              sources: _sources,
+              language: _language,
+            ),
           ),
         ),
       ),

@@ -9,7 +9,6 @@
 
 #include <memory>
 #include <optional>
-#include <string>
 
 class DesktopWallpaper {
  public:
@@ -29,9 +28,6 @@ class DesktopWallpaper {
   void Restore();
   bool AttachViewToWindow();
   void CloseHost();
-  bool AddTrayIcon();
-  void RemoveTrayIcon();
-  void ShowTrayMenu(POINT anchor);
 
   const HWND window_;
   const HWND view_;
@@ -42,10 +38,7 @@ class DesktopWallpaper {
   HWND host_ = nullptr;
   bool preparing_ = false;
   bool close_to_background_ = false;
-  bool tray_icon_added_ = false;
-  std::wstring set_title_ = L"Set as Wallpaper";
-  std::wstring restore_title_ = L"Restore Window";
-  std::wstring quit_title_ = L"Quit Musaic";
+  bool tray_ready_ = false;
 };
 
 #endif  // RUNNER_DESKTOP_WALLPAPER_H_

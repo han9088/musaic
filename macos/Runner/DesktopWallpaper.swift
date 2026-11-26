@@ -6,8 +6,9 @@ final class DesktopWallpaper {
   private let channel: FlutterMethodChannel
   private var session: (window: NSWindow, originalFrame: NSRect)?
   private var preparing = false
-  private var menuTitles = (set: "Set as Wallpaper", restore: "Restore Window")
-  private(set) var closeToBackground = false
+  private var shortcutReady = false
+  private var trayReady = false
+  var closeToBackground: Bool { shortcutReady || trayReady }
 
   init(window: NSWindow, messenger: FlutterBinaryMessenger) {
     mainWindow = window
@@ -19,12 +20,12 @@ final class DesktopWallpaper {
         return
       }
       switch call.method {
-      case "setMenuTitles":
-        if let titles = call.arguments as? [String: String],
-           let set = titles["set"], let restore = titles["restore"] {
-          self.menuTitles = (set: set, restore: restore)
-        }
-      case "setCloseToBackground": self.closeToBackground = call.arguments as? Bool == true
+      case "setCloseToBackground": self.shortcutReady = call.arguments as? Bool == true
+      case "setTrayReady": self.trayReady = call.arguments as? Bool == true
+      case "quit":
+        result(nil)
+        DispatchQueue.main.async { NSApp.terminate(nil) }
+        return
       case "embedWindow": self.embedWindow()
       case "restoreWindow": self.restoreWindow()
       default:
@@ -37,26 +38,14 @@ final class DesktopWallpaper {
 
   var isActive: Bool { session != nil }
 
-  var menuTitle: String { isActive ? menuTitles.restore : menuTitles.set }
-
-  var canToggle: Bool { !preparing && (isActive || canShow) }
-
   private var canShow: Bool {
     mainWindow.isVisible && !mainWindow.isMiniaturized
       && !mainWindow.styleMask.contains(.fullScreen) && mainWindow.attachedSheet == nil
       && NSApp.modalWindow == nil
   }
 
-  func toggle() {
-    if isActive {
-      restoreWindow()
-    } else {
-      embedWindow()
-    }
-  }
-
   func embedWindow() {
-    guard !isActive, canToggle else { return }
+    guard !isActive, !preparing, canShow, closeToBackground else { return }
     preparing = true
     channel.invokeMethod("prepare", arguments: nil) { [weak self] response in
       guard let self else { return }
