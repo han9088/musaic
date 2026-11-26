@@ -11,7 +11,7 @@ import '../desktop_wallpaper/desktop_wallpaper.dart';
 class DesktopTrayController {
   DesktopTrayController({this.onOpenSettings});
 
-  final Future<void> Function(String title)? onOpenSettings;
+  final Future<void> Function()? onOpenSettings;
 
   tray.TrayIcon? _icon;
   tray.Image? _image;
@@ -195,11 +195,7 @@ class DesktopTrayController {
       );
     }
     if (onOpenSettings case final open?) {
-      _settings = _addItem(
-        menu,
-        l10n.settings,
-        () => open(_localizations!.settings),
-      );
+      _settings = _addItem(menu, l10n.settings, open);
     }
     menu.addSeparator();
     _quit = _addItem(menu, l10n.desktopShortcutsQuit, DesktopWallpaper.quit);

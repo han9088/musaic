@@ -8,10 +8,14 @@ class MainFlutterWindow: NSWindow {
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
     let engine = flutterViewController.engine
-    // Enable secondary views before attaching the implicit view used by the main window.
-    engine.viewController = nil
-    _ = engine.perform(NSSelectorFromString("enableMultiView"))
-    engine.viewController = flutterViewController
+    let enableMultiView = NSSelectorFromString("enableMultiView")
+    let supportsMultiView = engine.responds(to: enableMultiView)
+    if supportsMultiView {
+      // Enable secondary views before attaching the implicit view used by the main window.
+      engine.viewController = nil
+      _ = engine.perform(enableMultiView)
+      engine.viewController = flutterViewController
+    }
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
     self.setFrame(windowFrame, display: true)
@@ -21,9 +25,15 @@ class MainFlutterWindow: NSWindow {
     RegisterGeneratedPlugins(registry: flutterViewController)
     AppIconPlugin.register(with: flutterViewController.registrar(forPlugin: "AppIconPlugin"))
     desktopWallpaper = DesktopWallpaper(window: self, messenger: flutterViewController.engine.binaryMessenger)
-    settingsWindow = MacSettingsWindow(engine: engine)
+    if supportsMultiView {
+      settingsWindow = MacSettingsWindow(engine: engine)
+    }
 
     super.awakeFromNib()
+  }
+
+  func requestSettings() {
+    settingsWindow?.requestOpen()
   }
 }
 
@@ -42,6 +52,9 @@ private final class MacSettingsWindow: NSObject, NSWindowDelegate {
       switch call.method {
       case "prepare":
         result(self.prepare(title: call.arguments as? String ?? ""))
+      case "setTitle":
+        if let title = call.arguments as? String { self.window?.title = title }
+        result(nil)
       case "show", "close":
         let viewId = (self.window?.contentViewController as? FlutterViewController)?.viewIdentifier
         guard let window = self.window, let id = call.arguments as? NSNumber,
@@ -51,9 +64,14 @@ private final class MacSettingsWindow: NSObject, NSWindowDelegate {
           return
         }
         if call.method == "show" {
+          if NSApp.isHidden { NSApp.unhide(nil) }
           if window.isMiniaturized { window.deminiaturize(nil) }
-          NSApp.activate(ignoringOtherApps: true)
           window.makeKeyAndOrderFront(nil)
+          if #available(macOS 14.0, *) {
+            NSApp.activate()
+          } else {
+            NSApp.activate(ignoringOtherApps: true)
+          }
         } else {
           window.close()
         }
@@ -62,6 +80,10 @@ private final class MacSettingsWindow: NSObject, NSWindowDelegate {
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  func requestOpen() {
+    channel.invokeMethod("open", arguments: nil)
   }
 
   private func prepare(title: String) -> FlutterViewIdentifier {
@@ -100,7 +122,8 @@ private final class MacSettingsWindow: NSObject, NSWindowDelegate {
 
   private func forwardFocus(_ name: String) {
     let selector = NSSelectorFromString(name)
-    guard let controller = window?.contentViewController as? FlutterViewController,
+    guard engine.responds(to: selector),
+      let controller = window?.contentViewController as? FlutterViewController,
       let method = engine.method(for: selector)
     else { return }
     // Match the Flutter window delegate's focus events on the shared engine.

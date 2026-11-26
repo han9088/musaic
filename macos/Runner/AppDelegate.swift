@@ -5,8 +5,16 @@ import FlutterMacOS
 class AppDelegate: FlutterAppDelegate {
   private var windowKeptInBackground: MainFlutterWindow?
 
+  private var musaicWindow: MainFlutterWindow? {
+    windowKeptInBackground ?? mainFlutterWindow as? MainFlutterWindow
+  }
+
   private var desktopWallpaper: DesktopWallpaper? {
-    (windowKeptInBackground ?? mainFlutterWindow as? MainFlutterWindow)?.desktopWallpaper
+    musaicWindow?.desktopWallpaper
+  }
+
+  @IBAction func openSettings(_ sender: Any?) {
+    musaicWindow?.requestSettings()
   }
 
   override func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

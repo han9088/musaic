@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:ui' show FlutterView;
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter/src/foundation/_features.dart' show isWindowingEnabled;
 import 'package:flutter/src/widgets/_window.dart';
@@ -41,37 +41,57 @@ class DesktopSettingsWindow extends ChangeNotifier
   WidgetBuilder? content;
   RegularWindowController? _window;
   FlutterView? _macOSView;
+  String _title = 'Settings';
+  bool _opening = false;
   bool _disposed = false;
 
-  Future<void> open(String title) async {
-    if (_disposed || content == null) return;
-    if (Platform.isMacOS) {
-      await _openMacOSWindow(title);
-      return;
+  void updateTitle(String title) {
+    if (_disposed || _title == title) return;
+    _title = title;
+    _window?.setTitle(title);
+    if (_macOSView != null) {
+      unawaited(_updateMacOSWindow('setTitle', title));
     }
-    if (_window case final window?) {
-      if (window.title != title) window.setTitle(title);
-      if (window.isMinimized) window.setMinimized(false);
-      window.activate();
-      return;
-    }
-    final window = RegularWindowController(
-      size: const Size(720, 560),
-      constraints: _windowConstraints,
-      title: title,
-      delegate: this,
-    );
-    _window = window;
-    notifyListeners();
-    window.activate();
   }
 
-  Future<void> _openMacOSWindow(String title) async {
+  Future<void> open() async {
+    if (_disposed || _opening || content == null) return;
+    _opening = true;
+    try {
+      if (Platform.isMacOS) {
+        await _openMacOSWindow();
+      } else if (_window case final window?) {
+        if (window.isActivated) return;
+        if (Platform.isWindows && window.isMaximized) {
+          window.setMaximized(true);
+        } else {
+          window.activate();
+        }
+      } else {
+        final window = _window = RegularWindowController(
+          size: const Size(720, 560),
+          constraints: _windowConstraints,
+          title: _title,
+          delegate: this,
+        );
+        notifyListeners();
+        // Let the embedder show the first frame unless hidden windows have paused frames.
+        if (!WidgetsBinding.instance.framesEnabled) window.activate();
+      }
+    } catch (error, stack) {
+      debugPrint('Could not open desktop settings: $error\n$stack');
+    } finally {
+      _opening = false;
+    }
+  }
+
+  Future<void> _openMacOSWindow() async {
+    final title = _title;
     final id = await _macOSWindow.invokeMethod<int>('prepare', title);
     if (id == null) throw StateError('Missing macOS settings view');
     try {
       if (_disposed) {
-        await _macOSWindow.invokeMethod<void>('close', id);
+        await _updateMacOSWindow('close', id);
         return;
       }
       final view = WidgetsBinding.instance.platformDispatcher.views.firstWhere(
@@ -81,15 +101,34 @@ class DesktopSettingsWindow extends ChangeNotifier
         _macOSView = view;
         notifyListeners();
       }
+      if (title != _title) await _updateMacOSWindow('setTitle', _title);
       await _macOSWindow.invokeMethod<void>('show', id);
     } catch (_) {
-      await _macOSWindow.invokeMethod<void>('close', id);
+      await _updateMacOSWindow('close', id);
+      _detachMacOSView(id);
       rethrow;
     }
   }
 
+  Future<void> _updateMacOSWindow(String method, Object argument) async {
+    try {
+      await _macOSWindow.invokeMethod<void>(method, argument);
+    } catch (error, stack) {
+      debugPrint('Could not $method on macOS settings: $error\n$stack');
+    }
+  }
+
   Future<void> _onMacOSWindowEvent(MethodCall call) async {
-    if (call.method != 'closed' || _macOSView?.viewId != call.arguments) return;
+    if (call.method == 'open') {
+      await open();
+      return;
+    }
+    if (call.method != 'closed') return;
+    if (call.arguments case final int id) _detachMacOSView(id);
+  }
+
+  void _detachMacOSView(int id) {
+    if (_disposed || _macOSView?.viewId != id) return;
     _macOSView = null;
     notifyListeners();
   }
@@ -134,7 +173,7 @@ class DesktopSettingsWindow extends ChangeNotifier
     if (isEnabled && Platform.isMacOS) {
       _macOSWindow.setMethodCallHandler(null);
       if (_macOSView case final view?) {
-        unawaited(_macOSWindow.invokeMethod<void>('close', view.viewId));
+        unawaited(_updateMacOSWindow('close', view.viewId));
         _macOSView = null;
       }
     }

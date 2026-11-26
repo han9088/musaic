@@ -167,7 +167,7 @@ class _MusaicAppState extends State<MusaicApp> {
       final mainApp = _buildApp(
         locale: locale,
         home: DesktopSettingsWindow.isSupported
-            ? DesktopTrayHost(onOpenSettings: settingsWindow?.open, child: home)
+            ? DesktopTrayHost(settingsWindow: settingsWindow, child: home)
             : home,
       );
       return settingsWindow?.attach(
