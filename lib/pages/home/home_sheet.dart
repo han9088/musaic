@@ -11,6 +11,7 @@ import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
 import '../../features/music/presentation/music_settings.dart';
+import '../../features/artwork/presentation/album_color_family.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../features/pro/pro_settings.dart';
 import '../../features/settings/about_settings.dart';
@@ -52,6 +53,11 @@ class HomeSheet extends StatefulWidget {
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
+    this.colorIndex,
+    this.colorOrganizeEnabled,
+    this.selectedColorFamily,
+    this.onColorOrganizeChanged,
+    this.onColorFamilySelected,
   });
 
   final Widget child;
@@ -71,6 +77,11 @@ class HomeSheet extends StatefulWidget {
   final ValueListenable<bool>? xeroxEnabled;
   final FutureOr<void> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
+  final AlbumColorFamilyIndex? colorIndex;
+  final ValueListenable<bool>? colorOrganizeEnabled;
+  final ValueListenable<AlbumColorFamily?>? selectedColorFamily;
+  final ValueChanged<bool>? onColorOrganizeChanged;
+  final ValueChanged<AlbumColorFamily?>? onColorFamilySelected;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -173,6 +184,11 @@ class _HomeSheetState extends State<HomeSheet> {
     xeroxEnabled: widget.xeroxEnabled,
     onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
     xeroxPalettePicker: widget.xeroxPalettePicker,
+    colorIndex: widget.colorIndex,
+    colorOrganizeEnabled: widget.colorOrganizeEnabled,
+    selectedColorFamily: widget.selectedColorFamily,
+    onColorOrganizeChanged: widget.onColorOrganizeChanged,
+    onColorFamilySelected: widget.onColorFamilySelected,
   );
 
   void _present() {

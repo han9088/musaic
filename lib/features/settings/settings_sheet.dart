@@ -4,6 +4,7 @@ import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../artwork/presentation/album_color_family.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
@@ -41,6 +42,11 @@ class SettingsSheet extends StatelessWidget {
     this.onXeroxChanged,
     this.xeroxPalettePicker,
     this.language,
+    this.colorIndex,
+    this.colorOrganizeEnabled,
+    this.selectedColorFamily,
+    this.onColorOrganizeChanged,
+    this.onColorFamilySelected,
   });
 
   final MusicSourceController? sources;
@@ -54,6 +60,11 @@ class SettingsSheet extends StatelessWidget {
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
   final AppLanguagePreference? language;
+  final AlbumColorFamilyIndex? colorIndex;
+  final ValueListenable<bool>? colorOrganizeEnabled;
+  final ValueListenable<AlbumColorFamily?>? selectedColorFamily;
+  final ValueChanged<bool>? onColorOrganizeChanged;
+  final ValueChanged<AlbumColorFamily?>? onColorFamilySelected;
 
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
@@ -164,6 +175,58 @@ class SettingsSheet extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                if ((colorIndex, colorOrganizeEnabled, onColorOrganizeChanged) case (
+                                  final index?,
+                                  final enabled?,
+                                  final onChanged?,
+                                ))
+                                  AnimatedBuilder(
+                                    animation: index,
+                                    builder: (context, _) {
+                                      final families = index.availableFamilies;
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          ListTile(
+                                            key: const ValueKey('album-color-organize-toggle'),
+                                            title: const Text('按色系整理画布'),
+                                            subtitle: const Text('将主题色相近的专辑集中排列'),
+                                            trailing: ValueListenableBuilder<bool>(
+                                              valueListenable: enabled,
+                                              builder: (_, value, __) => Switch(
+                                                value: value,
+                                                onChanged: onChanged,
+                                              ),
+                                            ),
+                                          ),
+                                          if (enabled.value && families.isNotEmpty && selectedColorFamily != null && onColorFamilySelected != null)
+                                            Padding(
+                                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                              child: ValueListenableBuilder<AlbumColorFamily?>(
+                                                valueListenable: selectedColorFamily!,
+                                                builder: (_, selected, __) => Wrap(
+                                                  spacing: 8,
+                                                  runSpacing: 8,
+                                                  children: [
+                                                    ChoiceChip(
+                                                      label: const Text('全部'),
+                                                      selected: selected == null,
+                                                      onSelected: (_) => onColorFamilySelected!(null),
+                                                    ),
+                                                    for (final family in families)
+                                                      ChoiceChip(
+                                                        label: Text(family.label),
+                                                        selected: selected == family,
+                                                        onSelected: (_) => onColorFamilySelected!(family),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      );
+                                    },
+                                  ),
                                 _section(
                                   PhosphorIcons.crownSimple,
                                   l10n.settingsPro,

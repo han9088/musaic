@@ -30,6 +30,7 @@ import '../../features/artwork/model/artwork_request.dart';
 import '../../features/artwork/mode/artwork_mode_controller.dart';
 import '../../features/artwork/presentation/custom_artwork_menu.dart';
 import '../../features/artwork/presentation/xerox_palette.dart';
+import '../../features/artwork/presentation/album_color_family.dart';
 import '../../features/artwork/presentation/xerox_palette_picker.dart';
 import '../../features/artwork/xerox/xerox_visible_artwork_planner.dart';
 import '../../features/artwork/xerox/xerox_raster_cache.dart';
@@ -86,6 +87,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Size? _portraitSize;
   Size? _landscapeFlowViewport;
   final _albumLayout = HomeAlbumLayoutState();
+  final _albumColors = AlbumColorFamilyIndex();
+  final _colorOrganizeEnabled = ValueNotifier<bool>(false);
+  final _selectedColorFamily = ValueNotifier<AlbumColorFamily?>(null);
   List<Map<String, dynamic>>? _catalog;
 
   _HomeMusicSource get _currentSource => _sources.catalog.value == null
@@ -112,11 +116,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   /// 应用选择并更新对应状态，用于页面状态组织与业务流程协调。
   Future<void> _applyCatalog(List<ProviderAlbum>? sourceAlbums) async {
     final albums = await _readCatalog(sourceAlbums);
+    await _albumColors.restore();
     if (!mounted ||
         _sourceTransition.switching.value ||
         _artworkMode.preparing ||
         _artworkMode.isTransitioning) {
       return;
+    }
+    _albumColors.retainAlbums(albums);
+    if (_selectedColorFamily.value != null &&
+        !_albumColors.availableFamilies.contains(_selectedColorFamily.value)) {
+      _selectedColorFamily.value = null;
     }
     _playback.bind(_sources.provider, sourceAlbums);
     setState(() {
@@ -142,7 +152,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final source = _currentSource;
       final sourceAlbums = _sources.catalog.value;
       final target = await _readCatalog(sourceAlbums, source: source);
+      await _albumColors.restore();
       if (!mounted) return;
+      _albumColors.retainAlbums(target);
+      if (_selectedColorFamily.value != null &&
+          !_albumColors.availableFamilies.contains(_selectedColorFamily.value)) {
+        _selectedColorFamily.value = null;
+      }
       if (source == _renderedSource || _reduceMotion || _landscape) {
         if (source == _renderedSource &&
             identical(sourceAlbums, previousCatalog)) {
@@ -533,6 +549,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    unawaited(_albumColors.restore());
     if (DesktopShortcuts.isAvailable) {
       _desktopShortcuts = DesktopShortcuts(_playback);
     }
@@ -756,6 +773,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _manualRotation.dispose();
     _screensaverDelay.dispose();
     _playback.dispose();
+    _albumColors.dispose();
+    _colorOrganizeEnabled.dispose();
+    _selectedColorFamily.dispose();
     if (widget.sources == null) {
       unawaited(
         _sources.dispose().catchError((Object error) {
@@ -827,6 +847,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           screensaverDelay: _screensaverDelay,
           xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,
+          colorIndex: _albumColors,
+          colorOrganizeEnabled: _colorOrganizeEnabled,
+          selectedColorFamily: _selectedColorFamily,
+          onColorOrganizeChanged: (enabled) {
+            _albumLayout.colorOrganized = enabled;
+            _albumLayout.gridAlbums.clear();
+            _albumLayout.selectedAlbum = null;
+            _colorOrganizeEnabled.value = enabled;
+            setState(() {});
+          },
+          onColorFamilySelected: (family) {
+            _albumLayout.gridAlbums.clear();
+            _albumLayout.selectedAlbum = null;
+            _selectedColorFamily.value = family;
+            setState(() {});
+          },
           xeroxPalettePicker: XeroxPalettePicker(
             selection: _artworkMode.palette,
             onChanged: _setXeroxPalette,
@@ -940,8 +976,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
+    final displayAlbums = _colorOrganizeEnabled.value
+        ? _albumColors.organize(albums, _selectedColorFamily.value)
+        : albums;
+    _albumLayout.colorOrganized = _colorOrganizeEnabled.value;
     return AlbumCanvasViewport(
-      albums: albums,
+      albums: displayAlbums,
       layout: _albumLayout,
       transform: _transform,
       interaction: _interaction,
@@ -958,6 +998,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _interaction.selectionPaused = true;
       }),
       animateSourceTile: _animateCanvasTile,
+      onArtworkAccent: (album, accent) => _albumColors.register(album, accent),
     );
   }
 }

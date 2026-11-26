@@ -40,6 +40,7 @@ class AlbumCanvasViewport extends StatefulWidget {
     required this.onViewportSizeChanged,
     required this.onTileSelected,
     required this.animateSourceTile,
+    this.onArtworkAccent,
   });
 
   static bool useWidgetGridForBenchmark = false;
@@ -54,6 +55,7 @@ class AlbumCanvasViewport extends StatefulWidget {
   final ValueChanged<Size> onViewportSizeChanged;
   final void Function(int row, int column) onTileSelected;
   final Widget Function(int row, int column, Widget child) animateSourceTile;
+  final void Function(Map<String, dynamic> album, Color accent)? onArtworkAccent;
 
   @override
   State<AlbumCanvasViewport> createState() => _AlbumCanvasViewportState();
@@ -238,6 +240,9 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
           directories: directory.library,
           configuration: config,
           isCurrent: isCurrent,
+          onAccent: widget.onArtworkAccent == null
+              ? null
+              : (album, accent) => widget.onArtworkAccent!(album as Map<String, dynamic>, accent),
         );
         if (atlas == null) return;
         if (!isCurrent()) {
@@ -338,6 +343,16 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                 asset.startsWith('media-store:') || asset.startsWith('local:')
                 ? const ArtworkPlaceholder.canvasTile()
                 : null,
+            accentBuilder: widget.onArtworkAccent == null
+                ? null
+                : (context, artwork, accent) {
+                    if (accent != null) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) widget.onArtworkAccent!(album, accent);
+                      });
+                    }
+                    return artwork;
+                  },
           ),
         ),
       ),

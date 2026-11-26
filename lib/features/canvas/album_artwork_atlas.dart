@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart' show Matrix4;
 
 import '../../services/music/directory_music_library.dart';
+import '../artwork/presentation/artwork_accent.dart';
 import '../artwork/model/artwork_request.dart';
 import '../artwork/pipeline/artwork_pipeline.dart';
 import 'album_grid_snapshot.dart';
@@ -28,6 +29,7 @@ class CanvasArtworkAtlas {
     required DirectoryMusicLibrary? directories,
     required ImageConfiguration configuration,
     required bool Function() isCurrent,
+    void Function(Object album, Color accent)? onAccent,
   }) async {
     final images = <Object, ui.Image>{};
     final pipeline = ArtworkPipeline.instance;
@@ -50,6 +52,10 @@ class CanvasArtworkAtlas {
         );
         final image = await _readImage(provider, configuration);
         images[album] = image;
+        if (onAccent != null) {
+          final accent = await readArtworkAccent(image);
+          if (accent != null && isCurrent()) onAccent(album, accent);
+        }
         if (image.width != albumCanvasArtworkResolution ||
             image.height != albumCanvasArtworkResolution) {
           return null;

@@ -78,7 +78,7 @@ class _ArtworkAccentState extends State<ArtworkAccent> {
     final key = widget.sourceKey!;
     final existing = _sampleCache.remove(key);
     final sample =
-        existing ?? _readAccent(info.image).whenComplete(info.dispose);
+        existing ?? readArtworkAccent(info.image).whenComplete(info.dispose);
     if (existing != null) info.dispose();
     _sampleCache[key] = sample;
     if (_sampleCache.length > _cacheCapacity) {
@@ -110,7 +110,7 @@ class _ArtworkAccentState extends State<ArtworkAccent> {
   );
 }
 
-Future<Color?> _readAccent(ui.Image image) async {
+Future<Color?> readArtworkAccent(ui.Image image) async {
   const side = 24;
   final recorder = ui.PictureRecorder();
   ui.Canvas(recorder).drawImageRect(

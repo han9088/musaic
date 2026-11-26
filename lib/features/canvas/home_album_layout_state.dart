@@ -13,6 +13,7 @@ class HomeAlbumLayoutState {
   double flowTilt = 0;
   int gridOffset = 0;
   (int, int)? selectedAlbum;
+  bool colorOrganized = false;
 
   /// 执行当前模块中的专辑at操作，用于专辑墙无限画布的布局、视口与交互状态。
   Map<String, dynamic> albumAt(
@@ -21,7 +22,15 @@ class HomeAlbumLayoutState {
     List<Map<String, dynamic>> albums,
   ) =>
       gridAlbums[(row, column)] ??
-      albums[gridAlbumIndex(row, column, albums.length)];
+      albums[colorOrganized
+          ? _rowMajorIndex(row, column, albums.length)
+          : gridAlbumIndex(row, column, albums.length)];
+
+  static int _rowMajorIndex(int row, int column, int count) {
+    const columns = 8;
+    final index = row * columns + column;
+    return ((index % count) + count) % count;
+  }
 
   /// 移除、清理或重置相关状态与资源，用于专辑墙无限画布的布局、视口与交互状态。
   void clear() {
