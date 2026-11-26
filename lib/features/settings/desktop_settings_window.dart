@@ -14,7 +14,7 @@ import '../../ui/theme/app_colors.dart';
 
 /// Hosts settings in a second native view of the existing Flutter engine.
 class DesktopSettingsWindow extends ChangeNotifier
-    with RegularWindowControllerDelegate {
+    with WindowControllerDelegate {
   DesktopSettingsWindow() {
     if (isEnabled && Platform.isMacOS) {
       _macOSWindow.setMethodCallHandler(_onMacOSWindowEvent);
@@ -39,7 +39,7 @@ class DesktopSettingsWindow extends ChangeNotifier
   }
 
   WidgetBuilder? content;
-  RegularWindowController? _window;
+  WindowController? _window;
   FlutterView? _macOSView;
   String _title = 'Settings';
   bool _opening = false;
@@ -68,7 +68,7 @@ class DesktopSettingsWindow extends ChangeNotifier
           window.activate();
         }
       } else {
-        final window = _window = RegularWindowController(
+        final window = _window = WindowController(
           size: const Size(720, 560),
           constraints: _windowConstraints,
           title: _title,
