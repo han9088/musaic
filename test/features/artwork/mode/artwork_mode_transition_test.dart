@@ -74,20 +74,30 @@ void main() {
     )..enabled = true;
     addTearDown(controller.dispose);
 
-    Future<void> pick(XeroxPalette palette, {bool reduceMotion = false}) =>
-        controller.applyPalette(
+    void pick(XeroxPalette palette, {bool reduceMotion = false}) =>
+        controller.selectPalette(
           selection: palette,
-          visibleCells: cells,
-          viewport: viewport,
-          reduceMotion: reduceMotion,
+          readViewport: () => (
+            visibleCells: cells,
+            viewport: viewport,
+            reduceMotion: reduceMotion,
+          ),
         );
 
-    final done = pick(XeroxPalette.ochre);
-    expect(controller.phase, ArtworkModeTransitionPhase.exit);
+    pick(XeroxPalette.ochre);
+    expect(controller.phase, isNull);
+    expect(controller.paletteSelection.value, XeroxPalette.ochre);
     expect(controller.palette.value, XeroxPalette.original);
 
-    await pick(XeroxPalette.sage);
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    pick(XeroxPalette.sage);
+    expect(controller.paletteSelection.value, XeroxPalette.sage);
+    await tester.pump(const Duration(milliseconds: 199));
+    expect(controller.phase, isNull);
+    expect(controller.palette.value, XeroxPalette.original);
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(controller.phase, ArtworkModeTransitionPhase.exit);
+
     await tester.pump(
       Duration(
         milliseconds:
@@ -99,16 +109,17 @@ void main() {
 
     await tester.pump(Duration(milliseconds: sourceHandoffMs.ceil() + 1));
     expect(controller.phase, ArtworkModeTransitionPhase.enter);
-    expect(controller.palette.value, XeroxPalette.ochre);
+    expect(controller.palette.value, XeroxPalette.sage);
     expect(controller.enabled, isTrue);
 
     await tester.pump(const Duration(seconds: 1));
-    await done;
     expect(controller.phase, isNull);
-    await pick(XeroxPalette.ochre);
+    pick(XeroxPalette.sage);
     expect(controller.phase, isNull);
 
-    await pick(XeroxPalette.indigo, reduceMotion: true);
+    pick(XeroxPalette.indigo, reduceMotion: true);
+    expect(controller.palette.value, XeroxPalette.sage);
+    await tester.pump(const Duration(milliseconds: 200));
     expect(controller.palette.value, XeroxPalette.indigo);
     expect(controller.phase, isNull);
   });

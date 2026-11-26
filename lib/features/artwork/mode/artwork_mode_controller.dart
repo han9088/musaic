@@ -1,15 +1,24 @@
 // 文件职责：Artwork 模式和配色切换、资源准备、动画交接和 Lease 生命周期。
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:material_ui/material_ui.dart';
 
 import '../../../ui/transitions/source_tile_motion.dart';
 import '../pipeline/artwork_prefetch_scheduler.dart';
+import '../presentation/color_selection_debounce.dart';
 import '../presentation/xerox_palette.dart';
 import '../xerox/xerox_job_scheduler.dart';
 import '../xerox/xerox_raster_cache.dart';
 import '../xerox/xerox_raster_request.dart';
 import 'artwork_mode_transition.dart';
+
+typedef XeroxPaletteViewport = ({
+  List<({int row, int column, Rect rect})> visibleCells,
+  Size viewport,
+  bool reduceMotion,
+});
 
 /// 统一协调 Original 与 Xerox 两种显示模式。
 ///
@@ -45,13 +54,18 @@ class ArtworkModeController {
   final _preparedLeases = <XeroxRasterLease>[];
   final _enabled = ValueNotifier(false);
   final palette = ValueNotifier(XeroxPalette.original);
+  final _paletteSelection = ValueNotifier(XeroxPalette.original);
+  final _paletteDebounce = ColorSelectionDebounce();
+  XeroxPalette _settledPalette = XeroxPalette.original;
   late final ArtworkModeTransition _transition;
+  bool _applyingPalette = false;
 
   bool preparing = false;
 
   bool get enabled => _enabled.value;
   set enabled(bool value) => _enabled.value = value;
   ValueListenable<bool> get enabledListenable => _enabled;
+  ValueListenable<XeroxPalette> get paletteSelection => _paletteSelection;
   bool get isTransitioning => _transition.isActive;
   ArtworkModeTransitionPhase? get phase => _transition.phase;
 
@@ -105,24 +119,49 @@ class ArtworkModeController {
     }
   }
 
-  Future<void> applyPalette({
+  void selectPalette({
     required XeroxPalette selection,
-    required List<({int row, int column, Rect rect})> visibleCells,
-    required Size viewport,
-    required bool reduceMotion,
-  }) async {
+    required XeroxPaletteViewport? Function() readViewport,
+  }) {
     if (!enabled ||
         preparing ||
-        isTransitioning ||
-        selection == palette.value) {
+        (isTransitioning && !_applyingPalette) ||
+        selection == _paletteSelection.value) {
       return;
     }
-    await _animateChange(
-      visibleCells: visibleCells,
-      viewport: viewport,
-      reduceMotion: reduceMotion,
-      onHandoff: () => palette.value = selection,
-    );
+
+    _paletteSelection.value = selection;
+    _paletteDebounce.schedule(() {
+      _settledPalette = selection;
+      if (!_applyingPalette) unawaited(_applyPalette(readViewport));
+    });
+  }
+
+  Future<void> _applyPalette(
+    XeroxPaletteViewport? Function() readViewport,
+  ) async {
+    _applyingPalette = true;
+    try {
+      while (_isMounted() && palette.value != _settledPalette) {
+        final frame = enabled && !preparing && !isTransitioning
+            ? readViewport()
+            : null;
+        if (frame == null) {
+          _paletteDebounce.cancel();
+          _settledPalette = palette.value;
+          _paletteSelection.value = palette.value;
+          return;
+        }
+        await _animateChange(
+          visibleCells: frame.visibleCells,
+          viewport: frame.viewport,
+          reduceMotion: frame.reduceMotion,
+          onHandoff: () => palette.value = _settledPalette,
+        );
+      }
+    } finally {
+      _applyingPalette = false;
+    }
   }
 
   Future<void> _animateChange({
@@ -217,8 +256,10 @@ class ArtworkModeController {
   }
 
   void dispose() {
+    _paletteDebounce.cancel();
     _enabled.dispose();
     palette.dispose();
+    _paletteSelection.dispose();
     _transition.dispose();
     _releasePrepared();
   }

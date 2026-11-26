@@ -3,7 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../ui/theme/app_theme.dart';
-import '../../../ui/widgets/app_selection_dot.dart';
+import '../../../ui/widgets/app_color_palette.dart';
 import 'xerox_palette.dart';
 
 class XeroxPalettePicker extends StatelessWidget {
@@ -35,40 +35,26 @@ class XeroxPalettePicker extends StatelessWidget {
           ),
           ValueListenableBuilder<XeroxPalette>(
             valueListenable: selection,
-            builder: (context, current, _) => Wrap(
-              children: [
+            builder: (context, current, _) => AppColorPalette<XeroxPalette>(
+              selection: current,
+              onSelected: onChanged,
+              swatches: [
                 for (final palette in XeroxPalette.values)
-                  Semantics(
-                    selected: current == palette,
-                    child: IconButton(
-                      key: ValueKey(palette),
-                      tooltip: switch (palette) {
-                        XeroxPalette.original => l10n.xeroxPaperOriginal,
-                        XeroxPalette.ivory => l10n.xeroxPaperIvory,
-                        XeroxPalette.sand => l10n.xeroxPaperSand,
-                        XeroxPalette.sage => l10n.xeroxPaperSage,
-                        XeroxPalette.mist => l10n.xeroxPaperMist,
-                        XeroxPalette.dustyRose => l10n.xeroxPaperDustyRose,
-                        XeroxPalette.ochre => l10n.xeroxPaperOchre,
-                        XeroxPalette.terracotta => l10n.xeroxPaperTerracotta,
-                        XeroxPalette.indigo => l10n.xeroxPaperIndigo,
-                        XeroxPalette.celadon => l10n.xeroxPaperCeladon,
-                      },
-                      onPressed: () => onChanged(palette),
-                      icon: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: palette.paper,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: palette.ink, width: 2),
-                        ),
-                        alignment: Alignment.center,
-                        child: current == palette
-                            ? const AppSelectionDot()
-                            : null,
-                      ),
-                    ),
+                  (
+                    value: palette,
+                    label: switch (palette) {
+                      XeroxPalette.original => l10n.xeroxPaperOriginal,
+                      XeroxPalette.ivory => l10n.xeroxPaperIvory,
+                      XeroxPalette.sand => l10n.xeroxPaperSand,
+                      XeroxPalette.sage => l10n.xeroxPaperSage,
+                      XeroxPalette.mist => l10n.xeroxPaperMist,
+                      XeroxPalette.dustyRose => l10n.xeroxPaperDustyRose,
+                      XeroxPalette.ochre => l10n.xeroxPaperOchre,
+                      XeroxPalette.terracotta => l10n.xeroxPaperTerracotta,
+                      XeroxPalette.indigo => l10n.xeroxPaperIndigo,
+                      XeroxPalette.celadon => l10n.xeroxPaperCeladon,
+                    },
+                    fill: BoxDecoration(color: palette.paper),
                   ),
               ],
             ),

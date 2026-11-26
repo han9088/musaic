@@ -17,6 +17,7 @@ import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../l10n/generated/app_localizations.dart';
 import 'home_sheet.dart';
+import '../../features/canvas/album_color_organization.dart';
 import '../../features/canvas/album_grid_snapshot.dart';
 import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
@@ -88,8 +89,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Size? _landscapeFlowViewport;
   final _albumLayout = HomeAlbumLayoutState();
   final _albumColors = AlbumColorFamilyIndex();
-  final _colorOrganizeEnabled = ValueNotifier<bool>(false);
-  final _selectedColorFamily = ValueNotifier<AlbumColorFamily?>(null);
+  late final AlbumColorOrganization _colorOrganization = AlbumColorOrganization(
+    _albumColors,
+    onApplied: () => setState(() {
+      _albumLayout.colorOrganized = _colorOrganization.enabled;
+      _albumLayout.gridAlbums.clear();
+      _albumLayout.selectedAlbum = null;
+    }),
+  );
   List<Map<String, dynamic>>? _catalog;
 
   _HomeMusicSource get _currentSource => _sources.catalog.value == null
@@ -124,10 +131,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return;
     }
     _albumColors.retainAlbums(albums);
-    if (_selectedColorFamily.value != null &&
-        !_albumColors.availableFamilies.contains(_selectedColorFamily.value)) {
-      _selectedColorFamily.value = null;
-    }
+    _colorOrganization.retainAvailableFamilies();
     _playback.bind(_sources.provider, sourceAlbums);
     setState(() {
       _catalog = albums;
@@ -155,10 +159,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await _albumColors.restore();
       if (!mounted) return;
       _albumColors.retainAlbums(target);
-      if (_selectedColorFamily.value != null &&
-          !_albumColors.availableFamilies.contains(_selectedColorFamily.value)) {
-        _selectedColorFamily.value = null;
-      }
+      _colorOrganization.retainAvailableFamilies();
       if (source == _renderedSource || _reduceMotion || _landscape) {
         if (source == _renderedSource &&
             identical(sourceAlbums, previousCatalog)) {
@@ -408,19 +409,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   bool get _artworkChangeBlocked =>
       _artworkMode.preparing ||
       _artworkMode.isTransitioning ||
+      _paletteChangeBlocked;
+
+  bool get _paletteChangeBlocked =>
       _sourceTransition.switching.value ||
       _sourceTransition.phase != null ||
       _layout.isAnimating ||
       _landscape;
 
-  Future<void> _setXeroxPalette(XeroxPalette palette) async {
-    if (_artworkChangeBlocked || palette == _artworkMode.palette.value) return;
+  void _selectXeroxPalette(XeroxPalette palette) {
+    if (_paletteChangeBlocked) return;
+    _artworkMode.selectPalette(
+      selection: palette,
+      readViewport: _readXeroxPaletteViewport,
+    );
+  }
+
+  XeroxPaletteViewport? _readXeroxPaletteViewport() {
+    if (_paletteChangeBlocked) return null;
     final viewport = _portraitSize ?? MediaQuery.sizeOf(context);
     final visibleCells = _catalog?.isNotEmpty == true
         ? AlbumGridSnapshot.capture(viewport, _transform.value).cells
         : const <({int row, int column, Rect rect})>[];
-    await _artworkMode.applyPalette(
-      selection: palette,
+    return (
       visibleCells: visibleCells,
       viewport: viewport,
       reduceMotion: _reduceMotion,
@@ -773,9 +784,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _manualRotation.dispose();
     _screensaverDelay.dispose();
     _playback.dispose();
+    _colorOrganization.dispose();
     _albumColors.dispose();
-    _colorOrganizeEnabled.dispose();
-    _selectedColorFamily.dispose();
     if (widget.sources == null) {
       unawaited(
         _sources.dispose().catchError((Object error) {
@@ -848,24 +858,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,
           colorIndex: _albumColors,
-          colorOrganizeEnabled: _colorOrganizeEnabled,
-          selectedColorFamily: _selectedColorFamily,
-          onColorOrganizeChanged: (enabled) {
-            _albumLayout.colorOrganized = enabled;
-            _albumLayout.gridAlbums.clear();
-            _albumLayout.selectedAlbum = null;
-            _colorOrganizeEnabled.value = enabled;
-            setState(() {});
-          },
-          onColorFamilySelected: (family) {
-            _albumLayout.gridAlbums.clear();
-            _albumLayout.selectedAlbum = null;
-            _selectedColorFamily.value = family;
-            setState(() {});
-          },
+          colorOrganizeEnabled: _colorOrganization.enabledSelection,
+          selectedColorFamily: _colorOrganization.familySelection,
+          onColorOrganizeChanged: _colorOrganization.selectEnabled,
+          onColorFamilySelected: _colorOrganization.selectFamily,
           xeroxPalettePicker: XeroxPalettePicker(
-            selection: _artworkMode.palette,
-            onChanged: _setXeroxPalette,
+            selection: _artworkMode.paletteSelection,
+            onChanged: _selectXeroxPalette,
           ),
           child: canvas,
         );
@@ -976,10 +975,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
-    final displayAlbums = _colorOrganizeEnabled.value
-        ? _albumColors.organize(albums, _selectedColorFamily.value)
+    final displayAlbums = _colorOrganization.enabled
+        ? _albumColors.organize(albums, _colorOrganization.family)
         : albums;
-    _albumLayout.colorOrganized = _colorOrganizeEnabled.value;
+    _albumLayout.colorOrganized = _colorOrganization.enabled;
     return AlbumCanvasViewport(
       albums: displayAlbums,
       layout: _albumLayout,

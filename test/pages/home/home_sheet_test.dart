@@ -1449,16 +1449,30 @@ void main() {
 
     expect(tester.widget<ListTile>(toggle).selected, isTrue);
     expectDotAligned(tester, toggle, find.text('Xerox'));
+    final raisedSwatch = find.descendant(
+      of: picker,
+      matching: find.byKey(const ValueKey('palette-raised-swatch')),
+    );
     for (final preset in XeroxPalette.values) {
       final swatch = find.byKey(ValueKey(preset));
       await tester.ensureVisible(swatch);
+      final start = tester.getCenter(raisedSwatch);
+      final destination = tester.getCenter(swatch);
       await tester.tap(swatch);
       await tester.pump();
       expect(palette.value, preset);
-      expect(
-        find.descendant(of: swatch, matching: find.byType(AppSelectionDot)),
-        findsOneWidget,
-      );
+      expect(tester.widget<Semantics>(swatch).properties.selected, isTrue);
+      if (start != destination) {
+        await tester.pump(const Duration(milliseconds: 80));
+        final moving = tester.getCenter(raisedSwatch);
+        expect(
+          (moving - destination).distance,
+          lessThan((start - destination).distance),
+        );
+        expect(moving, isNot(destination));
+      }
+      await tester.pump(const Duration(milliseconds: 160));
+      expect(tester.getCenter(raisedSwatch), destination);
     }
     await toggleFromExpanded(false);
     await tester.ensureVisible(toggle);
