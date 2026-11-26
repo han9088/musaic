@@ -17,6 +17,7 @@ import '../../features/pro/pro_settings.dart';
 import '../../features/settings/about_settings.dart';
 import '../../features/settings/appearance_settings.dart';
 import '../../features/settings/developer_options_settings.dart';
+import '../../features/settings/desktop_settings_window.dart';
 import '../../features/settings/diagnostics_settings.dart';
 import '../../features/settings/settings_sheet.dart';
 import '../../features/settings/usage_guide_settings.dart';
@@ -29,6 +30,7 @@ import '../../storage/settings/manual_rotation_preference.dart';
 import '../../storage/settings/screensaver_delay_preference.dart';
 import '../../storage/settings/usage_guide_preference.dart';
 import '../../ui/bottom_sheet/bottom_sheet.dart';
+import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_spacing.dart';
 import '../settings/settings_page.dart';
 
@@ -37,6 +39,7 @@ class HomeSheet extends StatefulWidget {
   const HomeSheet({
     super.key,
     required this.child,
+    this.settingsWindow,
     this.icons = const AppIconService(),
     this.enabled = true,
     this.playbackReady = true,
@@ -61,6 +64,7 @@ class HomeSheet extends StatefulWidget {
   });
 
   final Widget child;
+  final DesktopSettingsWindow? settingsWindow;
   final AppIconService icons;
   final bool enabled;
   final bool playbackReady;
@@ -108,6 +112,7 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   void initState() {
     super.initState();
+    widget.settingsWindow?.content = _buildDesktopSettings;
     unawaited(_usageGuide.restore());
     unawaited(_developerOptions.restore());
   }
@@ -141,6 +146,10 @@ class _HomeSheetState extends State<HomeSheet> {
   @override
   void didUpdateWidget(HomeSheet oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.settingsWindow != widget.settingsWindow) {
+      oldWidget.settingsWindow?.content = null;
+      widget.settingsWindow?.content = _buildDesktopSettings;
+    }
     final wasPlaybackAvailable = oldWidget.enabled && oldWidget.playbackReady;
     if (wasPlaybackAvailable != _playbackAvailable) {
       _visible = _playbackAvailable && oldWidget.enabled;
@@ -163,6 +172,7 @@ class _HomeSheetState extends State<HomeSheet> {
 
   @override
   void dispose() {
+    widget.settingsWindow?.content = null;
     _hideTimer?.cancel();
     _usageGuide.dispose();
     _developerOptions.dispose();
@@ -172,17 +182,26 @@ class _HomeSheetState extends State<HomeSheet> {
     super.dispose();
   }
 
-  Widget _buildSettingsSheet() => SettingsSheet(
+  Widget _buildDesktopSettings(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.sheetBackground,
+    body: _buildSettingsSheet(desktop: true),
+  );
+
+  Widget _buildSettingsSheet({bool desktop = false}) => SettingsSheet(
+    desktop: desktop,
     sources: widget.sources,
     sourceSwitching: widget.sourceSwitching,
     onSourceSelection: _selectSource,
-    onOpenSection: _openSettings,
+    onOpenSection: (source, section) =>
+        _openSettings(source, section, desktop: desktop),
     language: widget.language,
     usageGuideVisible: _usageGuide.visible,
     developerOptionsEnabled: _developerOptions.enabled,
     keyboardShortcutsVisible: widget.desktopShortcuts != null,
     xeroxEnabled: widget.xeroxEnabled,
-    onXeroxChanged: widget.onXeroxChanged == null ? null : _changeXerox,
+    onXeroxChanged: widget.onXeroxChanged == null
+        ? null
+        : (enabled) => _changeXerox(enabled, desktop: desktop),
     xeroxPalettePicker: widget.xeroxPalettePicker,
     colorIndex: widget.colorIndex,
     colorOrganizeEnabled: widget.colorOrganizeEnabled,
@@ -237,9 +256,16 @@ class _HomeSheetState extends State<HomeSheet> {
     setState(() => _sheetId = sheetId);
   }
 
-  void _openSettings(BuildContext source, SettingsSection section) {
-    if (!_open || _sourceSelectionPending || _xeroxChangePending) return;
-    final navigator = Navigator.of(source, rootNavigator: true);
+  PageRoute<void>? _openSettings(
+    BuildContext source,
+    SettingsSection section, {
+    required bool desktop,
+  }) {
+    if (!desktop &&
+        (!_open || _sourceSelectionPending || _xeroxChangePending)) {
+      return null;
+    }
+    final navigator = Navigator.of(source, rootNavigator: !desktop);
     late final PageRoute<void> route;
     final (path, title, body) = switch (section) {
       SettingsSection.pro => (
@@ -253,12 +279,14 @@ class _HomeSheetState extends State<HomeSheet> {
         MusicSourcePicker(
           sources: widget.sources!,
           sourceSwitching: widget.sourceSwitching,
-          onSourceSelection: (select) async {
-            if (!route.isCurrent) return;
-            navigator.pop();
-            await route.completed;
-            if (mounted) await _selectSource(select);
-          },
+          onSourceSelection: desktop
+              ? _selectSource
+              : (select) async {
+                  if (!route.isCurrent) return;
+                  navigator.pop();
+                  await route.completed;
+                  if (mounted) await _selectSource(select);
+                },
         ),
       ),
       SettingsSection.music => (
@@ -275,6 +303,7 @@ class _HomeSheetState extends State<HomeSheet> {
         AppearanceSettings(
           icons: widget.icons,
           manualRotation: widget.manualRotation,
+          language: desktop ? widget.language : null,
         ),
       ),
       SettingsSection.keyboardShortcuts => (
@@ -296,8 +325,10 @@ class _HomeSheetState extends State<HomeSheet> {
         '/settings/about',
         (AppLocalizations l10n) => l10n.settingsAbout,
         AboutSettings(
-          onOpenDetail: pushSettingsDetail,
-          onOpenDeveloperOptions: _openDeveloperOptions,
+          onOpenDetail: (source, title, body) =>
+              pushSettingsDetail(source, title, body, desktop: desktop),
+          onOpenDeveloperOptions: (source) =>
+              _openDeveloperOptions(source, desktop: desktop),
         ),
       ),
       SettingsSection.developerOptions => (
@@ -312,6 +343,7 @@ class _HomeSheetState extends State<HomeSheet> {
       path: path,
       title: title,
       body: body,
+      desktop: desktop,
       bodyIsSliver: section == SettingsSection.diagnostics,
       footer: section == SettingsSection.about
           ? const AboutCopyrightFooter()
@@ -326,18 +358,20 @@ class _HomeSheetState extends State<HomeSheet> {
             )
           : null,
     );
-    if (section == SettingsSection.keyboardShortcuts) {
+    if (!desktop && section == SettingsSection.keyboardShortcuts) {
       widget.onKeyboardShortcutsOpened?.call(route);
     }
+    return route;
   }
 
-  void _openDeveloperOptions(BuildContext source) {
+  void _openDeveloperOptions(BuildContext source, {required bool desktop}) {
     if (ModalRoute.isCurrentOf(source) == false) return;
     unawaited(_developerOptions.enable());
     pushSettingsDetail(
       source,
       AppLocalizations.of(source).settingsDeveloperOptions,
       const DeveloperOptionsSettings(),
+      desktop: desktop,
     );
   }
 
@@ -347,9 +381,9 @@ class _HomeSheetState extends State<HomeSheet> {
     collapse?.complete(settled);
   }
 
-  Future<void> _changeXerox(bool enabled) async {
+  Future<void> _changeXerox(bool enabled, {required bool desktop}) async {
     final onChanged = widget.onXeroxChanged;
-    if (!_open ||
+    if ((!desktop && !_open) ||
         _xeroxChangePending ||
         _sourceSelectionPending ||
         onChanged == null) {
@@ -357,6 +391,10 @@ class _HomeSheetState extends State<HomeSheet> {
     }
     _xeroxChangePending = true;
     try {
+      if (desktop) {
+        await onChanged(enabled);
+        return;
+      }
       final sheet = DeskBottomSheet.of(context);
       final controller = sheet.topSheetController;
       if (_sheetExpanded &&
@@ -399,7 +437,8 @@ class _HomeSheetState extends State<HomeSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => widget.playback == null
+  Widget build(BuildContext context) =>
+      widget.playback == null || widget.settingsWindow != null
       ? _buildHome(context, null)
       : PlaybackGestureIntro(
           enabled: _playbackAvailable && !_open,
@@ -444,7 +483,9 @@ class _HomeSheetState extends State<HomeSheet> {
                       playback: widget.playback,
                       pullPreview: pullPreview,
                       visible: capsuleVisible,
-                      onOpenSheet: _present,
+                      onOpenSheet: widget.settingsWindow == null
+                          ? _present
+                          : null,
                       companion: layoutSwitch?.button,
                       companionVisible: layoutSwitch?.visible ?? false,
                     ),

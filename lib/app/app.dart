@@ -14,6 +14,7 @@ import '../features/artwork/presentation/directory_artwork.dart';
 import '../features/artwork/presentation/custom_artwork_scope.dart';
 import '../features/indiebase/indiebase_scope.dart';
 import '../features/desktop_tray/desktop_tray_host.dart';
+import '../features/settings/desktop_settings_window.dart';
 
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -43,6 +44,9 @@ class _MusaicAppState extends State<MusaicApp> {
   final _sources = MusicSourceController();
   final _indiebase = IndiebaseRuntime.fromEnvironment();
   late final _language = AppLanguagePreference(widget.initialLanguage);
+  final _settingsWindow = DesktopSettingsWindow.isEnabled
+      ? DesktopSettingsWindow()
+      : null;
   final _customArtwork =
       !kIsWeb &&
           (defaultTargetPlatform == TargetPlatform.android ||
@@ -87,6 +91,7 @@ class _MusaicAppState extends State<MusaicApp> {
   @override
   void dispose() {
     _lifecycle.dispose();
+    _settingsWindow?.dispose();
     _language.dispose();
     _indiebase?.close();
     unawaited(_sources.dispose());
@@ -127,32 +132,52 @@ class _MusaicAppState extends State<MusaicApp> {
     return content;
   }
 
+  Widget _buildApp({required Locale? locale, required Widget home}) =>
+      MaterialApp(
+        locale: locale,
+        onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        theme: buildAppTheme(),
+        builder: _customArtwork == null && _indiebase == null
+            ? null
+            : _buildScopes,
+        home: home,
+      );
+
   @override
   Widget build(BuildContext context) => SignalBuilder(
-    builder: (context) => MaterialApp(
-      locale: _language.selected.value.locale,
-      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        ...GlobalMaterialLocalizations.delegates,
-      ],
-      supportedLocales: AppLocalizations.supportedLocales,
-      theme: buildAppTheme(),
-      builder: _customArtwork == null && _indiebase == null
-          ? null
-          : _buildScopes,
-      home: DesktopTrayHost(
-        child: DirectoryArtworkScope(
-          library: _directories,
-          child: AppBottomSheetHost(
-            child: HomePage(
-              albumCache: _albumCache,
-              sources: _sources,
-              language: _language,
-            ),
+    builder: (context) {
+      final locale = _language.selected.value.locale;
+      final settingsWindow = _settingsWindow;
+      final home = DirectoryArtworkScope(
+        library: _directories,
+        child: AppBottomSheetHost(
+          child: HomePage(
+            albumCache: _albumCache,
+            sources: _sources,
+            language: _language,
+            settingsWindow: settingsWindow,
           ),
         ),
-      ),
-    ),
+      );
+      final mainApp = _buildApp(
+        locale: locale,
+        home: DesktopSettingsWindow.isSupported
+            ? DesktopTrayHost(onOpenSettings: settingsWindow?.open, child: home)
+            : home,
+      );
+      return settingsWindow?.attach(
+            child: mainApp,
+            buildApp: (content) => _buildApp(
+              locale: locale,
+              home: Builder(builder: content),
+            ),
+          ) ??
+          mainApp;
+    },
   );
 }

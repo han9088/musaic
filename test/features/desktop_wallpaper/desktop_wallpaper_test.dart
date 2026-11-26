@@ -72,7 +72,7 @@ void main() {
       final canvas = find.byType(AlbumCanvasViewport);
       final canvasState = tester.state(canvas);
       expect(menuTitles, {
-        'set': '设置成壁纸',
+        'set': '设成壁纸',
         'restore': '恢复窗口',
         'quit': '退出 Musaic',
       });

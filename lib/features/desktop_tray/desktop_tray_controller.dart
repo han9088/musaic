@@ -9,11 +9,16 @@ import '../../l10n/generated/app_localizations.dart';
 import '../desktop_wallpaper/desktop_wallpaper.dart';
 
 class DesktopTrayController {
+  DesktopTrayController({this.onOpenSettings});
+
+  final Future<void> Function(String title)? onOpenSettings;
+
   tray.TrayIcon? _icon;
   tray.Image? _image;
   tray.Menu? _menu;
   tray.MenuItem? _wallpaper;
   tray.MenuItem? _restore;
+  tray.MenuItem? _settings;
   tray.MenuItem? _quit;
   AppLocalizations? _localizations;
   DesktopCapabilities? _capabilities;
@@ -158,6 +163,7 @@ class DesktopTrayController {
       _wallpaper?.label = _wallpaperLabel(l10n);
       _wallpaper?.isEnabled = capabilities.wallpaper;
       _restore?.label = l10n.desktopWallpaperRestore;
+      _settings?.label = l10n.settings;
       _quit?.label = l10n.desktopShortcutsQuit;
       _icon?.setTooltip(l10n.appTitle);
     }
@@ -186,6 +192,13 @@ class DesktopTrayController {
         menu,
         l10n.desktopWallpaperRestore,
         DesktopWallpaper.restoreWindow,
+      );
+    }
+    if (onOpenSettings case final open?) {
+      _settings = _addItem(
+        menu,
+        l10n.settings,
+        () => open(_localizations!.settings),
       );
     }
     menu.addSeparator();
@@ -285,12 +298,13 @@ class DesktopTrayController {
       if (_menu case final menu?) menu.dispose,
       if (_wallpaper case final item?) item.dispose,
       if (_restore case final item?) item.dispose,
+      if (_settings case final item?) item.dispose,
       if (_quit case final item?) item.dispose,
       if (_image case final image?) image.dispose,
     ];
     _icon = null;
     _menu = null;
-    _wallpaper = _restore = _quit = null;
+    _wallpaper = _restore = _settings = _quit = null;
     _image = null;
     _trayRevision = null;
     for (final dispose in disposers) {

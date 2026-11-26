@@ -20,7 +20,7 @@ class NowPlayingCapsule extends StatelessWidget {
 
   final AlbumPlayback? playback;
   final bool visible;
-  final VoidCallback onOpenSheet;
+  final VoidCallback? onOpenSheet;
   final IconData? pullFeedbackIcon;
   final String? previewTitle;
 
@@ -66,7 +66,7 @@ class NowPlayingCapsule extends StatelessWidget {
           Expanded(
             child: Semantics(
               customSemanticsActions: {
-                CustomSemanticsAction(label: l10n.settings): onOpenSheet,
+                CustomSemanticsAction(label: l10n.settings): ?onOpenSheet,
                 if (playback != null && playback.currentTrack != null) ...{
                   CustomSemanticsAction(label: l10n.musicPreviousTrack): () =>
                       playback.skip(forward: false),

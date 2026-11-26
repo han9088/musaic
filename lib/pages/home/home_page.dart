@@ -39,6 +39,7 @@ import '../../features/artwork/xerox/xerox_raster_request.dart';
 import '../../features/coverflow/album_coverflow.dart';
 import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
 import '../../features/desktop_wallpaper/desktop_wallpaper.dart';
+import '../../features/settings/desktop_settings_window.dart';
 import '../../features/layout/album_layout_transition.dart';
 import '../../features/layout/layout_switch_overlay.dart';
 import '../../features/music/playback/screensaver/now_playing_screensaver.dart';
@@ -58,10 +59,12 @@ class HomePage extends StatefulWidget {
     required this.albumCache,
     this.sources,
     this.language,
+    this.settingsWindow,
   });
 
   final MusicSourceController? sources;
   final AppLanguagePreference? language;
+  final DesktopSettingsWindow? settingsWindow;
 
   final MockAlbumCache albumCache;
 
@@ -825,6 +828,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     Widget homeSheet(({Widget button, bool visible})? layoutSwitch) =>
         HomeSheet(
+          settingsWindow: widget.settingsWindow,
           enabled:
               !_desktopWallpaperEnabled &&
               !_landscape &&

@@ -484,23 +484,17 @@ void main() {
     expect(restarted.seconds.value, 10);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('Appearance language updates the open settings page', (
-    tester,
-  ) async {
-    tester.binding.platformDispatcher.localesTestValue = [const Locale('en')];
-    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
-    addTearDown(tester.view.resetViewInsets);
-    final preference = AppLanguagePreference(AppLanguage.system);
-    addTearDown(preference.dispose);
-
-    await tester.pumpWidget(
-      SignalBuilder(
-        builder: (_) => MaterialApp(
-          locale: preference.selected.value.locale,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            ...GlobalMaterialLocalizations.delegates,
-          ],
+  testWidgets(
+    'mobile language stays in the sheet outside System',
+    (tester) async {
+      final preference = AppLanguagePreference(AppLanguage.system);
+      addTearDown(preference.dispose);
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: AppBottomSheetHost(
             child: HomeSheet(
@@ -510,104 +504,155 @@ void main() {
             ),
           ),
         ),
-      ),
-    );
-    await tester.drag(capsule, const Offset(0, -140));
-    await tester.pumpAndSettle();
-    final appearance = find.widgetWithText(ListTile, 'Appearance & display');
-    expect(
-      find.descendant(
-        of: appearance,
-        matching: find.byIcon(PhosphorIcons.monitor),
-      ),
-      findsOneWidget,
-    );
-    await tester.tap(appearance);
-    await tester.pumpAndSettle();
-
-    final page = find.byType(SettingsPage);
-    Future<void> selectLanguage(
-      String label,
-      String query,
-      String choice,
-      String emptyLabel,
-    ) async {
-      final trigger = find.widgetWithText(ListTile, label);
-      await tester.tap(trigger);
+      );
+      await tester.drag(capsule, const Offset(0, -140));
       await tester.pumpAndSettle();
-      final menu = find.byType(AppDialogSurface);
+      final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+      sheet.topSheetController!.expand();
+      await tester.pumpAndSettle();
+
+      final language = find.widgetWithText(ListTile, 'Language');
+      expect(find.text('Appearance & display'), findsOneWidget);
+      expect(language.hitTestable(), findsOneWidget);
+      await tester.tap(find.widgetWithText(ListTile, 'System'));
+      await tester.pumpAndSettle();
+      final page = find.byType(SettingsPage);
+      expect(tester.widget<SettingsPage>(page).title, 'System');
+      expect(find.descendant(of: page, matching: language), findsNothing);
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
+
+  testWidgets(
+    'language changes update the open mobile settings sheet',
+    (tester) async {
+      tester.binding.platformDispatcher.localesTestValue = [const Locale('en')];
+      addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+      addTearDown(tester.view.resetViewInsets);
+      final preference = AppLanguagePreference(AppLanguage.system);
+      addTearDown(preference.dispose);
+
+      await tester.pumpWidget(
+        SignalBuilder(
+          builder: (_) => MaterialApp(
+            locale: preference.selected.value.locale,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              ...GlobalMaterialLocalizations.delegates,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: AppBottomSheetHost(
+              child: HomeSheet(
+                icons: const _Icons(),
+                language: preference,
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.drag(capsule, const Offset(0, -140));
+      await tester.pumpAndSettle();
+      final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+      sheet.topSheetController!.expand();
+      await tester.pumpAndSettle();
+      expect(find.text('Appearance & display'), findsOneWidget);
+
+      Future<void> selectLanguage(
+        String label,
+        String query,
+        String choice,
+        String emptyLabel,
+      ) async {
+        final trigger = find.widgetWithText(ListTile, label);
+        await tester.tap(trigger.hitTestable());
+        await tester.pumpAndSettle();
+        final menu = find.byType(AppDialogSurface);
+        expect(
+          tester.getTopLeft(menu).dy,
+          greaterThan(tester.getBottomLeft(trigger).dy),
+        );
+        final search = find.descendant(
+          of: menu,
+          matching: find.byType(TextField),
+        );
+        final options = find.descendant(
+          of: menu,
+          matching: find.byType(ListTile),
+        );
+        expect(options, findsNWidgets(3));
+        final marker = find.descendant(
+          of: menu,
+          matching: find.byType(AppSelectionDot),
+        );
+        expect(marker, findsOneWidget);
+        final selected = find.ancestor(of: marker, matching: options);
+        expect(tester.widget<ListTile>(selected).selected, isTrue);
+        expectDotAligned(
+          tester,
+          selected,
+          find.descendant(of: selected, matching: find.byType(Text)),
+        );
+        await tester.enterText(search, 'missing language');
+        await tester.pumpAndSettle();
+        expect(find.text(emptyLabel), findsOneWidget);
+        expect(options, findsNothing);
+        await tester.enterText(search, query);
+        final devicePixelRatio = tester.view.devicePixelRatio;
+        tester.view.viewInsets = FakeViewPadding(
+          bottom: 420 * devicePixelRatio,
+        );
+        await tester.pumpAndSettle();
+        expect(options, findsOneWidget);
+        expect(marker, findsNothing);
+        expect(
+          find.descendant(of: menu, matching: find.text(choice)),
+          findsOneWidget,
+        );
+        expect(
+          tester.getBottomLeft(menu).dy,
+          lessThan(tester.view.physicalSize.height / devicePixelRatio - 420),
+        );
+        await tester.tap(options);
+        tester.view.resetViewInsets();
+        await tester.pumpAndSettle();
+        expect(menu, findsNothing);
+      }
+
+      await selectLanguage(
+        'Language',
+        '  CHINESE  ',
+        '简体中文',
+        'No languages found',
+      );
+      expect(find.text('外观与显示'), findsOneWidget);
+      expect(find.widgetWithText(ListTile, '语言设置'), findsOneWidget);
+      expect(preference.selected.value, AppLanguage.simplifiedChinese);
+
+      await selectLanguage('语言设置', '英文', 'English', '未找到匹配的语言');
+      expect(find.text('Appearance & display'), findsOneWidget);
+      expect(preference.selected.value, AppLanguage.english);
+
+      await selectLanguage(
+        'Language',
+        '跟随系统',
+        'System default',
+        'No languages found',
+      );
       expect(
-        tester.getTopLeft(menu).dy,
-        greaterThan(tester.getBottomLeft(trigger).dy),
+        tester.widget<MaterialApp>(find.byType(MaterialApp)).locale,
+        isNull,
       );
-      final search = find.descendant(
-        of: menu,
-        matching: find.byType(TextField),
-      );
-      final options = find.descendant(
-        of: menu,
-        matching: find.byType(ListTile),
-      );
-      expect(options, findsNWidgets(3));
-      final marker = find.descendant(
-        of: menu,
-        matching: find.byType(AppSelectionDot),
-      );
-      expect(marker, findsOneWidget);
-      final selected = find.ancestor(of: marker, matching: options);
-      expect(tester.widget<ListTile>(selected).selected, isTrue);
-      expectDotAligned(
-        tester,
-        selected,
-        find.descendant(of: selected, matching: find.byType(Text)),
-      );
-      await tester.enterText(search, 'missing language');
-      await tester.pumpAndSettle();
-      expect(find.text(emptyLabel), findsOneWidget);
-      expect(options, findsNothing);
-      await tester.enterText(search, query);
-      final devicePixelRatio = tester.view.devicePixelRatio;
-      tester.view.viewInsets = FakeViewPadding(bottom: 420 * devicePixelRatio);
-      await tester.pumpAndSettle();
-      expect(options, findsOneWidget);
-      expect(marker, findsNothing);
-      expect(
-        find.descendant(of: menu, matching: find.text(choice)),
-        findsOneWidget,
-      );
-      expect(
-        tester.getBottomLeft(menu).dy,
-        lessThan(tester.view.physicalSize.height / devicePixelRatio - 420),
-      );
-      await tester.tap(options);
-      tester.view.resetViewInsets();
-      await tester.pumpAndSettle();
-      expect(menu, findsNothing);
-    }
-
-    await selectLanguage(
-      'Language',
-      '  CHINESE  ',
-      '简体中文',
-      'No languages found',
-    );
-    expect(tester.widget<SettingsPage>(page).title, '外观与显示');
-    expect(find.widgetWithText(ListTile, '语言'), findsOneWidget);
-    expect(preference.selected.value, AppLanguage.simplifiedChinese);
-
-    await selectLanguage('语言', '英文', 'English', '未找到匹配的语言');
-    expect(tester.widget<SettingsPage>(page).title, 'Appearance & display');
-    expect(preference.selected.value, AppLanguage.english);
-
-    await selectLanguage(
-      'Language',
-      '跟随系统',
-      'System default',
-      'No languages found',
-    );
-    expect(tester.widget<MaterialApp>(find.byType(MaterialApp)).locale, isNull);
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+    variant: TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    }),
+  );
 
   testWidgets('Only the guide dismissal button permanently hides its entry', (
     tester,
@@ -1360,16 +1405,17 @@ void main() {
 
     final toggle = find.byKey(const ValueKey('xerox-toggle'));
     expect(toggle, findsOneWidget);
-    final appearance = find.widgetWithText(ListTile, 'Appearance & display');
+    final appearance = find.text('Appearance & display');
+    final system = find.widgetWithText(ListTile, 'System');
     expect(
       tester.getTopLeft(toggle).dy,
       lessThan(tester.getTopLeft(appearance).dy),
     );
-    final feedback = Theme.of(tester.element(appearance));
+    final feedback = Theme.of(tester.element(system));
     expect(feedback.splashFactory, InkRipple.splashFactory);
     expect(feedback.splashColor, Colors.white.withValues(alpha: 0.10));
     expect(feedback.highlightColor, Colors.white.withValues(alpha: 0.10));
-    await tester.tap(appearance);
+    await tester.tap(system);
     expect(sheetPosition.value, originalTop);
     await tester.pump();
     expect(

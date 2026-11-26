@@ -6,9 +6,10 @@ import '../../l10n/generated/app_localizations.dart';
 import 'desktop_tray_controller.dart';
 
 class DesktopTrayHost extends StatefulWidget {
-  const DesktopTrayHost({super.key, required this.child});
+  const DesktopTrayHost({super.key, required this.child, this.onOpenSettings});
 
   final Widget child;
+  final Future<void> Function(String title)? onOpenSettings;
 
   @override
   State<DesktopTrayHost> createState() => _DesktopTrayHostState();
@@ -25,8 +26,9 @@ class _DesktopTrayHostState extends State<DesktopTrayHost> {
     final locale = Localizations.localeOf(context);
     if (_locale == locale) return;
     _locale = locale;
-    (_controller ??= DesktopTrayController())
-        .updateLocale(AppLocalizations.of(context));
+    (_controller ??= DesktopTrayController(
+      onOpenSettings: widget.onOpenSettings,
+    )).updateLocale(AppLocalizations.of(context));
   }
 
   @override

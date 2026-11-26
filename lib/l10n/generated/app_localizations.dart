@@ -109,7 +109,7 @@ abstract class AppLocalizations {
   /// No description provided for @desktopWallpaperSet.
   ///
   /// In zh, this message translates to:
-  /// **'设置成壁纸'**
+  /// **'设成壁纸'**
   String get desktopWallpaperSet;
 
   /// No description provided for @desktopWallpaperRestore.

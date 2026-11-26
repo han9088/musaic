@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
@@ -11,11 +13,13 @@ import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../../ui/theme/app_colors.dart';
 import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/app_color_palette.dart';
-import '../../ui/widgets/app_dropdown_menu.dart';
 import '../../ui/widgets/app_selection_dot.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 import '../music/presentation/music_source_picker.dart';
+import 'settings_language_picker.dart';
 import 'settings_support_section.dart';
+
+part 'desktop_settings_split_view.dart';
 
 enum SettingsSection {
   pro,
@@ -38,6 +42,7 @@ class SettingsSheet extends StatelessWidget {
     required this.onOpenSection,
     required this.usageGuideVisible,
     required this.developerOptionsEnabled,
+    this.desktop = false,
     this.keyboardShortcutsVisible = false,
     this.xeroxEnabled,
     this.onXeroxChanged,
@@ -53,9 +58,10 @@ class SettingsSheet extends StatelessWidget {
   final MusicSourceController? sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function()) onSourceSelection;
-  final void Function(BuildContext, SettingsSection) onOpenSection;
+  final PageRoute<void>? Function(BuildContext, SettingsSection) onOpenSection;
   final ReadonlySignal<bool> usageGuideVisible;
   final ReadonlySignal<bool> developerOptionsEnabled;
+  final bool desktop;
   final bool keyboardShortcutsVisible;
   final ValueListenable<bool>? xeroxEnabled;
   final ValueChanged<bool>? onXeroxChanged;
@@ -79,37 +85,6 @@ class SettingsSheet extends StatelessWidget {
           onTap: () => onOpenSection(origin, section),
         ),
       );
-
-  Widget _languageSetting(AppLanguagePreference preference) => SignalBuilder(
-    builder: (context) {
-      final l10n = AppLocalizations.of(context);
-      return AppDropdownMenu<AppLanguage>(
-        leading: const Icon(PhosphorIcons.translate),
-        title: l10n.settingsLanguage,
-        value: preference.selected.value,
-        entries: [
-          AppDropdownMenuEntry(
-            AppLanguage.system,
-            l10n.settingsLanguageSystem,
-            keywords: 'System default 跟随系统',
-          ),
-          const AppDropdownMenuEntry(
-            AppLanguage.simplifiedChinese,
-            '简体中文',
-            keywords: 'Simplified Chinese zh Hans',
-          ),
-          const AppDropdownMenuEntry(
-            AppLanguage.english,
-            'English',
-            keywords: '英文 英语 en',
-          ),
-        ],
-        onSelected: preference.select,
-        searchLabel: l10n.settingsLanguageSearch,
-        emptyLabel: l10n.settingsLanguageNoResults,
-      );
-    },
-  );
 
   Widget _colorOrganizationControls() {
     final index = colorIndex;
@@ -212,6 +187,141 @@ class SettingsSheet extends StatelessWidget {
     );
   }
 
+  Widget _demoContent(MusicSourceController controller) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      MusicSourcePicker(
+        sources: controller,
+        sourceSwitching: sourceSwitching,
+        onSourceSelection: onSourceSelection,
+        demoOnly: true,
+      ),
+      _colorOrganizationControls(),
+    ],
+  );
+
+  Widget? _xeroxSetting(AppLocalizations l10n, {double? sidebarInset}) {
+    final mode = xeroxEnabled;
+    final onChanged = onXeroxChanged;
+    if (mode == null || onChanged == null) return null;
+    return ValueListenableBuilder<bool>(
+      valueListenable: mode,
+      builder: (context, enabled, picker) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            key: const ValueKey('xerox-toggle'),
+            dense: desktop ? true : null,
+            visualDensity: desktop ? VisualDensity.compact : null,
+            contentPadding: sidebarInset == null
+                ? null
+                : EdgeInsetsDirectional.only(
+                    start: sidebarInset,
+                    end: settingsContentInset,
+                  ),
+            title: AppSelectionTitle(
+              selected: enabled,
+              child: Text(l10n.xeroxMode),
+            ),
+            selected: enabled,
+            onTap: () => onChanged(!enabled),
+          ),
+          if (enabled && picker != null) picker,
+        ],
+      ),
+      child: xeroxPalettePicker,
+    );
+  }
+
+  List<Widget> _settingsItems(
+    AppLocalizations l10n, {
+    required Widget Function(IconData, String, SettingsSection) buildSection,
+    double? sidebarInset,
+    Widget? support,
+  }) => [
+    buildSection(
+      PhosphorIcons.crownSimple,
+      l10n.settingsPro,
+      SettingsSection.pro,
+    ),
+    ?_xeroxSetting(l10n, sidebarInset: sidebarInset),
+    if (sources != null)
+      buildSection(
+        PhosphorIcons.rss,
+        l10n.musicSource,
+        SettingsSection.musicSource,
+      ),
+    SettingsSectionHeading(
+      l10n.settingsAppearance,
+      horizontalPadding: sidebarInset ?? settingsContentInset,
+    ),
+    if (!desktop)
+      if (language case final preference?)
+        SettingsLanguagePicker(preference: preference),
+    buildSection(
+      PhosphorIcons.musicNoteSimple,
+      l10n.settingsMusic,
+      SettingsSection.music,
+    ),
+    buildSection(
+      PhosphorIcons.monitor,
+      l10n.settingsSystem,
+      SettingsSection.system,
+    ),
+    if (keyboardShortcutsVisible)
+      buildSection(
+        PhosphorIcons.keyboard,
+        l10n.settingsKeyboardShortcuts,
+        SettingsSection.keyboardShortcuts,
+      ),
+    SettingsSectionHeading(
+      l10n.settingsAboutAndHelp,
+      horizontalPadding: sidebarInset ?? settingsContentInset,
+    ),
+    SignalBuilder(
+      builder: (_) => usageGuideVisible.value
+          ? buildSection(
+              PhosphorIcons.bookOpen,
+              l10n.settingsUsageGuide,
+              SettingsSection.usageGuide,
+            )
+          : const SizedBox.shrink(),
+    ),
+    buildSection(
+      PhosphorIcons.stethoscope,
+      l10n.settingsDiagnostics,
+      SettingsSection.diagnostics,
+    ),
+    buildSection(PhosphorIcons.info, l10n.settingsAbout, SettingsSection.about),
+    if (support == null) const SettingsSupportSection(),
+    SignalBuilder(
+      builder: (_) => developerOptionsEnabled.value
+          ? buildSection(
+              PhosphorIcons.code,
+              l10n.settingsDeveloperOptions,
+              SettingsSection.developerOptions,
+            )
+          : const SizedBox.shrink(),
+    ),
+    ?support,
+  ];
+
+  List<Widget> _tabPages(AppLocalizations l10n) => [
+    if (sources case final controller?)
+      BottomSheetScrollView(child: _demoContent(controller)),
+    if (desktop)
+      _DesktopSettingsSplitView(sheet: this)
+    else
+      BottomSheetScrollView(
+        child: SettingsInteractionTheme(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: _settingsItems(l10n, buildSection: _section),
+          ),
+        ),
+      ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -260,126 +370,7 @@ class SettingsSheet extends StatelessWidget {
               child: Column(
                 children: [
                   Material(color: Colors.transparent, child: tabBar),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        if (controller != null)
-                          BottomSheetScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                MusicSourcePicker(
-                                  sources: controller,
-                                  sourceSwitching: sourceSwitching,
-                                  onSourceSelection: onSourceSelection,
-                                  demoOnly: true,
-                                ),
-                                _colorOrganizationControls(),
-                              ],
-                            ),
-                          ),
-                        BottomSheetScrollView(
-                          child: SettingsInteractionTheme(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _section(
-                                  PhosphorIcons.crownSimple,
-                                  l10n.settingsPro,
-                                  SettingsSection.pro,
-                                ),
-                                if ((xeroxEnabled, onXeroxChanged) case (
-                                  final mode?,
-                                  final onChanged?,
-                                ))
-                                  ValueListenableBuilder<bool>(
-                                    valueListenable: mode,
-                                    builder: (context, enabled, picker) =>
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            ListTile(
-                                              key: const ValueKey(
-                                                'xerox-toggle',
-                                              ),
-                                              title: AppSelectionTitle(
-                                                selected: enabled,
-                                                child: Text(l10n.xeroxMode),
-                                              ),
-                                              selected: enabled,
-                                              onTap: () => onChanged(!enabled),
-                                            ),
-                                            if (enabled && picker != null)
-                                              picker,
-                                          ],
-                                        ),
-                                    child: xeroxPalettePicker,
-                                  ),
-                                if (controller != null)
-                                  _section(
-                                    PhosphorIcons.rss,
-                                    l10n.musicSource,
-                                    SettingsSection.musicSource,
-                                  ),
-                                SettingsSectionHeading(l10n.settingsAppearance),
-                                if (language case final preference?)
-                                  _languageSetting(preference),
-                                _section(
-                                  PhosphorIcons.musicNoteSimple,
-                                  l10n.settingsMusic,
-                                  SettingsSection.music,
-                                ),
-                                _section(
-                                  PhosphorIcons.monitor,
-                                  l10n.settingsSystem,
-                                  SettingsSection.system,
-                                ),
-                                if (keyboardShortcutsVisible)
-                                  _section(
-                                    PhosphorIcons.keyboard,
-                                    l10n.settingsKeyboardShortcuts,
-                                    SettingsSection.keyboardShortcuts,
-                                  ),
-                                SettingsSectionHeading(
-                                  l10n.settingsAboutAndHelp,
-                                ),
-                                SignalBuilder(
-                                  builder: (_) => usageGuideVisible.value
-                                      ? _section(
-                                          PhosphorIcons.bookOpen,
-                                          l10n.settingsUsageGuide,
-                                          SettingsSection.usageGuide,
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                                _section(
-                                  PhosphorIcons.stethoscope,
-                                  l10n.settingsDiagnostics,
-                                  SettingsSection.diagnostics,
-                                ),
-                                _section(
-                                  PhosphorIcons.info,
-                                  l10n.settingsAbout,
-                                  SettingsSection.about,
-                                ),
-                                const SettingsSupportSection(),
-                                SignalBuilder(
-                                  builder: (_) => developerOptionsEnabled.value
-                                      ? _section(
-                                          PhosphorIcons.code,
-                                          l10n.settingsDeveloperOptions,
-                                          SettingsSection.developerOptions,
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  Expanded(child: TabBarView(children: _tabPages(l10n))),
                 ],
               ),
             ),

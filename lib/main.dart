@@ -7,10 +7,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'app/app.dart';
+import 'features/settings/desktop_settings_window.dart';
 import 'services/diagnostics/diagnostic_log.dart';
 import 'storage/settings/app_language_preference.dart';
 
 Future<void> main() async {
+  DesktopSettingsWindow.enable();
   WidgetsFlutterBinding.ensureInitialized();
   diagnosticLog.start();
   final onFlutterError = FlutterError.onError;

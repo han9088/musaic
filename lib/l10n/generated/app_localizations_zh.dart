@@ -15,7 +15,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
-  String get desktopWallpaperSet => '设置成壁纸';
+  String get desktopWallpaperSet => '设成壁纸';
 
   @override
   String get desktopWallpaperRestore => '恢复窗口';

@@ -6,10 +6,18 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_support.dart';
 import '../../ui/dialogs/app_alert_dialog.dart';
 import '../../ui/dialogs/app_notification.dart';
+import '../../ui/theme/app_theme.dart';
 import '../../ui/widgets/settings_section_heading.dart';
 
 class SettingsSupportSection extends StatefulWidget {
-  const SettingsSupportSection({super.key});
+  const SettingsSupportSection({
+    super.key,
+    this.headingInset = settingsContentInset,
+    this.buildAction,
+  });
+
+  final double headingInset;
+  final Widget Function(IconData, String, VoidCallback)? buildAction;
 
   @override
   State<SettingsSupportSection> createState() => _SettingsSupportSectionState();
@@ -187,29 +195,32 @@ class _SettingsSupportSectionState extends State<SettingsSupportSection> {
     );
   }
 
+  Widget _action(IconData icon, String title, VoidCallback onTap) =>
+      widget.buildAction?.call(icon, title, onTap) ??
+      ListTile(leading: Icon(icon), title: Text(title), onTap: onTap);
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsSectionHeading(l10n.settingsSupport),
-        ListTile(
-          leading: const Icon(PhosphorIcons.star),
-          title: Text(l10n.settingsRateApp),
-          onTap: _rate,
+        SettingsSectionHeading(
+          l10n.settingsSupport,
+          horizontalPadding: widget.headingInset,
         ),
+        _action(PhosphorIcons.star, l10n.settingsRateApp, _rate),
         Builder(
-          builder: (origin) => ListTile(
-            leading: const Icon(PhosphorIcons.share),
-            title: Text(l10n.settingsShareApp),
-            onTap: () => _share(origin),
+          builder: (origin) => _action(
+            PhosphorIcons.share,
+            l10n.settingsShareApp,
+            () => _share(origin),
           ),
         ),
-        ListTile(
-          leading: const Icon(PhosphorIcons.chatCircleDots),
-          title: Text(l10n.settingsContactUs),
-          onTap: _showContactDialog,
+        _action(
+          PhosphorIcons.chatCircleDots,
+          l10n.settingsContactUs,
+          _showContactDialog,
         ),
       ],
     );

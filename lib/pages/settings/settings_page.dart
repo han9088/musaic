@@ -19,7 +19,25 @@ PageRoute<void> pushSettingsPage({
   bool bodyIsSliver = false,
   Widget? footer,
   Widget? fixedFooter,
+  bool desktop = false,
 }) {
+  if (desktop) {
+    final route = PageRouteBuilder<void>(
+      settings: RouteSettings(name: path),
+      transitionDuration: Duration.zero,
+      reverseTransitionDuration: Duration.zero,
+      pageBuilder: (context, _, _) => SettingsPage(
+        title: title(AppLocalizations.of(context)),
+        body: body,
+        bodyIsSliver: bodyIsSliver,
+        footer: footer,
+        fixedFooter: fixedFooter,
+        backIcon: null,
+      ),
+    );
+    unawaited(navigator.push(route));
+    return route;
+  }
   final sheet = BottomSheetContent.of(source);
   final distance = navigator.overlay!.context.size!.height;
   late final DirectionalPushRoute<void> route;
@@ -51,9 +69,29 @@ PageRoute<void> pushSettingsPage({
   return route;
 }
 
-void pushSettingsDetail(BuildContext source, String title, Widget body) {
+void pushSettingsDetail(
+  BuildContext source,
+  String title,
+  Widget body, {
+  bool desktop = false,
+}) {
+  final navigator = Navigator.of(source, rootNavigator: !desktop);
+  if (desktop) {
+    unawaited(
+      navigator.push(
+        MaterialPageRoute<void>(
+          builder: (_) => SettingsPage(
+            title: title,
+            body: body,
+            backIcon: PhosphorIcons.caretLeftBold,
+          ),
+        ),
+      ),
+    );
+    return;
+  }
   unawaited(
-    Navigator.of(source, rootNavigator: true).push(
+    navigator.push(
       DirectionalPushRoute<void>(
         direction: AxisDirection.left,
         swipeToDismiss: true,
@@ -82,7 +120,7 @@ class SettingsPage extends StatelessWidget {
 
   final String title;
   final Widget body;
-  final IconData backIcon;
+  final IconData? backIcon;
   final bool bodyIsSliver;
   final Widget? footer;
   final Widget? fixedFooter;
@@ -101,21 +139,26 @@ class SettingsPage extends StatelessWidget {
                 AppNavigationBackButton.circleDiameter) /
             2;
     final bottomAction = fixedFooter;
+    final back = backIcon;
     final slivers = <Widget>[
       SliverAppBar(
         pinned: true,
-        centerTitle: true,
+        centerTitle: back != null,
+        titleSpacing: back == null ? settingsContentInset : null,
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         scrolledUnderElevation: 0,
         leadingWidth: backPadding + AppNavigationBackButton.hitSize,
-        leading: Padding(
-          padding: const EdgeInsetsDirectional.only(start: backPadding),
-          child: AppNavigationBackButton(
-            icon: backIcon,
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
+        leading: back == null
+            ? null
+            : Padding(
+                padding: const EdgeInsetsDirectional.only(start: backPadding),
+                child: AppNavigationBackButton(
+                  icon: back,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
         title: Text(title, style: const TextStyle(color: Colors.white)),
       ),
       SliverSafeArea(

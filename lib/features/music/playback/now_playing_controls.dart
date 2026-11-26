@@ -29,7 +29,7 @@ class NowPlayingControls extends StatefulWidget {
 
   final AlbumPlayback? playback;
   final bool visible;
-  final VoidCallback onOpenSheet;
+  final VoidCallback? onOpenSheet;
   final Widget? companion;
   final bool companionVisible;
   final Animation<PlaybackPullPreview>? pullPreview;
