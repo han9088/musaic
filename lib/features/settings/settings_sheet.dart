@@ -110,6 +110,74 @@ class SettingsSheet extends StatelessWidget {
     },
   );
 
+  Widget _colorOrganizationControls() {
+    final index = colorIndex;
+    final enabled = colorOrganizeEnabled;
+    final onChanged = onColorOrganizeChanged;
+    final selected = selectedColorFamily;
+    final onSelect = onColorFamilySelected;
+    if (index == null || enabled == null || onChanged == null) {
+      return const SizedBox.shrink();
+    }
+    return SettingsInteractionTheme(
+      child: AnimatedBuilder(
+        animation: index,
+        builder: (context, _) {
+          final families = index.availableFamilies;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                key: const ValueKey('album-color-organize-toggle'),
+                title: const Text('按色系整理画布'),
+                subtitle: const Text('将主题色相近的专辑集中排列'),
+                trailing: ValueListenableBuilder<bool>(
+                  valueListenable: enabled,
+                  builder: (_, value, __) => Switch(
+                    value: value,
+                    onChanged: onChanged,
+                  ),
+                ),
+              ),
+              if (selected != null && onSelect != null)
+                ValueListenableBuilder<bool>(
+                  valueListenable: enabled,
+                  builder: (_, isEnabled, __) {
+                    if (!isEnabled || families.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: ValueListenableBuilder<AlbumColorFamily?>(
+                        valueListenable: selected,
+                        builder: (_, current, __) => Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ChoiceChip(
+                              label: const Text('全部'),
+                              selected: current == null,
+                              onSelected: (_) => onSelect(null),
+                            ),
+                            for (final family in families)
+                              ChoiceChip(
+                                label: Text(family.label),
+                                selected: current == family,
+                                onSelected: (_) => onSelect(family),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -131,15 +199,6 @@ class SettingsSheet extends StatelessWidget {
               semanticLabel: l10n.musicSourceDemoGroup,
             ),
           ),
-        if (colorIndex != null && colorOrganizeEnabled != null)
-          const Tab(
-            height: 48,
-            icon: Icon(
-              PhosphorIcons.paletteBold,
-              size: 22,
-              semanticLabel: '画布色系',
-            ),
-          ),
         Tab(
           height: 48,
           icon: Icon(
@@ -151,8 +210,7 @@ class SettingsSheet extends StatelessWidget {
       ],
     );
     final content = DefaultTabController(
-      length: (controller == null ? 0 : 1) +
-          ((colorIndex != null && colorOrganizeEnabled != null) ? 1 : 0) + 1,
+      length: controller == null ? 1 : 2,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tabBarHeight = tabBar.preferredSize.height;
@@ -173,72 +231,17 @@ class SettingsSheet extends StatelessWidget {
                       children: [
                         if (controller != null)
                           BottomSheetScrollView(
-                            child: MusicSourcePicker(
-                              sources: controller,
-                              sourceSwitching: sourceSwitching,
-                              onSourceSelection: onSourceSelection,
-                              demoOnly: true,
-                            ),
-                          ),
-                        if (colorIndex != null && colorOrganizeEnabled != null)
-                          BottomSheetScrollView(
-                            child: SettingsInteractionTheme(
-                              child: AnimatedBuilder(
-                                animation: colorIndex!,
-                                builder: (context, _) {
-                                  final families = colorIndex!.availableFamilies;
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                    children: [
-                                      ListTile(
-                                        key: const ValueKey('album-color-organize-toggle'),
-                                        title: const Text('按色系整理画布'),
-                                        subtitle: const Text('将主题色相近的专辑集中排列'),
-                                        trailing: ValueListenableBuilder<bool>(
-                                          valueListenable: colorOrganizeEnabled!,
-                                          builder: (_, enabled, __) => Switch(
-                                            value: enabled,
-                                            onChanged: onColorOrganizeChanged,
-                                          ),
-                                        ),
-                                      ),
-                                      ValueListenableBuilder<bool>(
-                                        valueListenable: colorOrganizeEnabled!,
-                                        builder: (_, enabled, __) {
-                                          if (!enabled || families.isEmpty ||
-                                              selectedColorFamily == null ||
-                                              onColorFamilySelected == null) {
-                                            return const SizedBox.shrink();
-                                          }
-                                          return Padding(
-                                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                                            child: ValueListenableBuilder<AlbumColorFamily?>(
-                                              valueListenable: selectedColorFamily!,
-                                              builder: (_, selected, __) => Wrap(
-                                                spacing: 8,
-                                                runSpacing: 8,
-                                                children: [
-                                                  ChoiceChip(
-                                                    label: const Text('全部'),
-                                                    selected: selected == null,
-                                                    onSelected: (_) => onColorFamilySelected!(null),
-                                                  ),
-                                                  for (final family in families)
-                                                    ChoiceChip(
-                                                      label: Text(family.label),
-                                                      selected: selected == family,
-                                                      onSelected: (_) => onColorFamilySelected!(family),
-                                                    ),
-                                                ],
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                MusicSourcePicker(
+                                  sources: controller,
+                                  sourceSwitching: sourceSwitching,
+                                  onSourceSelection: onSourceSelection,
+                                  demoOnly: true,
+                                ),
+                                _colorOrganizationControls(),
+                              ],
                             ),
                           ),
                         BottomSheetScrollView(
