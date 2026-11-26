@@ -7,6 +7,8 @@ void main() {
   testWidgets('Chinese locale loads app and framework localizations', (
     tester,
   ) async {
+    // Drain font notifications queued while the test tree is torn down.
+    addTearDown(tester.pump);
     tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 

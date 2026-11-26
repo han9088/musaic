@@ -31,6 +31,8 @@ void main() {
   testWidgets('only the desktop settings tab uses split navigation', (
     tester,
   ) async {
+    // Drain font notifications queued while the test tree is torn down.
+    addTearDown(tester.pump);
     final window = DesktopSettingsWindow();
     final sources = MusicSourceController();
     final language = AppLanguagePreference(AppLanguage.system);

@@ -1675,6 +1675,8 @@ void main() {
   testWidgets('music settings group demo and local sources before switching', (
     tester,
   ) async {
+    // Drain font notifications queued while the test tree is torn down.
+    addTearDown(tester.pump);
     await tester.binding.setSurfaceSize(const Size(360, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final sources = MusicSourceController();
