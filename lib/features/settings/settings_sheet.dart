@@ -151,19 +151,91 @@ class SettingsSheet extends StatelessWidget {
                       child: ValueListenableBuilder<AlbumColorFamily?>(
                         valueListenable: selected,
                         builder: (_, current, __) => Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                          spacing: 14,
+                          runSpacing: 12,
                           children: [
-                            ChoiceChip(
-                              label: const Text('全部'),
+                            Semantics(
+                              button: true,
                               selected: current == null,
-                              onSelected: (_) => onSelect(null),
+                              label: '显示全部色系',
+                              child: Tooltip(
+                                message: '全部',
+                                child: GestureDetector(
+                                  onTap: () => onSelect(null),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: 34,
+                                    height: 34,
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: current == null
+                                            ? AppColors.settingsAccent
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: SweepGradient(
+                                          colors: [
+                                            Color(0xffe34b4b),
+                                            Color(0xffe5a33b),
+                                            Color(0xffe4d34a),
+                                            Color(0xff59a96a),
+                                            Color(0xff45aeb0),
+                                            Color(0xff477bd0),
+                                            Color(0xff9368c5),
+                                            Color(0xffe34b4b),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                             for (final family in families)
-                              ChoiceChip(
-                                label: Text(family.label),
+                              Semantics(
+                                button: true,
                                 selected: current == family,
-                                onSelected: (_) => onSelect(family),
+                                label: family.label,
+                                child: Tooltip(
+                                  message: family.label,
+                                  child: GestureDetector(
+                                    onTap: () => onSelect(family),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 160),
+                                      width: 34,
+                                      height: 34,
+                                      padding: const EdgeInsets.all(3),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: current == family
+                                              ? AppColors.settingsAccent
+                                              : Colors.transparent,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: DecoratedBox(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: family.isNeutral
+                                              ? const Color(0xff888888)
+                                              : HSLColor.fromAHSL(
+                                                  1,
+                                                  family.hue,
+                                                  0.62,
+                                                  0.52,
+                                                ).toColor(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                           ],
                         ),

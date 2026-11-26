@@ -132,16 +132,21 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
 
     final families = <AlbumColorFamily>[];
     final mapping = <String, AlbumColorFamily>{};
+    final grouped = <String, List<(String, _ColorFeature)>>{};
     for (final cluster in clusters) {
       final hue = _circularMean(cluster.map((item) => item.$2.hue));
+      grouped.putIfAbsent(_labelForHue(hue), () => []).addAll(cluster);
+    }
+    for (final entry in grouped.entries) {
+      final hue = _circularMean(entry.value.map((item) => item.$2.hue));
       final family = AlbumColorFamily(
-        id: 'hue:${(hue * 10).round()}',
+        id: 'family:${entry.key}',
         hue: hue,
-        label: _labelForHue(hue),
+        label: entry.key,
         isNeutral: false,
       );
       families.add(family);
-      for (final item in cluster) { mapping[item.$1] = family; }
+      for (final item in entry.value) { mapping[item.$1] = family; }
     }
     if (neutral.isNotEmpty) {
       const family = AlbumColorFamily(id: 'neutral', label: '中性色', hue: 360, isNeutral: true);
@@ -175,17 +180,14 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
 
   /// 仅为实际生成的聚类中心命名；不决定分类是否存在或聚类边界。
   static String _labelForHue(double hue) {
-    if (hue < 18 || hue >= 345) return '红色系';
-    if (hue < 42) return '橙红色系';
-    if (hue < 68) return '橙黄色系';
-    if (hue < 95) return '黄色系';
-    if (hue < 155) return '绿色系';
-    if (hue < 195) return '青绿色系';
-    if (hue < 225) return '青蓝色系';
-    if (hue < 255) return '蓝色系';
-    if (hue < 285) return '蓝紫色系';
-    if (hue < 320) return '紫色系';
-    return '紫红色系';
+    if (hue < 15 || hue >= 345) return '红色';
+    if (hue < 45) return '橙色';
+    if (hue < 70) return '黄色';
+    if (hue < 165) return '绿色';
+    if (hue < 200) return '青色';
+    if (hue < 255) return '蓝色';
+    if (hue < 285) return '紫色';
+    return '粉色';
   }
 
   String _key(Map<String, dynamic> album) {
