@@ -31,6 +31,7 @@ class AppDelegate: FlutterAppDelegate {
     DispatchQueue.main.async { [weak window] in
       guard window?.isVisible == false else { return }
       sender.setActivationPolicy(.accessory)
+      window?.desktopWallpaper?.notifyTrayRestoreChanged()
     }
     return false
   }

@@ -28,6 +28,15 @@ final class DesktopWallpaper {
         return
       case "embedWindow": self.embedWindow()
       case "restoreWindow": self.restoreWindow()
+      case "getTrayRestoreNeeded":
+        result(self.trayRestoreNeeded)
+        return
+      case "toggleTrayWindow":
+        if self.trayRestoreNeeded {
+          self.restoreWindow()
+        } else {
+          self.embedWindow()
+        }
       default:
         result(FlutterMethodNotImplemented)
         return
@@ -37,6 +46,12 @@ final class DesktopWallpaper {
   }
 
   var isActive: Bool { session != nil }
+
+  private var trayRestoreNeeded: Bool { isActive || NSApp.activationPolicy() == .accessory }
+
+  func notifyTrayRestoreChanged() {
+    channel.invokeMethod("trayRestoreChanged", arguments: trayRestoreNeeded)
+  }
 
   private var canShow: Bool {
     mainWindow.isVisible && !mainWindow.isMiniaturized
@@ -84,6 +99,7 @@ final class DesktopWallpaper {
     window.contentViewController = controller
     window.setFrame(screen.frame, display: false)
     window.orderFrontRegardless()
+    notifyTrayRestoreChanged()
     return true
   }
 
@@ -106,6 +122,7 @@ final class DesktopWallpaper {
     } else {
       NSApp.activate(ignoringOtherApps: true)
     }
+    notifyTrayRestoreChanged()
   }
 
   func updateScreenFrame() {

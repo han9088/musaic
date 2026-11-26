@@ -17,6 +17,7 @@ abstract final class DesktopWallpaper {
 
   static final _capabilityChanges =
       StreamController<DesktopCapabilities>.broadcast();
+  static final _trayRestoreChanges = StreamController<bool>.broadcast();
   static Future<bool> Function()? _onPrepare;
   static VoidCallback? _onRestore;
   static bool _handlerInstalled = false;
@@ -36,6 +37,17 @@ abstract final class DesktopWallpaper {
     return _capabilityChanges.stream;
   }
 
+  static Stream<bool> get trayRestoreChanges {
+    _ensureHandler();
+    return _trayRestoreChanges.stream;
+  }
+
+  static Future<bool> getTrayRestoreNeeded() async =>
+      await _channel.invokeMethod<bool>('getTrayRestoreNeeded') ?? false;
+
+  static Future<void> toggleTrayWindow() =>
+      _channel.invokeMethod<void>('toggleTrayWindow');
+
   static Future<DesktopCapabilities> getCapabilities() async {
     if (!isAvailable) return DesktopCapabilities.unavailable;
     if (!_isLinux) return DesktopCapabilities.standardDesktop;
@@ -47,7 +59,8 @@ abstract final class DesktopWallpaper {
   static Future<void> setCloseToBackground(bool enabled) =>
       _channel.invokeMethod<void>('setCloseToBackground', enabled);
 
-  static Future<void> embedWindow() => _channel.invokeMethod<void>('embedWindow');
+  static Future<void> embedWindow() =>
+      _channel.invokeMethod<void>('embedWindow');
 
   static Future<void> restoreWindow() =>
       _channel.invokeMethod<void>('restoreWindow');
@@ -86,6 +99,11 @@ abstract final class DesktopWallpaper {
         return await _onPrepare?.call() ?? false;
       case 'didRestore':
         _onRestore?.call();
+        return null;
+      case 'trayRestoreChanged':
+        if (call.arguments case final bool needed) {
+          _trayRestoreChanges.add(needed);
+        }
         return null;
       case 'capabilitiesChanged':
         if (_isLinux) {

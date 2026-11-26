@@ -18,6 +18,8 @@ class DesktopTrayController {
   AppLocalizations? _localizations;
   DesktopCapabilities? _capabilities;
   StreamSubscription<DesktopCapabilities>? _capabilitySubscription;
+  StreamSubscription<bool>? _trayRestoreSubscription;
+  bool? _trayRestoreNeeded;
   int? _trayRevision;
   int _capabilityEvents = 0;
   int _configurationVersion = 0;
@@ -29,6 +31,8 @@ class DesktopTrayController {
   bool _runningAction = false;
 
   static bool get isAvailable => DesktopWallpaper.isAvailable;
+
+  static bool get _isMacOS => defaultTargetPlatform == TargetPlatform.macOS;
 
   static bool get _isLinux =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
@@ -44,10 +48,39 @@ class DesktopTrayController {
         _watchLinuxCapabilities();
       } else {
         _capabilities = DesktopCapabilities.standardDesktop;
+        if (_isMacOS) _watchMacWindow();
       }
     }
     _scheduleSync();
   }
+
+  void _watchMacWindow() {
+    _trayRestoreSubscription = DesktopWallpaper.trayRestoreChanges.listen(
+      _updateTrayRestore,
+    );
+    unawaited(_readInitialTrayRestore());
+  }
+
+  Future<void> _readInitialTrayRestore() async {
+    try {
+      final needed = await DesktopWallpaper.getTrayRestoreNeeded();
+      if (_trayRestoreNeeded == null) _updateTrayRestore(needed);
+    } catch (error) {
+      debugPrint('Could not read macOS tray window state: $error');
+    }
+  }
+
+  void _updateTrayRestore(bool needed) {
+    if (_disposed || _trayRestoreNeeded == needed) return;
+    _trayRestoreNeeded = needed;
+    if (_localizations case final l10n?) {
+      _wallpaper?.label = _wallpaperLabel(l10n);
+    }
+  }
+
+  String _wallpaperLabel(AppLocalizations l10n) => _trayRestoreNeeded == true
+      ? l10n.desktopWallpaperRestore
+      : l10n.desktopWallpaperSet;
 
   void _watchLinuxCapabilities() {
     // 先订阅再读取快照，避免查询期间发生的面板变化被旧结果覆盖。
@@ -122,7 +155,7 @@ class DesktopTrayController {
       _create(l10n, capabilities);
       await _setTrayReady(true);
     } else {
-      _wallpaper?.label = l10n.desktopWallpaperSet;
+      _wallpaper?.label = _wallpaperLabel(l10n);
       _wallpaper?.isEnabled = capabilities.wallpaper;
       _restore?.label = l10n.desktopWallpaperRestore;
       _quit?.label = l10n.desktopShortcutsQuit;
@@ -131,27 +164,30 @@ class DesktopTrayController {
   }
 
   void _create(AppLocalizations l10n, DesktopCapabilities capabilities) {
-    final icon = _icon = tray.TrayIcon.create() ??
+    final icon = _icon =
+        tray.TrayIcon.create() ??
         (throw StateError('Could not create tray icon'));
     // Linux 在 D-Bus 导出失败时仍可能返回对象，此时不能把窗口交给托盘恢复。
     if (_isLinux && !icon.isVisible()) {
       throw StateError('Could not export Linux tray icon');
     }
-    final menu = _menu = tray.Menu.create() ??
-        (throw StateError('Could not create tray menu'));
+    final menu = _menu =
+        tray.Menu.create() ?? (throw StateError('Could not create tray menu'));
     final generation = _resourceGeneration;
 
     _wallpaper = _addItem(
       menu,
-      l10n.desktopWallpaperSet,
-      _embedWindow,
+      _wallpaperLabel(l10n),
+      _isMacOS ? DesktopWallpaper.toggleTrayWindow : _embedWindow,
       enabled: capabilities.wallpaper,
     );
-    _restore = _addItem(
-      menu,
-      l10n.desktopWallpaperRestore,
-      DesktopWallpaper.restoreWindow,
-    );
+    if (!_isMacOS) {
+      _restore = _addItem(
+        menu,
+        l10n.desktopWallpaperRestore,
+        DesktopWallpaper.restoreWindow,
+      );
+    }
     menu.addSeparator();
     _quit = _addItem(menu, l10n.desktopShortcutsQuit, DesktopWallpaper.quit);
 
@@ -159,20 +195,30 @@ class DesktopTrayController {
     icon.setContextMenu(menu);
     // macOS 点击打开菜单；Linux 面板负责展示已导出的菜单。
     icon.setContextMenuTrigger(
-      defaultTargetPlatform == TargetPlatform.macOS
+      _isMacOS
           ? tray.ContextMenuTrigger.clicked
           : tray.ContextMenuTrigger.rightClicked,
     );
-    if (defaultTargetPlatform == TargetPlatform.windows) {
+    if (_isMacOS) {
+      // nativeapi installs the AppKit button action only after the first listener.
+      // The context-menu trigger handles the click on AppKit's thread.
+      final listener = icon.addListener((_) {});
+      if (listener == 0) {
+        throw StateError('Could not listen for macOS tray clicks');
+      }
+    } else if (defaultTargetPlatform == TargetPlatform.windows) {
       icon.addListener((event) {
         if (event is tray.TrayIconClickedEvent) {
           unawaited(_run(DesktopWallpaper.restoreWindow, generation));
         }
       });
     }
-    icon.isIconTemplate = defaultTargetPlatform == TargetPlatform.macOS;
+    icon.isIconTemplate = _isMacOS;
+    final iconAsset = _isMacOS
+        ? 'assets/branding/macos_tray.png'
+        : 'assets/branding/vinyl.png';
     final image = _image =
-        tray.ImageAsset.fromAsset('assets/branding/vinyl.png') ??
+        tray.ImageAsset.fromAsset(iconAsset) ??
         (throw StateError('Could not load tray icon image'));
     icon.icon = image;
     if (!icon.setVisible(true)) {
@@ -187,10 +233,9 @@ class DesktopTrayController {
     Future<void> Function() action, {
     bool enabled = true,
   }) {
-    final item = tray.MenuItem.createWithLabelAndType(
-      label,
-      tray.MenuItemType.normal,
-    ) ?? (throw StateError('Could not create tray menu item'));
+    final item =
+        tray.MenuItem.createWithLabelAndType(label, tray.MenuItemType.normal) ??
+        (throw StateError('Could not create tray menu item'));
     final generation = _resourceGeneration;
     item.isEnabled = enabled;
     item.addListener((event) {
@@ -208,10 +253,7 @@ class DesktopTrayController {
     }
   }
 
-  Future<void> _run(
-    Future<void> Function() action,
-    int generation,
-  ) async {
+  Future<void> _run(Future<void> Function() action, int generation) async {
     if (_disposed || _runningAction || generation != _resourceGeneration) {
       return;
     }
@@ -267,6 +309,9 @@ class DesktopTrayController {
     final subscription = _capabilitySubscription;
     _capabilitySubscription = null;
     if (subscription != null) unawaited(subscription.cancel());
+    if (_trayRestoreSubscription case final subscription?) {
+      unawaited(subscription.cancel());
+    }
     _scheduleSync();
   }
 }
