@@ -20,42 +20,42 @@ packages:
   apple_music_kit:
     dependency: "direct main"
     description:
-      path: "../apple_music_kit/packages/apple_music_kit"
+      path: "packages/apple_music_kit/packages/apple_music_kit"
       relative: true
     source: path
     version: "0.1.0"
   apple_music_kit_android:
     dependency: transitive
     description:
-      path: "../apple_music_kit/packages/apple_music_kit_android"
+      path: "packages/apple_music_kit/packages/apple_music_kit_android"
       relative: true
     source: path
     version: "0.1.0"
   apple_music_kit_desktop:
     dependency: transitive
     description:
-      path: "../apple_music_kit/packages/apple_music_kit_desktop"
+      path: "packages/apple_music_kit/packages/apple_music_kit_desktop"
       relative: true
     source: path
     version: "0.1.0"
   apple_music_kit_ios:
     dependency: transitive
     description:
-      path: "../apple_music_kit/packages/apple_music_kit_ios"
+      path: "packages/apple_music_kit/packages/apple_music_kit_ios"
       relative: true
     source: path
     version: "0.1.0"
   apple_music_kit_platform_interface:
     dependency: transitive
     description:
-      path: "../apple_music_kit/packages/apple_music_kit_platform_interface"
+      path: "packages/apple_music_kit/packages/apple_music_kit_platform_interface"
       relative: true
     source: path
     version: "0.1.0"
   apple_music_kit_web:
     dependency: transitive
     description:
-      path: "../apple_music_kit/packages/apple_music_kit_web"
+      path: "packages/apple_music_kit/packages/apple_music_kit_web"
       relative: true
     source: path
     version: "0.1.0"

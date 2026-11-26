@@ -1,0 +1,31 @@
+name: apple_music_kit_desktop
+description: Windows and Linux implementation of apple_music_kit using a browser companion.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  apple_music_kit_platform_interface:
+    path: ../apple_music_kit_platform_interface
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  plugin:
+    implements: apple_music_kit
+    platforms:
+      windows:
+        dartPluginClass: AppleMusicKitDesktop
+      linux:
+        dartPluginClass: AppleMusicKitDesktop
+  assets:
+    - assets/index.html
+    - assets/companion.js

@@ -1,0 +1,30 @@
+name: apple_music_kit_example
+description: "Example app for apple_music_kit."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  apple_music_kit:
+    path: ../packages/apple_music_kit
+  apple_music_kit_ios:
+    path: ../packages/apple_music_kit_ios
+  apple_music_kit_android:
+    path: ../packages/apple_music_kit_android
+  apple_music_kit_web:
+    path: ../packages/apple_music_kit_web
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

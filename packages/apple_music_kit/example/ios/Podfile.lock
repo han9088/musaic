@@ -1,0 +1,22 @@
+PODS:
+  - apple_music_kit_ios (0.1.0):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - apple_music_kit_ios (from `.symlinks/plugins/apple_music_kit_ios/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  apple_music_kit_ios:
+    :path: ".symlinks/plugins/apple_music_kit_ios/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  apple_music_kit_ios: 86127d701c755d056dd3eddb28cd82ff4c477d0a
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+
+PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
+
+COCOAPODS: 1.16.2

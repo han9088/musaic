@@ -7,7 +7,8 @@ Provider 不持有页面状态，也不替换现有 MockAlbumCache、AlbumPlayba
 
 ## Apple Music
 
-依赖同级仓库 `../apple_music_kit/packages/apple_music_kit`，其他机器需保持此目录关系。
+Apple Music Kit 源码位于仓库内的 `packages/apple_music_kit/`，应用依赖入口
+`packages/apple_music_kit/packages/apple_music_kit`。
 未来在应用装配层按需创建并通过构造函数传入使用方：
 
 ```dart

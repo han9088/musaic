@@ -23,7 +23,7 @@ dependencies:
   pub_semver: ^2.2.1
   url_launcher: ^6.3.3
   apple_music_kit:
-    path: ../apple_music_kit/packages/apple_music_kit
+    path: packages/apple_music_kit/packages/apple_music_kit
   material_ui: 1.11.0
   signals_flutter: 7.1.0
   go_router: 18.1.4

@@ -1,0 +1,16 @@
+{
+  "data": [{
+    "id": "123456",
+    "type": "albums",
+    "attributes": {
+      "name": "Local fixture album",
+      "artwork": {"url": "https://example.invalid/static/{w}x{h}.jpg"},
+      "editorialVideo": {
+        "motionDetailSquare": {"video": "https://example.invalid/square.m3u8"},
+        "motionDetailTall": {"video": "https://example.invalid/tall.m3u8"},
+        "motionSquareVideo1x1": {"video": "https://example.invalid/alternate-square.m3u8"},
+        "motionTallVideo3x4": {"video": "https://example.invalid/alternate-tall.m3u8"}
+      }
+    }
+  }]
+}

@@ -1,0 +1,42 @@
+name: apple_music_kit
+description: Apple MusicKit for Flutter — authorization, catalog, library and playback on iOS, Android, Web, Windows and Linux.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  apple_music_kit_desktop:
+    path: ../apple_music_kit_desktop
+  apple_music_kit_ios:
+    path: ../apple_music_kit_ios
+  apple_music_kit_android:
+    path: ../apple_music_kit_android
+  apple_music_kit_web:
+    path: ../apple_music_kit_web
+  apple_music_kit_platform_interface:
+    path: ../apple_music_kit_platform_interface
+  flutter:
+    sdk: flutter
+  meta: ^1.15.0
+
+flutter:
+  plugin:
+    platforms:
+      ios:
+        default_package: apple_music_kit_ios
+      android:
+        default_package: apple_music_kit_android
+      windows:
+        default_package: apple_music_kit_desktop
+      linux:
+        default_package: apple_music_kit_desktop
+      web:
+        default_package: apple_music_kit_web
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0

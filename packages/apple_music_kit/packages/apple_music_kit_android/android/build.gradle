@@ -1,0 +1,91 @@
+group 'com.deskbtm.apple_music_kit'
+version '1.0'
+
+// NOTE: deliberately uses the classic `apply plugin` structure. The
+// "Built-in Kotlin" plugin migration requires Flutter's bundled
+// kotlin-gradle-plugin on the classpath, which isn't resolvable here;
+// revisit when Flutter stabilizes that migration for plugin authors.
+
+buildscript {
+    ext.kotlin_version = '2.1.0'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.2'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+// Apple's MusicKit Android SDK (authentication + playback AARs) must be
+// downloaded manually from https://developer.apple.com/download/all/ and
+// is NOT redistributed with this plugin. Point MUSICKIT_ANDROID_SDK_DIR
+// (environment or gradle property) at the extracted directory containing
+// musickitauth.aar and musickitplayback.aar.
+//
+// When the SDK is absent, the plugin still builds; it simply reports
+// MusicKitException(sdkUnavailable) at runtime with actionable guidance.
+def sdkDir = providers.environmentVariable('MUSICKIT_ANDROID_SDK_DIR')
+    .orElse(providers.gradleProperty('MUSICKIT_ANDROID_SDK_DIR'))
+    .orElse('')
+def authAar = file("${sdkDir.get()}/MusicKitAuth-release-1.1.5.aar").exists() ? 'MusicKitAuth-release-1.1.5.aar' : 'musickitauth.aar'
+def playbackAar = file("${sdkDir.get()}/MediaPlayback-release-1.1.4.aar").exists() ? 'MediaPlayback-release-1.1.4.aar' : 'musickitplayback.aar'
+def hasAuthSdk = !sdkDir.get().isEmpty() && file("${sdkDir.get()}/${authAar}").exists()
+def hasPlaybackSdk = !sdkDir.get().isEmpty() && file("${sdkDir.get()}/${playbackAar}").exists()
+
+android {
+    namespace 'com.deskbtm.apple_music_kit'
+    compileSdk 35
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    sourceSets {
+        if (hasAuthSdk && hasPlaybackSdk) test.java.srcDirs += 'src/sdkTest/kotlin'
+        if (hasAuthSdk && hasPlaybackSdk) main.manifest.srcFile 'src/sdk/AndroidManifest.xml'
+        main.java.srcDirs = hasAuthSdk && hasPlaybackSdk
+            ? ['src/main/kotlin', 'src/sdk/kotlin']
+            : ['src/main/kotlin', 'src/fallback/kotlin']
+    }
+
+    defaultConfig {
+        minSdk 23
+        consumerProguardFiles 'consumer-proguard-rules.pro'
+    }
+}
+
+if (hasAuthSdk && hasPlaybackSdk) {
+    rootProject.allprojects { repositories { flatDir { dirs sdkDir.get() } } }
+    dependencies {
+        testImplementation 'junit:junit:4.13.2'
+        implementation 'androidx.media:media:1.7.0'
+        implementation 'androidx.appcompat:appcompat:1.7.0'
+        implementation 'com.google.android.material:material:1.6.1'
+        implementation 'com.squareup.picasso:picasso:2.5.2'
+        implementation 'com.google.code.gson:gson:2.8.6'
+        implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0'
+        implementation(name: authAar.replace('.aar', ''), ext: 'aar')
+        implementation(name: playbackAar.replace('.aar', ''), ext: 'aar')
+    }
+    logger.lifecycle("apple_music_kit_android: Apple MusicKit SDK found at ${sdkDir.get()} — full implementation enabled.")
+} else {
+    logger.lifecycle("apple_music_kit_android: Apple MusicKit SDK NOT found (MUSICKIT_ANDROID_SDK_DIR='${sdkDir.get()}'). " +
+            "Building fallback stub. See README.md for Android setup instructions.")
+}

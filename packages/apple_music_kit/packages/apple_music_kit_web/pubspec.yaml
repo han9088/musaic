@@ -1,0 +1,30 @@
+name: apple_music_kit_web
+description: Web implementation of apple_music_kit using MusicKit JS v3.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+flutter:
+  plugin:
+    implements: apple_music_kit
+    platforms:
+      web:
+        pluginClass: AppleMusicKitWeb
+        fileName: apple_music_kit_web.dart
+
+dependencies:
+  apple_music_kit_platform_interface:
+    path: ../apple_music_kit_platform_interface
+  flutter:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  web: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
