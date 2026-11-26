@@ -163,16 +163,16 @@ class MusaicQueryPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, Activi
         binding.addRequestPermissionsResultListener(permissions)
     }
 
-    private fun detachActivity() {
+    private fun detachActivity(forConfigChange: Boolean = false) {
         binding?.removeActivityResultListener(directories)
-        directories.detachActivity()
+        directories.detachActivity(cancelPicker = !forConfigChange)
         binding?.removeRequestPermissionsResultListener(permissions)
         binding = null
         permissions.activity = null
-        permissions.cancel()
+        if (!forConfigChange) permissions.cancel()
     }
 
-    override fun onDetachedFromActivityForConfigChanges() = detachActivity()
+    override fun onDetachedFromActivityForConfigChanges() = detachActivity(forConfigChange = true)
 
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) =
         onAttachedToActivity(binding)

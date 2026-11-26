@@ -11,11 +11,16 @@ import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/music/music_index.dart';
 import 'package:musaic/ui/theme/app_theme.dart';
 import 'package:musaic_query/musaic_query.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'fake_audio_directories.dart';
 
 class _Local extends Fake implements MusicProvider {
+  _Local({this.items = const []});
+
+  final List<ProviderAlbum> items;
+
   @override
   String get id => 'local';
 
@@ -44,7 +49,7 @@ class _Local extends Fake implements MusicProvider {
     scans++;
     await gate?.future;
     if (fail) throw StateError('scan failed');
-    return (items: <ProviderAlbum>[], nextCursor: null);
+    return (items: items, nextCursor: null);
   }
 
   @override
@@ -103,6 +108,201 @@ class _Audius extends Fake implements MusicProvider {
 }
 
 void main() {
+  testWidgets('folder actions are available after selecting Local music', (
+    tester,
+  ) async {
+    final local = _Local(
+      items: [
+        for (final count in [2, 1])
+          (
+            reference: (
+              provider: 'local',
+              id: 'album-$count',
+              kind: MusicKind.album,
+              source: MusicSource.library,
+              storefront: null,
+            ),
+            title: 'Collection $count',
+            artist: null,
+            artworkUrl: null,
+            trackCount: count,
+            tracks: null,
+          ),
+      ],
+    );
+    final sources = MusicSourceController(createLocal: () => local);
+    addTearDown(sources.dispose);
+    sqfliteFfiInit();
+    await tester.runAsync(() async {
+      final index = await MusicIndex.open(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+      );
+      final library = DirectoryMusicLibrary(
+        index: index,
+        directories: AudioDirectories(FakeDirectories()),
+      );
+      addTearDown(library.dispose);
+      await index.saveSource(root);
+      await library.loadCached();
+      await sources.attachDirectories(library);
+    });
+    Future<void>? selection;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MusicSourcePicker(
+            sources: sources,
+            onSourceSelection: (select) => selection = select(),
+          ),
+        ),
+      ),
+    );
+
+    final entry = find.byKey(const ValueKey('music-source-local'));
+    final folderName = find.text(root.name);
+    final add = find.text('Add folder');
+    final rescan = find.text('Rescan');
+    expect(local.scans, 0);
+    expect(folderName, findsNothing);
+    expect(add, findsNothing);
+    expect(rescan, findsNothing);
+    await tester.runAsync(() async {
+      await tester.tap(entry);
+      await selection;
+    });
+    await tester.pumpAndSettle();
+    expect(local.scans, 1);
+    expect(tester.widget<ListTile>(entry).selected, isTrue);
+    expect(find.text('1 album · 1 single'), findsOneWidget);
+    expect(folderName, findsOneWidget);
+    expect(add, findsOneWidget);
+    expect(rescan, findsOneWidget);
+    expect(find.byIcon(PhosphorIcons.arrowsClockwise), findsOneWidget);
+    expect(find.byIcon(PhosphorIcons.folderSimplePlus), findsOneWidget);
+    expect(
+      tester.getCenter(rescan).dy,
+      lessThan(tester.getCenter(folderName).dy),
+    );
+    expect(tester.getCenter(rescan).dy, tester.getCenter(add).dy);
+    expect(tester.getCenter(rescan).dx, lessThan(tester.getCenter(add).dx));
+    expect(find.text('Rescan all files'), findsNothing);
+    expect(find.text('Restore folder access'), findsNothing);
+    expect(find.byTooltip('Remove from library'), findsNothing);
+  });
+
+  test(
+    'saved folders can be selected even when system access is denied',
+    () async {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      sqfliteFfiInit();
+      final index = await MusicIndex.open(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+      );
+      final native = FakeDirectories();
+      final library = DirectoryMusicLibrary(
+        index: index,
+        directories: AudioDirectories(native),
+      );
+      final local = _Local()..granted = MusicAccess.denied;
+      final sources = MusicSourceController(createLocal: () => local);
+      addTearDown(library.dispose);
+      addTearDown(sources.dispose);
+      await index.saveSource(root);
+      await library.refresh();
+      await sources.attachDirectories(library);
+
+      await sources.selectLocal();
+
+      expect(local.scans, 0);
+      expect(sources.localSelected.value, isTrue);
+      expect(sources.catalog.value!.single.trackCount, 2);
+      expect(native.closes, 1);
+
+      native.folders[root.id]!.add(entry('new-song'));
+      await sources.rescanLocal();
+      expect(local.requests, 1);
+      expect(sources.catalog.value!.single.trackCount, 3);
+      expect(native.closes, 2);
+    },
+  );
+
+  test('system library and folder imports stay selected together', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    sqfliteFfiInit();
+    final index = await MusicIndex.open(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+    );
+    final native = FakeDirectories();
+    const saved = AudioDirectory(id: 'saved', name: 'Saved', token: 'grant');
+    native.folders[saved.id] = [entry('saved-song', parent: saved.id)];
+    final library = DirectoryMusicLibrary(
+      index: index,
+      directories: AudioDirectories(native),
+    );
+    final systemAlbum = (
+      reference: (
+        provider: 'local',
+        id: 'system-album',
+        kind: MusicKind.album,
+        source: MusicSource.library,
+        storefront: null,
+      ),
+      title: 'System album',
+      artist: null,
+      artworkUrl: null,
+      trackCount: 0,
+      tracks: const <ProviderSong>[],
+    );
+    final local = _Local(items: [systemAlbum]);
+    final rescanned = _Local(items: [systemAlbum]);
+    final providers = [local, rescanned].iterator;
+    final sources = MusicSourceController(
+      createLocal: () {
+        providers.moveNext();
+        return providers.current;
+      },
+    );
+    addTearDown(library.dispose);
+    addTearDown(sources.dispose);
+    await index.saveSource(saved);
+    await library.refresh();
+    native.parsed.clear();
+    await sources.attachDirectories(library);
+    await sources.selectDirectories(add: true);
+    expect(native.picks, 0);
+    await sources.selectLocal();
+    expect(await index.isSelected(), isFalse);
+    await sources.selectDirectories(add: true);
+    expect(native.picks, 1);
+    expect(native.closes, 2);
+    expect(native.parsed, ['a', 'b']);
+    expect(local.scans, 1);
+    expect(sources.provider, same(local));
+    expect(local.disposed, isFalse);
+    expect(sources.catalog.value!.map((album) => album.reference.provider), [
+      'local',
+      'directory',
+      'directory',
+    ]);
+
+    await sources.rescanLocal();
+    expect(sources.provider, same(rescanned));
+    expect(sources.catalog.value, hasLength(3));
+    expect(native.closes, 4);
+    expect(native.parsed, ['a', 'b']);
+    expect(
+      (await index.sources()).map((source) => source.id),
+      unorderedEquals([root.id, saved.id]),
+    );
+    expect(await index.isSelected(), isTrue);
+  });
+
   test('default mock never creates or requests the local provider', () async {
     var creations = 0;
     final sources = MusicSourceController(

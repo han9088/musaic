@@ -138,6 +138,8 @@ decoded falls back to the directory cover.
 
 The legacy Android `queryFromFolder` entry point queries MediaStore with a bound
 folder predicate; it is not a replacement for SAF enumeration.
+On iOS, `querySongs(path: ...)` rejects directory filters. Use
+`MusaicQuery().directories` to enumerate a folder granted by the document picker.
 
 References: [Android cursor errors](https://developer.android.com/reference/android/provider/DocumentsContract#EXTRA_ERROR),
 [Apple URL resource cache](https://developer.apple.com/documentation/foundation/url/removeallcachedresourcevalues()).

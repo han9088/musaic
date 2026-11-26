@@ -15,6 +15,7 @@ final class LocalMusicLibrary {
   Map<String, ProviderSong> _songs = {};
   Map<String, ProviderAlbum> _albums = {};
   Map<String, String> _sources = {};
+  Map<String, String> _filePaths = {};
   List<ProviderAlbum> _orderedAlbums = const [];
 
   /// 执行当前模块中的albums操作，用于音乐源、媒体库、播放及切换流程。
@@ -47,6 +48,7 @@ final class LocalMusicLibrary {
     _songs = {};
     _albums = {};
     _sources = {};
+    _filePaths = {};
     _orderedAlbums = const [];
   }
 
@@ -64,6 +66,7 @@ final class LocalMusicLibrary {
     _songs = result.songs;
     _albums = result.albums;
     _sources = result.sources;
+    _filePaths = result.filePaths;
     _orderedAlbums = result.ordered;
   }
 
@@ -71,6 +74,7 @@ final class LocalMusicLibrary {
     Map<String, ProviderSong> songs,
     Map<String, ProviderAlbum> albums,
     Map<String, String> sources,
+    Map<String, String> filePaths,
     List<ProviderAlbum> ordered,
   })
   _buildCatalog(List<SongModel> rows) {
@@ -88,6 +92,7 @@ final class LocalMusicLibrary {
     final groups = <String, List<ProviderSong>>{};
     final titles = <String, String>{};
     final sources = <String, String>{};
+    final filePaths = <String, String>{};
     for (final row in rows) {
       if (row.isMusic == false) continue;
       final id = row.id.toString();
@@ -111,7 +116,11 @@ final class LocalMusicLibrary {
       );
       if (songs.containsKey(id)) continue;
       songs[id] = song;
-      if (playable) sources[id] = url!;
+      if (playable) {
+        sources[id] = url!;
+        final path = uri.isScheme('file') ? uri.path : row.getMap['_data'];
+        if (path is String && path.startsWith('/')) filePaths[id] = path;
+      }
       groups.putIfAbsent(albumId, () => []).add(song);
       titles[albumId] = row.album ?? 'Unknown album';
     }
@@ -135,13 +144,16 @@ final class LocalMusicLibrary {
       songs: songs,
       albums: albums,
       sources: sources,
+      filePaths: filePaths,
       ordered: List<ProviderAlbum>.unmodifiable(ordered),
     );
   }
 
+  String? filePath(MusicReference reference) => _filePaths[reference.id];
+
   /// 执行当前模块中的来源操作，用于音乐源、媒体库、播放及切换流程。
-  String source(ProviderSong song) {
-    final value = _sources[song.reference.id];
+  String source(MusicReference reference) {
+    final value = _sources[reference.id];
     if (value == null) {
       throw UnsupportedError(
         'This system music item has no playable local asset',
@@ -161,12 +173,7 @@ final class LocalMusicLibrary {
   }
 
   /// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
-  List<ProviderSong> resolve(List<MusicReference> items) => [
-    for (final item in items) ..._resolve(item),
-  ];
-
-  /// 解析输入并转换为内部数据，用于音乐源、媒体库、播放及切换流程。
-  Iterable<ProviderSong> _resolve(MusicReference ref) {
+  Iterable<ProviderSong> resolve(MusicReference ref) {
     validate(ref);
     if (ref.kind == MusicKind.album) {
       final tracks = album(ref).tracks!.where((song) => song.playable).toList();
@@ -179,7 +186,7 @@ final class LocalMusicLibrary {
     if (song == null) {
       throw ArgumentError.value(ref, 'reference', 'Unknown local song');
     }
-    source(song);
+    source(song.reference);
     return [song];
   }
 

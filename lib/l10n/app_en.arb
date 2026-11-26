@@ -137,6 +137,7 @@
   "musicSourceScanning": "Getting your music library ready…",
   "musicSourceRescan": "Rescan",
   "musicSourceAlbumCount": "{count, plural, one{1 album} other{{count} albums}}",
+  "musicSourceSingleCount": "{count, plural, one{1 single} other{{count} singles}}",
   "musicSourceDenied": "Allow access to your music library in your device settings, then try again.",
   "musicSourceRestricted": "Your device restricts access to the music library.",
   "musicSourceUnavailable": "Local music isn’t available on this platform.",
@@ -154,6 +155,13 @@
   "musicRewind": "Go back 5 seconds",
   "musicFastForward": "Skip ahead 5 seconds",
   "@musicSourceAlbumCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@musicSourceSingleCount": {
     "placeholders": {
       "count": {
         "type": "int"

@@ -170,5 +170,7 @@ void main() {
     const platform = AudioDirectoryPlatform();
     expect(await platform.supported, false);
     await expectLater(platform.invoke('pick'), throwsUnsupportedError);
+    expect(await const AudioDirectories(platform).mediaPaths(['content://doc']),
+        isEmpty);
   });
 }

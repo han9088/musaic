@@ -21,6 +21,7 @@ public class SwiftMusaicQueryPlugin: NSObject, FlutterPlugin {
     if #available(iOS 13.0, *) { instance.directories = AudioDirectories(registrar: registrar) }
 
     registrar.addMethodCallDelegate(instance, channel: channel)
+    registrar.publish(instance)
   }
 
   public func detachFromEngine(for registrar: FlutterPluginRegistrar) {

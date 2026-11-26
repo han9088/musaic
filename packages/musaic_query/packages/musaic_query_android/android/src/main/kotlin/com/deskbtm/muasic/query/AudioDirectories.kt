@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.DocumentsContract as Documents
+import android.provider.MediaStore
 import com.deskbtm.muasic.query.queries.helper.EmbeddedArtwork
 import io.flutter.plugin.common.*
 import java.io.File
@@ -131,8 +132,9 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
         return true
     }
 
-    fun detachActivity() {
+    fun detachActivity(cancelPicker: Boolean = true) {
         activity = null
+        if (!cancelPicker) return
         picker?.error("cancelled", "Activity detached", null)
         picker = null
     }
@@ -143,7 +145,7 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
         detachActivity()
         pending.toList().forEach { it.error("detached", "Plugin detached", null) }
         worker.execute {
-            sessions.values.forEach { it.second?.close() }
+            sessions.values.forEach { (_, resource) -> runCatching { resource?.close() } }
             sessions.clear()
         }
         worker.shutdown()
@@ -175,6 +177,7 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
     private fun handle(call: MethodCall): Any? {
         check(!detached) { "Plugin detached" }
         when (call.method) {
+            "mediaPaths" -> return mediaPaths(call.argument<List<String>>("uris").orEmpty())
             "openPath" -> {
                 val file =
                     File(call.argument<String>("path") ?: error("Missing path")).canonicalFile
@@ -236,6 +239,12 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
                 sessions.remove(call.argument<String>("session"))?.second?.close()
                 return null
             }
+            "openPlayback" -> {
+                val file = call.argument<Map<String, Any?>>("file") ?: error("Missing file")
+                val uri = uriFor(source(call), file["id"] as String)
+                // The player opens the content descriptor using the persisted tree grant.
+                return mapOf("uri" to uri.toString())
+            }
             "metadata",
             "artwork" -> {
                 val source = source(call)
@@ -255,6 +264,33 @@ internal class AudioDirectories(private val context: Context, messenger: BinaryM
                 return null
             }
             else -> error("Unsupported directory operation")
+        }
+    }
+
+    private fun mediaPaths(uris: List<String>): Map<String, String> {
+        val sdk = android.os.Build.VERSION.SDK_INT
+        if (sdk < 29) return emptyMap()
+        val resolver = context.contentResolver
+        return buildMap {
+            for (value in uris) {
+                val uri = Uri.parse(value)
+                when (uri.authority) {
+                    "com.android.externalstorage.documents" -> Unit
+                    "com.android.providers.media.documents" -> if (sdk < 31) continue
+                    else -> continue
+                }
+                try {
+                    val media = MediaStore.getMediaUri(context, uri) ?: continue
+                    resolver.query(media, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)
+                        ?.use { cursor ->
+                            if (cursor.moveToFirst() && !cursor.isNull(0)) {
+                                put(value, cursor.getString(0))
+                            }
+                        }
+                } catch (_: Exception) {
+                    // Keep both entries if the provider cannot confirm the identity.
+                }
+            }
         }
     }
 

@@ -29,7 +29,7 @@ class AlbumPlayButton extends StatelessWidget {
     listenable: playback,
     builder: (context, child) {
       if (!playback.supportsPlayback) return const SizedBox.shrink();
-      final loading = playback.isAlbumLoading(asset, title);
+      final loading = playback.showsAlbumLoading(asset, title);
       final playing = playback.isPlaying(asset, title);
       return Center(
         child: GlassIconButton(

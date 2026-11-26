@@ -77,14 +77,8 @@ internal class AlbumQuery(private val request: QueryRequest) {
                     val art = tempData["album_art"].toString()
                     if (art.isEmpty()) tempData.remove("album_art")
 
+                    tempData["num_of_songs"] = tempData["numsongs"]
                     albumList.add(tempData)
-                }
-
-                // Add song count for each album (similar to playlists)
-                for (album in albumList) {
-                    val albumId = album["_id"].toString()
-                    val mediaCount = helper.getMediaCount(1, albumId, resolver)
-                    album["num_of_songs"] = mediaCount
                 }
 
                 return@withContext albumList

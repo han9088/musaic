@@ -37,7 +37,9 @@ class NowPlayingCapsule extends StatelessWidget {
     final title = playback?.currentTitle;
     final artist = playback?.currentArtist;
     final loading =
-        visible && pullFeedbackIcon == null && (playback?.isLoading ?? false);
+        visible &&
+        pullFeedbackIcon == null &&
+        (playback?.showLoadingIndicator ?? false);
     final playing = playback?.playing ?? false;
     final l10n = AppLocalizations.of(context);
 

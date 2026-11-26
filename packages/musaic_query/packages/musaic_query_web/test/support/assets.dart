@@ -36,12 +36,14 @@ class TestBundle extends CachingAssetBundle {
 Uint8List mp3(String title,
     {String artist = '',
     String album = '',
+    String albumArtist = '',
     String genre = '',
     Uint8List? picture}) {
   final frames = BytesBuilder();
   for (final entry in {
     'TIT2': title,
     'TPE1': artist,
+    'TPE2': albumArtist,
     'TALB': album,
     'TCON': genre
   }.entries) {

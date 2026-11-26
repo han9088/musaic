@@ -52,12 +52,12 @@ class MusaicQueryWebController {
         .where((key) => key.toLowerCase().endsWith('.mp3'))
         .toList()
       ..sort();
-    final albums = <String, int>{};
+    final albums = <(String, String?), int>{};
     final artists = <String, int>{};
     final genres = <String, int>{};
     final songs = <SongModel>[];
-    int? groupId(Map<String, int> groups, String? name) =>
-        name == null ? null : groups.putIfAbsent(name, () => groups.length + 1);
+    int? groupId<Key extends Object>(Map<Key, int> groups, Key? key) =>
+        key == null ? null : groups.putIfAbsent(key, () => groups.length + 1);
     for (final asset in assets) {
       final mp3 = await _mp3(asset);
       final tags = _tags(mp3);
@@ -68,6 +68,7 @@ class MusaicQueryWebController {
 
       final album = tag('Album');
       final artist = tag('Artist');
+      final albumArtist = tag('Accompaniment') ?? artist;
       final genre = tag('Genre');
       songs.add(SongModel(Map.unmodifiable({
         '_id': songs.length + 1,
@@ -78,7 +79,8 @@ class MusaicQueryWebController {
         '_size': mp3.mp3Bytes.length,
         'title': tag('Title') ?? path.basenameWithoutExtension(asset),
         'album': album,
-        'album_id': groupId(albums, album),
+        'album_id':
+            groupId(albums, album == null ? null : (album, albumArtist)),
         'artist': artist,
         'artist_id': groupId(artists, artist),
         'genre': genre,

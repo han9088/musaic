@@ -5,7 +5,9 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
+import android.provider.MediaStore
 import com.deskbtm.muasic.query.controllers.MethodController
+import com.deskbtm.muasic.query.queries.helper.QueryHelper
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.runBlocking
@@ -86,6 +88,51 @@ class QuerySafetyTest {
         assertArrayEquals(arrayOf("%100\\%\\_live%"), provider.arguments)
     }
 
+    @Test
+    fun albumNameLookupTreatsWildcardsAsLiteralCharacters() = runBlocking {
+        val provider = MediaProvider()
+        ShadowContentResolver.registerProviderInternal("media", provider)
+        MethodController(audioFromRequest(0, "100%_Live")).find()
+        assertEquals("album LIKE ? ESCAPE '\\'", provider.selection)
+        assertArrayEquals(arrayOf("100\\%\\_Live"), provider.arguments)
+    }
+
+    @Test
+    fun numericPlaylistIdDoesNotMatchAnotherPlaylistByName() = runBlocking {
+        val provider = MediaProvider(numericPlaylistName = true)
+        ShadowContentResolver.registerProviderInternal("media", provider)
+        MethodController(audioFromRequest(6, 123L)).find()
+        val expected = MediaStore.Audio.Playlists.Members.getContentUri("external", 123L)
+        assertEquals(listOf(expected), provider.queriedUris)
+    }
+
+    @Test
+    fun songMetadataPreservesLargeSizesAndUnknownFlags() {
+        val columns = arrayOf("_size", "genre_id", "is_music", "is_alarm", "is_podcast")
+        MatrixCursor(columns).use { cursor ->
+            val size = 3L * 1024 * 1024 * 1024
+            cursor.addRow(arrayOf<Any?>(size, 45L, null, 0, 1))
+            assertTrue(cursor.moveToFirst())
+            val helper = QueryHelper()
+            assertEquals(size, helper.loadSongItem("_size", cursor))
+            assertEquals(45L, helper.loadSongItem("genre_id", cursor))
+            assertNull(helper.loadSongItem("is_music", cursor))
+            assertEquals(false, helper.loadSongItem("is_alarm", cursor))
+            assertEquals(true, helper.loadSongItem("is_podcast", cursor))
+        }
+    }
+
+    private fun audioFromRequest(type: Int, source: Any) =
+        QueryRequest(
+            MethodCall(
+                "queryAudiosFrom",
+                mapOf("type" to type, "where" to source, "orderType" to 0, "ignoreCase" to true),
+            ),
+            Reply(),
+            RuntimeEnvironment.getApplication(),
+            false,
+        )
+
     private fun request(result: Reply) =
         QueryRequest(
             MethodCall(
@@ -118,7 +165,10 @@ class QuerySafetyTest {
         }
     }
 
-    private class MediaProvider(failRead: Boolean = false) : ContentProvider() {
+    private class MediaProvider(
+        failRead: Boolean = false,
+        private val numericPlaylistName: Boolean = false,
+    ) : ContentProvider() {
         val cursor =
             object : MatrixCursor(arrayOf("_id", "_data", "title")) {
                     override fun getString(column: Int): String? {
@@ -129,6 +179,7 @@ class QuerySafetyTest {
                 .apply { addRow(arrayOf<Any>(1L, "/Music/test.mp3", "Test")) }
         var selection: String? = null
         var arguments: Array<out String>? = null
+        val queriedUris = mutableListOf<Uri>()
 
         override fun query(
             uri: Uri,
@@ -137,6 +188,12 @@ class QuerySafetyTest {
             selectionArgs: Array<out String>?,
             sortOrder: String?,
         ): Cursor {
+            queriedUris.add(uri)
+            if (numericPlaylistName && uri == MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI) {
+                return MatrixCursor(arrayOf("name", "_id")).apply {
+                    addRow(arrayOf<Any>("123", 456L))
+                }
+            }
             this.selection = selection
             arguments = selectionArgs
             return cursor

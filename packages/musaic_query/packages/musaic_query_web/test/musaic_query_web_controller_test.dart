@@ -91,6 +91,29 @@ void main() {
     expect(() => songs.first.getMap['_id'] = 7, throwsUnsupportedError);
   });
 
+  test('separates same-name albums and keeps compilation tracks together',
+      () async {
+    final query = MusaicQueryWebController(
+        bundle: TestBundle({
+      'a.mp3': mp3('One', artist: 'A', album: 'Hits'),
+      'b.mp3': mp3('Two', artist: 'B', album: 'Hits'),
+      'c.mp3': mp3('Three',
+          artist: 'A', album: 'Hits', albumArtist: 'Various Artists'),
+      'd.mp3': mp3('Four',
+          artist: 'B', album: 'Hits', albumArtist: 'Various Artists'),
+    }));
+    final albums = await query.queryAlbums();
+    final songs = await Future.wait(albums.map(
+        (album) => query.queryAudiosFrom(AudiosFromType.ALBUM_ID, album.id)));
+    expect(
+        songs.map((group) => group.map((song) => song.title).toList()),
+        unorderedEquals([
+          ['One'],
+          ['Two'],
+          ['Four', 'Three']
+        ]));
+  });
+
   test('retries a failed index load and validates artwork dimensions',
       () async {
     final bundle = TestBundle({'a.mp3': mp3('A')})..failNextLoad = true;

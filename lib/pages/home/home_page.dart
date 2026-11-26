@@ -50,7 +50,7 @@ import '../../features/music/playback/album_playback.dart';
 import '../../features/music/catalog/album_catalog_mapper.dart';
 
 /// 封装或定义首页音乐来源相关类型与行为，负责页面状态组织与业务流程协调。
-enum _HomeMusicSource { mock, mock2, local, directories, audius }
+enum _HomeMusicSource { mock, mock2, local, audius }
 
 /// 封装或定义首页page相关类型与行为，负责页面状态组织与业务流程协调。
 class HomePage extends StatefulWidget {
@@ -106,8 +106,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ? _sources.mock2Selected.value
             ? _HomeMusicSource.mock2
             : _HomeMusicSource.mock
-      : _sources.directorySelected.value
-      ? _HomeMusicSource.directories
       : _sources.audiusSelected
       ? _HomeMusicSource.audius
       : _HomeMusicSource.local;

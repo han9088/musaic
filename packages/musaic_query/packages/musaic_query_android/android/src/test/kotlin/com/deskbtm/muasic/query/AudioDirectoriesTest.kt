@@ -1,5 +1,6 @@
 package com.deskbtm.muasic.query
 
+import android.app.Activity
 import android.content.ContentProvider
 import android.content.ContentValues
 import android.database.Cursor
@@ -11,13 +12,16 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
+import io.flutter.plugin.common.MethodChannel
 import java.nio.ByteBuffer
 import java.nio.file.Files
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Robolectric
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 
@@ -48,6 +52,38 @@ class AudioDirectoriesTest {
             AudioDirectories::class.java.getDeclaredMethod("handle", MethodCall::class.java)
         function.isAccessible = true
         return function.invoke(plugin, MethodCall(method, args))
+    }
+
+    @Test
+    fun directoryPickerResultSurvivesActivityRecreation() {
+        val host = Robolectric.buildActivity(Activity::class.java).setup()
+        val plugin = AudioDirectories(RuntimeEnvironment.getApplication(), Messenger())
+        var replies = 0
+        val result = object : MethodChannel.Result {
+            override fun success(value: Any?) {
+                assertNull(value)
+                replies++
+            }
+            override fun error(code: String, message: String?, details: Any?) = fail(code)
+            override fun notImplemented() = fail("not implemented")
+        }
+        try {
+            plugin.activity = host.get()
+            val pick = AudioDirectories::class.java.getDeclaredMethod("pick", MethodChannel.Result::class.java)
+            pick.isAccessible = true
+            pick.invoke(plugin, result)
+            val request = shadowOf(host.get()).nextStartedActivityForResult
+            assertNotNull(request)
+            plugin.detachActivity(cancelPicker = false)
+            assertEquals(0, replies)
+            host.recreate()
+            plugin.activity = host.get()
+            assertTrue(plugin.onActivityResult(request.requestCode, Activity.RESULT_CANCELED, null))
+            assertEquals(1, replies)
+        } finally {
+            plugin.dispose()
+            host.pause().stop().destroy()
+        }
     }
 
     @Test

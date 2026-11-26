@@ -262,7 +262,7 @@ void main() {
     final picksBeforeRelease = native.picks;
     native.releaseGate!.complete();
     await removing;
-    expect(await adding, true);
+    expect((await adding)?.id, root.id);
     expect(picksBeforeRelease, 0);
     expect((await index.sources()).single.id, root.id);
   });
@@ -283,7 +283,7 @@ void main() {
       expect(disposed, false);
       native.releaseGate!.complete();
       await Future.wait([removing, closing]);
-      expect(await adding, false);
+      expect(await adding, isNull);
       expect(native.picks, 0);
     },
   );

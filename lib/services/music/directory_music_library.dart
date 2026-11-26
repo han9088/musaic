@@ -57,6 +57,86 @@ final class DirectoryMusicLibrary {
 
   /// 执行当前模块中的track操作，用于音乐源、媒体库、播放及切换流程。
   IndexedAudio? track(String id) => _tracksById[id];
+
+  Future<AudioDirectoryPlayback> openPlayback(MusicReference reference) {
+    final audio = track(reference.id);
+    if (_disposed || audio == null) {
+      throw StateError('Folder track is no longer indexed');
+    }
+    return directories.openPlayback(audio.source, audio.file);
+  }
+
+  Future<List<ProviderAlbum>> combineWithSystemAlbums(
+    List<ProviderAlbum> systemAlbums,
+    String? Function(MusicReference)? systemFilePath,
+  ) async {
+    final folderAlbums = albums.value;
+    if (systemAlbums.isEmpty) return folderAlbums;
+    if (folderAlbums.isEmpty) return systemAlbums;
+    final systemPaths = <String>{};
+    if (systemFilePath != null) {
+      for (final album in systemAlbums) {
+        for (final song in album.tracks ?? const <ProviderSong>[]) {
+          if (systemFilePath(song.reference) case final path?) {
+            systemPaths.add(path);
+          }
+        }
+      }
+    }
+    if (systemPaths.isEmpty) {
+      return List.unmodifiable([...systemAlbums, ...folderAlbums]);
+    }
+
+    final indexedFiles = _tracksById;
+    final documents = <String>[];
+    for (final track in indexedFiles.values) {
+      if (track.file.uri.startsWith('content://')) {
+        documents.add(track.file.uri);
+      }
+    }
+    final mediaPaths = <String, String>{};
+    for (var offset = 0; offset < documents.length; offset += 128) {
+      try {
+        final paths = await directories.mediaPaths(
+          documents.skip(offset).take(128).toList(),
+        );
+        mediaPaths.addAll(paths);
+      } catch (_) {
+        // An unavailable identity leaves the folder track in the catalog.
+        break;
+      }
+    }
+
+    final combined = [...systemAlbums];
+    for (final album in folderAlbums) {
+      final tracks = album.tracks!;
+      final unique = tracks
+          .where((track) {
+            final file = indexedFiles[track.reference.id]?.file;
+            final uri = file == null ? null : Uri.tryParse(file.uri);
+            final path = uri?.isScheme('file') == true && uri!.host.isEmpty
+                ? uri.path
+                : mediaPaths[file?.uri];
+            return path == null || !systemPaths.contains(path);
+          })
+          .toList(growable: false);
+      if (unique.isEmpty) continue;
+      combined.add(
+        unique.length == tracks.length
+            ? album
+            : (
+                reference: album.reference,
+                title: album.title,
+                artist: album.artist,
+                artworkUrl: album.artworkUrl,
+                trackCount: unique.length,
+                tracks: List<ProviderSong>.unmodifiable(unique),
+              ),
+      );
+    }
+    return List.unmodifiable(combined);
+  }
+
   final _artwork = <String, Future<String?>>{};
   final _covers = <String, Future<AudioFileEntry?>>{};
 
@@ -91,14 +171,14 @@ final class DirectoryMusicLibrary {
     return result;
   }
 
-  Future<bool> addDirectory() => _exclusive(() async {
-    if (_disposed) return false;
+  Future<AudioDirectory?> addDirectory() => _exclusive(() async {
+    if (_disposed) return null;
     final source = await directories.pick();
-    if (source == null || _disposed) return false;
+    if (source == null || _disposed) return null;
     await index.saveSource(source);
     final roots = await index.sources();
     if (!_disposed) sources.value = roots;
-    return !_disposed;
+    return _disposed ? null : source;
   });
 
   /// 执行当前模块中的reauthorize操作，用于音乐源、媒体库、播放及切换流程。
@@ -135,11 +215,11 @@ final class DirectoryMusicLibrary {
   }
 
   /// 更新相关状态并同步依赖方，用于音乐源、媒体库、播放及切换流程。
-  Future<void> refresh({bool force = false}) {
+  Future<void> refresh({bool force = false, AudioDirectory? source}) {
     if (_disposed) return Future.value();
     if (_refresh != null) return _refresh!;
     final cancellation = _cancellation = AudioScanCancellation();
-    return _refresh = _exclusive(() => _scan(force, cancellation))
+    return _refresh = _exclusive(() => _scan(force, cancellation, source))
         .whenComplete(() {
           _refresh = null;
           _cancellation = null;
@@ -148,7 +228,11 @@ final class DirectoryMusicLibrary {
 
   /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   void cancel() => _cancellation?.cancel();
-  Future<void> _scan(bool force, AudioScanCancellation cancellation) async {
+  Future<void> _scan(
+    bool force,
+    AudioScanCancellation cancellation,
+    AudioDirectory? addedSource,
+  ) async {
     if (_disposed) return;
     final totals = ScanCounts();
     batch(() {
@@ -171,7 +255,8 @@ final class DirectoryMusicLibrary {
     try {
       final generation = await index.nextGeneration();
       if (force) await directories.clearArtworkCache();
-      for (final original in await index.sources()) {
+      final roots = addedSource == null ? await index.sources() : [addedSource];
+      for (final original in roots) {
         if (cancellation.isCancelled) break;
         var complete = true;
         await index.status(original.id, 'scanning');

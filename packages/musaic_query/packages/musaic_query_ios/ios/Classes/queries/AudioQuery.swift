@@ -11,6 +11,13 @@ class AudioQuery {
   }
 
   func querySongs() {
+    if let path = args["path"] as? String, !path.isEmpty {
+      result(FlutterError(
+        code: "UnsupportedDirectoryFilter",
+        message: "Use the directory picker to scan an audio folder on iOS.",
+        details: nil))
+      return
+    }
     let sortType = args["sortType"] as? Int ?? 0
 
     let cursor = MPMediaQuery.songs()

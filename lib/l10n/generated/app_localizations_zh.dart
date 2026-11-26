@@ -449,6 +449,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String musicSourceSingleCount(int count) {
+    return '$count 首单曲';
+  }
+
+  @override
   String get musicSourceDenied => '未获得音乐库权限，音乐源未切换。可重试或前往系统设置开启权限。';
 
   @override

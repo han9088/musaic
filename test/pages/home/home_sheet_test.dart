@@ -1745,6 +1745,7 @@ void main() {
     expect(sources.catalog.value, isNull);
     expect(sources.provider, isNull);
 
+    sources.localSelected.value = true;
     sources.catalog.value = const [];
     await tester.pumpAndSettle();
     expectDotAligned(
@@ -1752,6 +1753,7 @@ void main() {
       find.byKey(const ValueKey('music-source-local')),
       find.text('Local music'),
     );
+    sources.localSelected.value = false;
     sources.catalog.value = null;
     await tester.pumpAndSettle();
 

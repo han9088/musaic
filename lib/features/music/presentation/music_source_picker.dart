@@ -1,14 +1,13 @@
 // 文件职责：音乐源、媒体库、播放及切换流程。
 
 import 'package:flutter/foundation.dart';
-
-import '../../../services/music/directory_music_library.dart';
-
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../services/music/directory_music_library.dart';
+import '../../../services/music/music_models.dart';
 import '../../../services/music/music_source_controller.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../ui/theme/app_typography.dart';
@@ -33,6 +32,13 @@ class MusicSourcePicker extends StatelessWidget {
   Future<void> _select(Future<void> Function() selection) =>
       onSourceSelection?.call(selection) ?? selection();
 
+  String _localMusicSummary(AppLocalizations l10n, List<ProviderAlbum> albums) {
+    final singles = albums.where((album) => album.trackCount == 1).length;
+    final albumCount = l10n.musicSourceAlbumCount(albums.length - singles);
+    if (singles == 0) return albumCount;
+    return '$albumCount · ${l10n.musicSourceSingleCount(singles)}';
+  }
+
   @override
   Widget build(BuildContext context) => SignalBuilder(
     builder: (context) {
@@ -42,13 +48,20 @@ class MusicSourcePicker extends StatelessWidget {
         final busy = sources.busy.value;
         final audiusLoading = sources.audiusLoading.value;
         final selectionBlocked = busy || switching;
-        final problem = sources.problem.value;
-        final directorySelected = sources.directorySelected.value;
         final windows =
             !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+        final showLocal = !demoOnly && !kIsWeb && !windows;
         final audiusSelected = sources.audiusSelected;
-        final localAlbums = directorySelected || audiusSelected ? null : albums;
-        final localSelected = localAlbums != null;
+        final localSelected = sources.localSelected.value;
+        final localAlbums = localSelected ? albums : null;
+        final library = showLocal && localSelected ? sources.directories : null;
+        final folderState = library?.state.value;
+        final scanningFolders = folderState == DirectoryScanState.scanning;
+        final problem =
+            sources.problem.value ??
+            (folderState == DirectoryScanState.failed
+                ? MusicSourceProblem.scanFailed
+                : null);
         final mock2Selected = sources.mock2Selected.value;
         final firstDemoSelected = albums == null && !mock2Selected;
         final secondDemoSelected = albums == null && mock2Selected;
@@ -136,7 +149,7 @@ class MusicSourcePicker extends StatelessWidget {
                   ? null
                   : () => _select(sources.selectMock2),
             ),
-            if (!demoOnly && !kIsWeb && !windows) ...[
+            if (showLocal) ...[
               SettingsSectionHeading(l10n.musicSourceDeviceGroup),
               ListTile(
                 key: const ValueKey('music-source-local'),
@@ -151,7 +164,7 @@ class MusicSourcePicker extends StatelessWidget {
                       ? l10n.musicSourceScanning
                       : localAlbums == null
                       ? l10n.musicSourceLocalHint
-                      : l10n.musicSourceAlbumCount(localAlbums.length),
+                      : _localMusicSummary(l10n, localAlbums),
                   style: const TextStyle(color: Colors.white60),
                 ),
                 trailing: busy && !audiusLoading
@@ -168,128 +181,77 @@ class MusicSourcePicker extends StatelessWidget {
                     ? null
                     : () => _select(sources.selectLocal),
               ),
-              if (localSelected && !busy)
-                TextButton(
-                  onPressed: switching
-                      ? null
-                      : () => _select(sources.selectLocal),
-                  child: Text(l10n.musicSourceRescan),
-                ),
-            ],
-            if (sources.directories case final library? when !demoOnly) ...[
-              ListTile(
-                leading: const Icon(PhosphorIcons.folder),
-                title: AppSelectionTitle(
-                  selected: directorySelected,
-                  child: Text(l10n.musicDirectories),
-                ),
-                selected: directorySelected,
-                onTap: busy || switching
-                    ? null
-                    : () => _select(sources.selectDirectories),
-              ),
-              TextButton(
-                onPressed: busy || switching
-                    ? null
-                    : () => _select(() => sources.selectDirectories(add: true)),
-                child: Text(l10n.musicAddDirectory),
-              ),
-              if (library.state.value == DirectoryScanState.scanning)
-                TextButton(
-                  onPressed: library.cancel,
-                  child: Text(l10n.musicCancelScan),
-                ),
-              if (directorySelected) ...[
+              if (localSelected) ...[
                 Padding(
                   padding: settingsItemPadding,
-                  child: Text(
-                    l10n.musicScanCounts(
-                      library.counts.value.added,
-                      library.counts.value.updated,
-                      library.counts.value.skipped,
-                      library.counts.value.deleted,
-                      library.counts.value.failed,
+                  child: OutlinedButtonTheme(
+                    data: OutlinedButtonThemeData(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        disabledForegroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white24),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        minimumSize: const Size(0, 36),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
+                      ),
                     ),
-                    style: const TextStyle(color: Colors.white60),
-                  ),
-                ),
-                if (library.state.value != DirectoryScanState.scanning)
-                  TextButton(
-                    onPressed: switching
-                        ? null
-                        : () => _select(() => library.refresh(force: true)),
-                    child: Text(l10n.musicForceRefresh),
-                  ),
-                for (final root in library.sources.value)
-                  ListTile(
-                    title: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      spacing: 8,
                       children: [
-                        Text(root.name),
-                        for (final folder in library.folders.value.where(
-                          (f) => f.id == root.id,
-                        ))
-                          Text(
-                            l10n.musicFolderSummary(
-                              folder.count,
-                              folder.bytes == null
-                                  ? '—'
-                                  : '${(folder.bytes! / (1024 * 1024)).toStringAsFixed(1)} MB',
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: Icon(
+                              scanningFolders
+                                  ? PhosphorIcons.x
+                                  : PhosphorIcons.arrowsClockwise,
+                              size: 18,
                             ),
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
+                            label: Text(
+                              scanningFolders
+                                  ? l10n.musicCancelScan
+                                  : l10n.musicSourceRescan,
                             ),
+                            onPressed: scanningFolders
+                                ? library?.cancel
+                                : selectionBlocked
+                                ? null
+                                : sources.rescanLocal,
                           ),
-                        if (library.folders.value.any(
-                          (f) => f.id == root.id && !f.complete,
-                        ))
-                          Text(
-                            l10n.musicFolderIncomplete,
-                            style: const TextStyle(
-                              color: Colors.white60,
-                              fontSize: 12,
+                        ),
+                        if (library != null)
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                PhosphorIcons.folderSimplePlus,
+                                size: 18,
+                              ),
+                              label: Text(l10n.musicAddDirectory),
+                              onPressed: selectionBlocked
+                                  ? null
+                                  : () => sources.selectDirectories(add: true),
                             ),
                           ),
                       ],
                     ),
-                    subtitle: TextButton(
-                      onPressed: busy || switching
-                          ? null
-                          : () async {
-                              try {
-                                await library.reauthorize(root);
-                              } catch (_) {
-                                sources.problem.value =
-                                    MusicSourceProblem.scanFailed;
-                              }
-                            },
-                      child: Text(l10n.musicReauthorize),
-                    ),
-                    trailing: IconButton(
-                      tooltip: l10n.musicRemoveDirectory,
-                      icon: const Icon(PhosphorIcons.minusCircle),
-                      onPressed: busy || switching
-                          ? null
-                          : () => library.remove(root),
-                    ),
                   ),
-                if (library.state.value == DirectoryScanState.failed)
-                  Padding(
-                    padding: settingsItemPadding,
-                    child: Text(
-                      l10n.musicSourceScanFailed,
-                      style: const TextStyle(color: Colors.white70),
+                ),
+                if (library != null)
+                  for (final folder in library.sources.value)
+                    ListTile(
+                      dense: true,
+                      leading: const Icon(PhosphorIcons.folderSimple),
+                      title: Text(
+                        folder.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
                     ),
-                  ),
-                if (library.state.value == DirectoryScanState.cancelled)
-                  Padding(
-                    padding: settingsItemPadding,
-                    child: Text(
-                      l10n.musicScanCancelled,
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                  ),
               ],
             ],
             if (!demoOnly && problem != null)

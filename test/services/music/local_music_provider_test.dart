@@ -5,9 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/features/artwork/source/artwork_resolver.dart';
 import 'package:musaic/features/music/catalog/album_catalog_mapper.dart';
+import 'package:musaic/services/music/directory_music_library.dart';
 import 'package:musaic/services/music/local_music_provider.dart';
 import 'package:musaic/services/music/local_music_library.dart';
 import 'package:musaic/services/music/music_provider.dart';
+import 'package:musaic/storage/music/music_index.dart';
+import 'package:musaic_query/musaic_query.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+import 'fake_audio_directories.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -255,11 +261,11 @@ void main() {
         final tracks = album.tracks!;
         expect(tracks.first.playable, isTrue);
         expect(
-          library.source(tracks.first),
+          library.source(tracks.first.reference),
           'content://media/external/audio/media/4',
         );
         expect(
-          library.source(tracks.last),
+          library.source(tracks.last.reference),
           'content://media/external/audio/media/5',
         );
         expect(artworkQueries, isEmpty);
@@ -279,69 +285,134 @@ void main() {
     },
   );
 
-  test('pathless content URI reaches existing player unchanged', () async {
-    final messenger =
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-    const playerChannel = MethodChannel('xyz.luan/audioplayers');
-    const globalChannel = MethodChannel('xyz.luan/audioplayers.global');
-    const globalEvents = MethodChannel('xyz.luan/audioplayers.global/events');
-    MethodChannel? playerEvents;
-    final calls = <MethodCall>[];
-    messenger.setMockMethodCallHandler(globalChannel, (_) async => 1);
-    messenger.setMockMethodCallHandler(globalEvents, (_) async => null);
-    messenger.setMockMethodCallHandler(playerChannel, (call) async {
-      calls.add(call);
-      final id = (call.arguments as Map)['playerId'];
-      if (call.method == 'create') {
-        playerEvents = MethodChannel('xyz.luan/audioplayers/events/$id');
-        messenger.setMockMethodCallHandler(playerEvents!, (_) async => null);
-      }
-      if (call.method == 'setSourceUrl' || call.method == 'seek') {
-        // Deliver the native preparation event through the real Dart adapter.
-        await messenger.handlePlatformMessage(
-          playerEvents!.name,
-          const StandardMethodCodec().encodeSuccessEnvelope({
-            'event': call.method == 'seek'
-                ? 'audio.onSeekComplete'
-                : 'audio.onPrepared',
-            'value': true,
-          }),
-          (_) {},
-        );
-      }
-      return call.method == 'getDuration' ? 1000 : 1;
-    });
-    rows.add({
-      '_id': 4,
-      'album_id': 30,
-      'title': 'Pathless',
-      '_uri': 'content://media/external/audio/media/4',
-    });
-    try {
-      await provider.initialize();
-      await provider.requestAuthorization();
-      await provider.play([LocalMusicLibrary.reference('4', MusicKind.song)]);
-      final source = calls.singleWhere((call) => call.method == 'setSourceUrl');
-      expect(
-        (source.arguments as Map)['url'],
-        'content://media/external/audio/media/4',
+  test(
+    'system and folder tracks share the player and release folder access',
+    () async {
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const playerChannel = MethodChannel('xyz.luan/audioplayers');
+      const globalChannel = MethodChannel('xyz.luan/audioplayers.global');
+      const globalEvents = MethodChannel('xyz.luan/audioplayers.global/events');
+      MethodChannel? playerEvents;
+      final calls = <MethodCall>[];
+      messenger.setMockMethodCallHandler(globalChannel, (_) async => 1);
+      messenger.setMockMethodCallHandler(globalEvents, (_) async => null);
+      messenger.setMockMethodCallHandler(playerChannel, (call) async {
+        calls.add(call);
+        final id = (call.arguments as Map)['playerId'];
+        if (call.method == 'create') {
+          playerEvents = MethodChannel('xyz.luan/audioplayers/events/$id');
+          messenger.setMockMethodCallHandler(playerEvents!, (_) async => null);
+        }
+        if (call.method == 'setSourceUrl' || call.method == 'seek') {
+          // Deliver the native preparation event through the real Dart adapter.
+          await messenger.handlePlatformMessage(
+            playerEvents!.name,
+            const StandardMethodCodec().encodeSuccessEnvelope({
+              'event': call.method == 'seek'
+                  ? 'audio.onSeekComplete'
+                  : 'audio.onPrepared',
+              'value': true,
+            }),
+            (_) {},
+          );
+        }
+        return call.method == 'getDuration' ? 1000 : 1;
+      });
+      rows.add({
+        '_id': 4,
+        'album_id': 30,
+        'title': 'Pathless',
+        '_uri': 'content://media/external/audio/media/4',
+      });
+      sqfliteFfiInit();
+      final index = await MusicIndex.open(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
       );
-      expect((source.arguments as Map)['isLocal'], isFalse);
-      await provider.pause();
-      await provider.seek(const Duration(milliseconds: 200));
-      expect(calls.any((call) => call.method == 'pause'), isTrue);
-      expect(calls.any((call) => call.method == 'seek'), isTrue);
-    } finally {
-      await provider.dispose();
-      rows.removeLast();
-      messenger.setMockMethodCallHandler(playerChannel, null);
-      messenger.setMockMethodCallHandler(globalChannel, null);
-      messenger.setMockMethodCallHandler(globalEvents, null);
-      if (playerEvents != null) {
-        messenger.setMockMethodCallHandler(playerEvents!, null);
+      final native = FakeDirectories();
+      native.folders[root.id]![0] = {
+        ...entry('a'),
+        'uri': 'file:///folder/My%20song.mp3',
+      };
+      final directories = DirectoryMusicLibrary(
+        index: index,
+        directories: AudioDirectories(native),
+      );
+      try {
+        await index.saveSource(root);
+        await directories.refresh();
+        final album = directories.albums.value.single;
+        final folderOnly = LocalMusicProvider.folderOnly(directories);
+        try {
+          await folderOnly.play([album.reference]);
+          expect(
+            (await folderOnly.playback.first).currentItem,
+            album.tracks!.first.reference,
+          );
+          expect((await folderOnly.playback.first).isPlaying, isTrue);
+          expect(native.playbackOpened, ['a']);
+          expect(scans, 0);
+          expect(requests, 0);
+
+          await folderOnly.pause();
+          await folderOnly.resume();
+          expect(native.playbackOpened, ['a']);
+          expect(native.playbackClosed, isEmpty);
+          await folderOnly.next();
+          expect(native.playbackOpened, ['a', 'b']);
+          expect(native.playbackClosed, ['a']);
+          final opened = calls.firstWhere(
+            (call) => call.method == 'setSourceUrl',
+          );
+          expect((opened.arguments as Map)['url'], '/folder/My song.mp3');
+          expect((opened.arguments as Map)['isLocal'], isTrue);
+        } finally {
+          await folderOnly.dispose();
+          if (playerEvents != null) {
+            messenger.setMockMethodCallHandler(playerEvents!, null);
+          }
+        }
+        expect(native.playbackClosed, ['a', 'b']);
+
+        await provider.dispose();
+        provider = LocalMusicProvider(directories: directories);
+        await provider.initialize();
+        await provider.requestAuthorization();
+        await provider.play([
+          LocalMusicLibrary.reference('4', MusicKind.song),
+          album.tracks!.last.reference,
+        ], startIndex: 1);
+        expect(
+          (await provider.playback.first).currentItem,
+          album.tracks!.last.reference,
+        );
+        expect(native.playbackOpened, ['a', 'b', 'b']);
+        await provider.previous();
+        expect(native.playbackClosed, ['a', 'b', 'b']);
+        final source = calls.lastWhere((call) => call.method == 'setSourceUrl');
+        expect(
+          (source.arguments as Map)['url'],
+          'content://media/external/audio/media/4',
+        );
+        expect((source.arguments as Map)['isLocal'], isFalse);
+        await provider.pause();
+        await provider.seek(const Duration(milliseconds: 200));
+        expect(calls.any((call) => call.method == 'pause'), isTrue);
+        expect(calls.any((call) => call.method == 'seek'), isTrue);
+      } finally {
+        await provider.dispose();
+        await directories.dispose();
+        rows.removeLast();
+        messenger.setMockMethodCallHandler(playerChannel, null);
+        messenger.setMockMethodCallHandler(globalChannel, null);
+        messenger.setMockMethodCallHandler(globalEvents, null);
+        if (playerEvents != null) {
+          messenger.setMockMethodCallHandler(playerEvents!, null);
+        }
       }
-    }
-  });
+    },
+  );
 
   for (final action in ['next', 'pause', 'dispose']) {
     test(

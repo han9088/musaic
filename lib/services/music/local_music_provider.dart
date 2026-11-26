@@ -3,17 +3,32 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:musaic_query/musaic_query.dart';
 
 import '../diagnostics/diagnostic_log.dart';
+import 'directory_catalog.dart';
+import 'directory_music_library.dart';
 import 'local_music_library.dart';
 import 'music_provider.dart';
 
 /// 封装或定义本地音乐提供器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class LocalMusicProvider implements MusicProvider {
-  LocalMusicProvider({LocalMusicLibrary? library})
-    : _library = library ?? LocalMusicLibrary();
+  LocalMusicProvider({
+    LocalMusicLibrary? library,
+    DirectoryMusicLibrary? directories,
+  }) : _systemLibrary = library ?? LocalMusicLibrary(),
+       _directories = directories,
+       _initialized = false;
 
-  final LocalMusicLibrary _library;
+  LocalMusicProvider.folderOnly(DirectoryMusicLibrary directories)
+    : _systemLibrary = null,
+      _directories = directories,
+      _initialized = true;
+
+  final LocalMusicLibrary? _systemLibrary;
+  LocalMusicLibrary get _library => _systemLibrary!;
+  final DirectoryMusicLibrary? _directories;
+  bool get systemLibraryEnabled => _systemLibrary != null;
   Future<void>? _scan;
   bool _loaded = false;
   AudioPlayer? _player;
@@ -22,9 +37,10 @@ final class LocalMusicProvider implements MusicProvider {
   Future<void> _pending = Future.value();
   Future<void>? _initializing;
   Future<void>? _disposing;
-  bool _initialized = false;
+  bool _initialized;
   bool _disposed = false;
-  List<ProviderSong> _queue = [];
+  List<MusicReference> _queue = [];
+  AudioDirectoryPlayback? _directoryAudio;
   int _index = 0;
   int _generation = 0;
   MusicPlayback _state = (
@@ -40,6 +56,9 @@ final class LocalMusicProvider implements MusicProvider {
   @override
   /// 执行当前模块中的id操作，用于音乐源、媒体库、播放及切换流程。
   String get id => LocalMusicLibrary.providerId;
+
+  String? filePath(MusicReference reference) =>
+      _systemLibrary?.filePath(reference);
 
   @override
   Future<void> initialize() {
@@ -72,17 +91,24 @@ final class LocalMusicProvider implements MusicProvider {
   @override
   Future<MusicAccess> authorizationStatus() async {
     _requireReady();
-    return _library.authorizationStatus();
+    return systemLibraryEnabled
+        ? _library.authorizationStatus()
+        : MusicAccess.authorized;
   }
 
   @override
   Future<MusicAccess> requestAuthorization() async {
     _requireReady();
-    return _library.authorizationStatus(request: true);
+    return systemLibraryEnabled
+        ? _library.authorizationStatus(request: true)
+        : MusicAccess.authorized;
   }
 
   Future<void> _ensureLibrary() async {
     _requireReady();
+    if (!systemLibraryEnabled) {
+      throw StateError('System music library is not selected');
+    }
     final access = await _library.authorizationStatus();
     _requireReady();
     if (access != MusicAccess.authorized) {
@@ -93,6 +119,13 @@ final class LocalMusicProvider implements MusicProvider {
     if (_loaded) return;
     await (_scan ??= _load());
     _requireReady();
+  }
+
+  Future<List<ProviderAlbum>> _availableAlbums() async {
+    _requireReady();
+    if (!systemLibraryEnabled) return _directories!.albums.value;
+    await _ensureLibrary();
+    return _library.albums;
   }
 
   /// 读取并恢复所需数据或资源，用于音乐源、媒体库、播放及切换流程。
@@ -132,12 +165,12 @@ final class LocalMusicProvider implements MusicProvider {
     String query, {
     int limit = 25,
   }) async {
-    await _ensureLibrary();
+    final albums = await _availableAlbums();
     RangeError.checkValueInInterval(limit, 1, 100, 'limit');
     final term = query.trim().toLowerCase();
     if (term.isEmpty) throw ArgumentError.value(query, 'query');
     return List.unmodifiable(
-      _library.albums
+      albums
           .where((album) => album.title.toLowerCase().contains(term))
           .take(limit),
     );
@@ -148,26 +181,52 @@ final class LocalMusicProvider implements MusicProvider {
     int limit = 25,
     String? cursor,
   }) async {
-    await _ensureLibrary();
+    final albums = await _availableAlbums();
     RangeError.checkValueInInterval(limit, 1, 100, 'limit');
     final offset = cursor == null ? 0 : int.tryParse(cursor);
-    if (offset == null || offset < 0 || offset > _library.albums.length) {
+    if (offset == null || offset < 0 || offset > albums.length) {
       throw ArgumentError.value(cursor, 'cursor');
     }
     final items = List<ProviderAlbum>.unmodifiable(
-      _library.albums.skip(offset).take(limit),
+      albums.skip(offset).take(limit),
     );
     final end = offset + items.length;
-    return (
-      items: items,
-      nextCursor: end < _library.albums.length ? '$end' : null,
-    );
+    return (items: items, nextCursor: end < albums.length ? '$end' : null);
   }
 
   @override
   Future<ProviderAlbum> album(MusicReference reference) async {
+    _requireReady();
+    if (reference.provider == directoryMusicProviderId) {
+      return _directoryAlbum(reference);
+    }
     await _ensureLibrary();
     return _library.album(reference);
+  }
+
+  ProviderAlbum _directoryAlbum(MusicReference reference) {
+    for (final album in _directories?.albums.value ?? const <ProviderAlbum>[]) {
+      if (album.reference == reference) return album;
+    }
+    throw ArgumentError.value(reference, 'reference', 'Unknown folder album');
+  }
+
+  Iterable<MusicReference> _resolve(MusicReference reference) {
+    if (reference.provider != directoryMusicProviderId) {
+      return _library.resolve(reference).map((song) => song.reference);
+    }
+    if (reference.kind == MusicKind.album) {
+      return _directoryAlbum(reference).tracks!
+          .where((song) => song.playable)
+          .map((song) => song.reference);
+    }
+    if (reference.kind != MusicKind.song ||
+        reference.source != MusicSource.library ||
+        reference.storefront != null ||
+        _directories?.track(reference.id) == null) {
+      throw ArgumentError.value(reference, 'reference', 'Unknown folder track');
+    }
+    return [reference];
   }
 
   @override
@@ -204,7 +263,7 @@ final class LocalMusicProvider implements MusicProvider {
     final next = status ?? _state.status;
     _state = (
       status: next,
-      currentItem: _queue.isEmpty ? null : _queue[_index].reference,
+      currentItem: _queue.isEmpty ? null : _queue[_index],
       position: position ?? (reset ? Duration.zero : _state.position),
       duration: reset ? null : (duration ?? _state.duration),
       isPlaying: next == MusicPlaybackStatus.playing,
@@ -254,6 +313,18 @@ final class LocalMusicProvider implements MusicProvider {
     void failed(Object error) {
       diagnosticLog.record(DiagnosticEvent.playbackPlayerFailed, error: error);
       _emit(status: MusicPlaybackStatus.error, error: error);
+      if (_directoryAudio == null || _needsSource) return;
+      final generation = _generation;
+      unawaited(
+        _command(() async {
+          if (generation == _generation) await _releaseDirectoryAudio(player);
+        }).catchError((Object error) {
+          diagnosticLog.record(
+            DiagnosticEvent.playbackPlayerFailed,
+            error: error,
+          );
+        }),
+      );
     }
 
     _subscriptions.add(
@@ -290,6 +361,7 @@ final class LocalMusicProvider implements MusicProvider {
               await _start();
             } else {
               _emit(status: MusicPlaybackStatus.completed);
+              await _releaseDirectoryAudio(player);
             }
           }).catchError((Object error) {
             diagnosticLog.record(
@@ -302,6 +374,18 @@ final class LocalMusicProvider implements MusicProvider {
     );
     _subscriptions.add(player.eventStream.listen((_) {}, onError: failed));
     return player;
+  }
+
+  Future<void> _releaseDirectoryAudio(AudioPlayer player) async {
+    final audio = _directoryAudio;
+    if (audio == null) return;
+    _directoryAudio = null;
+    _needsSource = true;
+    try {
+      await player.release();
+    } finally {
+      await audio.close();
+    }
   }
 
   /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
@@ -320,7 +404,12 @@ final class LocalMusicProvider implements MusicProvider {
     }
 
     try {
-      if (!await step(player.stop())) return;
+      if (_directoryAudio == null) {
+        if (!await step(player.stop())) return;
+      } else {
+        await _releaseDirectoryAudio(player);
+        if (cancelled.isCompleted || _disposed) return;
+      }
       _emit(status: MusicPlaybackStatus.loading, reset: true);
       if (!await step(
         player.setAudioContext(
@@ -336,7 +425,19 @@ final class LocalMusicProvider implements MusicProvider {
       )) {
         return;
       }
-      final uri = Uri.parse(_library.source(_queue[_index]));
+      final reference = _queue[_index];
+      final Uri uri;
+      if (reference.provider == directoryMusicProviderId) {
+        final audio = await _directories!.openPlayback(reference);
+        if (cancelled.isCompleted || _disposed) {
+          await audio.close();
+          return;
+        }
+        _directoryAudio = audio;
+        uri = audio.uri;
+      } else {
+        uri = Uri.parse(_library.source(reference));
+      }
       if (!await step(
         player.setSource(
           uri.scheme == 'file'
@@ -350,9 +451,19 @@ final class LocalMusicProvider implements MusicProvider {
         if (!await step(player.seek(position))) return;
         _seekOnStart = null;
       }
-      _needsSource = false;
       if (!await step(player.resume())) return;
+      _needsSource = false;
       _emit(status: MusicPlaybackStatus.playing);
+    } catch (_) {
+      try {
+        await _releaseDirectoryAudio(player);
+      } catch (error) {
+        diagnosticLog.record(
+          DiagnosticEvent.playbackPlayerFailed,
+          error: error,
+        );
+      }
+      rethrow;
     } finally {
       if (identical(_loadingCancelled, cancelled)) _loadingCancelled = null;
     }
@@ -362,17 +473,20 @@ final class LocalMusicProvider implements MusicProvider {
   Future<void> play(List<MusicReference> items, {int startIndex = 0}) {
     final snapshot = List<MusicReference>.of(items);
     return _command(() async {
-      await _ensureLibrary();
       RangeError.checkValidIndex(startIndex, snapshot, 'startIndex');
-      // startIndex 对应传入的项目列表索引，计算时尚未将专辑展开为曲目。
-      final before = _library
-          .resolve(snapshot.take(startIndex).toList())
-          .length;
-      final songs = _library.resolve(snapshot);
+      if (snapshot.any((item) => item.provider != directoryMusicProviderId)) {
+        await _ensureLibrary();
+      }
+      final songs = <MusicReference>[];
+      var first = 0;
+      for (final (index, item) in snapshot.indexed) {
+        if (index == startIndex) first = songs.length;
+        songs.addAll(_resolve(item));
+      }
       if (songs.isEmpty) throw ArgumentError('Empty local queue');
       _seekOnStart = null;
       _queue = songs;
-      _index = before;
+      _index = first;
       await _start();
     }, interrupt: true);
   }
@@ -392,7 +506,10 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   Future<void> pause() => _command(() async {
-    await _player?.pause();
+    if (_player case final player?) {
+      await player.pause();
+      if (_needsSource) await _releaseDirectoryAudio(player);
+    }
     if (_queue.isNotEmpty) _emit(status: MusicPlaybackStatus.paused);
   }, interrupt: true);
 
@@ -447,14 +564,18 @@ final class LocalMusicProvider implements MusicProvider {
     } catch (_) {
       /* Caller receives scan failures. */
     }
-    _library.clear();
+    _systemLibrary?.clear();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }
     try {
       await _player?.dispose();
     } finally {
-      await _events.close();
+      try {
+        await _directoryAudio?.close();
+      } finally {
+        await _events.close();
+      }
     }
   }
 }

@@ -29,14 +29,14 @@ final class MusicSourceController {
   MusicSourceController({
     MusicProvider Function()? createLocal,
     MusicProvider Function()? createAudius,
-  }) : _createLocal = createLocal ?? LocalMusicProvider.new,
+  }) : _createLocal = createLocal,
        _createAudius = createAudius ?? _defaultAudius;
 
   static MusicProvider _defaultAudius() => AudiusMusicProvider(
     sdk: AudiusSdk(apiKey: const String.fromEnvironment('AUDIUS_API_KEY')),
   );
 
-  final MusicProvider Function() _createLocal;
+  final MusicProvider Function()? _createLocal;
   final MusicProvider Function() _createAudius;
   final catalog = signal<List<ProviderAlbum>?>(null);
   final mock2Selected = signal(false);
@@ -55,7 +55,9 @@ final class MusicSourceController {
 
   /// 获取当前本地音乐目录媒体库。
   DirectoryMusicLibrary? get directories => directoryLibrary.value;
-  final directorySelected = signal(false);
+  final localSelected = signal(false);
+  List<ProviderAlbum> _systemAlbums = const [];
+  int _localCatalogRevision = 0;
 
   /// 用于取消本地媒体库曲目变化订阅的回调。
   void Function()? _stopDirectories;
@@ -65,10 +67,16 @@ final class MusicSourceController {
     if (_disposed) return;
     directoryLibrary.value = library;
     _stopDirectories = library.tracks.subscribe((_) {
-      if (!_disposed && directorySelected.value) _publishDirectories();
+      if (!_disposed && localSelected.value && !busy.value) {
+        unawaited(_publishLocalCatalog());
+      }
     });
     final source = await library.index.selectedSource();
-    if (_disposed || _selectionTouched) return;
+    if (_disposed) return;
+    if (_selectionTouched) {
+      if (localSelected.value) await _publishLocalCatalog();
+      return;
+    }
     if (source == MusicIndexSource.audius) {
       await selectAudius();
       return;
@@ -76,40 +84,76 @@ final class MusicSourceController {
     if (source == MusicIndexSource.directories) {
       await library.loadCached();
       if (_disposed || _selectionTouched) return;
-      directorySelected.value = true;
-      _publishDirectories();
+      batch(() {
+        _provider = LocalMusicProvider.folderOnly(library);
+        localSelected.value = true;
+        catalog.value = library.albums.value;
+      });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!_disposed && directorySelected.value) {
+        if (!_disposed && !_selectionTouched && localSelected.value) {
           unawaited(library.refresh());
         }
       });
     }
   }
 
-  void _publishDirectories() {
-    catalog.value = directories!.albums.value;
+  Future<List<ProviderAlbum>> _combinedLocalCatalog(
+    List<ProviderAlbum> systemAlbums,
+    MusicProvider? provider,
+  ) async =>
+      await directories?.combineWithSystemAlbums(
+        systemAlbums,
+        provider is LocalMusicProvider ? provider.filePath : null,
+      ) ??
+      systemAlbums;
+
+  Future<void> _publishLocalCatalog() async {
+    final revision = ++_localCatalogRevision;
+    final albums = await _combinedLocalCatalog(_systemAlbums, _provider);
+    if (!_disposed &&
+        revision == _localCatalogRevision &&
+        localSelected.value) {
+      catalog.value = albums;
+    }
   }
 
   /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
-  Future<void> selectDirectories({bool add = false}) async {
+  Future<void> selectDirectories({
+    bool add = false,
+    bool refresh = false,
+  }) async {
     final library = directories;
-    if (library == null || _disposed || busy.value) return;
+    final updating = add || refresh;
+    if (library == null ||
+        _disposed ||
+        busy.value ||
+        (updating && !localSelected.value)) {
+      return;
+    }
     _selectionTouched = true;
     busy.value = true;
+    problem.value = null;
     try {
-      if (add && !await library.addDirectory()) return;
-      await library.loadCached();
+      final added = add ? await library.addDirectory() : null;
+      if (add && added == null) return;
+      if (!updating) await library.loadCached();
       if (_disposed) return;
-      await _provider?.dispose();
-      _provider = null;
+      await library.index.setSelected(library.sources.value.isNotEmpty);
       if (_disposed) return;
-      directorySelected.value = true;
-      await library.index.setSelected(true);
-      if (_disposed) return;
-      mock2Selected.value = false;
-      _publishDirectories();
+      if (updating) {
+        await library.refresh(source: added);
+        if (!_disposed) await _publishLocalCatalog();
+        return;
+      }
+      final old = _provider;
+      _provider = LocalMusicProvider.folderOnly(library);
+      batch(() {
+        localSelected.value = true;
+        mock2Selected.value = false;
+      });
+      await _publishLocalCatalog();
+      await _disposeProvider(old);
       diagnosticLog.record(DiagnosticEvent.directorySourceSelected);
-      await library.refresh();
     } catch (error) {
       diagnosticLog.record(DiagnosticEvent.directorySourceFailed, error: error);
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
@@ -120,6 +164,28 @@ final class MusicSourceController {
 
   /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectLocal() async {
+    await _scanSystemLibrary();
+    if (!_disposed && !localSelected.value && directories != null) {
+      await selectDirectories();
+    }
+  }
+
+  Future<void> rescanLocal() async {
+    if (_disposed || busy.value || !localSelected.value) return;
+    final library = directories;
+    if (library != null && library.sources.value.isNotEmpty) {
+      await selectDirectories(refresh: true);
+      final provider = _provider;
+      if (provider == null ||
+          (provider is LocalMusicProvider && !provider.systemLibraryEnabled) ||
+          library.state.value == DirectoryScanState.cancelled) {
+        return;
+      }
+    }
+    if (localSelected.value) await _scanSystemLibrary();
+  }
+
+  Future<void> _scanSystemLibrary() async {
     if (_disposed || busy.value) return;
     _selectionTouched = true;
     busy.value = true;
@@ -127,7 +193,8 @@ final class MusicSourceController {
     diagnosticLog.record(DiagnosticEvent.localLibrarySelected);
     MusicProvider? candidate;
     try {
-      candidate = _createLocal();
+      candidate =
+          _createLocal?.call() ?? LocalMusicProvider(directories: directories);
       await candidate.initialize();
       var access = await candidate.authorizationStatus();
       if (access == MusicAccess.notDetermined || access == MusicAccess.denied) {
@@ -162,15 +229,27 @@ final class MusicSourceController {
           throw StateError('Repeated library cursor');
         }
       } while (cursor != null);
-      await _provider?.dispose();
+      final systemAlbums = List<ProviderAlbum>.unmodifiable(albums);
+      final combined = await _combinedLocalCatalog(systemAlbums, candidate);
       if (_disposed) return;
-      directorySelected.value = false;
-      await directories?.index.setSelected(false);
+      // Keep a previously selected folder source, but don't enable its startup
+      // refresh just because the system library was scanned.
+      if (!localSelected.value) {
+        await directories?.index.setSelected(false);
+      }
       if (_disposed) return;
-      mock2Selected.value = false;
-      _provider = candidate;
+      final old = _provider;
+      final next = candidate;
       candidate = null;
-      catalog.value = List<ProviderAlbum>.unmodifiable(albums);
+      ++_localCatalogRevision;
+      _systemAlbums = systemAlbums;
+      batch(() {
+        _provider = next;
+        localSelected.value = true;
+        mock2Selected.value = false;
+        catalog.value = combined;
+      });
+      if (!identical(old, next)) await _disposeProvider(old);
       diagnosticLog.record(
         DiagnosticEvent.localLibraryLoaded,
         count: albums.length,
@@ -227,13 +306,14 @@ final class MusicSourceController {
         batch(() {
           _provider = next;
           _pendingAudius = null;
-          directorySelected.value = false;
+          localSelected.value = false;
+          _systemAlbums = const [];
           mock2Selected.value = false;
           catalog.value = List<ProviderAlbum>.unmodifiable(
             albums.values.take(24),
           );
         });
-        await _disposeAudiusCandidate(old);
+        await _disposeProvider(old);
       }
 
       if (transition == null) {
@@ -254,7 +334,7 @@ final class MusicSourceController {
     } finally {
       final candidate = _pendingAudius;
       _pendingAudius = null;
-      await _disposeAudiusCandidate(candidate);
+      await _disposeProvider(candidate);
       if (!_disposed) {
         audiusLoading.value = false;
         busy.value = false;
@@ -262,7 +342,7 @@ final class MusicSourceController {
     }
   }
 
-  Future<void> _disposeAudiusCandidate(MusicProvider? provider) async {
+  Future<void> _disposeProvider(MusicProvider? provider) async {
     try {
       await provider?.dispose();
     } catch (error) {
@@ -288,7 +368,8 @@ final class MusicSourceController {
       await _provider?.dispose();
       _provider = null;
       if (_disposed) return;
-      directorySelected.value = false;
+      localSelected.value = false;
+      _systemAlbums = const [];
       await directories?.index.setSelected(false);
       if (_disposed) return;
       mock2Selected.value = mock2;
@@ -316,12 +397,12 @@ final class MusicSourceController {
     _disposed = true;
     _stopDirectories?.call();
     directories?.cancel();
-    directorySelected.dispose();
+    localSelected.dispose();
     directoryLibrary.dispose();
     final candidate = _pendingAudius;
     _pendingAudius = null;
     try {
-      await _disposeAudiusCandidate(candidate);
+      await _disposeProvider(candidate);
       await _provider?.dispose();
     } finally {
       catalog.dispose();

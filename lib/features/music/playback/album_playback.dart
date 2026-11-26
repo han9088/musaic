@@ -6,11 +6,14 @@ import 'package:flutter/foundation.dart';
 
 import '../../../services/diagnostics/diagnostic_log.dart';
 import '../../../services/music/audius_music_provider.dart';
+import '../../../services/music/directory_catalog.dart';
 import '../../../services/music/music_provider.dart';
 import '../catalog/album_catalog_mapper.dart';
 
 /// 封装或定义专辑播放相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 class AlbumPlayback extends ChangeNotifier {
+  static const _loadingIndicatorDelay = Duration(seconds: 1);
+
   String? asset;
   String? title;
   bool playing = false;
@@ -26,9 +29,12 @@ class AlbumPlayback extends ChangeNotifier {
   String? _albumArtist;
   bool _busy = false;
   bool _mock = true;
+  Timer? _loadingIndicatorTimer;
+  bool _showLoadingIndicator = false;
 
   /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   bool get supportsPlayback => _mock || _provider != null;
+
   int _generation = 0;
 
   String? get currentTitle => _currentSong?.title ?? title;
@@ -47,6 +53,8 @@ class AlbumPlayback extends ChangeNotifier {
     // Some providers report buffering separately from the transport status.
     _ => buffering,
   };
+  bool get showLoadingIndicator => _showLoadingIndicator;
+
   Duration? get currentPosition {
     final state = _playbackState;
     return state?.currentItem == null ? null : state?.position;
@@ -64,8 +72,8 @@ class AlbumPlayback extends ChangeNotifier {
   bool isPlaying(String asset, String title) =>
       this.asset == asset && this.title == title && playing;
 
-  bool isAlbumLoading(String asset, String title) =>
-      isLoading &&
+  bool showsAlbumLoading(String asset, String title) =>
+      showLoadingIndicator &&
       ((this.asset == asset && this.title == title) ||
           (currentTrack != null && _albums[asset]?.reference == currentTrack));
 
@@ -127,6 +135,7 @@ class AlbumPlayback extends ChangeNotifier {
     _generation++;
     final generation = _generation;
     unawaited(_subscription?.cancel());
+    _resetLoadingIndicator();
     _provider = provider;
     _mock = provider == null && albums == null;
     _albums = {
@@ -155,6 +164,17 @@ class AlbumPlayback extends ChangeNotifier {
         final wasLoading = isLoading;
         // Keep the seek position current without rebuilding on position ticks.
         _playbackState = state;
+        final loading = isLoading;
+        if (loading != wasLoading) {
+          if (loading) {
+            _loadingIndicatorTimer = Timer(_loadingIndicatorDelay, () {
+              _showLoadingIndicator = true;
+              notifyListeners();
+            });
+          } else {
+            _resetLoadingIndicator();
+          }
+        }
         final track = provider is AudiusMusicProvider
             ? _audiusTrack(state.currentItem)
             : _tracks[state.currentItem];
@@ -165,7 +185,7 @@ class AlbumPlayback extends ChangeNotifier {
         }
         if (!trackChanged &&
             !bufferingChanged &&
-            wasLoading == isLoading &&
+            wasLoading == loading &&
             _currentSong == track?.song &&
             playing == state.isPlaying) {
           return;
@@ -191,11 +211,18 @@ class AlbumPlayback extends ChangeNotifier {
         );
         _playbackState = null;
         playing = false;
+        _resetLoadingIndicator();
         notifyListeners();
         onError?.call();
       },
     );
     notifyListeners();
+  }
+
+  void _resetLoadingIndicator() {
+    _loadingIndicatorTimer?.cancel();
+    _loadingIndicatorTimer = null;
+    _showLoadingIndicator = false;
   }
 
   /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
@@ -227,7 +254,14 @@ class AlbumPlayback extends ChangeNotifier {
             }
             _playAudiusAlbum(detail);
           }
-          await provider.play([album.reference]);
+          // Use the visible tracks after merging and deduplicating local music.
+          final items = album.reference.provider == directoryMusicProviderId
+              ? [
+                  for (final track in album.tracks!)
+                    if (track.playable) track.reference,
+                ]
+              : [album.reference];
+          await provider.play(items);
           diagnosticLog.record(DiagnosticEvent.playbackStarted);
         }
       }),
@@ -326,6 +360,7 @@ class AlbumPlayback extends ChangeNotifier {
   @override
   void dispose() {
     _generation++;
+    _resetLoadingIndicator();
     unawaited(_subscription?.cancel());
     super.dispose();
   }

@@ -478,6 +478,17 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String musicSourceSingleCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count singles',
+      one: '1 single',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get musicSourceDenied =>
       'Allow access to your music library in your device settings, then try again.';
 

@@ -86,7 +86,8 @@ internal class AudioFromQuery(private val request: QueryRequest) {
             // Works on Android 11.
             // 'whereVal' -> Album/Artist/Genre
             // 'where' -> uri
-            whereVal = call.argument<Any>("where")!!.toString()
+            val value = call.argument<Any>("where")!!.toString()
+            whereVal = if (type == 0 || type == 2 || type == 4) escapeLike(value) else value
             where = checkAudiosFromType(type)
 
             // Query everything in background for a better performance.
@@ -135,13 +136,11 @@ internal class AudioFromQuery(private val request: QueryRequest) {
 
         val info = call.argument<Any>("where")!!
 
-        // Check if playlist exists using the id.
-        val checkedName =
-            if (type == 4 || type == 5) {
-                checkName(genreName = info.toString())
-            } else {
-                checkName(plName = info.toString())
-            }
+        val checkedName = when {
+            type == 5 || (type == 6 && info is Number) -> false
+            type == 4 -> checkName(genreName = info.toString())
+            else -> checkName(plName = info.toString())
+        }
 
         if (!checkedName) {
             pId =
@@ -235,7 +234,7 @@ internal class AudioFromQuery(private val request: QueryRequest) {
             while (cursor != null && cursor.moveToNext()) {
                 val name = cursor.getString(0)
 
-                if (name != null && name == plName || name == genreName) {
+                if (name != null && (name == plName || name == genreName)) {
                     pId = cursor.getLong(1)
                     return true
                 }

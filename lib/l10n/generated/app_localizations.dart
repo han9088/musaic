@@ -926,6 +926,12 @@ abstract class AppLocalizations {
   /// **'{count} 张专辑'**
   String musicSourceAlbumCount(int count);
 
+  /// No description provided for @musicSourceSingleCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 首单曲'**
+  String musicSourceSingleCount(int count);
+
   /// No description provided for @musicSourceDenied.
   ///
   /// In zh, this message translates to:

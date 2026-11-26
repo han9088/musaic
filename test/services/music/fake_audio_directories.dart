@@ -26,6 +26,8 @@ class FakeDirectories extends AudioDirectoryPlatform {
   };
   final offsets = <String, int>{};
   final parsed = <String>[];
+  final playbackOpened = <String>[];
+  final playbackClosed = <String>[];
   final failures = <String>{};
   final partialFailures = <String>{};
   final damaged = <String>{};
@@ -79,6 +81,13 @@ class FakeDirectories extends AudioDirectoryPlatform {
         await gate?.future;
         if (damaged.contains(file['id'])) throw StateError('damaged');
         return {'title': file['name'], 'album': 'Album', 'durationMs': 60000};
+      case 'openPlayback':
+        final file = AudioFileEntry(args['file'] as Map);
+        playbackOpened.add(file.id);
+        return {'uri': file.uri, 'session': file.id};
+      case 'closePlayback':
+        playbackClosed.add(args['session'] as String);
+        return null;
       case 'artwork':
         final position = artworkCalls++;
         if (position < artworkGates.length) {

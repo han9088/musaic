@@ -7,6 +7,8 @@ import 'package:musaic_query/musaic_query.dart';
 import '../../storage/music/music_index.dart';
 import 'music_provider.dart';
 
+const directoryMusicProviderId = 'directory';
+
 /// 封装或定义本地目录目录相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class DirectoryCatalog {
   DirectoryCatalog(this.tracks, this.sources, this.folders, this.albums)
@@ -34,7 +36,7 @@ DirectoryCatalog buildDirectoryCatalog(MusicIndexRows rows) {
     for (final group in groups.entries)
       (
         reference: (
-          provider: 'directory',
+          provider: directoryMusicProviderId,
           id: group.key,
           kind: MusicKind.album,
           source: MusicSource.library,
@@ -53,7 +55,7 @@ DirectoryCatalog buildDirectoryCatalog(MusicIndexRows rows) {
           for (final track in group.value)
             (
               reference: (
-                provider: 'directory',
+                provider: directoryMusicProviderId,
                 id: track.file.id,
                 kind: MusicKind.song,
                 source: MusicSource.library,
@@ -65,7 +67,7 @@ DirectoryCatalog buildDirectoryCatalog(MusicIndexRows rows) {
               duration: track.metadata['durationMs'] is int
                   ? Duration(milliseconds: track.metadata['durationMs'] as int)
                   : null,
-              playable: false,
+              playable: true,
             ),
         ],
       ),

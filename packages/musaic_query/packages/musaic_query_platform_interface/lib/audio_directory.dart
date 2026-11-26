@@ -54,6 +54,17 @@ class AudioFileEntry {
   }
 }
 
+/// Keeps an indexed audio file available to the platform player until closed.
+class AudioDirectoryPlayback {
+  AudioDirectoryPlayback._(this.uri, this._close);
+
+  final Uri uri;
+  final Future<void> Function() _close;
+  Future<void>? _closing;
+
+  Future<void> close() => _closing ??= _close();
+}
+
 class AudioScanOptions {
   const AudioScanOptions(
       {this.recursive = true,
@@ -148,6 +159,20 @@ class AudioDirectories {
     await platform.invoke('release', {'source': source.toMap()});
   }
 
+  /// Paths the platform verified are equivalent to the given document URIs.
+  /// An unsupported platform reports no confirmed paths.
+  Future<Map<String, String>> mediaPaths(List<String> uris) async {
+    if (uris.isEmpty) return const {};
+    try {
+      return Map<String, String>.from(
+          await platform.invoke('mediaPaths', {'uris': uris}) as Map);
+    } on UnsupportedError {
+      return const {};
+    } on MissingPluginException {
+      return const {};
+    }
+  }
+
   Stream<AudioDirectoryPage> scan(
     AudioDirectory source, {
     AudioScanOptions options = const AudioScanOptions(),
@@ -204,6 +229,22 @@ class AudioDirectories {
           AudioDirectory source, AudioFileEntry file) async =>
       Map<String, Object?>.from(await platform.invoke(
           'metadata', {'source': source.toMap(), 'file': file.data}) as Map);
+
+  Future<AudioDirectoryPlayback> openPlayback(
+      AudioDirectory source, AudioFileEntry file) async {
+    final opened = await platform.invoke('openPlayback', {
+      'source': source.toMap(),
+      'file': file.data,
+    }) as Map;
+    final session = opened['session'] as String?;
+    return AudioDirectoryPlayback._(Uri.parse(opened['uri'] as String),
+        () async {
+      if (session != null) {
+        await platform.invoke('closePlayback', {'session': session});
+      }
+    });
+  }
+
   Future<String?> artwork(
     AudioDirectory source,
     AudioFileEntry file, {

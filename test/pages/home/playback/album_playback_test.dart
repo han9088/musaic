@@ -70,11 +70,25 @@ void main() {
     final bounds = tester.getRect(button);
 
     provider.emit(
+      song.reference,
+      playing: false,
+      status: MusicPlaybackStatus.loading,
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(arc, findsNothing);
+    provider.emit(song.reference, playing: true);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(arc, findsNothing);
+    expect(icon(PhosphorIcons.pauseFill), findsOneWidget);
+
+    provider.emit(
       album.reference,
       playing: false,
       status: MusicPlaybackStatus.loading,
     );
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 999));
+    expect(arc, findsNothing);
+    await tester.pump(const Duration(milliseconds: 1));
     expect(arc, findsOneWidget);
     expect(tester.getRect(button), bounds);
     expect(
@@ -130,7 +144,7 @@ void main() {
         playing: false,
         status: MusicPlaybackStatus.loading,
       );
-      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
       expect(arc, findsOneWidget);
       provider.emit(song.reference, playing: false, status: end);
       await tester.pump();
@@ -139,9 +153,17 @@ void main() {
     }
 
     provider.emit(song.reference, playing: true, buffering: true);
-    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     expect(arc, findsOneWidget);
     expect(icon(PhosphorIcons.playFill), findsOneWidget);
+
+    provider.emit(song.reference, playing: true);
+    provider.emit(song.reference, playing: true, buffering: true);
+    await tester.pump(const Duration(milliseconds: 600));
+    playback.bind(null, null);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(arc, findsNothing);
+
     await tester.pumpWidget(const SizedBox.shrink());
     expect(tester.binding.transientCallbackCount, 0);
     expect(tester.takeException(), isNull);
@@ -179,6 +201,8 @@ void main() {
     final arc = find.byType(PlaybackLoadingArc);
 
     await tester.pumpWidget(capsule(reduceMotion: false));
+    expect(arc, findsNothing);
+    await tester.pump(const Duration(seconds: 1));
     expect(arc, findsOneWidget);
     expect(tester.binding.transientCallbackCount, greaterThan(0));
     await tester.pumpWidget(capsule(reduceMotion: true));

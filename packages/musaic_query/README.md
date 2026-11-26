@@ -21,8 +21,8 @@ dependencies:
 
 - Android keeps each request independent. Queries and playlist writes run off
   the platform thread; playlist writes are serialized per plugin instance.
-  Pending permission requests complete with an error when the Activity detaches,
-  including configuration changes. Retry explicitly after reattachment.
+  Pending permission and directory-picker requests survive Activity recreation.
+  They complete with an error when the Activity is permanently detached.
 - Android 13+ needs `READ_MEDIA_AUDIO`, Android 12 and older needs
   `READ_EXTERNAL_STORAGE`. The permission API requests read access only. Legacy
   playlist mutations on Android 9 and older additionally need

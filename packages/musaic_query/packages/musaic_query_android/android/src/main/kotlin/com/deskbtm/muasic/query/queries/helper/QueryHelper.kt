@@ -41,38 +41,31 @@ class QueryHelper {
 
     // This method will separate [String] from [Int]
     fun loadSongItem(itemProperty: String, cursor: Cursor): Any? {
+        val column = cursor.getColumnIndexOrThrow(itemProperty)
+        if (cursor.isNull(column)) return if (itemProperty == "_size") 0L else null
         return when (itemProperty) {
             // Int/Long ids
             "_id",
             "album_id",
             "artist_id",
+            "genre_id",
             // include audio_id for member queries
-            "audio_id" -> {
-                if (Build.VERSION.SDK_INT >= 30) {
-                    cursor.getLong(cursor.getColumnIndex(itemProperty))
-                } else {
-                    cursor.getInt(cursor.getColumnIndex(itemProperty))
-                }
-            }
+            "audio_id",
             "_size",
             "bookmark",
             "date_added",
             "date_modified",
             "duration",
-            "track" -> cursor.getInt(cursor.getColumnIndex(itemProperty))
+            "track" -> cursor.getLong(column)
             // Boolean
             "is_alarm",
             "is_audiobook",
             "is_music",
             "is_notification",
             "is_podcast",
-            "is_ringtone" -> {
-                val value = cursor.getString(cursor.getColumnIndex(itemProperty))
-                if (value == "0") return false
-                return true
-            }
+            "is_ringtone" -> cursor.getString(column)?.toIntOrNull()?.let { it != 0 }
             // String
-            else -> cursor.getString(cursor.getColumnIndex(itemProperty))
+            else -> cursor.getString(column)
         }
     }
 

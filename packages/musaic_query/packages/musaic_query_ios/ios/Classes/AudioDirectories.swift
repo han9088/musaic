@@ -5,10 +5,11 @@ import ImageIO
 import UIKit
 
 @available(iOS 13.0, *)
-final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
+final class AudioDirectories: NSObject, UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate {
   private let channel: FlutterMethodChannel
-  private weak var presenter: UIViewController?
+  private weak var registrar: FlutterPluginRegistrar?
   private let worker = DispatchQueue(label: "com.deskbtm.muasic.query.directories", qos: .utility)
+  private weak var activePicker: UIDocumentPickerViewController?
   private var pickerResult: FlutterResult?
   private var replies: [UUID: FlutterResult] = [:]
   private final class EnumerationError { var value: Error? }
@@ -20,6 +21,7 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
     let accessed: Bool
   }
   private var listings: [String: Listing] = [:]
+  private var playbackScopes: [String: URL] = [:]
   private let keys: Set<URLResourceKey> = [
     .isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey,
   ]
@@ -31,7 +33,7 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
   init(registrar: FlutterPluginRegistrar) {
     channel = FlutterMethodChannel(
       name: "com.deskbtm.muasic.query/directories", binaryMessenger: registrar.messenger())
-    presenter = registrar.viewController
+    self.registrar = registrar
     super.init()
     channel.setMethodCallHandler { [weak self] call, callback in
       guard let self = self else {
@@ -63,6 +65,8 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
     channel.setMethodCallHandler(nil)
     pickerResult?(FlutterError(code: "cancelled", message: "Plugin detached", details: nil))
     pickerResult = nil
+    activePicker?.dismiss(animated: false)
+    activePicker = nil
     let pending = Array(replies.values)
     replies.removeAll()
     for reply in pending {
@@ -73,6 +77,8 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
         listing.root.stopAccessingSecurityScopedResource()
       }
       self.listings.removeAll()
+      for root in self.playbackScopes.values { root.stopAccessingSecurityScopedResource() }
+      self.playbackScopes.removeAll()
     }
   }
   private func failure(_ message: String, code: String = "directoryError") -> NSError {
@@ -96,27 +102,41 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
       result(FlutterError(code: "busy", message: "Directory picker already open", details: nil))
       return
     }
-    guard var host = presenter else {
+    guard var host = registrar?.viewController else {
       result(FlutterError(code: "unavailable", message: "No foreground view", details: nil))
       return
     }
     while let presented = host.presentedViewController { host = presented }
+    guard host.viewIfLoaded?.window != nil, !host.isBeingDismissed else {
+      result(FlutterError(code: "unavailable", message: "No foreground view", details: nil))
+      return
+    }
     let picker = UIDocumentPickerViewController(documentTypes: ["public.folder"], in: .open)
     picker.delegate = self
     picker.allowsMultipleSelection = false
+    activePicker = picker
     pickerResult = result
     host.present(picker, animated: true)
+    picker.presentationController?.delegate = self
   }
   func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
-    pickerResult?(nil)
+    takePickerResult(controller)?(nil)
+  }
+  func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+    takePickerResult(presentationController.presentedViewController)?(nil)
+  }
+  private func takePickerResult(_ controller: UIViewController) -> FlutterResult? {
+    guard controller === activePicker else { return nil }
+    let result = pickerResult
     pickerResult = nil
+    activePicker = nil
+    return result
   }
   func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL])
   {
-    let result = pickerResult
-    pickerResult = nil
+    guard let result = takePickerResult(controller) else { return }
     guard let url = urls.first else {
-      result?(nil)
+      result(nil)
       return
     }
     worker.async {
@@ -131,10 +151,10 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
           "id": url.standardizedFileURL.absoluteString, "name": url.lastPathComponent,
           "token": token,
         ]
-        DispatchQueue.main.async { result?(value) }
+        DispatchQueue.main.async { result(value) }
       } catch {
         DispatchQueue.main.async {
-          result?(
+          result(
             FlutterError(
               code: "permissionDenied", message: error.localizedDescription, details: nil))
         }
@@ -164,19 +184,24 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
     }
     return url
   }
-  private func scoped<T>(_ source: [String: Any], _ body: (URL) throws -> T) throws -> T {
+  private func access(_ source: [String: Any]) throws -> (root: URL, scoped: Bool) {
     let url = try root(source)
     let accessed = url.startAccessingSecurityScopedResource()
-    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     if !(source["token"] as? String ?? "").hasPrefix("file:") && !accessed {
       throw failure("Directory authorization expired", code: "permissionDenied")
     }
+    return (url, accessed)
+  }
+  private func scoped<T>(_ source: [String: Any], _ body: (URL) throws -> T) throws -> T {
+    let (url, accessed) = try access(source)
+    defer { if accessed { url.stopAccessingSecurityScopedResource() } }
     return try body(url)
   }
   private func handle(_ call: FlutterMethodCall) throws -> Any? {
     let args = call.arguments as? [String: Any] ?? [:]
     let source = args["source"] as? [String: Any] ?? [:]
     switch call.method {
+    case "mediaPaths": return [String: String]()
     case "openPath":
       guard let path = args["path"] as? String else { throw failure("Missing path") }
       let url = URL(fileURLWithPath: path).standardizedFileURL
@@ -273,6 +298,34 @@ final class AudioDirectories: NSObject, UIDocumentPickerDelegate {
         listing.accessed
       {
         listing.root.stopAccessingSecurityScopedResource()
+      }
+      return nil
+    case "openPlayback":
+      guard let file = args["file"] as? [String: Any], let id = file["id"] as? String else {
+        throw failure("Missing file")
+      }
+      let (root, accessed) = try access(source)
+      do {
+        let url = try child(id, root: root)
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .isSymbolicLinkKey])
+        guard values.isRegularFile == true, values.isSymbolicLink != true,
+          FileManager.default.isReadableFile(atPath: url.path)
+        else { throw failure("Audio file unavailable", code: "notFound") }
+        var result = ["uri": url.absoluteString]
+        // AVPlayer can read lazily, including after seeking or resuming.
+        if accessed {
+          let session = UUID().uuidString
+          playbackScopes[session] = root
+          result["session"] = session
+        }
+        return result
+      } catch {
+        if accessed { root.stopAccessingSecurityScopedResource() }
+        throw error
+      }
+    case "closePlayback":
+      if let session = args["session"] as? String {
+        playbackScopes.removeValue(forKey: session)?.stopAccessingSecurityScopedResource()
       }
       return nil
     case "metadata", "artwork":
