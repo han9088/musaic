@@ -4,6 +4,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:pub_semver/pub_semver.dart';
 
 import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
 import '../../features/desktop_shortcuts/desktop_shortcuts_settings.dart';
@@ -23,6 +24,7 @@ import '../../features/settings/settings_sheet.dart';
 import '../../features/settings/usage_guide_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
+import '../../services/app_updates.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/developer_options_preference.dart';
@@ -61,6 +63,7 @@ class HomeSheet extends StatefulWidget {
     this.selectedColorFamily,
     this.onColorOrganizeChanged,
     this.onColorFamilySelected,
+    this.checkLatestRelease = latestMusaicRelease,
   });
 
   final Widget child;
@@ -86,6 +89,7 @@ class HomeSheet extends StatefulWidget {
   final ValueListenable<AlbumColorFamily?>? selectedColorFamily;
   final ValueChanged<bool>? onColorOrganizeChanged;
   final ValueChanged<AlbumColorFamily?>? onColorFamilySelected;
+  final Future<Version?> Function() checkLatestRelease;
 
   @override
   State<HomeSheet> createState() => _HomeSheetState();
@@ -325,6 +329,7 @@ class _HomeSheetState extends State<HomeSheet> {
         '/settings/about',
         (AppLocalizations l10n) => l10n.settingsAbout,
         AboutSettings(
+          checkLatestRelease: widget.checkLatestRelease,
           onOpenDetail: (source, title, body) =>
               pushSettingsDetail(source, title, body, desktop: desktop),
           onOpenDeveloperOptions: (source) =>

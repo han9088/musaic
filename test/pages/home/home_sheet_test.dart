@@ -6,8 +6,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_email_sender_method_channel/flutter_email_sender_method_channel.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/testing.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
@@ -36,9 +34,11 @@ import 'package:musaic/ui/widgets/app_selection_dot.dart';
 import 'package:musaic/ui/widgets/horizontal_selection_wheel.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
 void main() {
   final settingsTab = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
@@ -296,6 +296,19 @@ void main() {
         await UsageGuidePreference.shouldPlayIntro(UsageGuideIntro.camera),
         isTrue,
       );
+
+      diagnosticLog.record(
+        DiagnosticEvent.frameworkError,
+        error: StateError('private'),
+      );
+      await tester.tap(find.widgetWithText(ListTile, 'Talker DevTool'));
+      await tester.pumpAndSettle();
+      final viewer = tester.widget<TalkerScreen>(find.byType(TalkerScreen));
+      expect(viewer.talker, same(diagnosticLog.talker));
+      expect(find.textContaining('frameworkError error=state'), findsOneWidget);
+      await tester.tap(find.byTooltip('Back').hitTestable());
+      await tester.pumpAndSettle();
+      expect(find.byType(TalkerScreen), findsNothing);
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
@@ -957,6 +970,11 @@ void main() {
   testWidgets('About opens its detail pages and uses the settings routes', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(800, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final wizard = UsageGuidePreference();
+    await wizard.hide();
+    wizard.dispose();
     PackageInfo.setMockInitialValues(
       appName: 'Musaic',
       packageName: 'com.deskbtm.musaic',
@@ -964,218 +982,205 @@ void main() {
       buildNumber: '1',
       buildSignature: '',
     );
-    late Future<http.Response> response;
-    await http.runWithClient(
-      () async {
-        await tester.pumpWidget(
-          const MaterialApp(
-            locale: Locale('en'),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: AppBottomSheetHost(
-              child: HomeSheet(
-                icons: _Icons(),
-                child: ColoredBox(color: Colors.black),
-              ),
-            ),
+    late Future<Version?> Function() checkRelease;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomeSheet(
+            icons: const _Icons(),
+            checkLatestRelease: () => checkRelease(),
+            child: const ColoredBox(color: Colors.black),
           ),
-        );
-        await tester.drag(capsule, const Offset(0, -150));
-        await tester.pumpAndSettle();
-        final sheet = DeskBottomSheet.of(
-          tester.element(find.byType(HomeSheet)),
-        );
-        sheet.topSheetController!.expand();
-        await tester.pumpAndSettle();
-        expect(find.text('About & help'), findsOneWidget);
-        final aboutEntry = find.widgetWithText(ListTile, 'About Musaic');
-        final entryArrow = tester.widget<Icon>(
-          find.descendant(
-            of: aboutEntry,
-            matching: find.byIcon(PhosphorIcons.caretUp),
-          ),
-        );
-        expect(entryArrow.size, 12);
-        expect(find.byType(SettingsPage), findsNothing);
-
-        await tester.tap(aboutEntry);
-        await tester.pumpAndSettle();
-        final about = find.byWidgetPredicate(
-          (widget) => widget is SettingsPage && widget.title == 'About Musaic',
-        );
-        expect(about, findsOneWidget);
-        final copyright = find.text('© ${DateTime.now().year} deskbtm');
-        expect(tester.widget<Text>(copyright).style?.color, Colors.white38);
-        expect(tester.getCenter(copyright).dx, tester.getCenter(about).dx);
-        expect(
-          tester.getBottomRight(about).dy - tester.getBottomRight(copyright).dy,
-          24,
-        );
-        expect(
-          find.byIcon(PhosphorIcons.caretDownBold).hitTestable(),
-          findsOneWidget,
-        );
-        final back = find.descendant(
-          of: about,
-          matching: find.byType(AppNavigationBackButton),
-        );
-        final circle = find.descendant(
-          of: back,
-          matching: find.byType(DecoratedBox),
-        );
-        expect(tester.getSize(circle), const Size.square(22));
-        expect(
-          tester.widget<DecoratedBox>(circle).decoration,
-          const BoxDecoration(
-            color: AppColors.settingsAccent,
-            shape: BoxShape.circle,
-          ),
-        );
-        expect(tester.getSize(back).width, greaterThanOrEqualTo(44));
-        final aboutRows = tester.widgetList<ListTile>(
-          find.descendant(of: about, matching: find.byType(ListTile)),
-        );
-        expect(aboutRows.map((row) => row.leading), everyElement(isNull));
-        final versionLabel = find.text('Version');
-        final versionValue = find.text('1.0.0 (1)');
-        expect(tester.getTopLeft(versionLabel).dx, 28);
-        expect(
-          tester.getTopLeft(circle).dx,
-          tester.getTopLeft(versionLabel).dx,
-        );
-        expect(
-          tester.getSize(about).width - tester.getTopRight(versionValue).dx,
-          28,
-        );
-        expect(
-          tester.getTopLeft(versionValue).dx,
-          greaterThan(tester.getTopRight(versionLabel).dx),
-        );
-        final detailArrows = tester.widgetList<Icon>(
-          find.descendant(
-            of: about,
-            matching: find.byIcon(PhosphorIcons.caretLeft),
-          ),
-        );
-        expect(detailArrows.map((icon) => icon.size), [12, 12, 12]);
-
-        Future<void> closeDialog() async {
-          await tester.tap(find.text('Close'));
-          await tester.pumpAndSettle();
-        }
-
-        for (final (status, body, message) in [
-          (404, '', 'There are no public releases yet.'),
-          (200, '{"tag_name":"v1.0.0+1"}', 'You’re up to date.'),
-          (200, '{"tag_name":"v1.0.0+2"}', 'Version 1.0.0+2 is available.'),
-          (503, '', 'Couldn’t check for updates. Try again later.'),
-        ]) {
-          final result = http.Response(body, status);
-          final pending = status == 404 ? Completer<http.Response>() : null;
-          response = pending?.future ?? Future.value(result);
-          await tester.tap(find.widgetWithText(ListTile, 'Version'));
-          final loader = find.byType(ThinkingOrb);
-          if (pending != null) {
-            await tester.pump();
-            final orb = tester.widget<ThinkingOrb>(loader);
-            expect(orb.state, ThinkingOrbState.working);
-            expect(orb.size, ThinkingOrbSize.inline);
-            expect(
-              tester.getTopLeft(loader).dx,
-              greaterThan(tester.getTopRight(versionValue).dx),
-            );
-            pending.complete(result);
-          }
-          await tester.pumpAndSettle();
-          expect(loader, findsNothing);
-          expect(find.text(message), findsOneWidget);
-          if (body.contains('+2')) {
-            expect(find.text('View on GitHub'), findsOneWidget);
-          }
-          await closeDialog();
-        }
-
-        for (final item in [
-          'Privacy policy',
-          'Terms of Service',
-          'What’s New',
-        ]) {
-          final detail = find.byWidgetPredicate(
-            (widget) => widget is SettingsPage && widget.title == item,
-          );
-          final width = tester.getSize(about).width;
-          await tester.tap(find.widgetWithText(ListTile, item));
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 140));
-          expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
-          expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
-          expect(
-            tester.getTopLeft(detail).dx - tester.getTopLeft(about).dx,
-            closeTo(width, 0.01),
-          );
-          await tester.pumpAndSettle();
-          expect(tester.getTopLeft(detail), Offset.zero);
-          final body = tester.getRect(
-            find.descendant(of: detail, matching: find.byType(SelectableText)),
-          );
-          expect(body.left, 28);
-          expect(width - body.right, 28);
-          expect(
-            find.byIcon(PhosphorIcons.caretLeftBold).hitTestable(),
-            findsOneWidget,
-          );
-          await tester.tap(find.byTooltip('Back').hitTestable());
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 140));
-          expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
-          expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
-          await tester.pumpAndSettle();
-          expect(detail, findsNothing);
-          expect(tester.getTopLeft(about), Offset.zero);
-        }
-
-        await tester.tap(find.widgetWithText(ListTile, 'What’s New'));
-        await tester.pumpAndSettle();
-        final detail = find.byWidgetPredicate(
-          (widget) => widget is SettingsPage && widget.title == 'What’s New',
-        );
-        final width = tester.getSize(detail).width;
-
-        Future<TestGesture> swipeBack(double distance) async {
-          final gesture = await tester.startGesture(const Offset(150, 220));
-          await gesture.moveBy(Offset(distance, 0));
-          await tester.pump();
-          expect(tester.getTopLeft(detail).dx, closeTo(distance, 2));
-          expect(tester.getTopLeft(about).dx, closeTo(distance - width, 2));
-          expect(tester.getTopLeft(detail).dy, 0);
-          return gesture;
-        }
-
-        final shortSwipe = await swipeBack(width * 0.15);
-        await shortSwipe.moveBy(Offset(-width * 0.05, 0));
-        await tester.pump();
-        expect(tester.getTopLeft(detail).dx, closeTo(width * 0.10, 2));
-        await shortSwipe.up();
-        await tester.pumpAndSettle();
-        expect(tester.getTopLeft(detail), Offset.zero);
-
-        final canceledSwipe = await swipeBack(width * 0.30);
-        await canceledSwipe.cancel();
-        await tester.pumpAndSettle();
-        expect(tester.getTopLeft(detail), Offset.zero);
-
-        final completedSwipe = await swipeBack(width * 0.30);
-        await completedSwipe.up();
-        await tester.pumpAndSettle();
-        expect(detail, findsNothing);
-        expect(tester.getTopLeft(about), Offset.zero);
-        await tester.pumpWidget(const SizedBox.shrink());
-      },
-      () => MockClient((request) {
-        expect(request.url.path, '/repos/han9088/musaic/releases/latest');
-        return response;
-      }),
+        ),
+      ),
     );
+    await tester.drag(capsule, const Offset(0, -150));
+    await tester.pumpAndSettle();
+    final sheet = DeskBottomSheet.of(tester.element(find.byType(HomeSheet)));
+    sheet.topSheetController!.expand();
+    await tester.pumpAndSettle();
+    expect(find.text('About & help'), findsOneWidget);
+    final aboutEntry = find.widgetWithText(ListTile, 'About Musaic');
+    final entryArrow = tester.widget<Icon>(
+      find.descendant(
+        of: aboutEntry,
+        matching: find.byIcon(PhosphorIcons.caretUp),
+      ),
+    );
+    expect(entryArrow.size, 12);
+    expect(find.byType(SettingsPage), findsNothing);
+
+    await tester.tap(aboutEntry);
+    await tester.pumpAndSettle();
+    final about = find.byWidgetPredicate(
+      (widget) => widget is SettingsPage && widget.title == 'About Musaic',
+    );
+    expect(about, findsOneWidget);
+    final copyright = find.text('© ${DateTime.now().year} deskbtm');
+    expect(tester.widget<Text>(copyright).style?.color, Colors.white38);
+    expect(tester.getCenter(copyright).dx, tester.getCenter(about).dx);
+    expect(
+      tester.getBottomRight(about).dy - tester.getBottomRight(copyright).dy,
+      24,
+    );
+    expect(
+      find.byIcon(PhosphorIcons.caretDownBold).hitTestable(),
+      findsOneWidget,
+    );
+    final back = find.descendant(
+      of: about,
+      matching: find.byType(AppNavigationBackButton),
+    );
+    final circle = find.descendant(
+      of: back,
+      matching: find.byType(DecoratedBox),
+    );
+    expect(tester.getSize(circle), const Size.square(22));
+    expect(
+      tester.widget<DecoratedBox>(circle).decoration,
+      const BoxDecoration(
+        color: AppColors.settingsAccent,
+        shape: BoxShape.circle,
+      ),
+    );
+    expect(tester.getSize(back).width, greaterThanOrEqualTo(44));
+    final aboutRows = tester.widgetList<ListTile>(
+      find.descendant(of: about, matching: find.byType(ListTile)),
+    );
+    expect(aboutRows.map((row) => row.leading), everyElement(isNull));
+    final versionLabel = find.text('Version');
+    final versionValue = find.text('1.0.0 (1)');
+    expect(tester.getTopLeft(versionLabel).dx, 28);
+    expect(tester.getTopLeft(circle).dx, tester.getTopLeft(versionLabel).dx);
+    expect(
+      tester.getSize(about).width - tester.getTopRight(versionValue).dx,
+      28,
+    );
+    expect(
+      tester.getTopLeft(versionValue).dx,
+      greaterThan(tester.getTopRight(versionLabel).dx),
+    );
+    final detailArrows = tester.widgetList<Icon>(
+      find.descendant(
+        of: about,
+        matching: find.byIcon(PhosphorIcons.caretLeft),
+      ),
+    );
+    expect(detailArrows.map((icon) => icon.size), [12, 12, 12]);
+
+    Future<void> closeDialog() async {
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+    }
+
+    for (final (status, version, message) in [
+      (404, '', 'There are no public releases yet.'),
+      (200, '1.0.0+1', 'You’re up to date.'),
+      (200, '1.0.0+2', 'Version 1.0.0+2 is available.'),
+      (503, '', 'Couldn’t check for updates. Try again later.'),
+    ]) {
+      final pending = status == 404 ? Completer<Version?>() : null;
+      checkRelease = () async {
+        if (pending != null) return pending.future;
+        if (status != 200) throw StateError('Release check failed');
+        return Version.parse(version);
+      };
+      await tester.tap(find.widgetWithText(ListTile, 'Version'));
+      final loader = find.byType(ThinkingOrb);
+      if (pending != null) {
+        await tester.pump();
+        final orb = tester.widget<ThinkingOrb>(loader);
+        expect(orb.state, ThinkingOrbState.working);
+        expect(orb.size, ThinkingOrbSize.inline);
+        expect(
+          tester.getTopLeft(loader).dx,
+          greaterThan(tester.getTopRight(versionValue).dx),
+        );
+        pending.complete(null);
+      }
+      await tester.pumpAndSettle();
+      expect(loader, findsNothing);
+      expect(find.text(message), findsOneWidget);
+      if (version == '1.0.0+2') {
+        expect(find.text('View on GitHub'), findsOneWidget);
+      }
+      await closeDialog();
+    }
+
+    for (final item in ['Privacy policy', 'Terms of Service', 'What’s New']) {
+      final detail = find.byWidgetPredicate(
+        (widget) => widget is SettingsPage && widget.title == item,
+      );
+      final width = tester.getSize(about).width;
+      await tester.tap(find.widgetWithText(ListTile, item));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 140));
+      expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
+      expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
+      expect(
+        tester.getTopLeft(detail).dx - tester.getTopLeft(about).dx,
+        closeTo(width, 0.01),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(detail), Offset.zero);
+      final body = tester.getRect(
+        find.descendant(of: detail, matching: find.byType(SelectableText)),
+      );
+      expect(body.left, 28);
+      expect(width - body.right, 28);
+      expect(
+        find.byIcon(PhosphorIcons.caretLeftBold).hitTestable(),
+        findsOneWidget,
+      );
+      await tester.tap(find.byTooltip('Back').hitTestable());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 140));
+      expect(tester.getTopLeft(about).dx, inExclusiveRange(-width, 0));
+      expect(tester.getTopLeft(detail).dx, inExclusiveRange(0, width));
+      await tester.pumpAndSettle();
+      expect(detail, findsNothing);
+      expect(tester.getTopLeft(about), Offset.zero);
+    }
+
+    await tester.tap(find.widgetWithText(ListTile, 'What’s New'));
+    await tester.pumpAndSettle();
+    final detail = find.byWidgetPredicate(
+      (widget) => widget is SettingsPage && widget.title == 'What’s New',
+    );
+    final width = tester.getSize(detail).width;
+
+    Future<TestGesture> swipeBack(double distance) async {
+      final gesture = await tester.startGesture(const Offset(150, 220));
+      await gesture.moveBy(Offset(distance, 0));
+      await tester.pump();
+      expect(tester.getTopLeft(detail).dx, closeTo(distance, 2));
+      expect(tester.getTopLeft(about).dx, closeTo(distance - width, 2));
+      expect(tester.getTopLeft(detail).dy, 0);
+      return gesture;
+    }
+
+    final shortSwipe = await swipeBack(width * 0.15);
+    await shortSwipe.moveBy(Offset(-width * 0.05, 0));
+    await tester.pump();
+    expect(tester.getTopLeft(detail).dx, closeTo(width * 0.10, 2));
+    await shortSwipe.up();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(detail), Offset.zero);
+
+    final canceledSwipe = await swipeBack(width * 0.30);
+    await canceledSwipe.cancel();
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(detail), Offset.zero);
+
+    final completedSwipe = await swipeBack(width * 0.30);
+    await completedSwipe.up();
+    await tester.pumpAndSettle();
+    expect(detail, findsNothing);
+    expect(tester.getTopLeft(about), Offset.zero);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets(

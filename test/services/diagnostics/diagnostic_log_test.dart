@@ -53,4 +53,32 @@ void main() {
       ]);
     },
   );
+
+  test(
+    'keeps saving after Talker settings change and history is cleared',
+    () async {
+      final previous = SharedPreferencesAsyncPlatform.instance;
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      addTearDown(() => SharedPreferencesAsyncPlatform.instance = previous);
+
+      final log = DiagnosticLog()..start();
+      await log.recentEvents();
+      log.talker.configure(settings: log.talker.settings.copyWith());
+      log.record(DiagnosticEvent.cameraAccessDenied);
+      await log.flush();
+
+      final restored = DiagnosticLog()..start();
+      expect(
+        await restored.recentEvents(),
+        contains(endsWith('cameraAccessDenied')),
+      );
+      restored.talker.cleanHistory();
+      await restored.flush();
+
+      final reopened = DiagnosticLog()..start();
+      expect(await reopened.recentEvents(), [endsWith('appStarted')]);
+      await reopened.flush();
+    },
+  );
 }

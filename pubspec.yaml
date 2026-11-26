@@ -30,6 +30,7 @@ dependencies:
   flex_color_scheme: 9.0.0
   talker_flutter: 5.2.0
   talker_dio_logger: 5.2.0
+  dio: ^5.11.1
   google_fonts: 9.0.0
   phosphoricons_flutter: 1.1.1
   hotkey_manager: ^0.3.0

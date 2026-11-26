@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:pub_semver/pub_semver.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/generated/app_localizations.dart';
@@ -49,11 +50,13 @@ class AboutSettings extends StatefulWidget {
     super.key,
     required this.onOpenDetail,
     required this.onOpenDeveloperOptions,
+    this.checkLatestRelease = latestMusaicRelease,
   });
 
   final void Function(BuildContext context, String title, Widget body)
   onOpenDetail;
   final ValueChanged<BuildContext> onOpenDeveloperOptions;
+  final Future<Version?> Function() checkLatestRelease;
 
   @override
   State<AboutSettings> createState() => _AboutSettingsState();
@@ -106,7 +109,7 @@ class _AboutSettingsState extends State<AboutSettings> {
     var available = false;
     String message;
     try {
-      final latest = await latestMusaicRelease();
+      final latest = await widget.checkLatestRelease();
       available =
           latest != null &&
           isMusaicUpdateAvailable(

@@ -1,9 +1,14 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:talker_flutter/talker_flutter.dart';
 
 import '../../l10n/generated/app_localizations.dart';
+import '../../services/diagnostics/diagnostic_log.dart';
 import '../../storage/settings/usage_guide_preference.dart';
+import '../../ui/theme/app_colors.dart';
+import '../../ui/widgets/app_navigation_back_button.dart';
 import '../music/playback/screensaver/screensaver_demo.dart';
 
 class DeveloperOptionsSettings extends StatefulWidget {
@@ -17,6 +22,8 @@ class DeveloperOptionsSettings extends StatefulWidget {
 enum _ResetResult { success, failure }
 
 class _DeveloperOptionsSettingsState extends State<DeveloperOptionsSettings> {
+  static const _talkerTitle = 'Talker DevTool';
+
   bool _resetting = false;
   bool _previewingScreensaver = false;
   _ResetResult? _result;
@@ -46,6 +53,40 @@ class _DeveloperOptionsSettingsState extends State<DeveloperOptionsSettings> {
       _resetting = false;
       _result = result;
     });
+  }
+
+  void _openTalker() {
+    unawaited(
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          settings: const RouteSettings(
+            name: '/settings/developer-options/talker',
+          ),
+          builder: (context) {
+            final theme = Theme.of(context);
+            return Theme(
+              data: theme.copyWith(
+                colorScheme: theme.colorScheme.copyWith(
+                  primaryContainer: AppColors.settingsAccent,
+                ),
+              ),
+              child: TalkerScreen(
+                talker: diagnosticLog.talker,
+                appBarTitle: _talkerTitle,
+                theme: const TalkerScreenTheme(
+                  backgroundColor: AppColors.sheetBackground,
+                  cardColor: AppColors.sheetHostBackground,
+                ),
+                appBarLeading: AppNavigationBackButton(
+                  icon: PhosphorIcons.caretLeftBold,
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -79,6 +120,11 @@ class _DeveloperOptionsSettingsState extends State<DeveloperOptionsSettings> {
             ),
           ),
           onTap: _resetting ? null : _resetDemos,
+        ),
+        ListTile(
+          leading: const Icon(PhosphorIcons.bug),
+          title: const Text(_talkerTitle),
+          onTap: _openTalker,
         ),
       ],
     );

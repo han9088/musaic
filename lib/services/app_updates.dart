@@ -1,7 +1,9 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:pub_semver/pub_semver.dart';
+
+import 'app_logger.dart';
 
 final musaicReleasesUrl = Uri.https(
   'github.com',
@@ -16,27 +18,34 @@ bool isMusaicUpdateAvailable(Version latest, String version, String build) {
   return latest > Version.parse('$version+$build');
 }
 
-Future<Version?> latestMusaicRelease() async {
-  final client = http.Client();
+Future<Version?> latestMusaicRelease({
+  Dio Function() createClient = createLoggedDio,
+}) async {
+  final client = createClient();
   try {
     final response = await client
-        .get(
+        .getUri<String>(
           Uri.https('api.github.com', '/repos/han9088/musaic/releases/latest'),
-          headers: const {'Accept': 'application/vnd.github+json'},
+          options: Options(
+            headers: const {'Accept': 'application/vnd.github+json'},
+            responseType: ResponseType.plain,
+          ),
         )
         .timeout(const Duration(seconds: 8));
-    if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {
       throw StateError('Release check failed (${response.statusCode})');
     }
-    final payload = jsonDecode(response.body);
+    final payload = jsonDecode(response.data ?? '');
     if (payload is! Map<String, dynamic> || payload['tag_name'] is! String) {
       throw const FormatException('Missing release tag');
     }
     return Version.parse(
       (payload['tag_name'] as String).replaceFirst(RegExp(r'^[vV]'), ''),
     );
+  } on DioException catch (error) {
+    if (error.response?.statusCode == 404) return null;
+    rethrow;
   } finally {
-    client.close();
+    client.close(force: true);
   }
 }
