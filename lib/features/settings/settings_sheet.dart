@@ -127,16 +127,21 @@ class SettingsSheet extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              ListTile(
-                key: const ValueKey('album-color-organize-toggle'),
-                title: const Text('按色系整理画布'),
-                subtitle: const Text('将主题色相近的专辑集中排列'),
-                trailing: ValueListenableBuilder<bool>(
-                  valueListenable: enabled,
-                  builder: (_, value, __) => Switch(
-                    value: value,
-                    onChanged: onChanged,
+              ValueListenableBuilder<bool>(
+                valueListenable: enabled,
+                builder: (_, value, __) => SwitchListTile(
+                  key: const ValueKey('album-color-organize-toggle'),
+                  secondary: const Icon(
+                    PhosphorIcons.palette,
+                    color: Colors.white70,
                   ),
+                  title: const Text('按色系整理画布'),
+                  subtitle: const Text(
+                    '将主题色相近的专辑集中排列',
+                    style: TextStyle(fontSize: 12, color: Colors.white60),
+                  ),
+                  value: value,
+                  onChanged: onChanged,
                 ),
               ),
               if (selected != null && onSelect != null)
@@ -147,7 +152,12 @@ class SettingsSheet extends StatelessWidget {
                       return const SizedBox.shrink();
                     }
                     return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.fromLTRB(
+                        settingsContentInset,
+                        0,
+                        settingsContentInset,
+                        12,
+                      ),
                       child: ValueListenableBuilder<AlbumColorFamily?>(
                         valueListenable: selected,
                         builder: (_, current, __) => Wrap(
@@ -158,39 +168,36 @@ class SettingsSheet extends StatelessWidget {
                               button: true,
                               selected: current == null,
                               label: '显示全部色系',
-                              child: Tooltip(
-                                message: '全部',
-                                child: GestureDetector(
-                                  onTap: () => onSelect(null),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 160),
-                                    width: 34,
-                                    height: 34,
-                                    padding: const EdgeInsets.all(3),
+                              child: GestureDetector(
+                                onTap: () => onSelect(null),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  width: 34,
+                                  height: 34,
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: current == null
+                                          ? AppColors.settingsAccent
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: const DecoratedBox(
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: current == null
-                                            ? AppColors.settingsAccent
-                                            : Colors.transparent,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    child: const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        gradient: SweepGradient(
-                                          colors: [
-                                            Color(0xffe34b4b),
-                                            Color(0xffe5a33b),
-                                            Color(0xffe4d34a),
-                                            Color(0xff59a96a),
-                                            Color(0xff45aeb0),
-                                            Color(0xff477bd0),
-                                            Color(0xff9368c5),
-                                            Color(0xffe34b4b),
-                                          ],
-                                        ),
+                                      gradient: SweepGradient(
+                                        colors: [
+                                          Color(0xffe34b4b),
+                                          Color(0xffe5a33b),
+                                          Color(0xffe4d34a),
+                                          Color(0xff59a96a),
+                                          Color(0xff45aeb0),
+                                          Color(0xff477bd0),
+                                          Color(0xff9368c5),
+                                          Color(0xffe34b4b),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -202,36 +209,33 @@ class SettingsSheet extends StatelessWidget {
                                 button: true,
                                 selected: current == family,
                                 label: family.label,
-                                child: Tooltip(
-                                  message: family.label,
-                                  child: GestureDetector(
-                                    onTap: () => onSelect(family),
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 160),
-                                      width: 34,
-                                      height: 34,
-                                      padding: const EdgeInsets.all(3),
+                                child: GestureDetector(
+                                  onTap: () => onSelect(family),
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 160),
+                                    width: 34,
+                                    height: 34,
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: current == family
+                                            ? AppColors.settingsAccent
+                                            : Colors.transparent,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: DecoratedBox(
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: current == family
-                                              ? AppColors.settingsAccent
-                                              : Colors.transparent,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: family.isNeutral
-                                              ? const Color(0xff888888)
-                                              : HSLColor.fromAHSL(
-                                                  1,
-                                                  family.hue,
-                                                  0.62,
-                                                  0.52,
-                                                ).toColor(),
-                                        ),
+                                        color: family.isNeutral
+                                            ? const Color(0xff888888)
+                                            : HSLColor.fromAHSL(
+                                                1,
+                                                family.hue,
+                                                0.62,
+                                                0.52,
+                                              ).toColor(),
                                       ),
                                     ),
                                   ),
