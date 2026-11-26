@@ -62,7 +62,11 @@ class DesktopShortcuts {
   void Function(HotKey)? _capture;
   bool _disposed = false;
 
-  static bool get isAvailable => DesktopWallpaper.isAvailable;
+  // Linux 托盘与壁纸不自动启用全局快捷键，避免启动时触发 Wayland 授权。
+  static bool get isAvailable =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.macOS ||
+          defaultTargetPlatform == TargetPlatform.windows);
 
   HotKey binding(DesktopShortcut action) =>
       _bindings[action] ?? action.defaultBinding;

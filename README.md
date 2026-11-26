@@ -2,7 +2,7 @@
 
 Where Music Becomes Mosaic.
 
-Flutter app for Android, iOS, macOS, Windows, and Web with the application ID `com.deskbtm.musaic`.
+Flutter app for Android, iOS, macOS, Windows, Linux, and Web with the application ID `com.deskbtm.musaic`.
 
 ```sh
 mise install
@@ -66,10 +66,10 @@ The release app is `build/macos/Build/Products/Release/Musaic.app`. macOS opens 
 currently simulate playback. macOS keeps album tick sounds but does not use the
 mobile haptics plugin or device-tilt sensors.
 
-Choose **Musaic → Set as Wallpaper** in the macOS menu bar to move the current
+Choose **Set as Wallpaper** from the Musaic tray menu to move the current
 album view behind Finder’s desktop icons on the same display. The view keeps
-rendering while Finder receives desktop clicks. Click Musaic in the Dock to
-activate its menu bar, then choose **Musaic → Restore Window** to exit wallpaper mode.
+rendering while Finder receives desktop clicks. Choose **Restore Window** from
+the tray menu to exit wallpaper mode.
 
 ## Windows
 
@@ -83,7 +83,30 @@ flutter build windows --release
 
 Run `musaic.exe` from `build/windows/x64/runner/Release/` together with its bundled DLLs and `data/` directory. Windows uses the sample catalogs and simulated playback.
 
-Open the window menu with **Alt+Space** or by clicking the window icon and choose **Set as Wallpaper**. The album view covers the current display behind the desktop icons. Click the Musaic notification-area icon to open a menu and choose **Restore Window** to return to the app. Explorer and display changes can end wallpaper mode.
+Right-click the Musaic notification-area icon and choose **Set as Wallpaper**. The album view covers the current display behind the desktop icons. Choose **Restore Window** from the tray menu to return to the app. Explorer and display changes can end wallpaper mode.
+
+## Linux
+
+Use the Flutter version pinned in `mise.toml` and keep the existing
+`apple_music_kit` checkout beside `musaic`. Install the Linux system dependencies
+listed in [Linux desktop support](docs/linux-desktop.md), then run:
+
+```sh
+mise install
+mise exec -- flutter pub get
+mise exec -- flutter run -d linux
+```
+
+For a release bundle, run `mise exec -- flutter build linux --release` and
+distribute the complete `build/linux/<architecture>/release/bundle/` directory.
+The executable needs the accompanying `lib/` and `data/` directories.
+
+Linux uses the localized tray menu for **Set as Wallpaper**, **Restore Window**,
+and **Quit Musaic**. Wallpaper mode is enabled only on supported X11 window
+managers; Wayland keeps the normal window and tray features, with wallpaper
+disabled. Closing the window keeps the app in the background only when a usable
+StatusNotifier tray host is available. If that host disappears, Musaic restores
+its window automatically. GNOME needs an AppIndicator/StatusNotifier extension.
 
 ## Web
 

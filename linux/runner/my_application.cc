@@ -2,13 +2,13 @@
 
 #include <flutter_linux/flutter_linux.h>
 
+#include "desktop_window.h"
 #include "flutter/generated_plugin_registrant.h"
-
-#include <cstring>
 
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  DesktopWindow* desktop_window;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
@@ -18,29 +18,17 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
-// 仅提供托盘的窗口恢复和退出；Linux 壁纸需要独立的桌面环境实现。
-static void handle_desktop_command(FlMethodChannel* channel, FlMethodCall* call,
-                                   gpointer user_data) {
-  GtkWindow* window = GTK_WINDOW(user_data);
-  const gchar* method = fl_method_call_get_name(call);
-  if (std::strcmp(method, "restoreWindow") == 0) {
-    gtk_window_deiconify(window);
-    gtk_window_present(window);
-    fl_method_call_respond_success(call, nullptr, nullptr);
-  } else if (std::strcmp(method, "quit") == 0) {
-    fl_method_call_respond_success(call, nullptr, nullptr);
-    g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, [](gpointer data) -> gboolean {
-      gtk_window_close(GTK_WINDOW(data));
-      return G_SOURCE_REMOVE;
-    }, g_object_ref(window), g_object_unref);
-  } else {
-    fl_method_call_respond_not_implemented(call, nullptr);
-  }
-}
-
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+
+  // 后台窗口被再次激活时复用同一个引擎，避免重复创建播放器和托盘。
+  if (self->desktop_window != nullptr && self->desktop_window->has_window()) {
+    self->desktop_window->RestoreWindow();
+    return;
+  }
+  delete self->desktop_window;
+  self->desktop_window = nullptr;
 
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
@@ -70,6 +58,9 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_show(GTK_WIDGET(view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
+  self->desktop_window = new DesktopWindow(
+      window, fl_engine_get_binary_messenger(fl_view_get_engine(view)));
+
   // Show the window when Flutter renders.
   // Requires the view to be realized so we can start rendering.
   g_signal_connect_swapped(view, "first-frame", G_CALLBACK(first_frame_cb),
@@ -77,15 +68,6 @@ static void my_application_activate(GApplication* application) {
   gtk_widget_realize(GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
-
-  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
-  FlMethodChannel* desktop_channel = fl_method_channel_new(
-      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
-      "com.deskbtm.musaic/desktop_wallpaper", FL_METHOD_CODEC(codec));
-  fl_method_channel_set_method_call_handler(
-      desktop_channel, handle_desktop_command, window, nullptr);
-  g_object_set_data_full(G_OBJECT(view), "musaic-desktop-channel",
-                         desktop_channel, g_object_unref);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -122,9 +104,9 @@ static void my_application_startup(GApplication* application) {
 
 // Implements GApplication::shutdown.
 static void my_application_shutdown(GApplication* application) {
-  // MyApplication* self = MY_APPLICATION(object);
-
-  // Perform any actions required at application shutdown.
+  MyApplication* self = MY_APPLICATION(application);
+  delete self->desktop_window;
+  self->desktop_window = nullptr;
 
   G_APPLICATION_CLASS(my_application_parent_class)->shutdown(application);
 }
@@ -132,6 +114,8 @@ static void my_application_shutdown(GApplication* application) {
 // Implements GObject::dispose.
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
+  delete self->desktop_window;
+  self->desktop_window = nullptr;
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
@@ -145,7 +129,9 @@ static void my_application_class_init(MyApplicationClass* klass) {
   G_OBJECT_CLASS(klass)->dispose = my_application_dispose;
 }
 
-static void my_application_init(MyApplication* self) {}
+static void my_application_init(MyApplication* self) {
+  self->desktop_window = nullptr;
+}
 
 MyApplication* my_application_new() {
   // Set the program name to the application ID, which helps various systems

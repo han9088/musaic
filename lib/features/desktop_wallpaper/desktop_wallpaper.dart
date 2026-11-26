@@ -1,22 +1,53 @@
+// 文件职责：桥接桌面窗口操作，并独立分发页面回调与 Linux 会话能力事件。
+
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-/// Moves the current album view to or from the native desktop wallpaper window.
+import 'desktop_capabilities.dart';
+
+export 'desktop_capabilities.dart';
+
+/// 将当前专辑视图移入原生桌面壁纸窗口，或恢复为普通窗口。
 abstract final class DesktopWallpaper {
   static const _channel = OptionalMethodChannel(
     'com.deskbtm.musaic/desktop_wallpaper',
   );
 
+  static final _capabilityChanges =
+      StreamController<DesktopCapabilities>.broadcast();
+  static Future<bool> Function()? _onPrepare;
+  static VoidCallback? _onRestore;
+  static bool _handlerInstalled = false;
+
+  /// 仅表示平台提供桌面桥接；Linux 的实际能力由当前会话决定。
   static bool get isAvailable =>
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.windows);
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux);
+
+  static bool get _isLinux =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.linux;
+
+  static Stream<DesktopCapabilities> get capabilityChanges {
+    _ensureHandler();
+    return _capabilityChanges.stream;
+  }
+
+  static Future<DesktopCapabilities> getCapabilities() async {
+    if (!isAvailable) return DesktopCapabilities.unavailable;
+    if (!_isLinux) return DesktopCapabilities.standardDesktop;
+    _ensureHandler();
+    final result = await _channel.invokeMethod<Object?>('getCapabilities');
+    return DesktopCapabilities.fromMessage(result);
+  }
 
   static Future<void> setCloseToBackground(bool enabled) =>
       _channel.invokeMethod<void>('setCloseToBackground', enabled);
 
-  static Future<void> embedWindow() =>
-      _channel.invokeMethod<void>('embedWindow');
+  static Future<void> embedWindow() => _channel.invokeMethod<void>('embedWindow');
 
   static Future<void> restoreWindow() =>
       _channel.invokeMethod<void>('restoreWindow');
@@ -32,20 +63,39 @@ abstract final class DesktopWallpaper {
     required VoidCallback onRestore,
   }) {
     if (!isAvailable) return;
-    _channel.setMethodCallHandler((call) async {
-      switch (call.method) {
-        case 'prepare':
-          return await onPrepare();
-        case 'didRestore':
-          onRestore();
-          return null;
-        default:
-          throw MissingPluginException();
-      }
-    });
+    _onPrepare = onPrepare;
+    _onRestore = onRestore;
+    _ensureHandler();
   }
 
   static void clearHandlers() {
-    if (isAvailable) _channel.setMethodCallHandler(null);
+    // 页面销毁只清理页面回调，不能中断仍属于应用生命周期的托盘监听。
+    _onPrepare = null;
+    _onRestore = null;
+  }
+
+  static void _ensureHandler() {
+    if (!isAvailable || _handlerInstalled) return;
+    _channel.setMethodCallHandler(_handleNativeCall);
+    _handlerInstalled = true;
+  }
+
+  static Future<Object?> _handleNativeCall(MethodCall call) async {
+    switch (call.method) {
+      case 'prepare':
+        return await _onPrepare?.call() ?? false;
+      case 'didRestore':
+        _onRestore?.call();
+        return null;
+      case 'capabilitiesChanged':
+        if (_isLinux) {
+          _capabilityChanges.add(
+            DesktopCapabilities.fromMessage(call.arguments),
+          );
+        }
+        return null;
+      default:
+        throw MissingPluginException();
+    }
   }
 }
