@@ -807,6 +807,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.5.10"
+  nativeapi_flutter:
+    dependency: transitive
+    description:
+      name: nativeapi_flutter
+      sha256: "357a405c69212f5157da1bd3be183a53c2b841d0de0eb51f4a3947913712aec4"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.5.10"
   objective_c:
     dependency: transitive
     description:
@@ -1244,6 +1252,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.7.12"
+  tray_manager:
+    dependency: "direct main"
+    description:
+      name: tray_manager
+      sha256: "30c67f4f27a9b2ad56606b369b75256fd9ef25851b66788597d4df3fbbfa536a"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.8.3"
   typed_data:
     dependency: transitive
     description:
