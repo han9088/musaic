@@ -357,10 +357,13 @@ void main() {
       provider.emit(second.reference, playing: true);
       await tester.pump();
       expect(screen, findsNWidgets(2));
-      await tester.pump(const Duration(milliseconds: 320));
+      await tester.pump(const Duration(milliseconds: 336));
       await tester.pump();
-      expect(tester.widget<ScreensaverView>(screen).title, 'Second song');
-      expect(tester.widget<ScreensaverView>(screen).artwork, secondCover);
+      expect(screen, findsOneWidget);
+      final current = find.byWidgetPredicate(
+        (widget) => widget is ScreensaverView && widget.title == 'Second song',
+      );
+      expect(tester.widget<ScreensaverView>(current).artwork, secondCover);
       await tester.tapAt(const Offset(100, 100));
       await tester.pump();
       expect(screen, findsNothing);

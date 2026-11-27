@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 由当前曲库色相聚类动态生成的色系，不预设分类枚举。
+/// 当前曲库中有封面匹配的色系。
 @immutable
 class AlbumColorFamily {
   const AlbumColorFamily({required this.id, required this.label, required this.hue, required this.isNeutral});
@@ -20,10 +20,9 @@ class AlbumColorFamily {
   int get hashCode => id.hashCode;
 }
 
-/// 缓存每张封面的主题色特征；聚类只在索引批量变化后异步重算。
+/// 缓存每张封面的主题色特征，并在索引批量变化后重算色系。
 class AlbumColorFamilyIndex extends ChangeNotifier {
   static const _storageKey = 'artwork.album_color_features.v2';
-  static const _clusterGapDegrees = 38.0;
   final Map<String, _ColorFeature> _features = {};
   Future<void> _pendingWrite = Future<void>.value();
   List<AlbumColorFamily> _families = const [];
@@ -32,7 +31,7 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
   bool _rebuildScheduled = false;
   bool _writeScheduled = false;
 
-  List<AlbumColorFamily> get availableFamilies => List.unmodifiable(_families);
+  List<AlbumColorFamily> get availableFamilies => _families;
 
   Future<void> restore() async {
     if (_restored) return;
@@ -88,18 +87,23 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
     _scheduleWrite();
   }
 
-  List<Map<String, dynamic>> organize(List<Map<String, dynamic>> albums, AlbumColorFamily? selected) {
-    final result = albums.where((album) {
-      final family = familyOf(album);
-      return selected == null ? family != null : family == selected;
-    }).toList()
-      ..sort((a, b) {
-        final left = familyOf(a);
-        final right = familyOf(b);
-        final familyOrder = (left?.hue ?? 999).compareTo(right?.hue ?? 999);
-        return familyOrder != 0 ? familyOrder : _key(a).compareTo(_key(b));
-      });
-    return List.unmodifiable(result);
+  List<Map<String, dynamic>> organize(
+    List<Map<String, dynamic>> albums,
+    AlbumColorFamily? selected,
+  ) {
+    final matches = <({Map<String, dynamic> album, String key, double hue})>[];
+    for (final album in albums) {
+      final key = _key(album);
+      final family = _albumFamilies[key];
+      if (family != null && (selected == null || family == selected)) {
+        matches.add((album: album, key: key, hue: family.hue));
+      }
+    }
+    matches.sort((a, b) {
+      final order = a.hue.compareTo(b.hue);
+      return order == 0 ? a.key.compareTo(b.key) : order;
+    });
+    return List.unmodifiable(matches.map((entry) => entry.album));
   }
 
   void _scheduleRebuild() {
@@ -112,39 +116,18 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
   }
 
   void _rebuildFamilies() {
-    final chromatic = <(String, _ColorFeature)>[];
+    final grouped = <String, List<(String, _ColorFeature)>>{};
     final neutral = <String>[];
     for (final entry in _features.entries) {
       final f = entry.value;
       if (f.saturation < 0.18 || f.lightness < 0.07 || f.lightness > 0.93) {
         neutral.add(entry.key);
       } else {
-        chromatic.add((entry.key, f));
+        grouped.putIfAbsent(_labelForHue(f.hue), () => []).add((entry.key, f));
       }
     }
-    chromatic.sort((a, b) => a.$2.hue.compareTo(b.$2.hue));
-    final clusters = <List<(String, _ColorFeature)>>[];
-    for (final item in chromatic) {
-      if (clusters.isEmpty || item.$2.hue - clusters.last.last.$2.hue > _clusterGapDegrees) {
-        clusters.add([item]);
-      } else {
-        clusters.last.add(item);
-      }
-    }
-    // Hue 是环形数据：跨越 0° 的首尾色相簇需要合并。
-    if (clusters.length > 1 &&
-        clusters.first.first.$2.hue + 360 - clusters.last.last.$2.hue <= _clusterGapDegrees) {
-      final merged = [...clusters.last, ...clusters.first];
-      clusters..removeLast()..removeAt(0)..insert(0, merged);
-    }
-
     final families = <AlbumColorFamily>[];
     final mapping = <String, AlbumColorFamily>{};
-    final grouped = <String, List<(String, _ColorFeature)>>{};
-    for (final cluster in clusters) {
-      final hue = _circularMean(cluster.map((item) => item.$2.hue));
-      grouped.putIfAbsent(_labelForHue(hue), () => []).addAll(cluster);
-    }
     for (final entry in grouped.entries) {
       final hue = _circularMean(entry.value.map((item) => item.$2.hue));
       final family = AlbumColorFamily(
@@ -156,12 +139,14 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
       families.add(family);
       for (final item in entry.value) { mapping[item.$1] = family; }
     }
+    families.sort((a, b) => a.hue.compareTo(b.hue));
     if (neutral.isNotEmpty) {
       const family = AlbumColorFamily(id: 'neutral', label: '中性色', hue: 360, isNeutral: true);
       families.add(family);
       for (final key in neutral) { mapping[key] = family; }
     }
-    final changed = !_sameFamilies(_families, families);
+    final changed =
+        !_sameFamilies(_families, families) || !mapEquals(_albumFamilies, mapping);
     _families = List.unmodifiable(families);
     _albumFamilies = Map.unmodifiable(mapping);
     if (changed) notifyListeners();
@@ -170,7 +155,7 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
   static bool _sameFamilies(List<AlbumColorFamily> a, List<AlbumColorFamily> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
+      if (a[i] != b[i] || a[i].hue != b[i].hue) return false;
     }
     return true;
   }
@@ -186,7 +171,7 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
     return (math.atan2(y, x) * 180 / math.pi + 360) % 360;
   }
 
-  /// 仅为实际生成的聚类中心命名；不决定分类是否存在或聚类边界。
+  /// 将色相归入宽色系。只有曲库中实际出现的色系才会显示。
   static String _labelForHue(double hue) {
     if (hue < 15 || hue >= 345) return '红色';
     if (hue < 45) return '橙色';

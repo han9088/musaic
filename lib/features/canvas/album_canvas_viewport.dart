@@ -55,7 +55,8 @@ class AlbumCanvasViewport extends StatefulWidget {
   final ValueChanged<Size> onViewportSizeChanged;
   final void Function(int row, int column) onTileSelected;
   final Widget Function(int row, int column, Widget child) animateSourceTile;
-  final void Function(Map<String, dynamic> album, Color accent)? onArtworkAccent;
+  final void Function(Map<String, dynamic> album, Color accent)?
+  onArtworkAccent;
 
   @override
   State<AlbumCanvasViewport> createState() => _AlbumCanvasViewportState();
@@ -67,7 +68,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   CanvasArtworkAtlas? _atlas;
   CanvasArtworkAtlas? _readyAtlas;
   List<Object?>? _atlasInput;
-  int _atlasGeneration = 0;
+  final _atlasGeneration = ValueNotifier(0);
   bool _atlasRequested = false;
 
   final _lifts =
@@ -159,6 +160,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _discardAtlas();
+    _atlasGeneration.dispose();
     for (final lift in _lifts.values) {
       lift.controller.dispose();
     }
@@ -167,7 +169,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   }
 
   void _discardAtlas() {
-    _atlasGeneration++;
+    _atlasGeneration.value++;
     _readyAtlas?.dispose();
     _readyAtlas = null;
     final previous = _atlas;
@@ -215,7 +217,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     if (_atlasRequested || widget.interactionBlocked) return;
     _atlasRequested = true;
 
-    final generation = _atlasGeneration;
+    final generation = _atlasGeneration.value;
     final covers = [
       for (final album in albums)
         (
@@ -230,7 +232,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
           ),
         ),
     ];
-    bool isCurrent() => mounted && generation == _atlasGeneration;
+    bool isCurrent() => mounted && generation == _atlasGeneration.value;
     unawaited(() async {
       await WidgetsBinding.instance.endOfFrame;
       if (!isCurrent()) return;
@@ -240,9 +242,13 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
           directories: directory.library,
           configuration: config,
           isCurrent: isCurrent,
+          onInvalidated: _atlasGeneration,
           onAccent: widget.onArtworkAccent == null
               ? null
-              : (album, accent) => widget.onArtworkAccent!(album as Map<String, dynamic>, accent),
+              : (album, accent) => widget.onArtworkAccent!(
+                  album as Map<String, dynamic>,
+                  accent,
+                ),
         );
         if (atlas == null) return;
         if (!isCurrent()) {

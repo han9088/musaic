@@ -4,19 +4,20 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musaic/main.dart' as app;
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/canvas/album_canvas.dart';
+import 'package:musaic/features/canvas/album_grid_snapshot.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
-import 'package:musaic/features/canvas/selected_album.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
+    addTearDown(tester.pump);
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     tester.view.viewPadding = const FakeViewPadding(top: 62, bottom: 34);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetViewPadding);
-    app.main();
+    await app.main();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
 
@@ -69,9 +70,12 @@ void main() {
     await hold.up();
     const tapPoint = Offset(150, 250);
     final scenePoint = controller.toScene(tapPoint);
-    final source = find.byKey(
-      ValueKey(((scenePoint.dy / 100).floor(), (scenePoint.dx / 100).floor())),
+    final cell = (
+      (scenePoint.dy / albumGridExtent).floor(),
+      (scenePoint.dx / albumGridExtent).floor(),
     );
+    final source = find.byKey(ValueKey(cell));
+    final selected = find.byKey(ValueKey(('selected-cover', cell)));
     final originalWidth = tester.getRect(source).width;
     final selectedPosition = controller.value.clone();
     await tester.tapAt(tapPoint);
@@ -79,10 +83,7 @@ void main() {
     expect(popup, findsNothing);
     await tester.pump(const Duration(milliseconds: 250));
     final lifted = find
-        .descendant(
-          of: find.byType(SelectedAlbum),
-          matching: find.byType(GestureDetector),
-        )
+        .descendant(of: selected, matching: find.byType(GestureDetector))
         .first;
     final liftedBounds = tester.getRect(lifted);
     expect(liftedBounds.width, closeTo(originalWidth * 1.16, 0.001));
@@ -126,24 +127,21 @@ void main() {
     expect(tester.getSize(popupPlay), const Size.square(44));
     expect(find.text('Track list unavailable.'), findsOneWidget);
     await dismissAlbum(hiddenOffset);
-    expect(find.byType(SelectedAlbum), findsOneWidget);
+    expect(selected, findsOneWidget);
     expect(canvas().hiddenTileOffset, isNull);
     final selectedPause = find.descendant(
-      of: find.byType(SelectedAlbum),
+      of: selected,
       matching: find.byIcon(PhosphorIcons.pauseFill),
     );
     await tester.tap(
-      find.descendant(
-        of: find.byType(SelectedAlbum),
-        matching: find.byType(AlbumPlayButton),
-      ),
+      find.descendant(of: selected, matching: find.byType(AlbumPlayButton)),
     );
     await tester.pump();
     expect(selectedPause, findsOneWidget);
     expect(popup, findsNothing);
     await tester.drag(find.byType(InteractiveViewer), const Offset(80, 0));
     await tester.pump();
-    expect(find.byType(SelectedAlbum), findsOneWidget);
+    expect(selected, findsOneWidget);
     expect(selectedPause, findsOneWidget);
     final initial = controller.value.clone();
     await tester.pump(const Duration(milliseconds: 100));
@@ -166,26 +164,28 @@ void main() {
       await tester.pump();
       const tap = Offset(150, 250);
       final scene = controller.toScene(tap);
+      final cell = (
+        (scene.dy / albumGridExtent).floor(),
+        (scene.dx / albumGridExtent).floor(),
+      );
       await tester.tapAt(tap);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
       expect(popup, findsNothing);
-      expect(
-        find.byKey(
-          ValueKey((
-            'selected',
-            ((scene.dy / 100).floor(), (scene.dx / 100).floor()),
-          )),
-        ),
-        findsOneWidget,
-      );
+      expect(find.byKey(ValueKey(('selected', cell))), findsOneWidget);
       final button = find.descendant(
-        of: find.byType(SelectedAlbum),
+        of: find.byKey(ValueKey(('selected-cover', cell))),
         matching: find.byType(AlbumPlayButton),
       );
       await tester.tap(button);
       await tester.pump();
-      expect(selectedPause, findsOneWidget);
+      expect(
+        find.descendant(
+          of: button,
+          matching: find.byIcon(PhosphorIcons.pauseFill),
+        ),
+        findsOneWidget,
+      );
     }
     for (final scale in [0.4, 1.0, 2.5]) {
       controller.value = Matrix4.diagonal3Values(scale, scale, 1);

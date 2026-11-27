@@ -347,11 +347,11 @@ void main() {
     await tester.drag(capsule, const Offset(0, -140));
     await tester.pumpAndSettle();
 
-    final entry = find.widgetWithText(ListTile, 'Musaic Pro');
+    final entry = find.widgetWithText(ListTile, 'Pro');
     await tester.tap(entry);
     await tester.pumpAndSettle();
     final page = find.byType(SettingsPage);
-    expect(tester.widget<SettingsPage>(page).title, 'Musaic Pro');
+    expect(tester.widget<SettingsPage>(page).title, 'Pro');
     expect(find.text('Annual subscription'), findsOneWidget);
     expect(find.text('Price unavailable'), findsOneWidget);
     final restore = find.widgetWithText(TextButton, 'Restore purchases');
@@ -1264,6 +1264,7 @@ void main() {
   testWidgets('capsule controls playback without extending its hit area', (
     tester,
   ) async {
+    await UsageGuidePreference.markIntroSeen(UsageGuideIntro.playback);
     final playback = AlbumPlayback();
     addTearDown(playback.dispose);
     await tester.pumpWidget(
@@ -1299,7 +1300,9 @@ void main() {
     expect(find.byTooltip('Play').hitTestable(), findsNothing);
     await tester.tapAt(const Offset(100, 100));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Play'));
+    final playButton = find.byTooltip('Play').hitTestable();
+    expect(playButton, findsOneWidget);
+    await tester.tap(playButton);
     await tester.pump();
     expect(playback.playing, isTrue);
     await tester.tap(find.text('Demo'));
@@ -1600,8 +1603,9 @@ void main() {
       final originalTop = sheetPosition.value;
       await tester.tap(settingsTab);
       await tester.pumpAndSettle();
-      final appearance = find.widgetWithText(ListTile, 'Appearance & display');
-      await tester.tap(appearance);
+      final system = find.widgetWithText(ListTile, 'System');
+      await tester.ensureVisible(system);
+      await tester.tap(system);
       await tester.pumpAndSettle();
       final coveredSheetTop = sheetPosition.value;
 
@@ -1678,7 +1682,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(page, findsNothing);
       expect(sheetPosition.value, originalTop);
-      expect(appearance, findsOneWidget);
+      expect(system, findsOneWidget);
       expect(sheet.isPresented, isTrue);
       await tester.pumpWidget(const SizedBox.shrink());
     },
@@ -1861,14 +1865,22 @@ void main() {
 
       await tester.drag(settings, const Offset(0, -80));
       await tester.pumpAndSettle();
-      expect(position.pixels, greaterThan(0));
+      final scrolled = position.pixels;
+      expect(scrolled, greaterThan(0));
       expect(index.value, 0);
 
       await tester.drag(handle, const Offset(0, -260));
       await tester.pumpAndSettle();
       expect(index.value, 1);
-      expect(position.pixels, 0);
-      expect(position.maxScrollExtent, 0);
+      expect(
+        position.pixels,
+        closeTo(
+          scrolled.clamp(position.minScrollExtent, position.maxScrollExtent),
+          0.01,
+        ),
+      );
+      position.jumpTo(position.minScrollExtent);
+      await tester.pump();
 
       await tester.dragFrom(
         tester.getTopLeft(settings) + const Offset(150, 32),

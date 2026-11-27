@@ -33,6 +33,33 @@ void main() {
     index.dispose();
   });
 
+  test(
+    'publishes changed assignments while keeping the same families',
+    () async {
+      final index = AlbumColorFamilyIndex();
+      addTearDown(index.dispose);
+      final first = {'id': 'first'};
+      final second = {'id': 'second'};
+      const green = Color(0xff229944);
+      const blue = Color(0xff2255bb);
+      index.register(first, green);
+      index.register(second, blue);
+      await Future<void>.delayed(Duration.zero);
+
+      final greenFamily = index.familyOf(first);
+      final families = index.availableFamilies;
+      var updates = 0;
+      index.addListener(() => updates++);
+      index.register(first, blue);
+      index.register(second, green);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(updates, 1);
+      expect(index.availableFamilies, families);
+      expect(index.organize([first, second], greenFamily), [second]);
+    },
+  );
+
   test('prepares target keys before changing the outgoing colors', () async {
     final index = AlbumColorFamilyIndex();
     addTearDown(index.dispose);

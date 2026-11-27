@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show Listenable;
 import 'package:flutter/painting.dart';
 import 'package:flutter/widgets.dart' show Matrix4;
 
@@ -29,6 +30,7 @@ class CanvasArtworkAtlas {
     required DirectoryMusicLibrary? directories,
     required ImageConfiguration configuration,
     required bool Function() isCurrent,
+    required Listenable onInvalidated,
     void Function(Object album, Color accent)? onAccent,
   }) async {
     final images = <Object, ui.Image>{};
@@ -50,7 +52,8 @@ class CanvasArtworkAtlas {
           height: extent,
           policy: ResizeImagePolicy.fit,
         );
-        final image = await _readImage(provider, configuration);
+        final image = await _readImage(provider, configuration, onInvalidated);
+        if (image == null) return null;
         images[album] = image;
         if (onAccent != null) {
           final accent = await readArtworkAccent(image);
@@ -70,12 +73,17 @@ class CanvasArtworkAtlas {
     }
   }
 
-  static Future<ui.Image> _readImage(
+  static Future<ui.Image?> _readImage(
     ImageProvider<Object> provider,
     ImageConfiguration configuration,
+    Listenable onInvalidated,
   ) async {
     final stream = provider.resolve(configuration);
-    final resolved = Completer<ui.Image>();
+    final resolved = Completer<ui.Image?>();
+    void cancel() {
+      if (!resolved.isCompleted) resolved.complete(null);
+    }
+
     final listener = ImageStreamListener(
       (info, _) {
         if (!resolved.isCompleted) resolved.complete(info.image.clone());
@@ -85,11 +93,13 @@ class CanvasArtworkAtlas {
         if (!resolved.isCompleted) resolved.completeError(error, stack);
       },
     );
+    onInvalidated.addListener(cancel);
     stream.addListener(listener);
     try {
       return await resolved.future.timeout(const Duration(seconds: 4));
     } finally {
       stream.removeListener(listener);
+      onInvalidated.removeListener(cancel);
     }
   }
 

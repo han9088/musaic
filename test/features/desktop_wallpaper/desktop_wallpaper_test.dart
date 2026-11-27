@@ -31,13 +31,11 @@ void main() {
       addTearDown(() => SharedPreferencesAsyncPlatform.instance = preferences);
       const channel = MethodChannel('com.deskbtm.musaic/desktop_wallpaper');
       final messenger = tester.binding.defaultBinaryMessenger;
-      Object? menuTitles;
       messenger.setMockMethodCallHandler(channel, (call) async {
-        if (call.method == 'setCloseToBackground') return null;
-        expect(call.method, 'setMenuTitles');
-        menuTitles = call.arguments;
+        expect(call.method, 'setCloseToBackground');
         return null;
       });
+      addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
       Future<Object?> platformCall(String method) async {
         Object? response;
         final handled = messenger.handlePlatformMessage(
@@ -66,16 +64,8 @@ void main() {
         ),
       );
       await tester.pump();
-      tester.element(find.byType(HomePage)).markNeedsBuild();
-      await tester.pump();
-
       final canvas = find.byType(AlbumCanvasViewport);
       final canvasState = tester.state(canvas);
-      expect(menuTitles, {
-        'set': '设成壁纸',
-        'restore': '恢复窗口',
-        'quit': '退出 Musaic',
-      });
 
       expect(await platformCall('prepare'), isTrue);
       expect(tester.widget<HomeSheet>(find.byType(HomeSheet)).enabled, isFalse);

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
+import 'package:musaic/features/canvas/album_grid_snapshot.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/features/layout/album_layout_transition.dart';
@@ -16,6 +17,8 @@ import 'package:musaic/services/music/music_models.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 class RotationAlbumCache extends MockAlbumCache {
   @override
@@ -236,6 +239,10 @@ void main() {
   testWidgets(
     'layout buttons switch manually and phone rotation resets the layout',
     (tester) async {
+      final preferences = SharedPreferencesAsyncPlatform.instance;
+      SharedPreferencesAsyncPlatform.instance =
+          InMemorySharedPreferencesAsync.empty();
+      addTearDown(() => SharedPreferencesAsyncPlatform.instance = preferences);
       final mobile =
           defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS;
@@ -290,7 +297,9 @@ void main() {
         await tester.tap(settings);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 350));
-        await tester.tap(find.text('Appearance & display'));
+        final system = find.widgetWithText(ListTile, 'System');
+        await tester.ensureVisible(system);
+        await tester.tap(system);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 450));
         final tile = find.widgetWithText(
@@ -432,18 +441,31 @@ void main() {
         );
         await tester.pump();
         expect(handle, 10);
-        final pauseIcon = find
+        Finder pauseIcon(Finder button) => find
             .descendant(
-              of: find.byType(AlbumPlayButton),
+              of: button,
               matching: find.byIcon(PhosphorIcons.pauseFill),
             )
             .hitTestable();
-        await tester.tapAt(const Offset(150, 250));
+        const tap = Offset(150, 250);
+        final scene = tester
+            .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+            .transformationController!
+            .toScene(tap);
+        final cell = (
+          (scene.dy / albumGridExtent).floor(),
+          (scene.dx / albumGridExtent).floor(),
+        );
+        await tester.tapAt(tap);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 250));
-        await tester.tap(find.byType(AlbumPlayButton).hitTestable());
+        final selectedButton = find.descendant(
+          of: find.byKey(ValueKey(('selected-cover', cell))),
+          matching: find.byType(AlbumPlayButton),
+        );
+        await tester.tap(selectedButton);
         await tester.pump();
-        expect(pauseIcon, findsOneWidget);
+        expect(pauseIcon(selectedButton), findsOneWidget);
         tester.view.physicalSize = const Size(800, 400);
         await tester.pump();
         if (!reduced) {
@@ -466,13 +488,15 @@ void main() {
         expect(find.byType(AlbumLayoutTransition), findsNothing);
         expect(find.byType(AlbumCoverFlow), findsOneWidget);
         expect(calls.where((c) => c == 'PatternComposer_play'), isEmpty);
-        final flow = tester.widget<AlbumCoverFlow>(find.byType(AlbumCoverFlow));
+        final flowFinder = find.byType(AlbumCoverFlow);
+        final flow = tester.widget<AlbumCoverFlow>(flowFinder);
+        final flowButton = find
+            .descendant(of: flowFinder, matching: find.byType(AlbumPlayButton))
+            .hitTestable();
         expect(flow.playback!.playing, isTrue);
-        final button = tester.widget<AlbumPlayButton>(
-          find.byType(AlbumPlayButton).hitTestable(),
-        );
+        final button = tester.widget<AlbumPlayButton>(flowButton);
         if (flow.playback!.isPlaying(button.asset, button.title)) {
-          await tester.tap(find.byType(AlbumPlayButton).hitTestable());
+          await tester.tap(flowButton);
           await tester.pump();
         }
         expect(
@@ -486,14 +510,18 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.text(title), findsOneWidget);
         }
-        await tester.tap(find.byType(AlbumPlayButton).hitTestable());
+        final nextButton = tester.widget<AlbumPlayButton>(flowButton);
+        await tester.tap(flowButton);
         await tester.pump();
-        expect(pauseIcon, findsOneWidget);
+        expect(pauseIcon(flowButton), findsOneWidget);
         tester.view.physicalSize = const Size(400, 800);
         await tester.pump();
         if (!reduced) await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(InteractiveViewer), findsOneWidget);
-        expect(pauseIcon, findsOneWidget);
+        expect(
+          flow.playback!.isPlaying(nextButton.asset, nextButton.title),
+          isTrue,
+        );
         expect(handle, 10);
         expect(calls.where((c) => c == 'PatternComposer_release'), isEmpty);
         await tester.pumpWidget(const SizedBox());

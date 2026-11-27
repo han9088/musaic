@@ -12,7 +12,6 @@ import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
-import 'package:musaic/features/canvas/selected_album.dart';
 import 'package:musaic/features/coverflow/album_coverflow.dart';
 import 'package:musaic/features/music/catalog/album_track_list.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
@@ -711,10 +710,18 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tapAt(const Offset(150, 250));
+    const tap = Offset(150, 250);
+    final scene = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!
+        .toScene(tap);
+    final cell = ((scene.dy / 100).floor(), (scene.dx / 100).floor());
+    await tester.tapAt(tap);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
-    final cover = tester.getRect(find.byType(SelectedAlbum));
+    final cover = tester.getRect(
+      find.byKey(ValueKey(('selected-cover', cell))),
+    );
     await tester.tapAt(cover.topLeft + const Offset(12, 12));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));

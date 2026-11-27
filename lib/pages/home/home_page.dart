@@ -100,6 +100,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }),
   );
   List<Map<String, dynamic>>? _catalog;
+  bool _catalogLoadFailed = false;
 
   _HomeMusicSource get _currentSource => _sources.catalog.value == null
       ? _sources.mock2Selected.value
@@ -457,7 +458,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (!mounted) return;
 
       // 用户第一次点击 Xerox 时，内置演示专辑目录可能尚未
-      // 通过 FutureBuilder 发布加载结果；因此需要先解析目录，再捕获
+      // 完成加载；因此需要先解析目录，再捕获
       // 当前视口，确保过渡流程能为真正可见的封面准备资源。
       final albums = _catalog ?? await _mockCatalogFor(_currentSource);
       if (!mounted) return;
@@ -622,6 +623,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (_sourceTransition.switching.value) return;
       unawaited(_applyCatalog(albums));
     });
+    if (initialCatalog == null) {
+      unawaited(_loadInitialCatalog(_renderedSource));
+    }
     _stopManualRotationListener = _manualRotation.enabled.subscribe((enabled) {
       if (enabled || _manualLayout == null) return;
       setState(() {
@@ -799,6 +803,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Future<List<Map<String, dynamic>>> _mockCatalogFor(_HomeMusicSource source) =>
       source == _HomeMusicSource.mock2 ? _mock2Albums : _mockAlbums;
 
+  Future<void> _loadInitialCatalog(_HomeMusicSource source) async {
+    bool isCurrent() =>
+        mounted && _catalog == null && _renderedSource == source;
+    try {
+      final albums = await _mockCatalogFor(source);
+      if (isCurrent()) setState(() => _catalog = albums);
+    } catch (_) {
+      if (isCurrent()) setState(() => _catalogLoadFailed = true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final platform = defaultTargetPlatform;
@@ -895,24 +910,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         : null;
     final albums = target ?? _catalog;
     if (albums != null) return _buildAlbumContent(albums);
-    final future = _mockCatalogFor(_currentSource);
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      key: ObjectKey(future),
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(AppLocalizations.of(context).albumCoversLoadFailed),
-          );
-        }
-        final loaded = snapshot.data;
-        if (loaded == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        _catalog = loaded;
-        return _buildAlbumContent(loaded);
-      },
-    );
+    if (_catalogLoadFailed) {
+      return Center(
+        child: Text(AppLocalizations.of(context).albumCoversLoadFailed),
+      );
+    }
+    return const Center(child: CircularProgressIndicator());
   }
 
   /// 创建并组装所需对象或界面结构，用于页面状态组织与业务流程协调。
