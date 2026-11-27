@@ -329,8 +329,9 @@ private:
         Refresh(true);
         Reply(play_result_);
       } else if (method == "setPlaylist") {
-        UpdatePlaylist(args);
-        result->Success();
+        UpdatePlaylist(args, result);
+        if (result)
+          result->Success();
         return;
       } else if (method == "setVolume") {
         const double volume = std::get<double>(ValueOrNull(args, "volume"));
@@ -606,6 +607,7 @@ private:
     index_ = static_cast<uint32_t>(requested);
     target_ = entries_[*index_].id;
     target_position_ = position;
+    position_ = position;
     state_ = State::kLoading;
     load_result_ = std::move(result);
     broadcastPlaybackEvent();
@@ -895,7 +897,24 @@ private:
     }
   }
 
-  void UpdatePlaylist(const Map &args) {
+  void ReloadEditedPlaylist(const Map &args, uint32_t index, int64_t position,
+                            Result &result) {
+    Map reload = args;
+    reload[Value("initialIndex")] = Value(static_cast<int64_t>(index));
+    reload[Value("initialPosition")] = Value(position);
+    auto pending_load = std::move(load_result_);
+    CloseMedia();
+    entries_.clear();
+    try {
+      loadSource(reload, pending_load ? pending_load : result);
+    } catch (...) {
+      if (pending_load)
+        load_result_ = std::move(pending_load);
+      throw;
+    }
+  }
+
+  void UpdatePlaylist(const Map &args, Result &result) {
     auto entries = ReadEntries(args);
     auto order = ReadOrder(args, entries.size());
     if (!mediaPlaybackList) {
@@ -947,12 +966,18 @@ private:
     }
     const auto next_index = std::min(
         active.value_or(0) - removed_before_current, entries.size() - 1);
-    const bool preserve_position = anchor && active == index_ && !target_ &&
-                                   !reported_seek_ && !failed_ &&
-                                   state_ != State::kCompleted && ReadyToSeek();
-    if (preserve_position)
+    const bool settled = active == index_ && !target_ && !reported_seek_ &&
+                         !failed_ && state_ != State::kCompleted && ReadyToSeek();
+    if (anchor && settled)
       ReadTimeline();
-    const auto previous_position = position_;
+    const auto previous_position =
+        target_ ? target_position_.value_or(0) : position_;
+    // WinRT can asynchronously restart a retained item when its index changes.
+    // Reopen it at the saved position before acknowledging the edit.
+    if (anchor && anchor != active && settled && previous_position > 0) {
+      ReloadEditedPlaylist(args, *anchor, previous_position, result);
+      return;
+    }
     try {
       const auto items = mediaPlaybackList.Items();
       for (uint32_t i = items.Size(); i > 0; --i) {
@@ -965,40 +990,14 @@ private:
       setShuffleOrder();
     } catch (const winrt::hresult_error &) {
       // A partially edited native list can no longer be indexed by entries_.
-      Map reload = args;
-      reload[Value("initialIndex")] = Value(static_cast<int64_t>(
-          anchor.value_or(static_cast<uint32_t>(next_index))));
-      reload[Value("initialPosition")] =
-          Value(anchor ? previous_position : int64_t{0});
-      auto pending = std::move(load_result_);
-      CloseMedia();
-      entries_.clear();
-      try {
-        loadSource(reload, pending);
-      } catch (...) {
-        if (pending)
-          load_result_ = std::move(pending);
-        throw;
-      }
+      ReloadEditedPlaylist(args,
+                           anchor.value_or(static_cast<uint32_t>(next_index)),
+                           anchor ? previous_position : int64_t{0}, result);
       return;
     }
 
     if (anchor) {
       index_ = anchor;
-      if (preserve_position && previous_position > 0) {
-        const bool current_ready = CurrentIndex() == anchor && ReadyToSeek();
-        if (current_ready)
-          ReadTimeline();
-        // Removing or inserting items before the current item can reset its
-        // native timeline even when the item itself stays in the list.
-        if (!current_ready || position_ < previous_position) {
-          Map seek{{Value("index"), Value(static_cast<int64_t>(*anchor))},
-                   {Value("position"), Value(previous_position)}};
-          Result ignored;
-          Seek(seek, ignored);
-          return;
-        }
-      }
       Refresh(true);
       if (state_ == State::kCompleted || failed_)
         broadcastPlaybackEvent();

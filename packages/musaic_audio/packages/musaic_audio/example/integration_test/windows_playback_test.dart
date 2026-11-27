@@ -42,7 +42,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(playEnded, isFalse);
     expect(player.position, greaterThanOrEqualTo(start));
-    await player.moveAudioSource(0, 2);
+    await player.moveAudioSource(0, 2).timeout(timeout);
     await player.currentIndexStream
         .firstWhere((index) => index == 0)
         .timeout(timeout);
@@ -50,6 +50,7 @@ void main() {
     expect(player.position, greaterThanOrEqualTo(start));
     await player.pause();
     await play.timeout(timeout);
+    expect(player.position, greaterThanOrEqualTo(start));
   }, skip: !Platform.isWindows);
 
   testWidgets('Windows clips, seeks, and recovers after a load error',
