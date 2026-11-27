@@ -252,10 +252,7 @@ class SettingsSheet extends StatelessWidget {
                 children: [
                   Material(color: Colors.transparent, child: tabBar),
                   Expanded(
-                    child: TabBarView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [settings, account.page],
-                    ),
+                    child: TabBarView(children: [settings, account.page]),
                   ),
                 ],
               ),

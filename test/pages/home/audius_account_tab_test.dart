@@ -140,6 +140,13 @@ void main() {
         find.descendant(of: tabs, matching: find.text('Audius')),
         findsNothing,
       );
+      final pages = find.byType(TabBarView);
+      await tester.drag(pages, const Offset(-320, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('Connect Audius'), findsOneWidget);
+      await tester.drag(pages, const Offset(320, 0));
+      await tester.pumpAndSettle();
+      expect(find.text('Connect Audius'), findsNothing);
       await tester.tap(logoTab);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Connect Audius'));
