@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/directory_music_library.dart';
 import 'package:musaic/services/music/music_provider.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
@@ -13,6 +15,7 @@ import 'fake_audio_directories.dart';
 class DelayedDirectories extends FakeDirectories {
   Completer<void>? restoreGate;
   bool cancelPick = false;
+  PlatformException? pickError;
   final mediaPaths = <String, String>{};
   @override
   Future<Object?> invoke(
@@ -20,6 +23,7 @@ class DelayedDirectories extends FakeDirectories {
     Map<String, Object?> args = const {},
   ]) async {
     if (method == 'restore') await restoreGate?.future;
+    if (method == 'pick' && pickError != null) throw pickError!;
     if (method == 'pick' && cancelPick) {
       picks++;
       return null;
@@ -32,6 +36,39 @@ class DelayedDirectories extends FakeDirectories {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
+
+  test('folder picker failure records the operation and native code', () async {
+    final index = await MusicIndex.open(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+    );
+    final native = DelayedDirectories()
+      ..pickError = PlatformException(
+        code: 'permissionDenied',
+        message: 'No access to /private/Music',
+      );
+    final library = DirectoryMusicLibrary(
+      index: index,
+      directories: AudioDirectories(native),
+    );
+    addTearDown(library.dispose);
+    final controller = MusicSourceController();
+    addTearDown(controller.dispose);
+    await controller.attachDirectories(library);
+    await controller.selectDirectories();
+    await controller.selectDirectories(add: true);
+
+    final last = (await diagnosticLog.recentEvents()).last;
+    expect(
+      last,
+      contains(
+        'directorySourceFailed operation=addDirectory '
+        'error=platform platformCode=permissionDenied',
+      ),
+    );
+    expect(last, isNot(contains('/private/Music')));
+    expect(controller.problem.value, MusicSourceProblem.scanFailed);
+  });
 
   test('only a confirmed file identity removes a folder track', () async {
     final index = await MusicIndex.open(

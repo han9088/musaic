@@ -235,6 +235,7 @@ final class DirectoryMusicLibrary {
   ) async {
     if (_disposed) return;
     final totals = ScanCounts();
+    final timer = Stopwatch()..start();
     batch(() {
       counts.value = totals.copy();
       state.value = cancellation.isCancelled
@@ -251,7 +252,8 @@ final class DirectoryMusicLibrary {
           ? DiagnosticEvent.directoryRescanStarted
           : DiagnosticEvent.directoryScanStarted,
     );
-    var failed = false;
+    ({Object error, StackTrace? stack, DiagnosticOperation operation})?
+    firstFailure;
     try {
       final generation = await index.nextGeneration();
       if (force) await directories.clearArtworkCache();
@@ -259,6 +261,7 @@ final class DirectoryMusicLibrary {
       for (final original in roots) {
         if (cancellation.isCancelled) break;
         var complete = true;
+        var operation = DiagnosticOperation.restoreDirectory;
         await index.status(original.id, 'scanning');
         try {
           final source = await directories.restore(original);
@@ -266,16 +269,21 @@ final class DirectoryMusicLibrary {
             throw StateError('Directory moved; add the new source explicitly');
           }
           await index.saveSource(source);
+          operation = DiagnosticOperation.scanDirectory;
           await for (final page in directories.scan(
             source,
             cancellation: cancellation,
           )) {
             if (cancellation.isCancelled) break;
-            if (page.error != null) {
+            if (page.error case final pageError?) {
               complete = false;
-              failed = true;
+              firstFailure ??= (
+                error: pageError,
+                stack: null,
+                operation: operation,
+              );
               totals.failed++;
-              if (!_disposed) error.value = page.error;
+              if (!_disposed) error.value = pageError;
             }
             if (page.entries.isEmpty) continue;
             final entries = page.entries;
@@ -326,10 +334,14 @@ final class DirectoryMusicLibrary {
                   } else {
                     pageCounts.updated++;
                   }
-                } catch (e) {
+                } catch (e, stack) {
                   fileError = e;
                   pageCounts.failed++;
-                  failed = true;
+                  firstFailure ??= (
+                    error: e,
+                    stack: stack,
+                    operation: DiagnosticOperation.readAudioMetadata,
+                  );
                 }
               } else if (!cover && !directory) {
                 pageCounts.skipped++;
@@ -373,8 +385,8 @@ final class DirectoryMusicLibrary {
               error.value,
             );
           }
-        } catch (e) {
-          failed = true;
+        } catch (e, stack) {
+          firstFailure ??= (error: e, stack: stack, operation: operation);
           totals.failed++;
           await index.status(original.id, 'failed', e);
           if (!_disposed) error.value = e;
@@ -392,18 +404,35 @@ final class DirectoryMusicLibrary {
         counts.value = totals.copy();
         state.value = cancellation.isCancelled
             ? DirectoryScanState.cancelled
-            : failed
+            : firstFailure != null
             ? DirectoryScanState.failed
             : DirectoryScanState.complete;
-        diagnosticLog.record(switch (state.value) {
-          DirectoryScanState.cancelled =>
-            DiagnosticEvent.directoryScanCancelled,
-          DirectoryScanState.failed => DiagnosticEvent.directoryScanFailed,
-          _ => DiagnosticEvent.directoryScanCompleted,
-        }, count: totals.failed);
+        final failure = state.value == DirectoryScanState.failed
+            ? firstFailure
+            : null;
+        diagnosticLog.record(
+          switch (state.value) {
+            DirectoryScanState.cancelled =>
+              DiagnosticEvent.directoryScanCancelled,
+            DirectoryScanState.failed => DiagnosticEvent.directoryScanFailed,
+            _ => DiagnosticEvent.directoryScanCompleted,
+          },
+          count: current.tracks.length,
+          failedCount: totals.failed,
+          duration: timer.elapsed,
+          operation: failure?.operation,
+          error: failure?.error,
+          stack: failure?.stack,
+        );
       }
-    } catch (e) {
-      diagnosticLog.record(DiagnosticEvent.directoryScanFailed, error: e);
+    } catch (e, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.directoryScanFailed,
+        duration: timer.elapsed,
+        operation: DiagnosticOperation.scanDirectory,
+        error: e,
+        stack: stack,
+      );
       if (!_disposed) {
         error.value = e;
         state.value = DirectoryScanState.failed;

@@ -5,6 +5,7 @@ import 'fake_audio_directories.dart';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic_query/musaic_query.dart';
+import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/directory_music_library.dart';
 import 'package:musaic/storage/music/music_index.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -130,6 +131,20 @@ void main() {
     await library.refresh();
     expect(library.tracks.value.length, 2);
     expect(library.state.value, DirectoryScanState.failed);
+    final events = await diagnosticLog.recentEvents();
+    expect(
+      events,
+      contains(
+        matches(r'directoryScanCompleted count=2 failedCount=0 durationMs=\d+'),
+      ),
+    );
+    expect(
+      events.last,
+      matches(
+        r'directoryScanFailed count=2 failedCount=1 durationMs=\d+ '
+        r'operation=restoreDirectory error=state',
+      ),
+    );
   });
   test('partial directory failure preserves unseen cached files', () async {
     native.folders['root']!.add(entry('sub', directory: true));
