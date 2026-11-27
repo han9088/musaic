@@ -8,6 +8,7 @@ import 'package:flutter_email_sender_method_channel/flutter_email_sender_method_
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/bottom_sheet_host.dart';
+import 'package:musaic/features/artwork/presentation/album_color_family.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette.dart';
 import 'package:musaic/features/artwork/presentation/xerox_palette_picker.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
@@ -498,7 +499,7 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets(
-    'mobile language stays in the sheet outside System',
+    'mobile language is last in Appearance & display',
     (tester) async {
       final preference = AppLanguagePreference(AppLanguage.system);
       addTearDown(preference.dispose);
@@ -527,7 +528,16 @@ void main() {
       final language = find.widgetWithText(ListTile, 'Language');
       expect(find.text('Appearance & display'), findsOneWidget);
       expect(language.hitTestable(), findsOneWidget);
-      await tester.tap(find.widgetWithText(ListTile, 'System'));
+      final system = find.widgetWithText(ListTile, 'System');
+      expect(
+        tester.getTopLeft(language).dy,
+        greaterThan(tester.getTopLeft(system).dy),
+      );
+      expect(
+        tester.getTopLeft(language).dy,
+        lessThan(tester.getTopLeft(find.text('About & help')).dy),
+      );
+      await tester.tap(system);
       await tester.pumpAndSettle();
       final page = find.byType(SettingsPage);
       expect(tester.widget<SettingsPage>(page).title, 'System');
@@ -585,8 +595,8 @@ void main() {
         await tester.pumpAndSettle();
         final menu = find.byType(AppDialogSurface);
         expect(
-          tester.getTopLeft(menu).dy,
-          greaterThan(tester.getBottomLeft(trigger).dy),
+          tester.getBottomLeft(menu).dy,
+          lessThan(tester.getTopLeft(trigger).dy),
         );
         final search = find.descendant(
           of: menu,
@@ -1692,7 +1702,7 @@ void main() {
     }),
   );
 
-  testWidgets('music settings group demo and local sources before switching', (
+  testWidgets('settings open directly and keep demo choices in Music source', (
     tester,
   ) async {
     // Drain font notifications queued while the test tree is torn down.
@@ -1700,7 +1710,17 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(360, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final sources = MusicSourceController();
+    final colors = AlbumColorFamilyIndex()
+      ..register({
+        'asset': 'assets/albums/0.jpg',
+        'title': 'Album',
+      }, Colors.red);
+    final colorEnabled = ValueNotifier(false);
+    final selectedFamily = ValueNotifier<AlbumColorFamily?>(null);
     addTearDown(sources.dispose);
+    addTearDown(colors.dispose);
+    addTearDown(colorEnabled.dispose);
+    addTearDown(selectedFamily.dispose);
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en'),
@@ -1710,6 +1730,11 @@ void main() {
           child: HomeSheet(
             icons: const _Icons(),
             sources: sources,
+            colorIndex: colors,
+            colorOrganizeEnabled: colorEnabled,
+            selectedColorFamily: selectedFamily,
+            onColorOrganizeChanged: (enabled) => colorEnabled.value = enabled,
+            onColorFamilySelected: (family) => selectedFamily.value = family,
             onSourceSelection: (select) async {
               final context = tester.element(find.byType(HomeSheet));
               expect(DeskBottomSheet.of(context).isPresented, isFalse);
@@ -1725,31 +1750,54 @@ void main() {
     await tester.pumpAndSettle();
     final mock2 = find.byKey(const ValueKey('music-source-mock2'));
     final appleMusic = find.byKey(const ValueKey('music-source-apple-music'));
-    expect(mock2, findsOneWidget);
+    final mock = find.byKey(const ValueKey('music-source-mock'));
+    final colorToggle = find.byKey(
+      const ValueKey('album-color-organize-toggle'),
+    );
+    expect(mock, findsNothing);
+    expect(mock2, findsNothing);
+    expect(colorToggle, findsNothing);
+    expect(appleMusic, findsNothing);
+    expect(find.text('Local music'), findsNothing);
+    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
+    expect(tabBar.tabs, hasLength(1));
+    expect(tabBar.indicatorColor, Colors.transparent);
+    expect(tabBar.dividerColor, Colors.transparent);
+
+    final music = find.widgetWithText(ListTile, 'Music');
+    await tester.ensureVisible(music);
+    await tester.tap(music);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SettingsPage>(find.byType(SettingsPage)).title,
+      'Music',
+    );
+    await tester.tap(colorToggle);
+    await tester.pumpAndSettle();
+    expect(colorEnabled.value, isTrue);
+    final family = colors.availableFamilies.single;
+    await tester.tap(find.byKey(ValueKey<AlbumColorFamily?>(family)));
+    await tester.pumpAndSettle();
+    expect(selectedFamily.value, family);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(colorToggle, findsNothing);
+
+    await tester.ensureVisible(find.text('Music source'));
+    await tester.tap(find.text('Music source'));
+    await tester.pumpAndSettle();
+    final page = find.byType(SettingsPage);
     final demoTitle = find.descendant(
       of: find.descendant(of: mock2, matching: find.byType(Text)),
       matching: find.byType(RichText),
     );
     expect(tester.widget<RichText>(demoTitle).text.style?.fontSize, 16);
-    final mock = find.byKey(const ValueKey('music-source-mock'));
     expectDotAligned(
       tester,
       mock,
       find.descendant(of: mock, matching: find.byType(Text)),
     );
     expect(dotIn(mock2), findsNothing);
-    expect(appleMusic, findsNothing);
-    expect(find.text('Local music'), findsNothing);
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.indicatorColor, Colors.transparent);
-    expect(tabBar.dividerColor, Colors.transparent);
-    expect(find.text('Settings'), findsNothing);
-    await tester.tap(settingsTab);
-    await tester.pumpAndSettle();
-    expect(mock2, findsNothing);
-    await tester.tap(find.text('Music source'));
-    await tester.pumpAndSettle();
-    final page = find.byType(SettingsPage);
     final demoHeading = find.descendant(of: page, matching: find.text('Demo'));
     final demoIcon = find.descendant(
       of: mock2,

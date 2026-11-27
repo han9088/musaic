@@ -7,9 +7,14 @@ import '../../storage/settings/app_language_preference.dart';
 import '../../ui/widgets/app_dropdown_menu.dart';
 
 class SettingsLanguagePicker extends StatelessWidget {
-  const SettingsLanguagePicker({super.key, required this.preference});
+  const SettingsLanguagePicker({
+    super.key,
+    required this.preference,
+    this.showSelectedLabel = true,
+  });
 
   final AppLanguagePreference preference;
+  final bool showSelectedLabel;
 
   @override
   Widget build(BuildContext context) => SignalBuilder(
@@ -19,6 +24,7 @@ class SettingsLanguagePicker extends StatelessWidget {
         leading: const Icon(PhosphorIcons.translate),
         title: l10n.settingsLanguage,
         value: preference.selected.value,
+        showSelectedLabel: showSelectedLabel,
         entries: [
           AppDropdownMenuEntry(
             AppLanguage.system,

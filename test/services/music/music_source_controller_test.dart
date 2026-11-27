@@ -501,23 +501,23 @@ void main() {
       addTearDown(sources.dispose);
       addTearDown(switching.dispose);
       var transitions = 0;
-      Widget picker({bool demoOnly = false}) => MaterialApp(
-        theme: buildSettingsContentTheme(ThemeData()),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: MusicSourcePicker(
-            sources: sources,
-            demoOnly: demoOnly,
-            sourceSwitching: switching,
-            onSourceSelection: (activate) async {
-              transitions++;
-              await activate();
-            },
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildSettingsContentTheme(ThemeData()),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: MusicSourcePicker(
+              sources: sources,
+              sourceSwitching: switching,
+              onSourceSelection: (activate) async {
+                transitions++;
+                await activate();
+              },
+            ),
           ),
         ),
       );
-      await tester.pumpWidget(picker());
       await tester.pumpAndSettle();
       final row = find.byKey(const ValueKey('music-source-audius'));
       final mock = find.byKey(const ValueKey('music-source-mock'));
@@ -573,9 +573,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<ListTile>(row).selected, isTrue);
       expect(transitions, 1);
-      await tester.pumpWidget(picker(demoOnly: true));
-      await tester.pumpAndSettle();
-      expect(row, findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );

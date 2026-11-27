@@ -28,7 +28,7 @@ void main() {
     );
   });
 
-  testWidgets('only the desktop settings tab uses split navigation', (
+  testWidgets('desktop settings open directly in split navigation', (
     tester,
   ) async {
     // Drain font notifications queued while the test tree is torn down.
@@ -88,18 +88,19 @@ void main() {
       of: demoSource,
       matching: find.byType(Text),
     );
-    expect(tabs, findsNWidgets(2));
-    expect(sidebar, findsNothing);
-    expect(demoSource.hitTestable(), findsOneWidget);
-    expect(fontSize(demoLabel), 14);
+    expect(tabs, findsOneWidget);
+    expect(sidebar, findsOneWidget);
+    expect(demoSource, findsNothing);
 
     expect(
-      tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
+      tester
+          .widget<Scaffold>(
+            find.ancestor(of: sidebar, matching: find.byType(Scaffold)),
+          )
+          .backgroundColor,
       Colors.black,
     );
 
-    await tester.tap(tabs.at(1));
-    await tester.pumpAndSettle();
     final appearance = find.text('Appearance & display');
     final aboutAndHelp = find.text('About & help');
     final xerox = find.byKey(const ValueKey('xerox-toggle'));
@@ -116,7 +117,16 @@ void main() {
     expect(tester.getTopLeft(appearance).dx, iconLeft);
     expect(tester.getTopLeft(aboutAndHelp).dx, iconLeft);
     expect(tester.getTopLeft(xeroxLabel).dx, iconLeft);
-    expect(find.descendant(of: details, matching: languageRow), findsOneWidget);
+    expect(find.descendant(of: sidebar, matching: languageRow), findsOneWidget);
+    expect(find.descendant(of: details, matching: languageRow), findsNothing);
+    expect(
+      tester.getTopLeft(languageRow).dy,
+      greaterThan(tester.getTopLeft(system).dy),
+    );
+    expect(
+      tester.getTopLeft(languageRow).dy,
+      lessThan(tester.getTopLeft(aboutAndHelp).dy),
+    );
     await tester.tap(languageRow);
     await tester.pumpAndSettle();
     await tester.tap(find.text('简体中文'));
@@ -141,7 +151,7 @@ void main() {
     await tester.tap(source);
     await tester.pumpAndSettle();
     expect(find.byType(SettingsPage), findsOneWidget);
-    expect(tabs, findsNWidgets(2));
+    expect(tabs, findsOneWidget);
     expect(tester.widget<ListTile>(source).selected, isTrue);
     expect(
       fontSize(find.descendant(of: source, matching: find.byType(Text))),
@@ -150,7 +160,8 @@ void main() {
     expect(fontSize(find.text('Local music')), 14);
     expect(fontSize(find.text('Browse and play music from your device')), 12);
     expect(fontSize(find.text('Apple Music')), 14);
-    expect(find.text('Language'), findsNothing);
+    expect(find.descendant(of: details, matching: languageRow), findsNothing);
+    expect(fontSize(demoLabel), 14);
     expect(
       tester.getRect(source).right,
       lessThan(tester.getRect(find.byType(SettingsPage)).left),
@@ -161,14 +172,6 @@ void main() {
     expect(sources.mock2Selected.value, isTrue);
     expect(find.byType(SettingsPage), findsOneWidget);
     expect(find.byType(HomeSheet), findsOneWidget);
-
-    await tester.tap(tabs.at(0));
-    await tester.pumpAndSettle();
-    expect(sidebar.hitTestable(), findsNothing);
-    expect(demoSource.hitTestable(), findsOneWidget);
-    await tester.tap(tabs.at(1));
-    await tester.pumpAndSettle();
-    expect(tester.widget<ListTile>(source).selected, isTrue);
 
     final sidebarScroll = find.descendant(
       of: sidebar,

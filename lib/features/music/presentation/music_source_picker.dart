@@ -21,13 +21,11 @@ class MusicSourcePicker extends StatelessWidget {
     required this.sources,
     this.sourceSwitching,
     this.onSourceSelection,
-    this.demoOnly = false,
   });
 
   final MusicSourceController sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
-  final bool demoOnly;
 
   Future<void> _select(Future<void> Function() selection) =>
       onSourceSelection?.call(selection) ?? selection();
@@ -51,7 +49,6 @@ class MusicSourcePicker extends StatelessWidget {
         final windows =
             !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
         final showLocal =
-            !demoOnly &&
             !kIsWeb &&
             (sources.directories != null ||
                 (!windows && sources.systemLibraryEnabled));
@@ -75,7 +72,7 @@ class MusicSourcePicker extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!demoOnly && !windows)
+            if (!windows)
               ListTile(
                 key: const ValueKey('music-source-apple-music'),
                 leading: const Icon(
@@ -93,42 +90,41 @@ class MusicSourcePicker extends StatelessWidget {
                 ),
                 onTap: () {},
               ),
-            if (!demoOnly)
-              ListTile(
-                key: const ValueKey('music-source-audius'),
+            ListTile(
+              key: const ValueKey('music-source-audius'),
+              selected: audiusSelected,
+              leading: Image.asset(
+                'assets/branding/audius_glyph_color.png',
+                width: 26,
+                height: 26,
+                excludeFromSemantics: true,
+              ),
+              title: AppSelectionTitle(
                 selected: audiusSelected,
-                leading: Image.asset(
-                  'assets/branding/audius_glyph_color.png',
-                  width: 26,
-                  height: 26,
-                  excludeFromSemantics: true,
-                ),
-                title: AppSelectionTitle(
-                  selected: audiusSelected,
-                  child: Text(
-                    'Audius',
-                    style: AppTypography.inter(
-                      fontSize:
-                          Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
+                child: Text(
+                  'Audius',
+                  style: AppTypography.inter(
+                    fontSize:
+                        Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                trailing: audiusLoading
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : null,
-                onTap: selectionBlocked || audiusSelected
-                    ? null
-                    : () => sources.selectAudius(transition: _select),
               ),
-            if (!demoOnly) SettingsSectionHeading(l10n.musicSourceDemoGroup),
+              trailing: audiusLoading
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : null,
+              onTap: selectionBlocked || audiusSelected
+                  ? null
+                  : () => sources.selectAudius(transition: _select),
+            ),
+            SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
               key: const ValueKey('music-source-mock'),
               selected: firstDemoSelected,
@@ -261,7 +257,7 @@ class MusicSourcePicker extends StatelessWidget {
                     ),
               ],
             ],
-            if (!demoOnly && problem != null)
+            if (problem != null)
               Semantics(
                 liveRegion: true,
                 child: Padding(

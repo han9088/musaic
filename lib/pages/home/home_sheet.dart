@@ -13,6 +13,7 @@ import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
 import '../../features/music/presentation/music_settings.dart';
 import '../../features/artwork/presentation/album_color_family.dart';
+import '../../features/artwork/presentation/album_color_organization_settings.dart';
 import '../../features/music/presentation/music_source_picker.dart';
 import '../../features/pro/pro_settings.dart';
 import '../../features/settings/about_settings.dart';
@@ -193,9 +194,7 @@ class _HomeSheetState extends State<HomeSheet> {
 
   Widget _buildSettingsSheet({bool desktop = false}) => SettingsSheet(
     desktop: desktop,
-    sources: widget.sources,
-    sourceSwitching: widget.sourceSwitching,
-    onSourceSelection: _selectSource,
+    musicSourceVisible: widget.sources != null,
     onOpenSection: (source, section) =>
         _openSettings(source, section, desktop: desktop),
     language: widget.language,
@@ -207,11 +206,6 @@ class _HomeSheetState extends State<HomeSheet> {
         ? null
         : (enabled) => _changeXerox(enabled, desktop: desktop),
     xeroxPalettePicker: widget.xeroxPalettePicker,
-    colorIndex: widget.colorIndex,
-    colorOrganizeEnabled: widget.colorOrganizeEnabled,
-    selectedColorFamily: widget.selectedColorFamily,
-    onColorOrganizeChanged: widget.onColorOrganizeChanged,
-    onColorFamilySelected: widget.onColorFamilySelected,
   );
 
   void _present() {
@@ -296,10 +290,26 @@ class _HomeSheetState extends State<HomeSheet> {
       SettingsSection.music => (
         '/settings/music',
         (AppLocalizations l10n) => l10n.settingsMusic,
-        switch (widget.screensaverDelay) {
-          final delay? => MusicSettings(screensaverDelay: delay),
-          null => const SizedBox.shrink(),
-        },
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (widget.screensaverDelay case final delay?)
+              MusicSettings(screensaverDelay: delay),
+            if ((
+                  widget.colorIndex,
+                  widget.colorOrganizeEnabled,
+                  widget.onColorOrganizeChanged,
+                )
+                case (final index?, final enabled?, final onChanged?))
+              AlbumColorOrganizationSettings(
+                index: index,
+                enabled: enabled,
+                onChanged: onChanged,
+                selectedFamily: widget.selectedColorFamily,
+                onFamilySelected: widget.onColorFamilySelected,
+              ),
+          ],
+        ),
       ),
       SettingsSection.system => (
         '/settings/system',
@@ -307,7 +317,6 @@ class _HomeSheetState extends State<HomeSheet> {
         AppearanceSettings(
           icons: widget.icons,
           manualRotation: widget.manualRotation,
-          language: desktop ? widget.language : null,
         ),
       ),
       SettingsSection.keyboardShortcuts => (

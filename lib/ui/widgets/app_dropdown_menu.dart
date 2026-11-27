@@ -34,6 +34,7 @@ class AppDropdownMenu<T extends Object> extends StatefulWidget {
     required this.searchLabel,
     required this.emptyLabel,
     this.leading,
+    this.showSelectedLabel = true,
   });
 
   final String title;
@@ -43,6 +44,7 @@ class AppDropdownMenu<T extends Object> extends StatefulWidget {
   final String searchLabel;
   final String emptyLabel;
   final Widget? leading;
+  final bool showSelectedLabel;
 
   @override
   State<AppDropdownMenu<T>> createState() => _AppDropdownMenuState<T>();
@@ -168,6 +170,7 @@ class _AppDropdownMenuState<T extends Object>
         .firstOrNull;
     return Semantics(
       expanded: _open,
+      value: widget.showSelectedLabel ? null : selected?.label,
       child: ListTile(
         leading: widget.leading,
         title: Text(widget.title),
@@ -175,7 +178,7 @@ class _AppDropdownMenuState<T extends Object>
           mainAxisSize: MainAxisSize.min,
           spacing: 8,
           children: [
-            if (selected != null)
+            if (widget.showSelectedLabel && selected != null)
               Text(
                 selected.label,
                 style: const TextStyle(color: Colors.white60),
