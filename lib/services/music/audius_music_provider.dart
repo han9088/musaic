@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:audius_sdk/audius_sdk.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:musaic_audio/musaic_audio.dart' as native;
 
 import '../audio/musaic_audio_platform.dart';
 import 'music_provider.dart';
@@ -32,14 +34,7 @@ final class AudiusMusicProvider implements MusicProvider {
   final AudiusSdk _sdk;
   final AudioPlayer Function() _createPlayer;
   final bool _usesNativeQueue;
-  late final MusaicMusicQueue? _nativeQueue = _usesNativeQueue
-      ? MusaicMusicQueue(
-          _openNativeSource,
-          prepare: (item) =>
-              _openNativeSource(item, cacheWait: const Duration(seconds: 4)),
-          cachedUri: _cachedAudioUri,
-        )
-      : null;
+  late final MusaicMusicQueue? _nativeQueue = _createNativeQueue();
   final _summaries = <String, ProviderAlbum>{};
   final _details = <MusicReference, Future<ProviderAlbum>>{};
   final _events = StreamController<MusicPlayback>.broadcast();
@@ -358,6 +353,46 @@ final class AudiusMusicProvider implements MusicProvider {
   @override
   Stream<MusicPlayback> get playback =>
       _nativeQueue?.playback ?? _events.stream;
+
+  MusaicMusicQueue? _createNativeQueue() {
+    if (!_usesNativeQueue) return null;
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return MusaicMusicQueue(
+        _openNativeSource,
+        prepare: (item) =>
+            _openNativeSource(item, cacheWait: const Duration(seconds: 4)),
+        cachedUri: _cachedAudioUri,
+      );
+    }
+    return MusaicMusicQueue(
+      _openAndroidStream,
+      includeNextOnLoad: true,
+      audioSource: (item, uri) => native.ProgressiveAudioSource(
+        uri,
+        options: native.ProgressiveAudioSourceOptions(
+          androidCacheKey: 'audius:${item.id}',
+        ),
+      ),
+      audioLoadConfiguration: const native.AudioLoadConfiguration(
+        androidPreloadDuration: Duration(seconds: 8),
+        androidLoadControl: native.AndroidLoadControl(
+          minBufferDuration: Duration(seconds: 8),
+          maxBufferDuration: Duration(seconds: 16),
+          bufferForPlaybackDuration: Duration(milliseconds: 350),
+          bufferForPlaybackAfterRebufferDuration: Duration(seconds: 1),
+          prioritizeTimeOverSizeThresholds: true,
+        ),
+      ),
+    );
+  }
+
+  Future<MusicQueueSource> _openAndroidStream(MusicReference reference) async {
+    _ensureOpen();
+    // Android follows the public stream's redirect itself. This way the two
+    // initial media items can enter the native playlist without a metadata call.
+    final stream = _sdk.tracks.getTrackStream(trackId: reference.id);
+    return (uri: stream.uri, close: null);
+  }
 
   Future<Uri?> _cachedAudioUri(MusicReference reference) async {
     try {

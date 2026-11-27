@@ -906,11 +906,13 @@ class AudioLoadConfigurationMessage {
   final DarwinLoadControlMessage? darwinLoadControl;
   final AndroidLoadControlMessage? androidLoadControl;
   final AndroidLivePlaybackSpeedControlMessage? androidLivePlaybackSpeedControl;
+  final Duration? androidPreloadDuration;
 
   const AudioLoadConfigurationMessage({
     required this.darwinLoadControl,
     required this.androidLoadControl,
     required this.androidLivePlaybackSpeedControl,
+    this.androidPreloadDuration,
   });
 
   Map<dynamic, dynamic> toMap() => <dynamic, dynamic>{
@@ -918,6 +920,8 @@ class AudioLoadConfigurationMessage {
         'androidLoadControl': androidLoadControl?.toMap(),
         'androidLivePlaybackSpeedControl':
             androidLivePlaybackSpeedControl?.toMap(),
+        if (androidPreloadDuration != null)
+          'androidPreloadDuration': androidPreloadDuration!.inMicroseconds,
       };
 }
 
@@ -1088,15 +1092,18 @@ class AndroidAudioOffloadPreferencesMessage {
 class ProgressiveAudioSourceOptionsMessage {
   final AndroidExtractorOptionsMessage? androidExtractorOptions;
   final DarwinAssetOptionsMessage? darwinAssetOptions;
+  final String? androidCacheKey;
 
   const ProgressiveAudioSourceOptionsMessage({
     this.androidExtractorOptions,
     this.darwinAssetOptions,
+    this.androidCacheKey,
   });
 
   Map<dynamic, dynamic> toMap() => <dynamic, dynamic>{
         'androidExtractorOptions': androidExtractorOptions?.toMap(),
         'darwinAssetOptions': darwinAssetOptions?.toMap(),
+        if (androidCacheKey != null) 'androidCacheKey': androidCacheKey,
       };
 }
 

@@ -48,8 +48,14 @@ import androidx.media3.exoplayer.dash.DashMediaSource; // Deprecated
 import androidx.media3.exoplayer.hls.HlsMediaSource; // Deprecated
 import androidx.media3.exoplayer.trackselection.TrackSelectionArray;
 import androidx.media3.datasource.DataSource;
+import androidx.media3.datasource.DataSpec;
 import androidx.media3.datasource.DefaultDataSource;
 import androidx.media3.datasource.DefaultHttpDataSource;
+import androidx.media3.datasource.cache.CacheDataSource;
+import androidx.media3.datasource.cache.CacheWriter;
+import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor;
+import androidx.media3.datasource.cache.SimpleCache;
+import androidx.media3.database.StandaloneDatabaseProvider;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.util.Util;
 import io.flutter.Log;
@@ -60,6 +66,7 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,11 +76,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AudioPlayer implements MethodCallHandler, Player.Listener, MetadataOutput {
     public static final int ERROR_ABORT = 10000000;
 
     static final String TAG = "AudioPlayer";
+    private static final long STREAM_CACHE_BYTES = 64L * 1024 * 1024;
+    private static final long STREAM_PREFIX_BYTES = 96L * 1024;
+    private static SimpleCache streamCache;
 
     private static Random random = new Random();
 
@@ -95,6 +107,9 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     private IcyHeaders icyHeaders;
     private AudioAttributes pendingAudioAttributes;
     private LoadControl loadControl;
+    private Long preloadDurationUs;
+    private ExecutorService streamPrefetchExecutor;
+    private StreamPrefetch streamPrefetch;
     private boolean offloadSchedulingEnabled;
     private AudioOffloadPreferences audioOffloadPreferences;
     private boolean useLazyPreparation;
@@ -178,6 +193,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
         dataEventChannel = new BetterEventChannel(messenger, "com.deskbtm.musaic.audio.data." + id);
         processingState = ProcessingState.idle;
         if (audioLoadConfiguration != null) {
+            preloadDurationUs = getLong(audioLoadConfiguration.get("androidPreloadDuration"));
             Map<?, ?> loadControlMap = (Map<?, ?>)audioLoadConfiguration.get("androidLoadControl");
             if (loadControlMap != null) {
                 DefaultLoadControl.Builder builder = new DefaultLoadControl.Builder()
@@ -323,6 +339,41 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
             }
         }
         lastPlaylistLength = player.getMediaItemCount();
+        prefetchNextStream();
+    }
+
+    @Override
+    public void onMediaItemTransition(MediaItem mediaItem, int reason) {
+        prefetchNextStream();
+    }
+
+    private void prefetchNextStream() {
+        if (player == null || preloadDurationUs == null || preloadDurationUs <= 0) return;
+        int index = player.getNextMediaItemIndex();
+        MediaItem.LocalConfiguration next = index == C.INDEX_UNSET
+                ? null : player.getMediaItemAt(index).localConfiguration;
+        CachedStream stream = next != null && next.tag instanceof CachedStream
+                ? (CachedStream) next.tag : null;
+        if (streamPrefetch != null && streamPrefetch.stream == stream) return;
+        final MediaItem current = player.getCurrentMediaItem();
+        // A manual skip can promote the item that's already downloading.
+        if (streamPrefetch != null && !streamPrefetch.finished && current != null
+                && current.localConfiguration != null
+                && current.localConfiguration.tag == streamPrefetch.stream) return;
+        if (streamPrefetch != null) streamPrefetch.cancel();
+        streamPrefetch = null;
+        if (stream == null) return;
+        if (streamPrefetchExecutor == null) {
+            streamPrefetchExecutor = Executors.newSingleThreadExecutor();
+        }
+        final StreamPrefetch task = new StreamPrefetch(context, stream, next.uri, next.customCacheKey);
+        streamPrefetch = task;
+        streamPrefetchExecutor.execute(() -> {
+            task.run();
+            handler.post(() -> {
+                if (streamPrefetch == task) prefetchNextStream();
+            });
+        });
     }
 
     private boolean updateCurrentIndex() {
@@ -634,12 +685,28 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
         Map<?, ?> map = (Map<?, ?>)json;
         String id = (String)map.get("id");
         switch ((String)map.get("type")) {
-        case "progressive":
-            return new ProgressiveMediaSource.Factory(buildDataSourceFactory(mapGet(map, "headers")), buildExtractorsFactory(mapGet(map, "options")))
+        case "progressive": {
+            final Uri uri = Uri.parse((String) map.get("uri"));
+            final Map<?, ?> options = mapGet(map, "options");
+            final String cacheKey = "https".equals(uri.getScheme())
+                    ? mapGet(options, "androidCacheKey") : null;
+            final DataSource.Factory upstream = buildDataSourceFactory(mapGet(map, "headers"));
+            final CachedStream stream = cacheKey == null ? null : new CachedStream(upstream);
+            final DataSource.Factory dataSource = cacheKey == null ? upstream : () -> {
+                try {
+                    return stream.createFactory(context).createDataSource();
+                } catch (RuntimeException error) {
+                    Log.w(TAG, "Couldn't open the audio stream cache", error);
+                    return upstream.createDataSource();
+                }
+            };
+            return new ProgressiveMediaSource.Factory(dataSource, buildExtractorsFactory(options))
                     .createMediaSource(new MediaItem.Builder()
-                            .setUri(Uri.parse((String)map.get("uri")))
-                            .setTag(id)
+                            .setUri(uri)
+                            .setCustomCacheKey(cacheKey)
+                            .setTag(stream == null ? id : stream)
                             .build());
+        }
         case "dash":
             return new DashMediaSource.Factory(buildDataSourceFactory(mapGet(map, "headers")))
                     .createMediaSource(new MediaItem.Builder()
@@ -749,6 +816,72 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
         return new DefaultDataSource.Factory(context, httpDataSourceFactory);
     }
 
+    private static synchronized SimpleCache getStreamCache(Context context) {
+        if (streamCache == null) {
+            streamCache = new SimpleCache(
+                    new File(context.getCacheDir(), "musaic_audio_streams"),
+                    new LeastRecentlyUsedCacheEvictor(STREAM_CACHE_BYTES),
+                    new StandaloneDatabaseProvider(context));
+        }
+        return streamCache;
+    }
+
+    private static final class CachedStream {
+        private final DataSource.Factory upstream;
+
+        CachedStream(DataSource.Factory upstream) {
+            this.upstream = upstream;
+        }
+
+        CacheDataSource.Factory createFactory(Context context) {
+            return new CacheDataSource.Factory()
+                    .setCache(getStreamCache(context))
+                    .setUpstreamDataSourceFactory(upstream)
+                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+        }
+    }
+
+    private static final class StreamPrefetch implements Runnable {
+        private final Context context;
+        private final CachedStream stream;
+        private final DataSpec data;
+        private volatile boolean cancelled;
+        private volatile boolean finished;
+        private volatile CacheWriter writer;
+
+        StreamPrefetch(Context context, CachedStream stream, Uri uri, String cacheKey) {
+            this.context = context;
+            this.stream = stream;
+            data = new DataSpec.Builder()
+                    .setUri(uri)
+                    .setKey(cacheKey)
+                    .setLength(STREAM_PREFIX_BYTES)
+                    .setFlags(DataSpec.FLAG_ALLOW_CACHE_FRAGMENTATION)
+                    .build();
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (cancelled) return;
+                writer = new CacheWriter(stream.createFactory(context).createDataSourceForDownloading(),
+                        data, null, null);
+                if (!cancelled) writer.cache();
+            } catch (IOException | RuntimeException ignored) {
+                // Playback can still stream unfilled cache ranges as needed.
+            } finally {
+                writer = null;
+                finished = true;
+            }
+        }
+
+        void cancel() {
+            cancelled = true;
+            CacheWriter active = writer;
+            if (active != null) active.cancel();
+        }
+    }
+
     private void load(final List<MediaSource> mediaSources, ShuffleOrder shuffleOrder, final long initialPosition, final Integer initialIndex, final Result result) {
         currentIndex = initialIndex != null ? initialIndex : 0;
         switch (processingState) {
@@ -792,6 +925,9 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
                 builder.setLivePlaybackSpeedControl(livePlaybackSpeedControl);
             }
             player = builder.build();
+            if (preloadDurationUs != null && preloadDurationUs > 0) {
+                player.setPreloadConfiguration(new ExoPlayer.PreloadConfiguration(preloadDurationUs));
+            }
             player.setTrackSelectionParameters(
                 player.getTrackSelectionParameters()
                     .buildUpon()
@@ -1047,6 +1183,14 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
     }
 
     public void dispose() {
+        if (streamPrefetch != null) {
+            streamPrefetch.cancel();
+            streamPrefetch = null;
+        }
+        if (streamPrefetchExecutor != null) {
+            streamPrefetchExecutor.shutdownNow();
+            streamPrefetchExecutor = null;
+        }
         if (processingState == ProcessingState.loading) {
             abortExistingConnection(true);
         }

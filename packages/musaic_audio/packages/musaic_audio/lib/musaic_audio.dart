@@ -2257,10 +2257,14 @@ class AudioLoadConfiguration {
   /// Speed control for live streams on Android.
   final AndroidLivePlaybackSpeedControl? androidLivePlaybackSpeedControl;
 
+  /// Amount of the next playlist item to preload on Android.
+  final Duration? androidPreloadDuration;
+
   const AudioLoadConfiguration({
     this.darwinLoadControl,
     this.androidLoadControl,
     this.androidLivePlaybackSpeedControl,
+    this.androidPreloadDuration,
   });
 
   AudioLoadConfigurationMessage _toMessage() => AudioLoadConfigurationMessage(
@@ -2268,6 +2272,7 @@ class AudioLoadConfiguration {
         androidLoadControl: androidLoadControl?._toMessage(),
         androidLivePlaybackSpeedControl:
             androidLivePlaybackSpeedControl?._toMessage(),
+        androidPreloadDuration: androidPreloadDuration,
       );
 }
 
@@ -2458,15 +2463,21 @@ class ProgressiveAudioSourceOptions {
   final AndroidExtractorOptions? androidExtractorOptions;
   final DarwinAssetOptions? darwinAssetOptions;
 
+  /// Enables Android's disk cache for this media. Use the same key only for
+  /// URLs that serve the same audio bytes.
+  final String? androidCacheKey;
+
   const ProgressiveAudioSourceOptions({
     this.androidExtractorOptions,
     this.darwinAssetOptions,
+    this.androidCacheKey,
   });
 
   ProgressiveAudioSourceOptionsMessage _toMessage() =>
       ProgressiveAudioSourceOptionsMessage(
         androidExtractorOptions: androidExtractorOptions?._toMessage(),
         darwinAssetOptions: darwinAssetOptions?._toMessage(),
+        androidCacheKey: androidCacheKey,
       );
 }
 

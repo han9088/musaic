@@ -16,11 +16,17 @@ final class MusaicMusicQueue {
     this._open, {
     Future<MusicQueueSource> Function(MusicReference)? prepare,
     this._cachedUri,
+    this._audioSource,
+    this._audioLoadConfiguration,
+    this._includeNextOnLoad = false,
   }) : _prepare = prepare ?? _open;
 
   final Future<MusicQueueSource> Function(MusicReference) _open;
   final Future<MusicQueueSource> Function(MusicReference) _prepare;
   final Future<Uri?> Function(MusicReference)? _cachedUri;
+  final AudioSource Function(MusicReference, Uri)? _audioSource;
+  final AudioLoadConfiguration? _audioLoadConfiguration;
+  final bool _includeNextOnLoad;
   final _events = StreamController<MusicPlayback>.broadcast();
   final _subscriptions = <StreamSubscription<dynamic>>[];
   AudioPlayer? _player;
@@ -76,6 +82,7 @@ final class MusaicMusicQueue {
     final player = _player = AudioPlayer(
       useLazyPreparation: false,
       handleAudioSessionActivation: false,
+      audioLoadConfiguration: _audioLoadConfiguration,
     );
     _subscriptions.add(
       player.playerEventStream.listen((_) {
@@ -166,11 +173,11 @@ final class MusaicMusicQueue {
 
   void _prefetchNext() {
     final index = _tracks.last.index + 1;
-    if (index > _index + 1 ||
-        index >= _items.length ||
-        _requestedNext == index) {
-      return;
-    }
+    if (index <= _index + 1) _requestNext(index);
+  }
+
+  void _requestNext(int index) {
+    if (index >= _items.length || _requestedNext == index) return;
     _requestedNext = index;
     unawaited(_prepareNext(_items[index], index, _generation));
   }
@@ -200,7 +207,7 @@ final class MusaicMusicQueue {
           }
           _tracks.add((index: index, source: source));
           pending = null;
-          await player.addAudioSource(AudioSource.uri(source.uri));
+          await player.addAudioSource(_buildAudioSource(index, source.uri));
         } catch (error, stack) {
           _playerFailed(error, stack, generation);
         }
@@ -211,6 +218,9 @@ final class MusaicMusicQueue {
       if (pending case final source?) await _closeSource(source);
     }
   }
+
+  AudioSource _buildAudioSource(int index, Uri uri) =>
+      _audioSource?.call(_items[index], uri) ?? AudioSource.uri(uri);
 
   Future<void> _trimHistory(AudioPlayer player) async {
     // Hold the previous item for a native seek while bounding open file grants.
@@ -337,11 +347,21 @@ final class MusaicMusicQueue {
       final source = pending!;
       _tracks = [(index: index, source: source)];
       pending = null;
+      if (_includeNextOnLoad && hasNext) {
+        final next = await _open(_items[index + 1]);
+        if (cancelled.isCompleted || _disposed) {
+          await _closeSource(next);
+          await _unload(releaseFocus: true);
+          return;
+        }
+        _tracks.add((index: index + 1, source: next));
+      }
       _prefetchNext();
       await Future.any<void>([
         player
             .setAudioSources([
-              AudioSource.uri(source.uri),
+              for (final track in _tracks)
+                _buildAudioSource(track.index, track.source.uri),
             ], initialPosition: position)
             .then<void>((_) {}),
         cancelled.future,

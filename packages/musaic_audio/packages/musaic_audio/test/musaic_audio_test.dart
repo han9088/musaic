@@ -1638,18 +1638,26 @@ void runTests() {
       darwinLoadControl: DarwinLoadControl(),
       androidLoadControl: AndroidLoadControl(),
       androidLivePlaybackSpeedControl: AndroidLivePlaybackSpeedControl(),
+      androidPreloadDuration: Duration(seconds: 8),
     );
     final player = AudioPlayer(
       audioLoadConfiguration: audioLoadConfiguration,
     );
-    await player.setUrl('https://foo.foo/foo.mp3');
+    await player.setAudioSource(ProgressiveAudioSource(
+      Uri.parse('https://foo.foo/foo.mp3'),
+      options: const ProgressiveAudioSourceOptions(androidCacheKey: 'track-id'),
+    ));
     final platformPlayer = mock.mostRecentPlayer!;
     expect(
         platformPlayer.audioLoadConfiguration?.darwinLoadControl
             ?.automaticallyWaitsToMinimizeStalling,
         equals(audioLoadConfiguration
             .darwinLoadControl?.automaticallyWaitsToMinimizeStalling));
-    // TODO: check other fields.
+    expect(
+        platformPlayer.audioLoadConfiguration?.toMap()['androidPreloadDuration'],
+        8000000);
+    final source = platformPlayer._audioSource as ProgressiveAudioSourceMessage;
+    expect(source.options?.toMap()['androidCacheKey'], 'track-id');
     await player.dispose();
   });
 
