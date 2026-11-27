@@ -67,21 +67,96 @@ enum DiagnosticEvent {
   reportMailFailed,
 }
 
+enum DiagnosticOperation {
+  addDirectory,
+  loadDirectoryCache,
+  saveDirectorySelection,
+  restoreDirectory,
+  scanDirectory,
+  readAudioMetadata,
+  publishDirectoryCatalog,
+  disposePreviousSource,
+  playAlbum,
+  playTrack,
+  pause,
+  resume,
+  next,
+  previous,
+  seek,
+}
+
 /// Bounded, local history of app events, counts, and sanitized error details.
 class DiagnosticLog {
   static const _storageKey = 'diagnostics.recentEvents.v1';
   static const _capacity = 300;
+  static const _errorWindow = Duration(seconds: 2);
+  static const _errorsPerEventWindow = 4;
   static final _appFrame = RegExp(
     r'\(package:musaic/([a-z0-9_/]+\.dart:\d+:\d+)\)',
   );
+  static final _frameworkFrame = RegExp(
+    r'\(package:flutter/src/([a-z0-9_/]+\.dart:\d+:\d+)\)',
+  );
+  // Plugin errors can carry file paths even in fields intended for error codes.
+  static const _platformCodes = {
+    'busy',
+    'cancelled',
+    'detached',
+    'directoryError',
+    'fileChanged',
+    'invalidArgument',
+    'metadataFailed',
+    'notFound',
+    'permissionDenied',
+    'pickerFailed',
+    'unavailable',
+    'NoActivity',
+    'PermissionRequestFailed',
+    'QueryCancelled',
+    'QueryFailed',
+    'AndroidAudioError',
+    'DarwinAudioError',
+  };
+  static const _androidAudioReasons = {
+    'MEDIA_ERROR_IO',
+    'MEDIA_ERROR_MALFORMED',
+    'MEDIA_ERROR_SERVER_DIED',
+    'MEDIA_ERROR_SYSTEM',
+    'MEDIA_ERROR_TIMED_OUT',
+    'MEDIA_ERROR_UNSUPPORTED',
+    'FileNotFoundException',
+    'IOException',
+    'IllegalArgumentException',
+    'IllegalStateException',
+    'SecurityException',
+  };
+  static const _frameworkLibraries = {
+    'gesture': 'gestures',
+    'gesture library': 'gestures',
+    'gestures library': 'gestures',
+    'image resource service': 'images',
+    'painting library': 'painting',
+    'rendering library': 'rendering',
+    'scheduler library': 'scheduler',
+    'services library': 'services',
+    'widgets': 'widgets',
+    'widgets library': 'widgets',
+    'music source transition': 'musicSourceTransition',
+    'Xerox mode transition': 'xeroxModeTransition',
+    'Xerox raster preparation': 'xeroxRasterPreparation',
+  };
 
-  late final _talker = _DiagnosticTalker(_capacity, _scheduleSave);
+  late final _talker = _DiagnosticTalker(_capacity, _historyChanged);
   Talker get talker => _talker;
 
+  final _errorClock = Stopwatch()..start();
+  final _errorSamples = <DiagnosticEvent, ({int untilMs, int count})>{};
   SharedPreferencesAsync? _preferences;
   Future<void>? _restoring;
-  Future<void> _writing = Future.value();
+  Future<void>? _writing;
   Timer? _saveTimer;
+  bool _dirty = false;
+  bool _flushAgain = false;
   bool _started = false;
 
   void start() {
@@ -116,41 +191,39 @@ class DiagnosticLog {
     }
   }
 
-  void record(
+  bool record(
     DiagnosticEvent event, {
     int? count,
+    int? failedCount,
+    Duration? duration,
+    DiagnosticOperation? operation,
     Object? error,
     StackTrace? stack,
+    String? frameworkLibrary,
   }) {
-    final now = DateTime.now().toUtc();
-    final kind = switch (error) {
-      null => null,
-      DioException(:final type) => type.name,
-      MissingPluginException() => 'missingPlugin',
-      PlatformException() => 'platform',
-      FlutterError() => 'flutter',
-      StateError() => 'state',
-      ArgumentError() => 'argument',
-      FormatException() => 'format',
-      TimeoutException() => 'timeout',
-      UnsupportedError() => 'unsupported',
-      TypeError() => 'type',
-      _ => 'other',
-    };
-    final frame = stack == null
-        ? null
-        : _appFrame.firstMatch(stack.toString())?.group(1);
-    final message = [
-      event.name,
-      if (count != null) 'count=$count',
-      if (kind != null) 'error=$kind',
-      if (frame != null) 'code=$frame',
-    ].join(' ');
+    if (error != null && !_sampleError(event)) return false;
+    final now = DateTime.timestamp();
+    var message = event.name;
+    if (count != null ||
+        failedCount != null ||
+        duration != null ||
+        operation != null) {
+      message = [
+        message,
+        if (count != null) 'count=$count',
+        if (failedCount != null) 'failedCount=$failedCount',
+        if (duration != null) 'durationMs=${duration.inMilliseconds}',
+        if (operation != null) 'operation=${operation.name}',
+      ].join(' ');
+    }
+    if (error != null) {
+      message = _withErrorDetails(message, error, stack, frameworkLibrary);
+    }
     final last = talker.history.lastOrNull;
     if (last != null &&
         last.message == message &&
-        now.difference(last.time) < const Duration(seconds: 2)) {
-      return;
+        now.difference(last.time) < _errorWindow) {
+      return false;
     }
     final level = error == null ? LogLevel.info : LogLevel.error;
     talker.logCustom(
@@ -161,10 +234,92 @@ class DiagnosticLog {
         key: TalkerKey.fromLogLevel(level),
       ),
     );
+    return true;
+  }
+
+  bool _sampleError(DiagnosticEvent event) {
+    final nowMs = _errorClock.elapsedMilliseconds;
+    final sample = _errorSamples[event];
+    if (sample == null || nowMs >= sample.untilMs) {
+      _errorSamples[event] = (
+        untilMs: nowMs + _errorWindow.inMilliseconds,
+        count: 1,
+      );
+      return true;
+    }
+    if (sample.count >= _errorsPerEventWindow) return false;
+    _errorSamples[event] = (untilMs: sample.untilMs, count: sample.count + 1);
+    return true;
+  }
+
+  static String _withErrorDetails(
+    String message,
+    Object error,
+    StackTrace? stack,
+    String? frameworkLibrary,
+  ) {
+    final kind = switch (error) {
+      DioException(:final type) => type.name,
+      MissingPluginException() => 'missingPlugin',
+      PlatformException() => 'platform',
+      FlutterError() => 'flutter',
+      AssertionError() => 'assertion',
+      StateError() => 'state',
+      RangeError() => 'range',
+      ArgumentError() => 'argument',
+      FormatException() => 'format',
+      TimeoutException() => 'timeout',
+      UnsupportedError() => 'unsupported',
+      TypeError() => 'type',
+      _ => 'other',
+    };
+    final platformCode = switch (error) {
+      PlatformException(code: 'Unexpected AndroidAudioError') =>
+        'UnexpectedAndroidAudioError',
+      PlatformException(:final code) when _platformCodes.contains(code) => code,
+      _ => null,
+    };
+    final reasons = switch (error) {
+      PlatformException(
+        code: 'AndroidAudioError' || 'Unexpected AndroidAudioError',
+        :final message,
+        :final details,
+      ) =>
+        {
+          if (_androidAudioReasons.contains(message)) message!,
+          if (details is String && details.length <= 128)
+            ...details.split(', ').where(_androidAudioReasons.contains),
+        },
+      _ => const <String>{},
+    };
+    final trace = stack ?? (error is Error ? error.stackTrace : null);
+    final frames = trace?.toString();
+    final frame = frames == null
+        ? null
+        : _appFrame.firstMatch(frames)?.group(1);
+    final frameworkFrame = frames == null
+        ? null
+        : _frameworkFrame.firstMatch(frames)?.group(1);
+    final library = _frameworkLibraries[frameworkLibrary];
+    return [
+      message,
+      'error=$kind',
+      if (platformCode != null) 'platformCode=$platformCode',
+      if (reasons.isNotEmpty) 'nativeReason=${reasons.join(',')}',
+      if (library != null) 'library=$library',
+      if (frame != null) 'code=$frame',
+      if (frameworkFrame != null) 'frameworkCode=$frameworkFrame',
+    ].join(' ');
+  }
+
+  void _historyChanged(bool cleared) {
+    if (cleared) _errorSamples.clear();
+    _dirty = true;
+    _scheduleSave();
   }
 
   void _scheduleSave() {
-    if (_preferences != null) {
+    if (_preferences != null && _writing == null && _dirty) {
       _saveTimer ??= Timer(
         const Duration(seconds: 1),
         () => unawaited(flush()),
@@ -175,16 +330,35 @@ class DiagnosticLog {
   Future<void> flush() {
     _saveTimer?.cancel();
     _saveTimer = null;
+    if (_writing case final writing?) {
+      if (_dirty) _flushAgain = true;
+      return writing;
+    }
     final preferences = _preferences;
-    if (preferences == null) return Future.value();
-    return _writing = _writing.then((_) async {
+    if (preferences == null || !_dirty) return Future.value();
+    return _writing = _save(preferences);
+  }
+
+  Future<void> _save(SharedPreferencesAsync preferences) async {
+    var scheduleFollowUp = true;
+    try {
       await _restoring;
-      try {
-        await preferences.setStringList(_storageKey, _serializeHistory());
-      } catch (_) {
-        // Keep recording in memory when the device cannot save the history.
-      }
-    });
+      do {
+        _flushAgain = false;
+        _dirty = false;
+        try {
+          await preferences.setStringList(_storageKey, _serializeHistory());
+        } catch (_) {
+          // Leave a failed snapshot pending without retrying on a timer loop.
+          scheduleFollowUp = _dirty;
+          _dirty = true;
+          return;
+        }
+      } while (_flushAgain && _dirty);
+    } finally {
+      _writing = null;
+      if (scheduleFollowUp) _scheduleSave();
+    }
   }
 
   Future<List<String>> recentEvents() async {
@@ -235,13 +409,13 @@ class _DiagnosticTalker extends Talker {
               ]),
       );
 
-  final VoidCallback onChange;
+  final void Function(bool cleared) onChange;
   bool wasCleared = false;
 
   @override
   void logCustom(TalkerLog data) {
     // Pass only diagnostic metadata to Talker's history, stream and console.
-    super.logCustom(switch (data) {
+    final entry = switch (data) {
       DioRequestLog(:final requestOptions) => _networkLog(data, requestOptions),
       DioResponseLog(:final response, :final responseTime) => _networkLog(
         data,
@@ -257,8 +431,9 @@ class _DiagnosticTalker extends Talker {
         error: dioException.type,
       ),
       _ => data,
-    });
-    onChange();
+    };
+    super.logCustom(entry);
+    if (identical(history.lastOrNull, entry)) onChange(false);
   }
 
   @override
@@ -266,7 +441,7 @@ class _DiagnosticTalker extends Talker {
     if (!settings.useHistory) return;
     super.cleanHistory();
     wasCleared = true;
-    onChange();
+    onChange(true);
   }
 
   TalkerLog _networkLog(
