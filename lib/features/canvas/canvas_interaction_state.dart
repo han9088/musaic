@@ -1,5 +1,7 @@
 // 文件职责：专辑墙无限画布的布局、视口与交互状态。
 
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
 
 import 'canvas_drift.dart';
@@ -11,7 +13,32 @@ class CanvasInteractionState {
   final CanvasDrift drift;
   bool touching = false;
   final pressedPointers = <int>{};
-  bool selectionPaused = false;
+  bool _selectionPaused = false;
+  bool _albumPopupOpen = false;
+  Timer? _selectionResume;
+
+  bool get selectionPaused => _selectionPaused || _albumPopupOpen;
+
+  set selectionPaused(bool paused) {
+    _selectionResume?.cancel();
+    _selectionResume = null;
+    _selectionPaused = paused;
+  }
+
+  void pauseForSelection() {
+    selectionPaused = true;
+    _selectionResume = Timer(
+      const Duration(seconds: 3),
+      () => selectionPaused = false,
+    );
+  }
+
+  void setAlbumPopupOpen(bool open) {
+    _albumPopupOpen = open;
+    if (open) selectionPaused = false;
+  }
+
+  void dispose() => _selectionResume?.cancel();
 
   /// 执行当前模块中的pointerdown操作，用于专辑墙无限画布的布局、视口与交互状态。
   void pointerDown(int pointer) {

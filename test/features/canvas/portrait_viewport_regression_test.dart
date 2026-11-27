@@ -8,6 +8,7 @@ import 'package:musaic/app/bottom_sheet_host.dart';
 import 'package:musaic/features/artwork/presentation/artwork_source_view.dart';
 import 'package:musaic/features/artwork/presentation/custom_artwork_scope.dart';
 import 'package:musaic/features/canvas/album_canvas_viewport.dart';
+import 'package:musaic/features/canvas/album_grid_snapshot.dart';
 import 'package:musaic/features/canvas/canvas_drift.dart';
 import 'package:musaic/features/canvas/canvas_interaction_state.dart';
 import 'package:musaic/features/canvas/home_album_layout_state.dart';
@@ -694,6 +695,79 @@ void main() {
     expect(tilt(), isNot(frozenTilt));
     await tester.pumpWidget(const SizedBox.shrink());
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  for (final (description, openPopup, pressPlay) in [
+    ('while a selected cover stays lifted', false, false),
+    ('after playing a lifted album', false, true),
+    ('after the album popup returns', true, false),
+  ]) {
+    testWidgets('canvas drifts again $description', (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(400, 800);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: HomePage(albumCache: _FixedAlbumCache(trackCount: 1)),
+        ),
+      );
+      await tester.pump();
+      final transform = tester
+          .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+          .transformationController!;
+      const tap = Offset(150, 250);
+      final scene = transform.toScene(tap);
+      final cell = (
+        (scene.dy / albumGridExtent).floor(),
+        (scene.dx / albumGridExtent).floor(),
+      );
+      final cover = find.byKey(ValueKey(('selected-cover', cell)));
+      await tester.tapAt(tap);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      final selected = transform.value.clone();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(transform.value, selected);
+
+      AlbumPlayButton? playbackButton;
+      if (pressPlay) {
+        final play = find.descendant(
+          of: cover,
+          matching: find.byType(AlbumPlayButton),
+        );
+        playbackButton = tester.widget<AlbumPlayButton>(play);
+        await tester.tap(play);
+        await tester.pump();
+        expect(playbackButton.playback.playing, isTrue);
+      }
+      if (openPopup) {
+        await tester.tapAt(tester.getTopLeft(cover) + const Offset(12, 12));
+        await tester.pump();
+        final popup = find.byKey(const ValueKey('album-cover-popup'));
+        expect(popup, findsOneWidget);
+        await tester.pump(const Duration(seconds: 4));
+        expect(transform.value, selected);
+        await tester.tapAt(const Offset(16, 20));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        expect(transform.value, selected);
+        await tester.pump(const Duration(milliseconds: 250));
+        expect(popup, findsNothing);
+      } else {
+        await tester.pump(const Duration(seconds: 3));
+      }
+
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(transform.value, isNot(selected));
+      expect(cover, findsOneWidget);
+      if (playbackButton != null) {
+        expect(playbackButton.playback.playing, isTrue);
+      }
+      await tester.pumpWidget(const SizedBox.shrink());
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  }
 
   testWidgets('a single track keeps its artwork in the canvas preview', (
     tester,

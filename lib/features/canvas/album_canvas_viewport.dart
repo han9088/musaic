@@ -285,7 +285,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     final album = widget.layout.albumAt(row, col, widget.albums);
     final asset = album['asset'] as String;
     final title = album['title'] as String;
-    widget.interaction.selectionPaused = true;
+    final interaction = widget.interaction;
+    interaction.setAlbumPopupOpen(true);
     setState(() => _popupCell = (row, col));
     void restoreSource() {
       if (mounted && _popupCell != null) setState(() => _popupCell = null);
@@ -317,6 +318,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
       );
     } finally {
       restoreSource();
+      interaction.setAlbumPopupOpen(false);
     }
   }
 

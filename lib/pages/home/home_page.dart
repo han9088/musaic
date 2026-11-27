@@ -788,6 +788,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _sourceTransition.dispose();
     _artworkMode.dispose();
     _ticker.dispose();
+    _interaction.dispose();
     _transform.dispose();
     super.dispose();
   }
@@ -985,7 +986,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       onViewportSizeChanged: (size) => _portraitSize = size,
       onTileSelected: (row, column) => setState(() {
         _albumLayout.selectedAlbum = (row, column);
-        _interaction.selectionPaused = true;
+        _interaction.pauseForSelection();
       }),
       animateSourceTile: _animateCanvasTile,
       onArtworkAccent: (album, accent) => _albumColors.register(album, accent),
