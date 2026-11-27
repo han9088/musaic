@@ -33,6 +33,23 @@ ThemeData buildSettingsContentTheme(ThemeData base) => base.copyWith(
   ),
 );
 
+/// Typography shared by desktop demo content and settings detail pages.
+ThemeData buildDesktopSettingsTheme(ThemeData base) {
+  final text = base.textTheme;
+  final headingSize = text.bodyLarge?.fontSize;
+  final appBarTitle = base.appBarTheme.titleTextStyle ?? text.titleLarge;
+  return base.copyWith(
+    textTheme: text.copyWith(
+      titleMedium: text.titleMedium?.copyWith(fontSize: headingSize),
+      bodyLarge: text.bodyLarge?.copyWith(fontSize: text.bodyMedium?.fontSize),
+      bodyMedium: text.bodyMedium?.copyWith(fontSize: text.bodySmall?.fontSize),
+    ),
+    appBarTheme: base.appBarTheme.copyWith(
+      titleTextStyle: appBarTitle?.copyWith(fontSize: headingSize),
+    ),
+  );
+}
+
 /// 创建并组装所需对象或界面结构，用于应用视觉令牌、主题配置与排版规范。
 ThemeData buildAppTheme({double fontScale = 1.0}) {
   final base = FlexThemeData.light(

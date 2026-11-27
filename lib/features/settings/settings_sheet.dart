@@ -187,18 +187,26 @@ class SettingsSheet extends StatelessWidget {
     );
   }
 
-  Widget _demoContent(MusicSourceController controller) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      MusicSourcePicker(
-        sources: controller,
-        sourceSwitching: sourceSwitching,
-        onSourceSelection: onSourceSelection,
-        demoOnly: true,
-      ),
-      _colorOrganizationControls(),
-    ],
-  );
+  Widget _demoContent(BuildContext context, MusicSourceController controller) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        MusicSourcePicker(
+          sources: controller,
+          sourceSwitching: sourceSwitching,
+          onSourceSelection: onSourceSelection,
+          demoOnly: true,
+        ),
+        _colorOrganizationControls(),
+      ],
+    );
+    return desktop
+        ? Theme(
+            data: buildDesktopSettingsTheme(Theme.of(context)),
+            child: content,
+          )
+        : content;
+  }
 
   Widget? _xeroxSetting(AppLocalizations l10n, {double? sidebarInset}) {
     final mode = xeroxEnabled;
@@ -306,9 +314,9 @@ class SettingsSheet extends StatelessWidget {
     ?support,
   ];
 
-  List<Widget> _tabPages(AppLocalizations l10n) => [
+  List<Widget> _tabPages(BuildContext context, AppLocalizations l10n) => [
     if (sources case final controller?)
-      BottomSheetScrollView(child: _demoContent(controller)),
+      BottomSheetScrollView(child: _demoContent(context, controller)),
     if (desktop)
       _DesktopSettingsSplitView(sheet: this)
     else
@@ -370,7 +378,9 @@ class SettingsSheet extends StatelessWidget {
               child: Column(
                 children: [
                   Material(color: Colors.transparent, child: tabBar),
-                  Expanded(child: TabBarView(children: _tabPages(l10n))),
+                  Expanded(
+                    child: TabBarView(children: _tabPages(context, l10n)),
+                  ),
                 ],
               ),
             ),

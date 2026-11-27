@@ -1706,6 +1706,11 @@ void main() {
     final mock2 = find.byKey(const ValueKey('music-source-mock2'));
     final appleMusic = find.byKey(const ValueKey('music-source-apple-music'));
     expect(mock2, findsOneWidget);
+    final demoTitle = find.descendant(
+      of: find.descendant(of: mock2, matching: find.byType(Text)),
+      matching: find.byType(RichText),
+    );
+    expect(tester.widget<RichText>(demoTitle).text.style?.fontSize, 16);
     final mock = find.byKey(const ValueKey('music-source-mock'));
     expectDotAligned(
       tester,
@@ -1736,6 +1741,11 @@ void main() {
     expect(find.text('On this device'), findsOneWidget);
     expect(find.text('Local music'), findsOneWidget);
     expect(find.text('Apple Music'), findsOneWidget);
+    final localTitle = find.descendant(
+      of: find.text('Local music'),
+      matching: find.byType(RichText),
+    );
+    expect(tester.widget<RichText>(localTitle).text.style?.fontSize, 16);
     final appleMusicTile = tester.widget<ListTile>(appleMusic);
     expect(appleMusicTile.enabled, isTrue);
     expect(appleMusicTile.onTap, isNotNull);

@@ -70,15 +70,28 @@ void main() {
     await tester.pumpWidget(root());
     await tester.pumpWidget(root(settings: window.content!));
     await tester.pumpAndSettle();
+    double? fontSize(Finder text) => tester
+        .widget<RichText>(
+          find.descendant(of: text, matching: find.byType(RichText)),
+        )
+        .text
+        .style
+        ?.fontSize;
+
     final tabs = find.descendant(
       of: find.byType(TabBar),
       matching: find.byType(Tab),
     );
     final sidebar = find.byKey(const ValueKey('desktop-settings-sidebar'));
     final demoSource = find.byKey(const ValueKey('music-source-mock2'));
+    final demoLabel = find.descendant(
+      of: demoSource,
+      matching: find.byType(Text),
+    );
     expect(tabs, findsNWidgets(2));
     expect(sidebar, findsNothing);
     expect(demoSource.hitTestable(), findsOneWidget);
+    expect(fontSize(demoLabel), 14);
 
     expect(
       tester.widget<Scaffold>(find.byType(Scaffold)).backgroundColor,
@@ -130,6 +143,13 @@ void main() {
     expect(find.byType(SettingsPage), findsOneWidget);
     expect(tabs, findsNWidgets(2));
     expect(tester.widget<ListTile>(source).selected, isTrue);
+    expect(
+      fontSize(find.descendant(of: source, matching: find.byType(Text))),
+      13,
+    );
+    expect(fontSize(find.text('Local music')), 14);
+    expect(fontSize(find.text('Browse and play music from your device')), 12);
+    expect(fontSize(find.text('Apple Music')), 14);
     expect(find.text('Language'), findsNothing);
     expect(
       tester.getRect(source).right,
@@ -200,6 +220,11 @@ void main() {
     expect(
       tester.widget<SettingsPage>(find.byType(SettingsPage)).title,
       'Terms of Service',
+    );
+    expect(fontSize(find.text('Terms of Service')), 16);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).style.fontSize,
+      12,
     );
     expect(tester.widget<ListTile>(about).selected, isTrue);
 

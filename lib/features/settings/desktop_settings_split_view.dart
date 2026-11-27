@@ -113,11 +113,14 @@ class _DesktopSettingsSplitViewState extends State<_DesktopSettingsSplitView>
           ),
           const VerticalDivider(width: 1, color: AppColors.sheetHostBackground),
           Expanded(
-            child: HeroControllerScope.none(
-              child: Navigator(
-                key: _details,
-                pages: const [MaterialPage<void>(child: SizedBox.shrink())],
-                onDidRemovePage: (_) {},
+            child: Theme(
+              data: buildDesktopSettingsTheme(Theme.of(context)),
+              child: HeroControllerScope.none(
+                child: Navigator(
+                  key: _details,
+                  pages: const [MaterialPage<void>(child: SizedBox.shrink())],
+                  onDidRemovePage: (_) {},
+                ),
               ),
             ),
           ),
