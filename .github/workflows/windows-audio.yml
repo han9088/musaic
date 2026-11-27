@@ -3,7 +3,11 @@ name: Windows x64 build and audio integration
 on:
   push:
     branches:
-      - codex/windows-audio-ci
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -50,14 +54,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           (Join-Path $env:RUNNER_TEMP 'flutter\bin') >> $env:GITHUB_PATH
 
-      - name: Build the musaic_audio example Windows x64 release
-        id: build
-        working-directory: packages/musaic_audio/packages/musaic_audio/example
+      - name: Build the Musaic Windows x64 release
         run: |
-          flutter build windows --release
+          flutter pub get --enforce-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          flutter build windows --release --no-pub
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $release = 'build/windows/x64/runner/Release'
-          foreach ($file in @('musaic_audio_example.exe', 'musaic_audio_windows_plugin.dll')) {
+          foreach ($file in @('musaic.exe', 'musaic_audio_windows_plugin.dll')) {
             if (-not (Test-Path (Join-Path $release $file))) {
               throw "Windows x64 release output is missing $file."
             }

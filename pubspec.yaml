@@ -16,9 +16,9 @@ dependencies:
   http: ^1.6.0
   indiebase:
     git:
-      url: https://github.com/han9088/indiebase3.git
-      ref: bbae494458af9422d7eb23a06cf496c18e1b1b58
-      path: sdks/dart
+      url: https://github.com/indiebase/sdks.git
+      ref: 69898530a88f94f6aeef38a17938e3da29ee16d0
+      path: dart
   package_info_plus: ^10.2.2
   pub_semver: ^2.2.1
   url_launcher: ^6.3.3
