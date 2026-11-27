@@ -1,7 +1,7 @@
 import Flutter
 import UIKit
 
-public class SwiftMusaicQueryPlugin: NSObject, FlutterPlugin {
+public class MusaicQueryPlugin: NSObject, FlutterPlugin {
   private var directories: AnyObject?
   private static let CHANNEL_NAME: String = "com.deskbtm.muasic.query"
 
@@ -17,7 +17,7 @@ public class SwiftMusaicQueryPlugin: NSObject, FlutterPlugin {
       name: "\(CHANNEL_NAME)",
       binaryMessenger: registrar.messenger()
     )
-    let instance = SwiftMusaicQueryPlugin()
+    let instance = MusaicQueryPlugin()
     if #available(iOS 13.0, *) { instance.directories = AudioDirectories(registrar: registrar) }
 
     registrar.addMethodCallDelegate(instance, channel: channel)

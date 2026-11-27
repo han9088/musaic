@@ -11,7 +11,7 @@ Pod::Spec.new do |s|
   s.license          = { :type => 'BSD-3-Clause', :file => '../LICENSE' }
   s.author           = { 'deskbtm' => 'deskbtm@example.com' }
   s.source           = { :path => '.' }
-  s.source_files     = 'Classes/**/*'
+  s.source_files     = 'apple_music_kit_ios/Sources/apple_music_kit_ios/**/*.swift'
   s.dependency 'Flutter'
   s.platform         = :ios, '16.0'
   s.swift_version    = '5.9'

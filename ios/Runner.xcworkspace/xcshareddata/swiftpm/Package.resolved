@@ -8,6 +8,15 @@
         "revision" : "f65113a6f1fed7c9737ce85f5ae7ddc5caa5723d",
         "version" : "1.4.0"
       }
+    },
+    {
+      "identity" : "swiftybeaver",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftyBeaver/SwiftyBeaver.git",
+      "state" : {
+        "revision" : "8cba041db09596183331d123f337d0eb2e6e8e91",
+        "version" : "2.1.1"
+      }
     }
   ],
   "version" : 2
