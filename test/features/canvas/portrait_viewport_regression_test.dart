@@ -731,8 +731,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
       expect(transform.value, selected);
 
+      var pausedPosition = selected;
       AlbumPlayButton? playbackButton;
       if (pressPlay) {
+        await tester.pump(const Duration(seconds: 3));
+        pausedPosition = transform.value.clone();
+        expect(pausedPosition, isNot(selected));
         final play = find.descendant(
           of: cover,
           matching: find.byType(AlbumPlayButton),
@@ -741,6 +745,13 @@ void main() {
         await tester.tap(play);
         await tester.pump();
         expect(playbackButton.playback.playing, isTrue);
+        await tester.pump(const Duration(milliseconds: 2900));
+        expect(
+          transform.value,
+          pausedPosition,
+          reason: 'Playing the lifted cover pauses the moving canvas again',
+        );
+        await tester.pump(const Duration(milliseconds: 100));
       }
       if (openPopup) {
         await tester.tapAt(tester.getTopLeft(cover) + const Offset(12, 12));
@@ -755,12 +766,19 @@ void main() {
         expect(transform.value, selected);
         await tester.pump(const Duration(milliseconds: 250));
         expect(popup, findsNothing);
-      } else {
+        await tester.pump(const Duration(seconds: 2));
+        expect(
+          transform.value,
+          pausedPosition,
+          reason: 'The canvas stays still briefly after the cover returns',
+        );
+        await tester.pump(const Duration(seconds: 1));
+      } else if (!pressPlay) {
         await tester.pump(const Duration(seconds: 3));
       }
 
       await tester.pump(const Duration(milliseconds: 50));
-      expect(transform.value, isNot(selected));
+      expect(transform.value, isNot(pausedPosition));
       expect(cover, findsOneWidget);
       if (playbackButton != null) {
         expect(playbackButton.playback.playing, isTrue);

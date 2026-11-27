@@ -319,6 +319,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     } finally {
       restoreSource();
       interaction.setAlbumPopupOpen(false);
+      if (mounted) interaction.pauseForSelection();
     }
   }
 
@@ -401,6 +402,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
       SelectedAlbum(
         key: ValueKey(('selected-cover', (row, column))),
         onOpen: (context) => _openAlbum(context, row, column),
+        onPlaybackPressed: widget.interaction.pauseForSelection,
         playback: widget.playback,
         liftScale: scale,
         xerox: widget.xerox,

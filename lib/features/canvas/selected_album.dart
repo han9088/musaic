@@ -17,6 +17,7 @@ class SelectedAlbum extends StatelessWidget {
     required this.title,
     required this.playback,
     required this.onOpen,
+    required this.onPlaybackPressed,
     required this.liftScale,
     this.artist,
     this.xerox = false,
@@ -29,6 +30,7 @@ class SelectedAlbum extends StatelessWidget {
   final ArtworkIdentity? artworkIdentity;
   final AlbumPlayback playback;
   final ValueChanged<BuildContext> onOpen;
+  final VoidCallback onPlaybackPressed;
   final bool xerox;
   final Animation<double> liftScale;
 
@@ -74,6 +76,7 @@ class SelectedAlbum extends StatelessWidget {
               title: title,
               artist: artist,
               playback: playback,
+              onPressed: onPlaybackPressed,
             ),
           ],
         ),

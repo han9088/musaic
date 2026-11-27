@@ -17,6 +17,7 @@ class AlbumPlayButton extends StatelessWidget {
     this.artist,
     this.diameter = 30,
     this.iconSize,
+    this.onPressed,
   });
   final String asset;
   final String title;
@@ -24,6 +25,7 @@ class AlbumPlayButton extends StatelessWidget {
   final AlbumPlayback playback;
   final double diameter;
   final double? iconSize;
+  final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: playback,
@@ -40,7 +42,10 @@ class AlbumPlayButton extends StatelessWidget {
               ? PhosphorIcons.pauseFill
               : PhosphorIcons.playFill,
           foreground: loading ? const PlaybackLoadingArc() : null,
-          onPressed: () => playback.toggle(asset, title, artist: artist),
+          onPressed: () {
+            onPressed?.call();
+            playback.toggle(asset, title, artist: artist);
+          },
         ),
       );
     },
