@@ -477,6 +477,11 @@ void runTests() {
     // (with 'original_' prepended)
     headers.forEach(
         (key, value) => expect(response.headers.value('original_$key'), value));
+    final head = await (await HttpClient().headUrl(proxyUri)).close();
+    expect(head.statusCode, HttpStatus.ok);
+    expect(head.contentLength, 5);
+    expect(head.headers.value('original_custom-header'), 'Hello');
+    expect(await head.toList(), isEmpty);
     await server.stop();
     await player.dispose();
   });
@@ -550,9 +555,33 @@ void runTests() {
     await testRequest(null, null);
     await testRequest(20, null);
     await testRequest(20, 60);
+    final head = await (await HttpClient().headUrl(proxyUri)).close();
+    expect(head.statusCode, HttpStatus.ok);
+    expect(head.contentLength, byteRangeData.length);
+    expect(head.headers.value(HttpHeaders.acceptRangesHeader), 'bytes');
+    expect(await head.toList(), isEmpty);
 
     await server.stop();
     await player.dispose();
+  });
+
+  test('repeated nested playlists expose every shuffled index', () async {
+    final player = AudioPlayer();
+    addTearDown(player.dispose);
+    await player.setAudioSource(
+      LoopingAudioSource(
+        count: 2,
+        child: ConcatenatingAudioSource(
+          children: [
+            AudioSource.uri(Uri.parse('https://example.com/one.mp3')),
+            AudioSource.uri(Uri.parse('https://example.com/two.mp3')),
+          ],
+        ),
+      ),
+      preload: false,
+    );
+    checkIndices(player.shuffleIndices, player.sequence.length);
+    expect(player.sequence, hasLength(4));
   });
 
   test('sequence', () async {
@@ -2190,7 +2219,7 @@ class MockWebServer {
         response.headers.set(HttpHeaders.contentTypeHeader, 'audio/mock');
         request.headers.forEach(
             (name, value) => response.headers.set('original_$name', value));
-        response.add(body);
+        if (request.method != 'HEAD') response.add(body);
         await response.flush();
         await response.close();
       }

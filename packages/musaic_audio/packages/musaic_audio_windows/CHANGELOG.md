@@ -1,0 +1,52 @@
+## Musaic fork
+
+* Imported the upstream Windows plugin at commit 82314554ca96a1b872e8388a8c9e951366ccb399 under its MIT license.
+* Adapted registration, playback events, playlist mutations and errors to the Musaic Dart platform interface.
+* Retained the upstream native URI tests and added Dart playlist and Windows playback coverage.
+
+## Upstream changes
+
+## 0.2.4
+
+* [fix]: Closing the app after playing audio no longer crashes in `FlutterDesktopMessengerSetCallback` ([#70](https://github.com/bdlukaa/just_audio_windows/pull/70))
+* [fix]: Build as C++20, so the plugin compiles under Visual Studio 2026 ([#67](https://github.com/bdlukaa/just_audio_windows/pull/67))
+* [fix]: Do not report `completed` before the duration is known ([#66](https://github.com/bdlukaa/just_audio_windows/pull/66))
+* [fix]: Do not report a source swap as `idle`, which aborted the load in progress ([#65](https://github.com/bdlukaa/just_audio_windows/pull/65))
+* [chore]: Only trace every method call in debug builds, and warn once about BufferingProgress ([#64](https://github.com/bdlukaa/just_audio_windows/pull/64))
+* [fix]: Send channel messages on the platform thread, not on WinRT callback threads ([#63](https://github.com/bdlukaa/just_audio_windows/pull/63))
+* [fix]: `load` returns a Dart error instead of terminating the process on an unsupported source ([#62](https://github.com/bdlukaa/just_audio_windows/pull/62))
+* [fix]: Do not implicitly claim the System Media Transport Controls ([#61](https://github.com/bdlukaa/just_audio_windows/pull/61))
+
+## 0.2.3
+
+* [fix]: Invalid access to media player ([#49](https://github.com/bdlukaa/just_audio_windows/pull/49))
+* [fix]: Fix playback of local file paths containing spaces ([#55](https://github.com/bdlukaa/just_audio_windows/pull/55))
+* [fix]: `seek(null)` no longer crashes on live streams ([#56](https://github.com/bdlukaa/just_audio_windows/pull/56))
+
+## 0.2.2
+
+* [fix]: Seeking in long tracks (above 36m) ([#36](https://github.com/bdlukaa/just_audio_windows/pull/36))
+
+## 0.2.1
+
+* [fix]: `currentIndex` is now always getting reported correctly in events ([#15](https://github.com/bdlukaa/just_audio_windows/issues/15), [#16](https://github.com/bdlukaa/just_audio_windows/issues/16))
+* [fix]: Support multi-byte language paths ([#34](https://github.com/bdlukaa/just_audio_windows/pull/34))
+
+## [0.2.0]
+
+* [new]: Support playlists ([#8](https://github.com/bdlukaa/just_audio_windows/pull/8), [#9](https://github.com/bdlukaa/just_audio_windows/pull/9))
+* [fix]: Fixed build in VS17.3 ([#10](https://github.com/bdlukaa/just_audio_windows/pull/10))
+
+## 0.1.0
+
+* [fix]: `seek` no longer throws error
+* [new]: Added support for data event stream
+* [new]: Support for looping over a single track
+
+## 0.0.1
+
+* Initial Base Implementation
+  * `init`, `disposePlayer`, `disposeAllPlayers`
+  * `load`, `play`, `pause`, `setVolume`, `setSpeed`, `setPitch`, `seek`
+  * `dispose`
+  * Error reporting
