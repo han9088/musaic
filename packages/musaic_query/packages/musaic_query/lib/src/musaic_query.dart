@@ -36,6 +36,12 @@ class MusaicQuery {
   AudioDirectories get directories =>
       AudioDirectories(MusaicQueryPlatform.instance.directories);
 
+  /// Keeps a system track's file accessible until playback ends, if needed.
+  ///
+  /// Other platforms return null and can use the URI from [querySongs].
+  Future<AudioPlaybackSource?> openSongPlayback(int id) =>
+      platform.openSongPlayback(id);
+
   /// The platform interface that drives this plugin
   static MusaicQueryPlatform get platform => MusaicQueryPlatform.instance;
 

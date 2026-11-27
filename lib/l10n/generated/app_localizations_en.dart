@@ -462,6 +462,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicSourceLocalHint => 'Browse and play music from your device';
 
   @override
+  String get musicSourceDirectoryHint => 'Add and scan music folders';
+
+  @override
   String get musicSourceScanning => 'Getting your music library ready…';
 
   @override

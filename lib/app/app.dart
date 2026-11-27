@@ -3,6 +3,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+// Talker still uses Flutter's legacy Material library.
+// ignore: deprecated_member_use
+import 'package:flutter/material.dart' as flutter_material;
 import 'package:musaic_query/musaic_query.dart';
 
 import '../storage/music/music_index.dart';
@@ -41,7 +44,9 @@ class MusaicApp extends StatefulWidget {
 /// 封装musaic应用状态相关的类型与行为，负责应用装配、全局依赖与页面宿主。
 class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
-  final _sources = MusicSourceController();
+  final _sources = MusicSourceController(
+    systemLibraryEnabled: defaultTargetPlatform != TargetPlatform.windows,
+  );
   final _indiebase = IndiebaseRuntime.fromEnvironment();
   late final _language = AppLanguagePreference(widget.initialLanguage);
   final _settingsWindow = DesktopSettingsWindow.isEnabled
@@ -58,15 +63,11 @@ class _MusaicAppState extends State<MusaicApp> {
 
   /// 读取并恢复所需的数据或资源，用于应用装配、全局依赖与页面宿主。
   Future<void> _restoreMusic() async {
-    if (kIsWeb ||
-        !{
-          TargetPlatform.android,
-          TargetPlatform.iOS,
-        }.contains(defaultTargetPlatform)) {
-      return;
-    }
-    diagnosticLog.record(DiagnosticEvent.musicRestoreStarted);
+    if (kIsWeb) return;
     try {
+      final directories = MusaicQuery().directories;
+      if (!await directories.supported || !mounted) return;
+      diagnosticLog.record(DiagnosticEvent.musicRestoreStarted);
       final index = await MusicIndex.open();
       if (!mounted) {
         await index.close();
@@ -74,7 +75,7 @@ class _MusaicAppState extends State<MusaicApp> {
       }
       final library = DirectoryMusicLibrary(
         index: index,
-        directories: MusaicQuery().directories,
+        directories: directories,
       );
       _directories = library;
       await library.loadCached();
@@ -122,7 +123,8 @@ class _MusaicAppState extends State<MusaicApp> {
   }
 
   Widget _buildScopes(BuildContext _, Widget? child) {
-    Widget content = child!;
+    // Talker uses Flutter's ScaffoldMessenger across its routes.
+    Widget content = flutter_material.ScaffoldMessenger(child: child!);
     if (_customArtwork case final store?) {
       content = CustomArtworkScope(store: store, child: content);
     }
@@ -137,14 +139,12 @@ class _MusaicAppState extends State<MusaicApp> {
         locale: locale,
         onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
         localizationsDelegates: const [
-          AppLocalizations.delegate,
+          ...AppLocalizations.localizationsDelegates,
           ...GlobalMaterialLocalizations.delegates,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
         theme: buildAppTheme(),
-        builder: _customArtwork == null && _indiebase == null
-            ? null
-            : _buildScopes,
+        builder: _buildScopes,
         home: home,
       );
 

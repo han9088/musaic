@@ -3,8 +3,17 @@
 `MusaicQuery().directories` is separate from the existing system-media-library
 queries. It does not request MediaStore/music-library permission and does not own
 a music database. Android uses persisted SAF read grants (API 21+); iOS directory
-selection requires iOS 13+. Existing system-library APIs keep their earlier OS
-support. Web reports `supported == false` and rejects directory operations.
+selection requires iOS 13+. macOS and Windows also support directory operations
+through their respective system folder pickers. macOS persists a read-only
+security-scoped bookmark and keeps access open through playback. Windows
+persists the chosen filesystem path and uses the current account's permissions.
+Desktop apps query these folders through `MusaicQuery().directories`. The
+system-library query APIs retain their Android, iOS and Web support.
+Web reports `supported == false` and rejects directory operations.
+
+Sandboxed macOS hosts need a user-selected file entitlement and the
+`com.apple.security.files.bookmarks.app-scope` entitlement in their build
+configurations. Desktop file decoding depends on the host audio player and OS.
 
 ```dart
 final directories = MusaicQuery().directories;
@@ -104,20 +113,23 @@ No image bytes are stored in the catalog database. Clear only removes this plugi
 cache directory; it never removes source files. Web retains its existing cache.
 
 Sources: [Android SAF](https://developer.android.com/training/data-storage/shared/documents-files),
-[Apple directory access](https://developer.apple.com/documentation/uikit/providing-access-to-directories).
+[iOS directory access](https://developer.apple.com/documentation/uikit/providing-access-to-directories),
+[macOS sandbox file access](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox).
 
 ## Native self-check
 
-From the Musaic app root, run on an emulator/simulator or a test device:
+From the Musaic app root, run on a macOS or Windows host, or an Android/iOS test
+device or simulator:
 
 ```sh
 mise exec -- flutter run -d DEVICE_ID -t packages/musaic_query/packages/musaic_query/test/native_directory_smoke.dart
 ```
 
-It generates a temporary WAV and cover, exercises native metadata, recursive and
-nonrecursive enumeration, symlink exclusion, cancellation, cache bounds and cleanup,
-and prints `MUSAIC_DIRECTORY_SMOKE_PASS`. This does not exercise the OS directory
-picker or external provider grants. Relaunch the ordinary app entry point afterward.
+It generates a temporary WAV, tagged M4A and cover, exercises metadata, recursive
+and nonrecursive enumeration, symlink exclusion where links can be created,
+cancellation, cache bounds and cleanup, and verifies that desktop playback URIs
+can be opened. A successful run prints `MUSAIC_DIRECTORY_SMOKE_PASS`. Relaunch
+the ordinary app entry point afterward to exercise the picker and restored grants.
 
 ## Failure and cache guarantees
 

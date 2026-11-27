@@ -48,12 +48,16 @@ Future<void> smoke() async {
   await audio.writeAsBytes(data.buffer.asUint8List());
   final sub = await Directory('${folder.path}/Sub').create();
   await File('${sub.path}/child.wav').writeAsBytes(data.buffer.asUint8List());
-  await Link('${folder.path}/cycle').create(folder.path);
+  try {
+    await Link('${folder.path}/cycle').create(folder.path);
+  } on FileSystemException {
+    if (!Platform.isWindows) rethrow;
+  }
   for (var i = 0; i < 260; i++) {
     await File('${folder.path}/ignore$i.txt').writeAsString('ignore');
   }
   await File('${folder.path}/cover.png').writeAsBytes(base64Decode(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5WQAAAAASUVORK5CYII='));
+      'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAEElEQVR4nGM4xOAARAwQCgAeTgQJ9eMRdgAAAABJRU5ErkJggg=='));
   // Generated silent AAC fixture with real iTunes title/album/track/disc tags.
   await File('${folder.path}/tagged.m4a').writeAsBytes(base64Decode(
     'AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAAhmcmVlAAAAIW1kYXTeAgBMYXZjNjIuMjguMTAxAAIwQA4BGCAHAAAD+21vb3YAAABsbXZoZAAAAAAAAAAAAAAAAAAAA+gAAABkAAEAAAEAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAItdHJhawAAAFx0a2hkAAAAAwAAAAAAAAAAAAAAAQAAAAAAAABkAAAAAAAAAAAAAAABAQAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAJGVkdHMAAAAcZWxzdAAAAAAAAAABAAAAZAAABAAAAQAAAAABpW1kaWEAAAAgbWRoZAAAAAAAAAAAAAAAAAAAH0AAAAcgVcQAAAAAAC1oZGxyAAAAAAAAAABzb3VuAAAAAAAAAAAAAAAAU291bmRIYW5kbGVyAAAAAVBtaW5mAAAAEHNtaGQAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAARRzdGJsAAAAanN0c2QAAAAAAAAAAQAAAFptcDRhAAAAAAAAAAEAAAAAAAAAAAABABAAAAAAH0AAAAAAADZlc2RzAAAAAAOAgIAlAAEABICAgBdAFQAAAAAAu4AAAANtBYCAgAUViFblAAaAgIABAgAAACBzdHRzAAAAAAAAAAIAAAABAAAEAAAAAAEAAAMgAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAACAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAAFQAAAAQAAAAUc3RjbwAAAAAAAAABAAAALAAAABpzZ3BkAQAAAHJvbGwAAAACAAAAAf//AAAAHHNiZ3AAAAAAcm9sbAAAAAEAAAACAAAAAQAAAVp1ZHRhAAABUm1ldGEAAAAAAAAAIWhkbHIAAAAAAAAAAG1kaXJhcHBsAAAAAAAAAAAAAAABJWlsc3QAAAAlqW5hbQAAAB1kYXRhAAAAAQAAAABGaXh0dXJlIHRpdGxlAAAAJqlBUlQAAAAeZGF0YQAAAAEAAAAARml4dHVyZSBhcnRpc3QAAAAsYUFSVAAAACRkYXRhAAAAAQAAAABGaXh0dXJlIGFsYnVtIGFydGlzdAAAACWpYWxiAAAAHWRhdGEAAAABAAAAAEZpeHR1cmUgYWxidW0AAAAlqXRvbwAAAB1kYXRhAAAAAQAAAABMYXZmNjIuMTIuMTAxAAAAHKlnZW4AAAAUZGF0YQAAAAEAAAAASmF6egAAACB0cmtuAAAAGGRhdGEAAAAAAAAAAAAAAAMADAAAAAAAIGRpc2sAAAAYZGF0YQAAAAAAAAAAAAAAAgADAAA=',
@@ -74,6 +78,15 @@ Future<void> smoke() async {
   final one = files.firstWhere((f) => f.name == 'tone.wav');
   final tags = await plugin.metadata(root, one);
   check((tags['durationMs'] as int) > 900, 'real WAV metadata');
+  if (Platform.isMacOS || Platform.isWindows) {
+    final playback = await plugin.openPlayback(root, one);
+    try {
+      check(await File.fromUri(playback.uri).length() == await audio.length(),
+          'local playback URI can be read');
+    } finally {
+      await playback.close();
+    }
+  }
   final cover = files.firstWhere((f) => f.coverPriority != null);
   final art = await plugin.artwork(root, one, cover: cover, size: 64);
   check(art != null && await File.fromUri(Uri.parse(art)).exists(),
@@ -135,5 +148,6 @@ Future<void> smoke() async {
       cancellation.cancel();
     }
   }
+  await plugin.release(root);
   await folder.delete(recursive: true);
 }

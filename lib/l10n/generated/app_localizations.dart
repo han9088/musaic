@@ -909,6 +909,12 @@ abstract class AppLocalizations {
   /// **'授权并扫描设备音乐资料库'**
   String get musicSourceLocalHint;
 
+  /// No description provided for @musicSourceDirectoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加并扫描音乐文件夹'**
+  String get musicSourceDirectoryHint;
+
   /// No description provided for @musicSourceScanning.
   ///
   /// In zh, this message translates to:

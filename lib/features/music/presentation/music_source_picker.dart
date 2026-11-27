@@ -50,10 +50,17 @@ class MusicSourcePicker extends StatelessWidget {
         final selectionBlocked = busy || switching;
         final windows =
             !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-        final showLocal = !demoOnly && !kIsWeb && !windows;
+        final showLocal =
+            !demoOnly &&
+            !kIsWeb &&
+            (sources.directories != null ||
+                (!windows && sources.systemLibraryEnabled));
         final audiusSelected = sources.audiusSelected;
         final localSelected = sources.localSelected.value;
         final localAlbums = localSelected ? albums : null;
+        final localHint = sources.systemLibraryEnabled
+            ? l10n.musicSourceLocalHint
+            : l10n.musicSourceDirectoryHint;
         final library = showLocal && localSelected ? sources.directories : null;
         final folderState = library?.state.value;
         final scanningFolders = folderState == DirectoryScanState.scanning;
@@ -163,7 +170,7 @@ class MusicSourcePicker extends StatelessWidget {
                   busy && !audiusLoading
                       ? l10n.musicSourceScanning
                       : localAlbums == null
-                      ? l10n.musicSourceLocalHint
+                      ? localHint
                       : _localMusicSummary(l10n, localAlbums),
                   style: const TextStyle(color: Colors.white60),
                 ),

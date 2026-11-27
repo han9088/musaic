@@ -439,6 +439,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get musicSourceLocalHint => '授权并扫描设备音乐资料库';
 
   @override
+  String get musicSourceDirectoryHint => '添加并扫描音乐文件夹';
+
+  @override
   String get musicSourceScanning => '正在授权或扫描…';
 
   @override

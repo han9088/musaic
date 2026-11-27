@@ -4,7 +4,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:musaic_query/musaic_query.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 
 import 'music_index_snapshot.dart';
 
@@ -22,9 +24,15 @@ final class MusicIndex {
     DatabaseFactory? factory,
     String? path,
   }) async {
-    final dbFactory = factory ?? databaseFactory;
+    final windows =
+        factory == null &&
+        !kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.windows;
+    if (windows) ffi.sqfliteFfiInit();
+    final dbFactory =
+        factory ?? (windows ? ffi.databaseFactoryFfi : databaseFactory);
     final location =
-        path ?? '${await dbFactory.getDatabasesPath()}/music_index.sqlite';
+        path ?? await _databaseLocation(dbFactory, windows: windows);
     final db = await dbFactory.openDatabase(
       location,
       options: OpenDatabaseOptions(
@@ -57,6 +65,18 @@ final class MusicIndex {
       ),
     );
     return MusicIndex(db);
+  }
+
+  static Future<String> _databaseLocation(
+    DatabaseFactory factory, {
+    required bool windows,
+  }) async {
+    if (!windows) {
+      return '${await factory.getDatabasesPath()}/music_index.sqlite';
+    }
+    final directory = await getApplicationSupportDirectory();
+    await directory.create(recursive: true);
+    return '${directory.path}/music_index.sqlite';
   }
 
   /// 保存数据或持久化当前状态，用于音乐源、媒体库、播放及切换流程。

@@ -28,6 +28,10 @@ dependencies:
     path: ../musaic_query_ios
   musaic_query_android:
     path: ../musaic_query_android
+  musaic_query_macos:
+    path: ../musaic_query_macos
+  musaic_query_windows:
+    path: ../musaic_query_windows
 
   # Flutter
   flutter:
@@ -49,5 +53,9 @@ flutter:
         default_package: musaic_query_android
       ios:
         default_package: musaic_query_ios
+      macos:
+        default_package: musaic_query_macos
+      windows:
+        default_package: musaic_query_windows
       web:
         default_package: musaic_query_web

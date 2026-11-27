@@ -156,6 +156,7 @@
   "musicSourceMock2": "示例音乐（Mock 2）",
   "musicSourceLocal": "本地音乐",
   "musicSourceLocalHint": "授权并扫描设备音乐资料库",
+  "musicSourceDirectoryHint": "添加并扫描音乐文件夹",
   "musicSourceScanning": "正在授权或扫描…",
   "musicSourceRescan": "重新扫描",
   "musicSourceAlbumCount": "{count} 张专辑",

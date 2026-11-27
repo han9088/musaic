@@ -151,6 +151,9 @@ final class LocalMusicLibrary {
 
   String? filePath(MusicReference reference) => _filePaths[reference.id];
 
+  Future<AudioPlaybackSource?> openPlayback(MusicReference reference) =>
+      _query.openSongPlayback(int.parse(reference.id));
+
   /// 执行当前模块中的来源操作，用于音乐源、媒体库、播放及切换流程。
   String source(MusicReference reference) {
     final value = _sources[reference.id];

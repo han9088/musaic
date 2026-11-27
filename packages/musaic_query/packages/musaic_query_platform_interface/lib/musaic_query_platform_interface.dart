@@ -31,6 +31,9 @@ export 'package:musaic_query_platform_interface/src/musaic_query_core.dart';
 abstract class MusaicQueryPlatform extends PlatformInterface {
   AudioDirectoryPlatform get directories => const AudioDirectoryPlatform();
 
+  /// Opens a system library track when the platform needs scoped file access.
+  Future<AudioPlaybackSource?> openSongPlayback(int id) async => null;
+
   /// Constructs a MusaicQueryPlatform.
   MusaicQueryPlatform() : super(token: _token);
 

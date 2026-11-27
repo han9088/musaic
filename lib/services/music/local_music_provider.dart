@@ -40,7 +40,7 @@ final class LocalMusicProvider implements MusicProvider {
   bool _initialized;
   bool _disposed = false;
   List<MusicReference> _queue = [];
-  AudioDirectoryPlayback? _directoryAudio;
+  AudioPlaybackSource? _scopedAudio;
   int _index = 0;
   int _generation = 0;
   MusicPlayback _state = (
@@ -313,11 +313,11 @@ final class LocalMusicProvider implements MusicProvider {
     void failed(Object error) {
       diagnosticLog.record(DiagnosticEvent.playbackPlayerFailed, error: error);
       _emit(status: MusicPlaybackStatus.error, error: error);
-      if (_directoryAudio == null || _needsSource) return;
+      if (_scopedAudio == null || _needsSource) return;
       final generation = _generation;
       unawaited(
         _command(() async {
-          if (generation == _generation) await _releaseDirectoryAudio(player);
+          if (generation == _generation) await _releaseScopedAudio(player);
         }).catchError((Object error) {
           diagnosticLog.record(
             DiagnosticEvent.playbackPlayerFailed,
@@ -361,7 +361,7 @@ final class LocalMusicProvider implements MusicProvider {
               await _start();
             } else {
               _emit(status: MusicPlaybackStatus.completed);
-              await _releaseDirectoryAudio(player);
+              await _releaseScopedAudio(player);
             }
           }).catchError((Object error) {
             diagnosticLog.record(
@@ -376,10 +376,10 @@ final class LocalMusicProvider implements MusicProvider {
     return player;
   }
 
-  Future<void> _releaseDirectoryAudio(AudioPlayer player) async {
-    final audio = _directoryAudio;
+  Future<void> _releaseScopedAudio(AudioPlayer player) async {
+    final audio = _scopedAudio;
     if (audio == null) return;
-    _directoryAudio = null;
+    _scopedAudio = null;
     _needsSource = true;
     try {
       await player.release();
@@ -404,10 +404,10 @@ final class LocalMusicProvider implements MusicProvider {
     }
 
     try {
-      if (_directoryAudio == null) {
+      if (_scopedAudio == null) {
         if (!await step(player.stop())) return;
       } else {
-        await _releaseDirectoryAudio(player);
+        await _releaseScopedAudio(player);
         if (cancelled.isCompleted || _disposed) return;
       }
       _emit(status: MusicPlaybackStatus.loading, reset: true);
@@ -426,18 +426,15 @@ final class LocalMusicProvider implements MusicProvider {
         return;
       }
       final reference = _queue[_index];
-      final Uri uri;
-      if (reference.provider == directoryMusicProviderId) {
-        final audio = await _directories!.openPlayback(reference);
-        if (cancelled.isCompleted || _disposed) {
-          await audio.close();
-          return;
-        }
-        _directoryAudio = audio;
-        uri = audio.uri;
-      } else {
-        uri = Uri.parse(_library.source(reference));
+      final audio = reference.provider == directoryMusicProviderId
+          ? await _directories!.openPlayback(reference)
+          : await _library.openPlayback(reference);
+      if (cancelled.isCompleted || _disposed) {
+        await audio?.close();
+        return;
       }
+      _scopedAudio = audio;
+      final uri = audio?.uri ?? Uri.parse(_library.source(reference));
       if (!await step(
         player.setSource(
           uri.scheme == 'file'
@@ -456,7 +453,7 @@ final class LocalMusicProvider implements MusicProvider {
       _emit(status: MusicPlaybackStatus.playing);
     } catch (_) {
       try {
-        await _releaseDirectoryAudio(player);
+        await _releaseScopedAudio(player);
       } catch (error) {
         diagnosticLog.record(
           DiagnosticEvent.playbackPlayerFailed,
@@ -508,7 +505,7 @@ final class LocalMusicProvider implements MusicProvider {
   Future<void> pause() => _command(() async {
     if (_player case final player?) {
       await player.pause();
-      if (_needsSource) await _releaseDirectoryAudio(player);
+      if (_needsSource) await _releaseScopedAudio(player);
     }
     if (_queue.isNotEmpty) _emit(status: MusicPlaybackStatus.paused);
   }, interrupt: true);
@@ -572,7 +569,7 @@ final class LocalMusicProvider implements MusicProvider {
       await _player?.dispose();
     } finally {
       try {
-        await _directoryAudio?.close();
+        await _scopedAudio?.close();
       } finally {
         await _events.close();
       }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:musaic/storage/music/music_index.dart';
 import 'package:musaic_query/musaic_query.dart';
@@ -8,6 +9,19 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   sqfliteFfiInit();
+  test('Windows opens its music index through SQLite FFI', () async {
+    final previousPlatform = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    addTearDown(() => debugDefaultTargetPlatformOverride = previousPlatform);
+    final index = await MusicIndex.open(path: inMemoryDatabasePath);
+    addTearDown(index.close);
+
+    await index.saveSource(
+      const AudioDirectory(id: 'windows', name: 'Music', token: 'folder'),
+    );
+    expect((await index.sources()).single.id, 'windows');
+  });
+
   test(
     'reopening preserves records and recovers interrupted scan state',
     () async {

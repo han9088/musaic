@@ -20,6 +20,13 @@
 
 ## Platforms:
 
+macOS and Windows expose `MusaicQuery().directories` for local folders,
+including metadata, cover art and playback URLs. See the
+[directory API](../../DIRECTORIES.md) for platform configuration.
+
+macOS also supports system Music library queries through `querySongs` and
+`queryAlbums`. See the [macOS host requirements](../../README.md#implementation-and-validation).
+
 <!-- ✔️ | ❌ -->
 |  Methods  |   Android   |   IOS   |   Web   |
 |-------|:----------:|:----------:|:----------:|

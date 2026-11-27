@@ -54,9 +54,9 @@ class AudioFileEntry {
   }
 }
 
-/// Keeps an indexed audio file available to the platform player until closed.
-class AudioDirectoryPlayback {
-  AudioDirectoryPlayback._(this.uri, this._close);
+/// Keeps a local audio file available to the player until closed.
+class AudioPlaybackSource {
+  AudioPlaybackSource(this.uri, this._close);
 
   final Uri uri;
   final Future<void> Function() _close;
@@ -64,6 +64,8 @@ class AudioDirectoryPlayback {
 
   Future<void> close() => _closing ??= _close();
 }
+
+typedef AudioDirectoryPlayback = AudioPlaybackSource;
 
 class AudioScanOptions {
   const AudioScanOptions(
@@ -237,8 +239,7 @@ class AudioDirectories {
       'file': file.data,
     }) as Map;
     final session = opened['session'] as String?;
-    return AudioDirectoryPlayback._(Uri.parse(opened['uri'] as String),
-        () async {
+    return AudioPlaybackSource(Uri.parse(opened['uri'] as String), () async {
       if (session != null) {
         await platform.invoke('closePlayback', {'session': session});
       }

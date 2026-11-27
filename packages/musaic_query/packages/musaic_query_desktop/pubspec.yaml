@@ -1,0 +1,16 @@
+name: musaic_query_desktop
+description: Shared filesystem audio library implementation for Musaic desktop plugins.
+publish_to: none
+version: 3.0.7
+
+environment:
+  sdk: ">=3.12.0 <4.0.0"
+
+dependencies:
+  crypto: ^3.0.8
+  image: ^4.9.1
+  metadata_audio: ^0.9.6
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  musaic_query_platform_interface:
+    path: ../musaic_query_platform_interface

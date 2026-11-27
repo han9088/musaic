@@ -29,6 +29,7 @@ final class MusicSourceController {
   MusicSourceController({
     MusicProvider Function()? createLocal,
     MusicProvider Function()? createAudius,
+    this.systemLibraryEnabled = true,
   }) : _createLocal = createLocal,
        _createAudius = createAudius ?? _defaultAudius;
 
@@ -38,6 +39,7 @@ final class MusicSourceController {
 
   final MusicProvider Function()? _createLocal;
   final MusicProvider Function() _createAudius;
+  final bool systemLibraryEnabled;
   final catalog = signal<List<ProviderAlbum>?>(null);
   final mock2Selected = signal(false);
   final busy = signal(false);
@@ -164,7 +166,7 @@ final class MusicSourceController {
 
   /// 应用选择并更新对应状态，用于音乐源、媒体库、播放及切换流程。
   Future<void> selectLocal() async {
-    await _scanSystemLibrary();
+    if (systemLibraryEnabled) await _scanSystemLibrary();
     if (!_disposed && !localSelected.value && directories != null) {
       await selectDirectories();
     }
@@ -182,7 +184,7 @@ final class MusicSourceController {
         return;
       }
     }
-    if (localSelected.value) await _scanSystemLibrary();
+    if (systemLibraryEnabled && localSelected.value) await _scanSystemLibrary();
   }
 
   Future<void> _scanSystemLibrary() async {

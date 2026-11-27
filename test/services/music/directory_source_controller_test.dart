@@ -192,4 +192,40 @@ void main() {
       await library.dispose();
     },
   );
+
+  test(
+    'desktop local music selects and rescans folders without a system provider',
+    () async {
+      final index = await MusicIndex.open(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+      );
+      final native = DelayedDirectories();
+      final library = DirectoryMusicLibrary(
+        index: index,
+        directories: AudioDirectories(native),
+      );
+      final controller = MusicSourceController(
+        systemLibraryEnabled: false,
+        createLocal: () => throw StateError('Unexpected system library access'),
+      );
+      addTearDown(() async {
+        await controller.dispose();
+        await library.dispose();
+      });
+      await library.loadCached();
+      await controller.attachDirectories(library);
+      await controller.selectLocal();
+      expect(controller.localSelected.value, isTrue);
+      expect(controller.catalog.value, isEmpty);
+      expect(controller.problem.value, isNull);
+
+      await controller.selectDirectories(add: true);
+      await controller.rescanLocal();
+      expect(native.picks, 1);
+      expect(controller.catalog.value!.single.trackCount, 2);
+      expect(controller.problem.value, isNull);
+      expect(await index.isSelected(), isTrue);
+    },
+  );
 }

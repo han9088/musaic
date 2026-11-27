@@ -134,6 +134,7 @@
   "musicSourceMock2": "Demo collection 2",
   "musicSourceLocal": "Local music",
   "musicSourceLocalHint": "Browse and play music from your device",
+  "musicSourceDirectoryHint": "Add and scan music folders",
   "musicSourceScanning": "Getting your music library ready…",
   "musicSourceRescan": "Rescan",
   "musicSourceAlbumCount": "{count, plural, one{1 album} other{{count} albums}}",

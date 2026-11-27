@@ -4,7 +4,9 @@ Local audio query packages for Musaic.
 Original copyright notices and each package's LICENSE are retained.
 
 Packages: `musaic_query`, `musaic_query_android`, `musaic_query_ios`,
-`musaic_query_web`, and `musaic_query_platform_interface`.
+`musaic_query_macos`, `musaic_query_windows`, their shared
+`musaic_query_desktop` implementation, `musaic_query_web`, and
+`musaic_query_platform_interface`.
 Public entry point: `package:musaic_query/musaic_query.dart`, class `MusaicQuery`.
 Android namespace and native method channel: `com.deskbtm.muasic.query`.
 All inter-package dependencies resolve locally. Packages are not published.
@@ -18,6 +20,16 @@ dependencies:
 ```
 
 ## Implementation and validation
+
+- macOS and Windows expose [local audio directories](DIRECTORIES.md), including
+  folder selection, metadata, art, and file URLs for playback.
+- macOS uses `iTunesLibrary` for `querySongs` and `queryAlbums`. The host app
+  needs `NSAppleMusicUsageDescription` and the sandbox entitlement
+  `com.apple.security.assets.music.read-only`. Call `permissionsRequest` to
+  open the library. `permissionsStatus` reports access in the current process
+  without opening the library or prompting. Queries return songs with local
+  file locations. Use `openSongPlayback` to keep a track's file accessible until
+  the player releases it.
 
 - Android keeps each request independent. Queries and playlist writes run off
   the platform thread; playlist writes are serialized per plugin instance.
@@ -44,7 +56,8 @@ Run `flutter analyze` and `flutter test` inside `packages/musaic_query` and
 `packages/musaic_query_web`. Android regression tests live under
 `packages/musaic_query_android/android/src/test`; run
 `:musaic_query_android:testDebugUnitTest` from a host app's Gradle project.
-iOS sorting regression tests are provided by the pod's `Tests` test spec.
+The iOS plugin supports Swift Package Manager and CocoaPods. iOS sorting
+regression tests are provided by the pod's `Tests` test spec.
 Native build checks use a separate host app with a local dependency on this package.
 Real-device permission prompts, media-library writes and memory/frame profiling
 remain necessary before release; unit tests do not establish those results.
@@ -59,8 +72,7 @@ including live stamp changes, cover deletion, cache clearing, paging and cancell
 The iOS sorting test sources remain available; they were not rerun in this review.
 The application Android debug build and iOS simulator host build pass. Web release
 is checked using the separate host; these results do not represent real-device grants.
-The upstream Android KGP and iOS CocoaPods integration still emit Flutter's
-future migration notices; these builds do not require their migration yet.
+These builds emitted Flutter migration notices for Android KGP and iOS CocoaPods.
 
 ## 本地音频目录
 
