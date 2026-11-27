@@ -25,6 +25,16 @@ Supply an API key at launch or build time with
 `--dart-define=AUDIUS_API_KEY=<public-api-key>`. The SDK can also request
 the public catalog without a key.
 
+The Audius tab appears in Settings while Audius is selected. Its optional account
+connection runs on Android, iOS, and macOS. In Audius Developer Apps, register
+`com.deskbtm.musaic.audius://oauth/callback` and pass that app's public API key
+using `AUDIUS_API_KEY` or `--dart-define-from-file=.env` if it is set there.
+My Audius displays favorite tracks, favorite albums, and
+public playlists. Choose the favorite-albums canvas explicitly to replace the
+trending catalog. The first favorite or unfavorite prompts for write access.
+Audius stays connected across music-source changes and app restarts. Disconnect
+from the Audius tab to remove the stored session.
+
 ## Indiebase client
 
 The Dart SDK is pinned to a source revision. Dependency resolution requires

@@ -8,11 +8,13 @@ import 'music_provider.dart';
 final class AppleMusicProvider implements MusicProvider {
   AppleMusicProvider({required this._client});
 
+  static const providerId = 'apple_music';
+
   final apple.AppleMusicClient _client;
 
   @override
   /// 执行当前模块中的id操作，用于音乐源、媒体库、播放及切换流程。
-  String get id => 'apple_music';
+  String get id => providerId;
 
   @override
   Future<void> initialize() => _client.initialize();

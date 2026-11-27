@@ -16,6 +16,66 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get audiusConnect => '连接 Audius';
+
+  @override
+  String get audiusDisconnect => '断开连接';
+
+  @override
+  String get audiusAccountUnavailable => '当前版本无法连接 Audius 账号。';
+
+  @override
+  String get audiusAccountFailed => 'Audius 账号操作未完成。';
+
+  @override
+  String get audiusMyLibrary => '我的 Audius';
+
+  @override
+  String get audiusFavoriteTracks => '收藏歌曲';
+
+  @override
+  String get audiusFavoriteAlbums => '收藏专辑';
+
+  @override
+  String get audiusPublicPlaylists => '我的公开歌单';
+
+  @override
+  String get audiusFavoriteCanvas => '在画布显示收藏专辑';
+
+  @override
+  String get audiusTrendingCanvas => '在画布显示热门专辑';
+
+  @override
+  String get audiusNowPlaying => '正在播放';
+
+  @override
+  String get audiusFavoriteTrack => '收藏歌曲';
+
+  @override
+  String get audiusUnfavoriteTrack => '取消收藏歌曲';
+
+  @override
+  String get audiusFavoriteAlbum => '收藏专辑';
+
+  @override
+  String get audiusUnfavoriteAlbum => '取消收藏专辑';
+
+  @override
+  String get audiusLibraryFailed => '无法加载 Audius，轻点重试。';
+
+  @override
+  String get audiusLibraryEmpty => '暂无内容';
+
+  @override
+  String get audiusLoadMore => '加载更多';
+
+  @override
+  String get audiusRetry => '重试';
+
+  @override
+  String get appleMusicAccountUnavailable => '当前无法使用 Apple Music 账号功能。';
+
+  @override
   String get desktopWallpaperSet => '设成壁纸';
 
   @override

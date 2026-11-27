@@ -13,6 +13,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_cache_manager: ^3.4.8
+  flutter_secure_storage: ^10.0.0
+  flutter_web_auth_2: ^6.1.0
   http: ^1.6.0
   indiebase:
     git:

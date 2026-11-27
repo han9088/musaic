@@ -281,6 +281,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "0.8.1"
+  desktop_webview_window:
+    dependency: transitive
+    description:
+      name: desktop_webview_window
+      sha256: "1bd3f4276d7594d9e1600782f72dbbf773a2019fa0e9a8d421d7df2f5a9b63cc"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.4.3"
   device_info_plus:
     dependency: "direct main"
     description:
@@ -504,11 +512,83 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.35"
+  flutter_secure_storage:
+    dependency: "direct main"
+    description:
+      name: flutter_secure_storage
+      sha256: fe638107c5f69119156ada2db5a57734385fac3f64430bd7252a00d3ead2ca4b
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "10.3.4"
+  flutter_secure_storage_darwin:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_darwin
+      sha256: "82329fa5cdf343773b1b6897dea959105a29f092454259edff92f9f6637e8149"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.3.2"
+  flutter_secure_storage_linux:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_linux
+      sha256: caa75bd78f017422912e3a904933113b2428eb79f981ac37acd2dd2a700458ea
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "3.0.3"
+  flutter_secure_storage_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_platform_interface
+      sha256: "64951127f001f546891c86f414972bf49ef2c4c8a4c92c65f5790cc0c9100045"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.1.1"
+  flutter_secure_storage_web:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_web
+      sha256: "073a62b3aeb866ab4ce795f960413948e51e5a42a9b0c8333b6daf5bb3208a1c"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "2.1.1"
+  flutter_secure_storage_windows:
+    dependency: transitive
+    description:
+      name: flutter_secure_storage_windows
+      sha256: "471951813a97006d899db4948acc654a4f28c440083ea08178935ce20b173ec1"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "4.2.2"
   flutter_test:
     dependency: "direct dev"
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_web_auth_2:
+    dependency: "direct main"
+    description:
+      name: flutter_web_auth_2
+      sha256: "05c0b09cbdb0f98b528d21fb4ba5711652e9d92697412f96ad4c327ed5090f9f"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "6.1.0"
+  flutter_web_auth_2_desktop_webview:
+    dependency: transitive
+    description:
+      name: flutter_web_auth_2_desktop_webview
+      sha256: "461aa4a80bb99e9344ac3536fc80a3f79773d96c38575eb7363e7b3e95044f7d"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "6.0.1"
+  flutter_web_auth_2_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_web_auth_2_platform_interface
+      sha256: bb8ddc6344bc9f3b61e6ea9ef6830dd97cd4cc8aeda78281972ccf07e659127d
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "6.0.0"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -1517,6 +1597,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "3.0.3"
+  window_to_front:
+    dependency: transitive
+    description:
+      name: window_to_front
+      sha256: fe896421a872360fe38b40ab3371f94fd7ae24bd0413a0b9bbfd14e27d8cba5a
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.0.0"
   windows_file_picker:
     dependency: transitive
     description:

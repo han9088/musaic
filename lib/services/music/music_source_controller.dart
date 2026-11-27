@@ -8,6 +8,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../storage/music/music_index.dart';
 import '../diagnostics/diagnostic_log.dart';
+import 'audius_account.dart';
 import 'audius_music_provider.dart';
 import 'directory_music_library.dart';
 import 'local_music_provider.dart';
@@ -27,11 +28,13 @@ enum MusicSourceProblem {
 /// 封装或定义音乐来源控制器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicSourceController {
   MusicSourceController({
-    MusicProvider Function()? createLocal,
+    this._createLocal,
     MusicProvider Function()? createAudius,
     this.systemLibraryEnabled = true,
-  }) : _createLocal = createLocal,
-       _createAudius = createAudius ?? _defaultAudius;
+    this.audiusAccount,
+  }) : _createAudius = createAudius ?? _defaultAudius {
+    audiusAccount?.addListener(_accountChanged);
+  }
 
   static MusicProvider _defaultAudius() => AudiusMusicProvider(
     sdk: AudiusSdk(apiKey: const String.fromEnvironment('AUDIUS_API_KEY')),
@@ -40,6 +43,7 @@ final class MusicSourceController {
   final MusicProvider Function()? _createLocal;
   final MusicProvider Function() _createAudius;
   final bool systemLibraryEnabled;
+  final AudiusAccount? audiusAccount;
   final catalog = signal<List<ProviderAlbum>?>(null);
   final mock2Selected = signal(false);
   final busy = signal(false);
@@ -47,10 +51,49 @@ final class MusicSourceController {
   final problem = signal<MusicSourceProblem?>(null);
   MusicProvider? _provider;
   MusicProvider? _pendingAudius;
+  List<ProviderAlbum>? _audiusTrending;
 
   /// 获取当前选中的音乐源提供器。
   MusicProvider? get provider => _provider;
   bool get audiusSelected => _provider?.id == AudiusMusicProvider.providerId;
+
+  // The catalog signal tracks provider selection for the settings tabs.
+  String? get selectedProviderId =>
+      catalog.value == null ? null : _provider?.id;
+  bool get showingAudiusFavorites =>
+      audiusSelected && !identical(catalog.value, _audiusTrending);
+
+  void _accountChanged() {
+    if (audiusAccount?.user == null) showAudiusTrending();
+  }
+
+  void showAudiusTrending() {
+    if (!_disposed && showingAudiusFavorites) catalog.value = _audiusTrending;
+  }
+
+  Future<void> showAudiusFavorites() async {
+    final provider = _provider;
+    final userId = audiusAccount?.user?.id;
+    if (provider is! AudiusMusicProvider || userId == null || _disposed) return;
+    final albums = <String, ProviderAlbum>{};
+    String? cursor;
+    do {
+      final previousCount = albums.length;
+      final page = await provider.favoriteAlbums(userId, cursor: cursor);
+      if (_disposed ||
+          !identical(provider, _provider) ||
+          audiusAccount?.user?.id != userId) {
+        return;
+      }
+      for (final album in page.items) {
+        albums[album.reference.id] = album;
+      }
+      cursor = page.nextCursor;
+      if (cursor != null && albums.length == previousCount) break;
+    } while (cursor != null);
+    catalog.value = List.unmodifiable(albums.values);
+  }
+
   bool _disposed = false;
   bool _selectionTouched = false;
   final directoryLibrary = signal<DirectoryMusicLibrary?>(null);
@@ -328,9 +371,10 @@ final class MusicSourceController {
           localSelected.value = false;
           _systemAlbums = const [];
           mock2Selected.value = false;
-          catalog.value = List<ProviderAlbum>.unmodifiable(
+          _audiusTrending = List<ProviderAlbum>.unmodifiable(
             albums.values.take(24),
           );
+          catalog.value = _audiusTrending;
         });
         await _disposeProvider(old);
       }
@@ -416,6 +460,7 @@ final class MusicSourceController {
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    audiusAccount?.removeListener(_accountChanged);
     _stopDirectories?.call();
     directories?.cancel();
     localSelected.dispose();

@@ -83,6 +83,64 @@ final class _Player extends Fake implements AudioPlayer {
 }
 
 void main() {
+  test(
+    'a favorites queue survives swapping back to the trending canvas',
+    () async {
+      final player = _Player();
+      final client = MockClient((request) async {
+        switch (request.url.path) {
+          case '/v1/playlists/trending':
+            return _json([_album]);
+          case '/v1/users/listener/library/tracks':
+            expect(request.url.queryParameters['type'], 'favorite');
+            return _json([
+              for (final track in _tracks) {'item': track},
+            ]);
+          case '/v1/users/listener/library/albums':
+            expect(request.url.queryParameters['type'], 'favorite');
+            return _json([
+              {'item': _album},
+            ]);
+          case '/v1/tracks/one/stream':
+            return _json('https://audio.example/one.mp3');
+          case '/v1/tracks/two/stream':
+            return _json('https://audio.example/two.mp3');
+          default:
+            fail('Unexpected URL: ${request.url}');
+        }
+      });
+      final provider = AudiusMusicProvider(
+        sdk: AudiusSdk(httpClient: client),
+        createPlayer: () => player,
+      );
+      final playback = AlbumPlayback();
+      addTearDown(client.close);
+      addTearDown(provider.dispose);
+      addTearDown(playback.dispose);
+
+      final trending = (await provider.libraryAlbums()).items;
+      playback.bind(provider, trending);
+      final favorites = await provider.favoriteTracks('listener');
+      await playback.playAudiusFavorites(favorites.items, 0, 'Favorite tracks');
+      await Future<void>.delayed(Duration.zero);
+      expect(playback.currentTrack, _ref('one', MusicKind.song));
+      expect(playback.playing, isTrue);
+
+      final albums = (await provider.favoriteAlbums('listener')).items;
+      playback.bind(provider, albums);
+      playback.bind(provider, trending);
+      expect(playback.currentTrack, _ref('one', MusicKind.song));
+      expect(playback.playing, isTrue);
+      player.events.add(const AudioEvent(eventType: AudioEventType.complete));
+      await Future<void>.delayed(Duration.zero);
+      expect(playback.currentTrack, _ref('two', MusicKind.song));
+      expect(player.urls, [
+        'https://audio.example/one.mp3',
+        'https://audio.example/two.mp3',
+      ]);
+    },
+  );
+
   test('catalog filters playlists and loads each album lazily once', () async {
     var details = 0;
     final client = MockClient((request) async {

@@ -4,13 +4,16 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:pub_semver/pub_semver.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../features/desktop_shortcuts/desktop_shortcuts.dart';
 import '../../features/desktop_shortcuts/desktop_shortcuts_settings.dart';
 import '../../features/music/playback/album_playback.dart';
 import '../../features/music/playback/now_playing_controls.dart';
 import '../../features/music/playback/playback_gesture_intro.dart';
+import '../../features/music/account/audius_account_tab.dart';
 import '../../features/music/presentation/music_settings.dart';
 import '../../features/artwork/presentation/album_color_family.dart';
 import '../../features/artwork/presentation/album_color_organization_settings.dart';
@@ -26,6 +29,8 @@ import '../../features/settings/usage_guide_settings.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../services/app_icon_service.dart';
 import '../../services/app_updates.dart';
+import '../../services/music/apple_music_provider.dart';
+import '../../services/music/audius_music_provider.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/developer_options_preference.dart';
@@ -192,20 +197,50 @@ class _HomeSheetState extends State<HomeSheet> {
     body: _buildSettingsSheet(desktop: true),
   );
 
-  Widget _buildSettingsSheet({bool desktop = false}) => SettingsSheet(
-    desktop: desktop,
-    musicSourceVisible: widget.sources != null,
-    onOpenSection: (source, section) =>
-        _openSettings(source, section, desktop: desktop),
-    language: widget.language,
-    usageGuideVisible: _usageGuide.visible,
-    developerOptionsEnabled: _developerOptions.enabled,
-    keyboardShortcutsVisible: widget.desktopShortcuts != null,
-    xeroxEnabled: widget.xeroxEnabled,
-    onXeroxChanged: widget.onXeroxChanged == null
-        ? null
-        : (enabled) => _changeXerox(enabled, desktop: desktop),
-    xeroxPalettePicker: widget.xeroxPalettePicker,
+  Widget _buildSettingsSheet({bool desktop = false}) => SignalBuilder(
+    builder: (context) {
+      final sources = widget.sources;
+      final musicAccount = switch (sources?.selectedProviderId) {
+        AudiusMusicProvider.providerId => (
+          icon: Image.asset(
+            'assets/branding/audius_glyph_color.png',
+            width: 22,
+            height: 22,
+            semanticLabel: 'Audius',
+          ),
+          page: AudiusAccountTab(sources: sources!, playback: widget.playback),
+        ),
+        AppleMusicProvider.providerId => (
+          icon: const Icon(
+            PhosphorIcons.appleLogoFill,
+            size: 22,
+            semanticLabel: 'Apple Music',
+          ),
+          page: ListTile(
+            title: Text(
+              AppLocalizations.of(context).appleMusicAccountUnavailable,
+            ),
+          ),
+        ),
+        _ => null,
+      };
+      return SettingsSheet(
+        desktop: desktop,
+        musicAccount: musicAccount,
+        musicSourceVisible: widget.sources != null,
+        onOpenSection: (source, section) =>
+            _openSettings(source, section, desktop: desktop),
+        language: widget.language,
+        usageGuideVisible: _usageGuide.visible,
+        developerOptionsEnabled: _developerOptions.enabled,
+        keyboardShortcutsVisible: widget.desktopShortcuts != null,
+        xeroxEnabled: widget.xeroxEnabled,
+        onXeroxChanged: widget.onXeroxChanged == null
+            ? null
+            : (enabled) => _changeXerox(enabled, desktop: desktop),
+        xeroxPalettePicker: widget.xeroxPalettePicker,
+      );
+    },
   );
 
   void _present() {

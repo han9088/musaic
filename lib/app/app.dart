@@ -2,16 +2,20 @@
 
 import 'dart:async';
 
+import 'package:audius_sdk/audius_sdk.dart';
 import 'package:flutter/foundation.dart';
 // Talker still uses Flutter's legacy Material library.
 // ignore: deprecated_member_use
 import 'package:flutter/material.dart' as flutter_material;
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:musaic_query/musaic_query.dart';
 
+import '../storage/music/audius_secure_session_store.dart';
 import '../storage/music/music_index.dart';
 import '../storage/music/custom_artwork_store.dart';
 import '../storage/settings/app_language_preference.dart';
 import '../services/music/directory_music_library.dart';
+import '../services/music/audius_account.dart';
 import '../services/music/music_source_controller.dart';
 import '../features/artwork/presentation/directory_artwork.dart';
 import '../features/artwork/presentation/custom_artwork_scope.dart';
@@ -44,8 +48,10 @@ class MusaicApp extends StatefulWidget {
 /// 封装musaic应用状态相关的类型与行为，负责应用装配、全局依赖与页面宿主。
 class _MusaicAppState extends State<MusaicApp> {
   final _albumCache = MockAlbumCache();
-  final _sources = MusicSourceController(
+  final _audiusAccount = _createAudiusAccount();
+  late final _sources = MusicSourceController(
     systemLibraryEnabled: defaultTargetPlatform != TargetPlatform.windows,
+    audiusAccount: _audiusAccount,
   );
   final _indiebase = IndiebaseRuntime.fromEnvironment();
   late final _language = AppLanguagePreference(widget.initialLanguage);
@@ -60,6 +66,36 @@ class _MusaicAppState extends State<MusaicApp> {
       : null;
   DirectoryMusicLibrary? _directories;
   late final AppLifecycleListener _lifecycle;
+
+  static AudiusAccount? _createAudiusAccount() {
+    const clientId = String.fromEnvironment('AUDIUS_API_KEY');
+    if (clientId.isEmpty || kIsWeb) return null;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        break;
+      default:
+        return null;
+    }
+    final redirect = Uri.parse('com.deskbtm.musaic.audius://oauth/callback');
+    return AudiusAccount(
+      oauth: AudiusOAuth(clientId: clientId, redirectUri: redirect),
+      store: const AudiusSecureSessionStore(),
+      openBrowser: (url) async {
+        try {
+          final callback = await FlutterWebAuth2.authenticate(
+            url: url.toString(),
+            callbackUrlScheme: redirect.scheme,
+          );
+          return Uri.parse(callback);
+        } on PlatformException catch (error) {
+          if (error.code.toUpperCase() == 'CANCELED') return null;
+          rethrow;
+        }
+      },
+    );
+  }
 
   /// 读取并恢复所需的数据或资源，用于应用装配、全局依赖与页面宿主。
   Future<void> _restoreMusic() async {
@@ -96,6 +132,7 @@ class _MusaicAppState extends State<MusaicApp> {
     _language.dispose();
     _indiebase?.close();
     unawaited(_sources.dispose());
+    _audiusAccount?.dispose();
     unawaited(_directories?.dispose());
     super.dispose();
   }
@@ -103,6 +140,7 @@ class _MusaicAppState extends State<MusaicApp> {
   @override
   void initState() {
     super.initState();
+    unawaited(_audiusAccount?.restore());
     _lifecycle = AppLifecycleListener(
       onResume: () => diagnosticLog.record(DiagnosticEvent.appResumed),
       onHide: () {

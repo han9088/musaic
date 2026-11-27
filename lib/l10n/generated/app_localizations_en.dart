@@ -16,6 +16,69 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Musaic';
 
   @override
+  String get audiusConnect => 'Connect Audius';
+
+  @override
+  String get audiusDisconnect => 'Disconnect';
+
+  @override
+  String get audiusAccountUnavailable =>
+      'Audius account connection is unavailable on this build.';
+
+  @override
+  String get audiusAccountFailed =>
+      'Could not complete the Audius account request.';
+
+  @override
+  String get audiusMyLibrary => 'My Audius';
+
+  @override
+  String get audiusFavoriteTracks => 'Favorite tracks';
+
+  @override
+  String get audiusFavoriteAlbums => 'Favorite albums';
+
+  @override
+  String get audiusPublicPlaylists => 'My public playlists';
+
+  @override
+  String get audiusFavoriteCanvas => 'Show favorite albums on the canvas';
+
+  @override
+  String get audiusTrendingCanvas => 'Show trending albums on the canvas';
+
+  @override
+  String get audiusNowPlaying => 'Now playing';
+
+  @override
+  String get audiusFavoriteTrack => 'Favorite track';
+
+  @override
+  String get audiusUnfavoriteTrack => 'Remove track from favorites';
+
+  @override
+  String get audiusFavoriteAlbum => 'Favorite album';
+
+  @override
+  String get audiusUnfavoriteAlbum => 'Remove album from favorites';
+
+  @override
+  String get audiusLibraryFailed => 'Could not load Audius. Tap to retry.';
+
+  @override
+  String get audiusLibraryEmpty => 'Nothing here yet';
+
+  @override
+  String get audiusLoadMore => 'Load more';
+
+  @override
+  String get audiusRetry => 'Retry';
+
+  @override
+  String get appleMusicAccountUnavailable =>
+      'Apple Music account features are unavailable.';
+
+  @override
   String get desktopWallpaperSet => 'Set as Wallpaper';
 
   @override

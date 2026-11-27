@@ -42,7 +42,6 @@ import 'package:signals_flutter/signals_flutter.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
 void main() {
-  final settingsTab = find.widgetWithIcon(Tab, PhosphorIcons.gearBold);
   final capsule = find.byType(NowPlayingCapsule);
   Finder dotIn(Finder item) =>
       find.descendant(of: item, matching: find.byType(AppSelectionDot));
@@ -403,8 +402,6 @@ void main() {
       ),
     );
     await tester.drag(capsule, const Offset(0, -140));
-    await tester.pumpAndSettle();
-    await tester.tap(settingsTab);
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(ListTile, '音乐'));
     await tester.pumpAndSettle();
@@ -1611,8 +1608,6 @@ void main() {
         tester.element(find.byType(SettingsSheet)),
       ).animatedPosition;
       final originalTop = sheetPosition.value;
-      await tester.tap(settingsTab);
-      await tester.pumpAndSettle();
       final system = find.widgetWithText(ListTile, 'System');
       await tester.ensureVisible(system);
       await tester.tap(system);
@@ -1759,10 +1754,7 @@ void main() {
     expect(colorToggle, findsNothing);
     expect(appleMusic, findsNothing);
     expect(find.text('Local music'), findsNothing);
-    final tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.tabs, hasLength(1));
-    expect(tabBar.indicatorColor, Colors.transparent);
-    expect(tabBar.dividerColor, Colors.transparent);
+    expect(find.byType(TabBar), findsNothing);
 
     final music = find.widgetWithText(ListTile, 'Music');
     await tester.ensureVisible(music);
@@ -1869,7 +1861,7 @@ void main() {
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(page, findsNothing);
-    expect(settingsTab, findsOneWidget);
+    expect(find.byType(TabBar), findsNothing);
     expect(find.text('Music source'), findsOneWidget);
     expect(mock2, findsNothing);
     await tester.tap(find.text('Music source'));
@@ -1877,7 +1869,7 @@ void main() {
     await tester.tap(mock2);
     await tester.pumpAndSettle();
     expect(sources.mock2Selected.value, isTrue);
-    expect(settingsTab, findsNothing);
+    expect(find.byType(SettingsSheet), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

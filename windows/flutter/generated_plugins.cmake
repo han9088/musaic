@@ -4,10 +4,13 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   audioplayers_windows
+  desktop_webview_window
+  flutter_secure_storage_windows
   gal
   musaic_audio_windows
   url_launcher_windows
   share_plus
+  window_to_front
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

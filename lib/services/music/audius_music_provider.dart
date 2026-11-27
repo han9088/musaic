@@ -96,6 +96,91 @@ final class AudiusMusicProvider implements MusicProvider {
     );
   }
 
+  Future<MusicPage<ProviderAlbum>> favoriteAlbums(
+    String userId, {
+    String? cursor,
+  }) async {
+    final offset = _libraryOffset(cursor);
+    final page = await _sdk.users.getFavoriteAlbums(
+      id: userId,
+      offset: offset,
+      limit: _libraryPageSize,
+    );
+    _ensureOpen();
+    return (
+      items: _mapAlbums(page.data),
+      nextCursor: _nextLibraryCursor(offset, page.data.length),
+    );
+  }
+
+  Future<MusicPage<ProviderSong>> favoriteTracks(
+    String userId, {
+    String? cursor,
+  }) async {
+    final offset = _libraryOffset(cursor);
+    final page = await _sdk.users.getFavoriteTracks(
+      id: userId,
+      offset: offset,
+      limit: _libraryPageSize,
+    );
+    _ensureOpen();
+    return (
+      items: _mapSongs(page.data),
+      nextCursor: _nextLibraryCursor(offset, page.data.length),
+    );
+  }
+
+  Future<MusicPage<ProviderAlbum>> publicPlaylists(
+    String userId, {
+    String? cursor,
+  }) async {
+    final offset = _libraryOffset(cursor);
+    final page = await _sdk.users.getPlaylistsByUser(
+      id: userId,
+      offset: offset,
+      limit: _libraryPageSize,
+    );
+    _ensureOpen();
+    return (
+      items: [
+        for (final playlist in page.data)
+          if (playlist.id.isNotEmpty &&
+              playlist.isAlbum != true &&
+              playlist.raw['is_private'] != true)
+            _mapCollection(playlist, MusicKind.playlist),
+      ],
+      nextCursor: _nextLibraryCursor(offset, page.data.length),
+    );
+  }
+
+  Future<bool> isFavorite(MusicReference reference, String userId) async {
+    _validate(reference, reference.kind);
+    final raw = reference.kind == MusicKind.song
+        ? (await _sdk.tracks.getTrack(
+            trackId: reference.id,
+            userId: userId,
+          )).data.raw
+        : (await _sdk.playlists.getPlaylist(
+            playlistId: reference.id,
+            userId: userId,
+          )).data.raw;
+    return raw['has_current_user_saved'] == true;
+  }
+
+  static const _libraryPageSize = 50;
+
+  int _libraryOffset(String? cursor) {
+    _ensureOpen();
+    final offset = cursor == null ? 0 : int.tryParse(cursor);
+    if (offset == null || offset < 0) {
+      throw ArgumentError.value(cursor, 'cursor');
+    }
+    return offset;
+  }
+
+  String? _nextLibraryCursor(int offset, int count) =>
+      count < _libraryPageSize ? null : (offset + count).toString();
+
   @override
   Future<List<ProviderAlbum>> searchAlbums(
     String query, {

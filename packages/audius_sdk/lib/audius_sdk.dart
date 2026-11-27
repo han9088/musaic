@@ -2,6 +2,8 @@
 library audius_sdk;
 
 export 'src/audius_api_exception.dart' show AudiusApiException;
+export 'src/audius_oauth.dart'
+    show AudiusOAuth, AudiusOAuthException, AudiusOAuthScope, AudiusOAuthTokens;
 export 'src/audius_response.dart' show AudiusResponse;
 export 'src/audius_sdk.dart' show AudiusSdk;
 export 'src/audius_stream.dart' show AudiusStream;

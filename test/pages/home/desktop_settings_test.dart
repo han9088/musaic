@@ -78,17 +78,14 @@ void main() {
         .style
         ?.fontSize;
 
-    final tabs = find.descendant(
-      of: find.byType(TabBar),
-      matching: find.byType(Tab),
-    );
+    final tabs = find.byType(TabBar);
     final sidebar = find.byKey(const ValueKey('desktop-settings-sidebar'));
     final demoSource = find.byKey(const ValueKey('music-source-mock2'));
     final demoLabel = find.descendant(
       of: demoSource,
       matching: find.byType(Text),
     );
-    expect(tabs, findsOneWidget);
+    expect(tabs, findsNothing);
     expect(sidebar, findsOneWidget);
     expect(demoSource, findsNothing);
 
@@ -151,7 +148,7 @@ void main() {
     await tester.tap(source);
     await tester.pumpAndSettle();
     expect(find.byType(SettingsPage), findsOneWidget);
-    expect(tabs, findsOneWidget);
+    expect(tabs, findsNothing);
     expect(tester.widget<ListTile>(source).selected, isTrue);
     expect(
       fontSize(find.descendant(of: source, matching: find.byType(Text))),

@@ -39,6 +39,11 @@ class AlbumPlayback extends ChangeNotifier {
 
   String? get currentTitle => _currentSong?.title ?? title;
   MusicReference? get currentTrack => _playbackState?.currentItem;
+  MusicReference? get currentAudiusAlbum {
+    final reference = _playingAudiusAlbum?.reference;
+    return reference?.kind == MusicKind.album ? reference : null;
+  }
+
   String? get currentAlbumId {
     final track = _provider is AudiusMusicProvider
         ? _audiusTrack(currentTrack)
@@ -132,12 +137,6 @@ class AlbumPlayback extends ChangeNotifier {
 
   /// 执行当前模块中的bind操作，用于音乐源、媒体库、播放及切换流程。
   void bind(MusicProvider? provider, List<ProviderAlbum>? albums) {
-    _generation++;
-    final generation = _generation;
-    unawaited(_subscription?.cancel());
-    _resetLoadingIndicator();
-    _provider = provider;
-    _mock = provider == null && albums == null;
     _albums = {
       for (final album in albums ?? <ProviderAlbum>[])
         albumArtworkSource(album): album,
@@ -147,6 +146,16 @@ class AlbumPlayback extends ChangeNotifier {
         for (final song in album.tracks ?? <ProviderSong>[])
           song.reference: (album: album, song: song),
     };
+    // A catalog change within Audius does not replace the active queue.
+    if (provider is AudiusMusicProvider && identical(provider, _provider)) {
+      return;
+    }
+    _generation++;
+    final generation = _generation;
+    unawaited(_subscription?.cancel());
+    _resetLoadingIndicator();
+    _provider = provider;
+    _mock = provider == null && albums == null;
     asset = null;
     title = null;
     _playingAudiusAlbum = null;
@@ -244,8 +253,6 @@ class AlbumPlayback extends ChangeNotifier {
         : DiagnosticOperation.playAlbum;
     unawaited(
       _runProviderCommand(operation, (provider) async {
-        final album = _albums[asset];
-        if (album == null) throw StateError('Unknown local album');
         if (operation == DiagnosticOperation.pause) {
           await provider.pause();
           diagnosticLog.record(DiagnosticEvent.playbackPaused);
@@ -253,6 +260,8 @@ class AlbumPlayback extends ChangeNotifier {
           await provider.resume();
           diagnosticLog.record(DiagnosticEvent.playbackResumed);
         } else {
+          final album = _albums[asset];
+          if (album == null) throw StateError('Unknown album');
           if (provider is AudiusMusicProvider) {
             final detail = await _loadAudiusAlbum(provider, album);
             if (!detail.tracks!.any((track) => track.playable)) {
@@ -281,6 +290,52 @@ class AlbumPlayback extends ChangeNotifier {
       toggle(currentAsset, currentAlbum, artist: _albumArtist);
     }
   }
+
+  Future<void> playAudiusCollection(
+    ProviderAlbum album, {
+    int startIndex = 0,
+  }) => _runProviderCommand(DiagnosticOperation.playAlbum, (provider) async {
+    if (provider is! AudiusMusicProvider) return;
+    final detail = album.tracks != null
+        ? album
+        : album.reference.kind == MusicKind.playlist
+        ? await provider.playlist(album.reference)
+        : await provider.album(album.reference);
+    if (!identical(provider, _provider)) return;
+    final tracks = detail.tracks!;
+    final playable = [
+      for (final track in tracks)
+        if (track.playable) track.reference,
+    ];
+    if (playable.isEmpty) {
+      throw StateError('Audius collection has no playable tracks.');
+    }
+    final first = tracks
+        .take(startIndex)
+        .where((track) => track.playable)
+        .length;
+    _playAudiusAlbum(detail);
+    await provider.play(playable, startIndex: first);
+  });
+
+  Future<void> playAudiusFavorites(
+    List<ProviderSong> tracks,
+    int index,
+    String title,
+  ) => playAudiusCollection((
+    reference: (
+      provider: AudiusMusicProvider.providerId,
+      id: 'favorite-tracks',
+      kind: MusicKind.playlist,
+      source: MusicSource.library,
+      storefront: null,
+    ),
+    title: title,
+    artist: null,
+    artworkUrl: tracks[index].artworkUrl,
+    trackCount: tracks.length,
+    tracks: tracks,
+  ), startIndex: index);
 
   void playTrack(List<ProviderSong> tracks, int index, {String? albumAsset}) {
     if (!canPlayTrack(tracks[index], albumAsset: albumAsset)) return;

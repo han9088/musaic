@@ -10,12 +10,8 @@ class AudiusUsersApi {
 
   final AudiusTransport _transport;
 
-  Future<AudiusResponse<AudiusUser>> getUser({
-    required String id,
-  }) async {
-    final json = await _transport.getJson(
-      'users/' + pathSegment(id, 'id'),
-    );
+  Future<AudiusResponse<AudiusUser>> getUser({required String id}) async {
+    final json = await _transport.getJson('users/' + pathSegment(id, 'id'));
     return decodeSingleResponse(json, AudiusUser.fromJson);
   }
 
@@ -115,8 +111,9 @@ class AudiusUsersApi {
   }) async {
     validatePagination(offset: offset, limit: limit);
     final json = await _transport.getJson(
-      'users/' + pathSegment(id, 'id') + '/favorites/tracks',
+      'users/${pathSegment(id, 'id')}/library/tracks',
       query: <String, Object?>{
+        'type': 'favorite',
         'offset': offset,
         'limit': limit,
         'query': query,
@@ -124,6 +121,26 @@ class AudiusUsersApi {
         'sort_method': sortMethod,
       },
     );
-    return decodeListResponse(json, AudiusTrack.fromJson);
+    return decodeListResponse(
+      json,
+      (activity) => AudiusTrack.fromJson(requireJsonMap(activity['item'])),
+    );
+  }
+
+  /// 获取用户收藏的专辑，不包括转发、购买或热门专辑。
+  Future<AudiusResponse<List<AudiusPlaylist>>> getFavoriteAlbums({
+    required String id,
+    int? offset,
+    int? limit,
+  }) async {
+    validatePagination(offset: offset, limit: limit);
+    final json = await _transport.getJson(
+      'users/${pathSegment(id, 'id')}/library/albums',
+      query: {'type': 'favorite', 'offset': offset, 'limit': limit},
+    );
+    return decodeListResponse(
+      json,
+      (activity) => AudiusPlaylist.fromJson(requireJsonMap(activity['item'])),
+    );
   }
 }

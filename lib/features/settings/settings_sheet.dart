@@ -42,6 +42,7 @@ class SettingsSheet extends StatelessWidget {
     this.onXeroxChanged,
     this.xeroxPalettePicker,
     this.language,
+    this.musicAccount,
   });
 
   final bool musicSourceVisible;
@@ -54,6 +55,7 @@ class SettingsSheet extends StatelessWidget {
   final ValueChanged<bool>? onXeroxChanged;
   final Widget? xeroxPalettePicker;
   final AppLanguagePreference? language;
+  final ({Widget icon, Widget page})? musicAccount;
 
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
@@ -200,6 +202,19 @@ class SettingsSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final account = musicAccount;
+    final settings = _settingsPage(l10n);
+    return Theme(
+      data: buildSettingsContentTheme(Theme.of(context)),
+      child: account == null ? settings : _withAccount(l10n, settings, account),
+    );
+  }
+
+  Widget _withAccount(
+    AppLocalizations l10n,
+    Widget settings,
+    ({Widget icon, Widget page}) account,
+  ) {
     final tabBar = TabBar(
       isScrollable: false,
       indicatorColor: Colors.transparent,
@@ -216,10 +231,11 @@ class SettingsSheet extends StatelessWidget {
             semanticLabel: l10n.settings,
           ),
         ),
+        Tab(height: 48, icon: account.icon),
       ],
     );
-    final content = DefaultTabController(
-      length: 1,
+    return DefaultTabController(
+      length: 2,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final tabBarHeight = tabBar.preferredSize.height;
@@ -235,17 +251,18 @@ class SettingsSheet extends StatelessWidget {
               child: Column(
                 children: [
                   Material(color: Colors.transparent, child: tabBar),
-                  Expanded(child: _settingsPage(l10n)),
+                  Expanded(
+                    child: TabBarView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [settings, account.page],
+                    ),
+                  ),
                 ],
               ),
             ),
           );
         },
       ),
-    );
-    return Theme(
-      data: buildSettingsContentTheme(Theme.of(context)),
-      child: content,
     );
   }
 }

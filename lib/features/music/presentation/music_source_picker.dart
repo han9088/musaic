@@ -119,6 +119,29 @@ class MusicSourcePicker extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
+                  : audiusSelected && sources.audiusAccount != null
+                  ? ListenableBuilder(
+                      listenable: sources.audiusAccount!,
+                      builder: (context, _) {
+                        final account = sources.audiusAccount!;
+                        final user = account.user;
+                        return user == null
+                            ? TextButton(
+                                onPressed: account.busy
+                                    ? null
+                                    : account.connect,
+                                child: Text(l10n.audiusConnect),
+                              )
+                            : SizedBox(
+                                width: 112,
+                                child: Text(
+                                  '@${user.handle ?? user.id}',
+                                  textAlign: TextAlign.end,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              );
+                      },
+                    )
                   : null,
               onTap: selectionBlocked || audiusSelected
                   ? null

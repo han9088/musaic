@@ -24,6 +24,15 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.deskbtm.musaic.audius</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppleMusicUsageDescription</key>
 	<string>读取设备音乐资料库，在 Musaic 中浏览和播放本地歌曲。</string>
 	<key>NSCameraUsageDescription</key>

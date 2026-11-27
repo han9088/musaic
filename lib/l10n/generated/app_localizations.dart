@@ -107,6 +107,126 @@ abstract class AppLocalizations {
   /// **'Musaic'**
   String get appTitle;
 
+  /// No description provided for @audiusConnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接 Audius'**
+  String get audiusConnect;
+
+  /// No description provided for @audiusDisconnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'断开连接'**
+  String get audiusDisconnect;
+
+  /// No description provided for @audiusAccountUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前版本无法连接 Audius 账号。'**
+  String get audiusAccountUnavailable;
+
+  /// No description provided for @audiusAccountFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Audius 账号操作未完成。'**
+  String get audiusAccountFailed;
+
+  /// No description provided for @audiusMyLibrary.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的 Audius'**
+  String get audiusMyLibrary;
+
+  /// No description provided for @audiusFavoriteTracks.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏歌曲'**
+  String get audiusFavoriteTracks;
+
+  /// No description provided for @audiusFavoriteAlbums.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏专辑'**
+  String get audiusFavoriteAlbums;
+
+  /// No description provided for @audiusPublicPlaylists.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的公开歌单'**
+  String get audiusPublicPlaylists;
+
+  /// No description provided for @audiusFavoriteCanvas.
+  ///
+  /// In zh, this message translates to:
+  /// **'在画布显示收藏专辑'**
+  String get audiusFavoriteCanvas;
+
+  /// No description provided for @audiusTrendingCanvas.
+  ///
+  /// In zh, this message translates to:
+  /// **'在画布显示热门专辑'**
+  String get audiusTrendingCanvas;
+
+  /// No description provided for @audiusNowPlaying.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在播放'**
+  String get audiusNowPlaying;
+
+  /// No description provided for @audiusFavoriteTrack.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏歌曲'**
+  String get audiusFavoriteTrack;
+
+  /// No description provided for @audiusUnfavoriteTrack.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏歌曲'**
+  String get audiusUnfavoriteTrack;
+
+  /// No description provided for @audiusFavoriteAlbum.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏专辑'**
+  String get audiusFavoriteAlbum;
+
+  /// No description provided for @audiusUnfavoriteAlbum.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏专辑'**
+  String get audiusUnfavoriteAlbum;
+
+  /// No description provided for @audiusLibraryFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法加载 Audius，轻点重试。'**
+  String get audiusLibraryFailed;
+
+  /// No description provided for @audiusLibraryEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无内容'**
+  String get audiusLibraryEmpty;
+
+  /// No description provided for @audiusLoadMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多'**
+  String get audiusLoadMore;
+
+  /// No description provided for @audiusRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get audiusRetry;
+
+  /// No description provided for @appleMusicAccountUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前无法使用 Apple Music 账号功能。'**
+  String get appleMusicAccountUnavailable;
+
   /// No description provided for @desktopWallpaperSet.
   ///
   /// In zh, this message translates to:
