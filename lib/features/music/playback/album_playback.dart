@@ -203,11 +203,12 @@ class AlbumPlayback extends ChangeNotifier {
         playing = state.isPlaying;
         notifyListeners();
       },
-      onError: (Object error) {
+      onError: (Object error, StackTrace stack) {
         if (generation != _generation) return;
         diagnosticLog.record(
           DiagnosticEvent.playbackStreamFailed,
           error: error,
+          stack: stack,
         );
         _playbackState = null;
         playing = false;
@@ -236,14 +237,19 @@ class AlbumPlayback extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    final operation = isPlaying(asset, title)
+        ? DiagnosticOperation.pause
+        : this.asset == asset
+        ? DiagnosticOperation.resume
+        : DiagnosticOperation.playAlbum;
     unawaited(
-      _runProviderCommand((provider) async {
+      _runProviderCommand(operation, (provider) async {
         final album = _albums[asset];
         if (album == null) throw StateError('Unknown local album');
-        if (isPlaying(asset, title)) {
+        if (operation == DiagnosticOperation.pause) {
           await provider.pause();
           diagnosticLog.record(DiagnosticEvent.playbackPaused);
-        } else if (this.asset == asset) {
+        } else if (operation == DiagnosticOperation.resume) {
           await provider.resume();
           diagnosticLog.record(DiagnosticEvent.playbackResumed);
         } else {
@@ -279,7 +285,7 @@ class AlbumPlayback extends ChangeNotifier {
   void playTrack(List<ProviderSong> tracks, int index, {String? albumAsset}) {
     if (!canPlayTrack(tracks[index], albumAsset: albumAsset)) return;
     unawaited(
-      _runProviderCommand((provider) async {
+      _runProviderCommand(DiagnosticOperation.playTrack, (provider) async {
         final audiusAlbum = provider is AudiusMusicProvider
             ? _albums[albumAsset]
             : null;
@@ -308,14 +314,17 @@ class AlbumPlayback extends ChangeNotifier {
   void skip({required bool forward}) {
     if (currentTrack == null) return;
     unawaited(
-      _runProviderCommand((provider) async {
-        await (forward ? provider.next() : provider.previous());
-        diagnosticLog.record(
-          forward
-              ? DiagnosticEvent.playbackNext
-              : DiagnosticEvent.playbackPrevious,
-        );
-      }),
+      _runProviderCommand(
+        forward ? DiagnosticOperation.next : DiagnosticOperation.previous,
+        (provider) async {
+          await (forward ? provider.next() : provider.previous());
+          diagnosticLog.record(
+            forward
+                ? DiagnosticEvent.playbackNext
+                : DiagnosticEvent.playbackPrevious,
+          );
+        },
+      ),
     );
   }
 
@@ -333,6 +342,7 @@ class AlbumPlayback extends ChangeNotifier {
     if (target == state.position) return;
     unawaited(
       _runProviderCommand(
+        DiagnosticOperation.seek,
         (provider) => provider.seek(target),
         failure: DiagnosticEvent.playbackSeekFailed,
       ),
@@ -340,6 +350,7 @@ class AlbumPlayback extends ChangeNotifier {
   }
 
   Future<void> _runProviderCommand(
+    DiagnosticOperation operation,
     Future<void> Function(MusicProvider provider) command, {
     DiagnosticEvent failure = DiagnosticEvent.playbackCommandFailed,
   }) async {
@@ -350,7 +361,12 @@ class AlbumPlayback extends ChangeNotifier {
     try {
       await command(provider);
     } catch (error, stack) {
-      diagnosticLog.record(failure, error: error, stack: stack);
+      diagnosticLog.record(
+        failure,
+        operation: operation,
+        error: error,
+        stack: stack,
+      );
       if (generation == _generation) onError?.call();
     } finally {
       if (generation == _generation) _busy = false;

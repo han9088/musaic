@@ -359,14 +359,56 @@ void main() {
           await folderOnly.resume();
           expect(native.playbackOpened, ['a']);
           expect(native.playbackClosed, isEmpty);
-          await folderOnly.next();
+          const codec = StandardMethodCodec();
+          await messenger.handlePlatformMessage(
+            playerEvents!.name,
+            codec.encodeSuccessEnvelope({'event': 'audio.onComplete'}),
+            (_) {},
+          );
+          await Future<void>.delayed(Duration.zero);
           expect(native.playbackOpened, ['a', 'b']);
           expect(native.playbackClosed, ['a']);
+          final nextTrack = await folderOnly.playback.first;
+          expect(nextTrack.currentItem, album.tracks!.last.reference);
+          expect(nextTrack.isPlaying, isTrue);
           final opened = calls.firstWhere(
             (call) => call.method == 'setSourceUrl',
           );
           expect((opened.arguments as Map)['url'], '/folder/My song.mp3');
           expect((opened.arguments as Map)['isLocal'], isTrue);
+
+          final duration = folderOnly.playback.firstWhere(
+            (state) => state.duration == const Duration(seconds: 42),
+          );
+          await messenger.handlePlatformMessage(
+            playerEvents!.name,
+            codec.encodeSuccessEnvelope({
+              'event': 'audio.onDuration',
+              'value': 42000,
+            }),
+            (_) {},
+          );
+          await duration;
+
+          var nativeErrors = 0;
+          final errors = folderOnly.playback.listen((state) {
+            if (state.error is PlatformException) nativeErrors++;
+          });
+          try {
+            await messenger.handlePlatformMessage(
+              playerEvents!.name,
+              codec.encodeErrorEnvelope(
+                code: 'AndroidAudioError',
+                details: 'MEDIA_ERROR_IO',
+              ),
+              (_) {},
+            );
+            await Future<void>.delayed(Duration.zero);
+            expect(nativeErrors, 1);
+            expect(native.playbackClosed, ['a', 'b']);
+          } finally {
+            await errors.cancel();
+          }
         } finally {
           await folderOnly.dispose();
           if (playerEvents != null) {

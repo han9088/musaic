@@ -16,11 +16,39 @@ import 'package:musaic/features/music/playback/playback_loading_arc.dart';
 import 'package:musaic/features/music/playback/screensaver/now_playing_screensaver.dart';
 import 'package:musaic/features/music/playback/screensaver/screensaver_view.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
+import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/music/music_provider.dart';
 import 'package:musaic/ui/widgets/frosted_control_surface.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 
 void main() {
+  test('playback failure records the command and native reason', () async {
+    final failure = Completer<void>();
+    final playback = AlbumPlayback()..onError = failure.complete;
+    final provider = _Player()
+      ..playError = PlatformException(
+        code: 'AndroidAudioError',
+        message: 'Failed to open file:///private/song.mp3',
+        details: 'MEDIA_ERROR_IO',
+      );
+    addTearDown(provider.events.close);
+    addTearDown(playback.dispose);
+    final album = _album([_song('1', 'First song', 'Singer')]);
+    playback.bind(provider, [album]);
+    playback.toggle(albumArtworkSource(album), album.title);
+    await failure.future;
+
+    final last = (await diagnosticLog.recentEvents()).last;
+    expect(
+      last,
+      contains(
+        'playbackCommandFailed operation=playAlbum error=platform '
+        'platformCode=AndroidAudioError nativeReason=MEDIA_ERROR_IO',
+      ),
+    );
+    expect(last, isNot(contains('/private/song.mp3')));
+  });
+
   testWidgets('album button paints one arc and follows playback status', (
     tester,
   ) async {
@@ -706,12 +734,14 @@ class _Player extends Fake implements MusicProvider {
   final skips = <bool>[];
   final seekPositions = <Duration>[];
   late MusicPlayback _state;
+  PlatformException? playError;
 
   @override
   Stream<MusicPlayback> get playback => events.stream;
 
   @override
   Future<void> play(List<MusicReference> items, {int startIndex = 0}) async {
+    if (playError case final error?) throw error;
     queue = List.of(items);
     this.startIndex = startIndex;
     emit(queue[startIndex], playing: true);
