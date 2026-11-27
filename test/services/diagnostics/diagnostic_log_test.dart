@@ -68,7 +68,12 @@ void main() {
     final error = StateError('layout failed');
     final stack = _CountingStack();
     for (var index = 0; index < 1000; index++) {
-      log.record(DiagnosticEvent.frameworkError, error: error, stack: stack);
+      log.record(
+        DiagnosticEvent.frameworkError,
+        error: error,
+        stack: stack,
+        frameworkLibrary: 'rendering library',
+      );
       log.record(DiagnosticEvent.appResumed);
     }
     expect(stack.formats, 4);
@@ -80,12 +85,14 @@ void main() {
     );
     expect(
       log.record(
-        DiagnosticEvent.playbackCommandFailed,
+        DiagnosticEvent.frameworkError,
         error: error,
         stack: stack,
+        frameworkLibrary: 'widgets library',
       ),
       isTrue,
     );
+    expect(stack.formats, 5);
   });
 
   test(
@@ -113,6 +120,29 @@ void main() {
         preferences.snapshots.last.last,
         endsWith('localLibraryLoaded count=99'),
       );
+      await log.flush();
+      expect(preferences.snapshots, hasLength(2));
+    },
+  );
+
+  test(
+    'a pending flush tries the latest snapshot after a write fails',
+    () async {
+      final previous = SharedPreferencesAsyncPlatform.instance;
+      final preferences = _BlockingPreferences();
+      SharedPreferencesAsyncPlatform.instance = preferences;
+      addTearDown(() => SharedPreferencesAsyncPlatform.instance = previous);
+
+      final log = DiagnosticLog()..start();
+      unawaited(log.flush());
+      await preferences.started.future;
+      log.record(DiagnosticEvent.appHidden);
+      final hiddenFlush = log.flush();
+      preferences.finish.completeError(StateError('Storage unavailable'));
+      await hiddenFlush;
+
+      expect(preferences.snapshots, hasLength(2));
+      expect(preferences.snapshots.last.last, endsWith('appHidden'));
       await log.flush();
       expect(preferences.snapshots, hasLength(2));
     },

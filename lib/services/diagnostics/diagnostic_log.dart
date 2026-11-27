@@ -85,12 +85,20 @@ enum DiagnosticOperation {
   seek,
 }
 
+typedef _ErrorGroup = ({
+  DiagnosticOperation? operation,
+  String kind,
+  String? platformCode,
+  String? library,
+});
+
 /// Bounded, local history of app events, counts, and sanitized error details.
 class DiagnosticLog {
   static const _storageKey = 'diagnostics.recentEvents.v1';
   static const _capacity = 300;
   static const _errorWindow = Duration(seconds: 2);
-  static const _errorsPerEventWindow = 4;
+  static const _errorsPerGroupWindow = 4;
+  static const _errorsPerEventWindow = 16;
   static final _appFrame = RegExp(
     r'\(package:musaic/([a-z0-9_/]+\.dart:\d+:\d+)\)',
   );
@@ -152,7 +160,11 @@ class DiagnosticLog {
   Talker get talker => _talker;
 
   final _errorClock = Stopwatch()..start();
-  final _errorSamples = <DiagnosticEvent, ({int untilMs, int count})>{};
+  final _errorSamples =
+      <
+        DiagnosticEvent,
+        ({int untilMs, int count, Map<_ErrorGroup, int> groups})
+      >{};
   SharedPreferencesAsync? _preferences;
   Future<void>? _restoring;
   Future<void>? _writing;
@@ -203,7 +215,10 @@ class DiagnosticLog {
     StackTrace? stack,
     String? frameworkLibrary,
   }) {
-    if (error != null && !_sampleError(event)) return false;
+    final group = error == null
+        ? null
+        : _classifyError(error, operation, frameworkLibrary);
+    if (group != null && !_sampleError(event, group)) return false;
     final now = DateTime.timestamp();
     var message = event.name;
     if (count != null ||
@@ -219,7 +234,7 @@ class DiagnosticLog {
       ].join(' ');
     }
     if (error != null) {
-      message = _withErrorDetails(message, error, stack, frameworkLibrary);
+      message = _withErrorDetails(message, error, stack, group!);
     }
     final last = talker.history.lastOrNull;
     if (last != null &&
@@ -239,25 +254,33 @@ class DiagnosticLog {
     return true;
   }
 
-  bool _sampleError(DiagnosticEvent event) {
+  bool _sampleError(DiagnosticEvent event, _ErrorGroup group) {
     final nowMs = _errorClock.elapsedMilliseconds;
-    final sample = _errorSamples[event];
+    var sample = _errorSamples[event];
     if (sample == null || nowMs >= sample.untilMs) {
-      _errorSamples[event] = (
+      sample = (
         untilMs: nowMs + _errorWindow.inMilliseconds,
-        count: 1,
+        count: 0,
+        groups: <_ErrorGroup, int>{},
       );
-      return true;
     }
-    if (sample.count >= _errorsPerEventWindow) return false;
-    _errorSamples[event] = (untilMs: sample.untilMs, count: sample.count + 1);
+    final count = sample.groups[group] ?? 0;
+    if (count >= _errorsPerGroupWindow ||
+        sample.count >= _errorsPerEventWindow) {
+      return false;
+    }
+    sample.groups[group] = count + 1;
+    _errorSamples[event] = (
+      untilMs: sample.untilMs,
+      count: sample.count + 1,
+      groups: sample.groups,
+    );
     return true;
   }
 
-  static String _withErrorDetails(
-    String message,
+  static _ErrorGroup _classifyError(
     Object error,
-    StackTrace? stack,
+    DiagnosticOperation? operation,
     String? frameworkLibrary,
   ) {
     final kind = switch (error) {
@@ -281,6 +304,20 @@ class DiagnosticLog {
       PlatformException(:final code) when _platformCodes.contains(code) => code,
       _ => null,
     };
+    return (
+      operation: operation,
+      kind: kind,
+      platformCode: platformCode,
+      library: _frameworkLibraries[frameworkLibrary],
+    );
+  }
+
+  static String _withErrorDetails(
+    String message,
+    Object error,
+    StackTrace? stack,
+    _ErrorGroup group,
+  ) {
     final reasons = switch (error) {
       PlatformException(
         code: 'AndroidAudioError' || 'Unexpected AndroidAudioError',
@@ -302,7 +339,9 @@ class DiagnosticLog {
     final frameworkFrame = frames == null
         ? null
         : _frameworkFrame.firstMatch(frames)?.group(1);
-    final library = _frameworkLibraries[frameworkLibrary];
+    final kind = group.kind;
+    final platformCode = group.platformCode;
+    final library = group.library;
     return [
       message,
       'error=$kind',
@@ -351,6 +390,8 @@ class DiagnosticLog {
         try {
           await preferences.setStringList(_storageKey, _serializeHistory());
         } catch (_) {
+          // A newer explicit flush still needs its own write attempt.
+          if (_flushAgain && _dirty) continue;
           // Leave a failed snapshot pending without retrying on a timer loop.
           scheduleFollowUp = _dirty;
           _dirty = true;
