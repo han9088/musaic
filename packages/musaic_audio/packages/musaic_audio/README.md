@@ -2,6 +2,8 @@
 
 musaic_audio is a feature-rich audio player for Android, iOS, macOS and web.
 
+This package is a fork of [just_audio](https://github.com/ryanheise/just_audio) by Ryan Heise and the project contributors. It retains the upstream [MIT license](LICENSE). See the [Musaic Audio usage guide](../../README.md) for installation and examples.
+
 [Platform Support](#platform-support) — [Upstream API Documentation](https://pub.dev/documentation/just_audio/latest/just_audio/just_audio-library.html) — [Tutorials](#tutorials) — [Background Audio](../musaic_audio_background) — [Community Support](https://stackoverflow.com/questions/tagged/just-audio)
 
 ![Screenshot with arrows pointing to features](https://user-images.githubusercontent.com/19899190/125459608-e89cd6d4-9f09-426c-abcc-ed7513d9acfc.png)
