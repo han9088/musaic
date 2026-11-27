@@ -95,7 +95,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AlbumColorOrganization _colorOrganization = AlbumColorOrganization(
     _albumColors,
     onApplied: () => setState(() {
-      _albumLayout.colorOrganized = _colorOrganization.enabled;
       _albumLayout.gridAlbums.clear();
       _albumLayout.selectedAlbum = null;
     }),
@@ -962,12 +961,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
-    final displayAlbums = _colorOrganization.enabled
+    final organizedAlbums = _colorOrganization.enabled
         ? _albumColors.organize(albums, _colorOrganization.family)
-        : albums;
-    _albumLayout.colorOrganized = _colorOrganization.enabled;
+        : const <Map<String, dynamic>>[];
+    _albumLayout.colorOrganized = organizedAlbums.isNotEmpty;
     return AlbumCanvasViewport(
-      albums: displayAlbums,
+      albums: organizedAlbums.isEmpty ? albums : organizedAlbums,
       layout: _albumLayout,
       transform: _transform,
       interaction: _interaction,

@@ -27,14 +27,15 @@ import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class _FixedAlbumCache extends MockAlbumCache {
-  _FixedAlbumCache({this.trackCount});
+  _FixedAlbumCache({this.trackCount, this.asset = 'assets/albums/0.jpg'});
 
   final int? trackCount;
+  final String asset;
 
   @override
   Future<List<Map<String, dynamic>>> load() async => [
     {
-      'asset': 'assets/albums/0.jpg',
+      'asset': asset,
       'title': 'Album',
       'artist': 'Artist',
       if (trackCount != null) 'trackCount': trackCount,
@@ -73,6 +74,40 @@ class _CountingAlbumLayout extends HomeAlbumLayoutState {
 }
 
 void main() {
+  testWidgets('color organization keeps covers while no colors are indexed', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomePage(
+            albumCache: _FixedAlbumCache(asset: 'local:placeholder'),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final settings = tester.widget<HomeSheet>(find.byType(HomeSheet));
+    expect(find.byType(AlbumCanvasViewport), findsOneWidget);
+    expect(settings.colorIndex!.availableFamilies, isEmpty);
+
+    settings.onColorOrganizeChanged!(true);
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(tester.takeException(), isNull);
+    final viewport = tester.widget<AlbumCanvasViewport>(
+      find.byType(AlbumCanvasViewport),
+    );
+    expect(viewport.albums.single['title'], 'Album');
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets('the entire visible tilted canvas accepts pans at minimum zoom', (
     tester,
   ) async {
