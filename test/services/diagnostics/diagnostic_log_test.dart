@@ -151,6 +151,32 @@ void main() {
     ]);
   });
 
+  test('retains macOS error codes without private paths', () async {
+    final log = DiagnosticLog();
+    log.record(
+      DiagnosticEvent.localLibraryFailed,
+      error: PlatformException(
+        code: 'music_library',
+        message: 'Cannot play /private/Music/Track.m4a',
+      ),
+    );
+    log.record(
+      DiagnosticEvent.directoryScanFailed,
+      operation: DiagnosticOperation.restoreDirectory,
+      error: PlatformException(
+        code: 'directoryUnavailable',
+        message: 'Cannot restore /private/Music',
+      ),
+    );
+    expect(await log.recentEvents(), [
+      endsWith('localLibraryFailed error=platform platformCode=music_library'),
+      endsWith(
+        'directoryScanFailed operation=restoreDirectory '
+        'error=platform platformCode=directoryUnavailable',
+      ),
+    ]);
+  });
+
   test(
     'retains the Flutter subsystem and source frame without app frames',
     () async {
