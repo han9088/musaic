@@ -1,0 +1,23 @@
+name: musaic_audio_desktop
+description: Reserved Windows and Linux implementation of musaic_audio.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  musaic_audio_platform_interface:
+    path: ../musaic_audio_platform_interface
+
+flutter:
+  plugin:
+    implements: musaic_audio
+    platforms:
+      windows:
+        dartPluginClass: MusaicAudioDesktop
+      linux:
+        dartPluginClass: MusaicAudioDesktop
