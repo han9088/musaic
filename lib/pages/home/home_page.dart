@@ -136,9 +136,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   void _commitCatalog(
     List<Map<String, dynamic>> albums,
     List<ProviderAlbum>? sourceAlbums,
-    _HomeMusicSource source,
-  ) {
-    _albumColors.retainAlbums(albums);
+    _HomeMusicSource source, {
+    VoidCallback? retainColors,
+  }) {
+    if (retainColors == null) {
+      _albumColors.retainAlbums(albums);
+    } else {
+      retainColors();
+    }
     _colorOrganization.retainAvailableFamilies();
     _playback.bind(_sources.provider, sourceAlbums);
     _catalog = albums;
@@ -180,6 +185,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         setState(() => _commitCatalog(target, sourceAlbums, source));
         return;
       }
+      final retainColors = _albumColors.prepareRetention(target);
       setState(() => _sourceTransition.preparing = true);
       _syncMotion();
       final viewportSize = _portraitSize ?? MediaQuery.sizeOf(context);
@@ -231,7 +237,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (exit.tiles.isEmpty && enter.tiles.isEmpty) {
         setState(() {
           _sourceTransition.preparing = false;
-          _commitCatalog(target, sourceAlbums, source);
+          _commitCatalog(
+            target,
+            sourceAlbums,
+            source,
+            retainColors: retainColors,
+          );
         });
         return;
       }
@@ -239,6 +250,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         targetAlbums: target,
         exit: exit,
         enter: enter,
+        onHandoff: (target) => _commitCatalog(
+          target,
+          _sources.catalog.value,
+          _currentSource,
+          retainColors: retainColors,
+        ),
       );
     } catch (error, stack) {
       diagnosticLog.record(
@@ -574,8 +591,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
       isMounted: () => mounted,
       notifyChanged: () => setState(() {}),
-      onHandoff: (target) =>
-          _commitCatalog(target, _sources.catalog.value, _currentSource),
       onMotionChanged: _syncMotion,
     );
     _layout.addStatusListener((status) {

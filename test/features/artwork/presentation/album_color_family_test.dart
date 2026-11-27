@@ -33,6 +33,26 @@ void main() {
     index.dispose();
   });
 
+  test('prepares target keys before changing the outgoing colors', () async {
+    final index = AlbumColorFamilyIndex();
+    addTearDown(index.dispose);
+    final old = {'id': 'old', 'asset': 'remote:old'};
+    final next = {'id': 'next', 'asset': 'remote:next'};
+    index.register(old, const Color(0xff2222bb));
+    await Future<void>.delayed(Duration.zero);
+
+    final target = [next];
+    final retainColors = index.prepareRetention(target);
+    target.clear();
+    expect(index.familyOf(old), isNotNull);
+    index.register(next, const Color(0xffbb2222));
+    retainColors();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(index.familyOf(old), isNull);
+    expect(index.familyOf(next), isNotNull);
+  });
+
   test('neutral family exists only when neutral artwork exists', () async {
     final index = AlbumColorFamilyIndex();
     final neutral = {'id': 'neutral', 'asset': 'remote:neutral'};

@@ -15,7 +15,6 @@ class HomeSourceTransition {
     required TickerProvider vsync,
     required this._isMounted,
     required this._notifyChanged,
-    required this._onHandoff,
     required this._onMotionChanged,
   }) {
     timeline = AnimationController(vsync: vsync)
@@ -25,7 +24,6 @@ class HomeSourceTransition {
 
   final bool Function() _isMounted;
   final VoidCallback _notifyChanged;
-  final void Function(List<Map<String, dynamic>>) _onHandoff;
   final VoidCallback _onMotionChanged;
 
   late final AnimationController timeline;
@@ -35,6 +33,7 @@ class HomeSourceTransition {
   Map<(int, int), SourceTileMotion> enterMotions = const {};
   SourceTransitionPhase? phase;
   Completer<void>? _completer;
+  void Function(List<Map<String, dynamic>>)? _onHandoff;
   double exitDurationMs = 0;
   double sourceDurationMs = 0;
   bool preparing = false;
@@ -46,7 +45,9 @@ class HomeSourceTransition {
     exit,
     required ({Map<(int, int), SourceTileMotion> tiles, double durationMs})
     enter,
+    required void Function(List<Map<String, dynamic>>) onHandoff,
   }) {
+    _onHandoff = onHandoff;
     exitMotions = exit.tiles;
     enterMotions = enter.tiles;
     exitDurationMs = exit.durationMs;
@@ -73,7 +74,7 @@ class HomeSourceTransition {
     }
     if (phase == SourceTransitionPhase.handoff &&
         elapsed >= exitDurationMs + sourceHandoffMs) {
-      _onHandoff(targetAlbums!);
+      _onHandoff!(targetAlbums!);
       phase = SourceTransitionPhase.enter;
       _notifyChanged();
     }
@@ -94,6 +95,7 @@ class HomeSourceTransition {
 
   /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
   void _finish() {
+    _onHandoff = null;
     final done = _completer;
     _completer = null;
     if (done != null && !done.isCompleted) done.complete();

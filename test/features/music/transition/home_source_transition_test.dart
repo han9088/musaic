@@ -18,10 +18,6 @@ void main() {
       vsync: tester,
       isMounted: () => true,
       notifyChanged: () => phases.add(transition.phase),
-      onHandoff: (albums) {
-        expect(albums.single['asset'], 'asset-a');
-        handoffs++;
-      },
       onMotionChanged: () {},
     );
     final completed = transition.start(
@@ -30,6 +26,10 @@ void main() {
       ],
       exit: exit,
       enter: enter,
+      onHandoff: (albums) {
+        expect(albums.single['asset'], 'asset-a');
+        handoffs++;
+      },
     );
     expect(transition.phase, SourceTransitionPhase.exit);
     await tester.pump();

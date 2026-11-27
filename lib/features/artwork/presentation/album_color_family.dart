@@ -71,11 +71,19 @@ class AlbumColorFamilyIndex extends ChangeNotifier {
   AlbumColorFamily? familyOf(Map<String, dynamic> album) => _albumFamilies[_key(album)];
 
   /// 清除不属于当前曲库的索引，避免不同音乐源的旧色系残留。
-  void retainAlbums(List<Map<String, dynamic>> albums) {
+  void retainAlbums(List<Map<String, dynamic>> albums) =>
+      _retainKeys(albums.map(_key).toSet());
+
+  /// Builds the target keys before the source transition starts.
+  VoidCallback prepareRetention(List<Map<String, dynamic>> albums) {
     final keys = albums.map(_key).toSet();
-    final removed = _features.keys.where((key) => !keys.contains(key)).toList();
-    if (removed.isEmpty) return;
-    for (final key in removed) { _features.remove(key); }
+    return () => _retainKeys(keys);
+  }
+
+  void _retainKeys(Set<String> keys) {
+    final previousCount = _features.length;
+    _features.removeWhere((key, _) => !keys.contains(key));
+    if (_features.length == previousCount) return;
     _scheduleRebuild();
     _scheduleWrite();
   }
