@@ -135,15 +135,22 @@ final class MusicSourceController {
     _selectionTouched = true;
     busy.value = true;
     problem.value = null;
+    var operation = DiagnosticOperation.addDirectory;
     try {
       final added = add ? await library.addDirectory() : null;
       if (add && added == null) return;
-      if (!updating) await library.loadCached();
+      if (!updating) {
+        operation = DiagnosticOperation.loadDirectoryCache;
+        await library.loadCached();
+      }
       if (_disposed) return;
+      operation = DiagnosticOperation.saveDirectorySelection;
       await library.index.setSelected(library.sources.value.isNotEmpty);
       if (_disposed) return;
       if (updating) {
+        operation = DiagnosticOperation.scanDirectory;
         await library.refresh(source: added);
+        operation = DiagnosticOperation.publishDirectoryCatalog;
         if (!_disposed) await _publishLocalCatalog();
         return;
       }
@@ -153,11 +160,17 @@ final class MusicSourceController {
         localSelected.value = true;
         mock2Selected.value = false;
       });
+      operation = DiagnosticOperation.publishDirectoryCatalog;
       await _publishLocalCatalog();
       await _disposeProvider(old);
       diagnosticLog.record(DiagnosticEvent.directorySourceSelected);
-    } catch (error) {
-      diagnosticLog.record(DiagnosticEvent.directorySourceFailed, error: error);
+    } catch (error, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.directorySourceFailed,
+        operation: operation,
+        error: error,
+        stack: stack,
+      );
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
     } finally {
       if (!_disposed) busy.value = false;
@@ -256,8 +269,12 @@ final class MusicSourceController {
         DiagnosticEvent.localLibraryLoaded,
         count: albums.length,
       );
-    } catch (error) {
-      diagnosticLog.record(DiagnosticEvent.localLibraryFailed, error: error);
+    } catch (error, stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.localLibraryFailed,
+        error: error,
+        stack: stack,
+      );
       if (!_disposed) problem.value = MusicSourceProblem.scanFailed;
     } finally {
       try {
@@ -347,10 +364,12 @@ final class MusicSourceController {
   Future<void> _disposeProvider(MusicProvider? provider) async {
     try {
       await provider?.dispose();
-    } catch (error) {
+    } catch (error, stack) {
       diagnosticLog.record(
         DiagnosticEvent.musicSourceSwitchFailed,
+        operation: DiagnosticOperation.disposePreviousSource,
         error: error,
+        stack: stack,
       );
     }
   }

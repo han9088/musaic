@@ -22,9 +22,12 @@ import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
 import 'package:musaic/services/mock_album_cache.dart';
+import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/music/custom_artwork_store.dart';
 import 'package:musaic/ui/bottom_sheet/bottom_sheet.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 class _FixedAlbumCache extends MockAlbumCache {
   _FixedAlbumCache({this.trackCount, this.asset = 'assets/albums/0.jpg'});
@@ -106,6 +109,72 @@ void main() {
     );
     expect(viewport.albums.single['title'], 'Album');
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('color-organized canvas can switch to an empty local library', (
+    tester,
+  ) async {
+    addTearDown(tester.pump);
+    final preferences = SharedPreferencesAsyncPlatform.instance;
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+    addTearDown(() => SharedPreferencesAsyncPlatform.instance = preferences);
+    final sources = MusicSourceController();
+    addTearDown(sources.dispose);
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AppBottomSheetHost(
+          child: HomePage(albumCache: _FixedAlbumCache(), sources: sources),
+        ),
+      ),
+    );
+    await tester.pump();
+    final viewport = find.byType(AlbumCanvasViewport);
+    final sheet = tester.widget<HomeSheet>(find.byType(HomeSheet));
+    final album = tester.widget<AlbumCanvasViewport>(viewport).albums.single;
+    sheet.onColorOrganizeChanged!(true);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.takeException(), isNull);
+    expect(tester.widget<AlbumCanvasViewport>(viewport).albums, [album]);
+
+    sheet.colorIndex!.register(album, Colors.red);
+    await tester.pump();
+    sheet.onColorFamilySelected!(sheet.colorIndex!.availableFamilies.single);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      tester.widget<AlbumCanvasViewport>(viewport).layout.colorOrganized,
+      isTrue,
+    );
+
+    final selection = sheet.onSourceSelection!(() async {
+      sources.catalog.value = const [];
+    });
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    final outgoing = tester.widget<AlbumCanvasViewport>(viewport);
+    expect(outgoing.albums, [album]);
+    expect(outgoing.layout.colorOrganized, isTrue);
+    for (var frame = 0; frame < 150 && sheet.sourceSwitching!.value; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(sheet.sourceSwitching!.value, isFalse);
+    await selection;
+    final localizations = AppLocalizations.of(
+      tester.element(find.byType(HomePage)),
+    );
+    expect(find.text(localizations.musicSourceEmpty), findsOneWidget);
+    expect(viewport, findsNothing);
+    expect(sheet.colorIndex!.availableFamilies, isEmpty);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    // Let artwork reads from the outgoing Android canvas reach their timeout.
+    await tester.pump(const Duration(seconds: 4));
   });
 
   testWidgets('the entire visible tilted canvas accepts pans at minimum zoom', (

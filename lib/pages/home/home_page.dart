@@ -130,14 +130,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _artworkMode.isTransitioning) {
       return;
     }
+    setState(() => _commitCatalog(albums, sourceAlbums, _currentSource));
+  }
+
+  void _commitCatalog(
+    List<Map<String, dynamic>> albums,
+    List<ProviderAlbum>? sourceAlbums,
+    _HomeMusicSource source,
+  ) {
     _albumColors.retainAlbums(albums);
     _colorOrganization.retainAvailableFamilies();
     _playback.bind(_sources.provider, sourceAlbums);
-    setState(() {
-      _catalog = albums;
-      _renderedSource = _currentSource;
-      _albumLayout.clear();
-    });
+    _catalog = albums;
+    _renderedSource = source;
+    _albumLayout.clear();
   }
 
   Future<void> _selectMusicSource(Future<void> Function() select) async {
@@ -158,19 +164,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       final target = await _readCatalog(sourceAlbums, source: source);
       await _albumColors.restore();
       if (!mounted) return;
-      _albumColors.retainAlbums(target);
-      _colorOrganization.retainAvailableFamilies();
       if (source == _renderedSource || _reduceMotion || _landscape) {
         if (source == _renderedSource &&
             identical(sourceAlbums, previousCatalog)) {
           return;
         }
-        _playback.bind(_sources.provider, sourceAlbums);
-        setState(() {
-          _catalog = target;
-          _renderedSource = source;
-          _albumLayout.clear();
-        });
+        setState(() => _commitCatalog(target, sourceAlbums, source));
         return;
       }
 
@@ -178,12 +177,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (!mounted) return;
       _catalog ??= oldAlbums;
       if (oldAlbums.isEmpty && target.isEmpty) {
-        _playback.bind(_sources.provider, sourceAlbums);
-        setState(() {
-          _catalog = target;
-          _renderedSource = source;
-          _albumLayout.clear();
-        });
+        setState(() => _commitCatalog(target, sourceAlbums, source));
         return;
       }
       setState(() => _sourceTransition.preparing = true);
@@ -235,12 +229,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         target.isEmpty ? const [] : snapshot.cells,
       );
       if (exit.tiles.isEmpty && enter.tiles.isEmpty) {
-        _playback.bind(_sources.provider, sourceAlbums);
         setState(() {
-          _catalog = target;
-          _renderedSource = source;
           _sourceTransition.preparing = false;
-          _albumLayout.clear();
+          _commitCatalog(target, sourceAlbums, source);
         });
         return;
       }
@@ -583,12 +574,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       vsync: this,
       isMounted: () => mounted,
       notifyChanged: () => setState(() {}),
-      onHandoff: (target) {
-        _catalog = target;
-        _renderedSource = _currentSource;
-        _playback.bind(_sources.provider, _sources.catalog.value);
-        _albumLayout.clear();
-      },
+      onHandoff: (target) =>
+          _commitCatalog(target, _sources.catalog.value, _currentSource),
       onMotionChanged: _syncMotion,
     );
     _layout.addStatusListener((status) {

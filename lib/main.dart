@@ -3,6 +3,8 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:audioplayers/audioplayers.dart' show AudioLogger, AudioLogLevel;
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -14,25 +16,31 @@ import 'storage/settings/app_language_preference.dart';
 Future<void> main() async {
   DesktopSettingsWindow.enable();
   WidgetsFlutterBinding.ensureInitialized();
+  if (kReleaseMode) AudioLogger.logLevel = AudioLogLevel.none;
   diagnosticLog.start();
   final onFlutterError = FlutterError.onError;
   FlutterError.onError = (details) {
-    diagnosticLog.record(
+    final recorded = diagnosticLog.record(
       DiagnosticEvent.frameworkError,
       error: details.exception,
       stack: details.stack,
+      frameworkLibrary: details.library,
     );
-    onFlutterError?.call(details);
+    if (recorded ||
+        !kReleaseMode ||
+        onFlutterError != FlutterError.dumpErrorToConsole) {
+      onFlutterError?.call(details);
+    }
   };
   final dispatcher = PlatformDispatcher.instance;
   final onUnhandledError = dispatcher.onError;
   dispatcher.onError = (error, stack) {
-    diagnosticLog.record(
+    final recorded = diagnosticLog.record(
       DiagnosticEvent.unhandledError,
       error: error,
       stack: stack,
     );
-    unawaited(diagnosticLog.flush());
+    if (recorded) unawaited(diagnosticLog.flush());
     return onUnhandledError?.call(error, stack) ?? false;
   };
   GoogleFonts.config.allowRuntimeFetching = false;

@@ -880,6 +880,14 @@ void main() {
       buildSignature: '',
     );
     diagnosticLog.record(DiagnosticEvent.cameraAccessDenied);
+    diagnosticLog.record(
+      DiagnosticEvent.directorySourceFailed,
+      operation: DiagnosticOperation.addDirectory,
+      error: PlatformException(
+        code: 'pickerFailed',
+        message: 'Cannot open /private-music',
+      ),
+    );
     await tester.pumpWidget(
       const MaterialApp(
         locale: Locale('en'),
@@ -950,6 +958,12 @@ void main() {
     expect(report, contains('System: iOS 26.1'));
     expect(report, contains('Musaic version: 1.0.0 (1)'));
     expect(report, contains('cameraAccessDenied'));
+    expect(
+      report,
+      contains(
+        'operation=addDirectory error=platform platformCode=pickerFailed',
+      ),
+    );
     expect(report, isNot(contains(description)));
     expect(report, isNot(contains('private-')));
     expect(report, isNot(contains('Private phone name')));
@@ -959,6 +973,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(picker.fileName, endsWith('.txt'));
     expect(picker.content, contains('cameraAccessDenied'));
+    expect(picker.content, contains('platformCode=pickerFailed'));
+    expect(picker.content, isNot(contains('/private-music')));
     expect(picker.content, isNot(contains(description)));
     expect(find.text(l10n.diagnosticsExported), findsOneWidget);
     await tester.tap(find.byIcon(PhosphorIcons.caretDownBold).hitTestable());

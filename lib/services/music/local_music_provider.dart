@@ -310,18 +310,23 @@ final class LocalMusicProvider implements MusicProvider {
   AudioPlayer _getPlayer() {
     if (_player case final player?) return player;
     final player = _player = AudioPlayer();
-    void failed(Object error) {
-      diagnosticLog.record(DiagnosticEvent.playbackPlayerFailed, error: error);
+    void failed(Object error, StackTrace stack) {
+      diagnosticLog.record(
+        DiagnosticEvent.playbackPlayerFailed,
+        error: error,
+        stack: stack,
+      );
       _emit(status: MusicPlaybackStatus.error, error: error);
       if (_scopedAudio == null || _needsSource) return;
       final generation = _generation;
       unawaited(
         _command(() async {
           if (generation == _generation) await _releaseScopedAudio(player);
-        }).catchError((Object error) {
+        }).catchError((Object error, StackTrace stack) {
           diagnosticLog.record(
             DiagnosticEvent.playbackPlayerFailed,
             error: error,
+            stack: stack,
           );
         }),
       );
@@ -330,12 +335,6 @@ final class LocalMusicProvider implements MusicProvider {
     _subscriptions.add(
       player.onPositionChanged.listen(
         (value) => _emit(position: value),
-        onError: failed,
-      ),
-    );
-    _subscriptions.add(
-      player.onDurationChanged.listen(
-        (value) => _emit(duration: value),
         onError: failed,
       ),
     );
@@ -351,7 +350,12 @@ final class LocalMusicProvider implements MusicProvider {
       }, onError: failed),
     );
     _subscriptions.add(
-      player.onPlayerComplete.listen((_) {
+      player.eventStream.listen((event) {
+        if (event.eventType == AudioEventType.duration) {
+          _emit(duration: event.duration!);
+          return;
+        }
+        if (event.eventType != AudioEventType.complete) return;
         final generation = _generation;
         unawaited(
           _command(() async {
@@ -363,16 +367,16 @@ final class LocalMusicProvider implements MusicProvider {
               _emit(status: MusicPlaybackStatus.completed);
               await _releaseScopedAudio(player);
             }
-          }).catchError((Object error) {
+          }).catchError((Object error, StackTrace stack) {
             diagnosticLog.record(
               DiagnosticEvent.playbackAdvanceFailed,
               error: error,
+              stack: stack,
             );
           }),
         );
       }, onError: failed),
     );
-    _subscriptions.add(player.eventStream.listen((_) {}, onError: failed));
     return player;
   }
 
@@ -454,10 +458,11 @@ final class LocalMusicProvider implements MusicProvider {
     } catch (_) {
       try {
         await _releaseScopedAudio(player);
-      } catch (error) {
+      } catch (error, stack) {
         diagnosticLog.record(
           DiagnosticEvent.playbackPlayerFailed,
           error: error,
+          stack: stack,
         );
       }
       rethrow;
