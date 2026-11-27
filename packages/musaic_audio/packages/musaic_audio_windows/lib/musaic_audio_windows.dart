@@ -172,9 +172,12 @@ final class _PlaylistNode {
     final clip = source is ClippingAudioSourceMessage ? source : null;
     final uriSource = clip?.child ?? source;
     final uri = uriSource is UriAudioSourceMessage ? uriSource : null;
+    final address = uri == null ? null : Uri.tryParse(uri.uri);
     return _PlaylistNode.item(source.id, {
       'id': allocateId(),
       'uri': uri?.uri,
+      if (address?.scheme == 'file')
+        'filePath': address!.toFilePath(windows: true),
       'adaptive': uri is HlsAudioSourceMessage || uri is DashAudioSourceMessage,
       'start': clip?.start?.inMicroseconds,
       'end': clip?.end?.inMicroseconds,

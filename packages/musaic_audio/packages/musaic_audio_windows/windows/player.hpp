@@ -27,6 +27,7 @@
 #include <winrt/Windows.Media.Core.h>
 #include <winrt/Windows.Media.Playback.h>
 #include <winrt/Windows.Media.h>
+#include <winrt/Windows.Storage.h>
 
 #include <algorithm>
 #include <cmath>
@@ -112,19 +113,49 @@ struct Entry {
   std::optional<std::pair<int32_t, std::string>> failure = std::nullopt;
 };
 
+inline winrt::fire_and_forget
+BindLocalFile(winrt::Windows::Media::Core::MediaBindingEventArgs args,
+              winrt::hstring path) {
+  try {
+    const auto deferral = args.GetDeferral();
+    try {
+      const auto operation =
+          winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(path);
+      const auto canceled =
+          args.Canceled(winrt::auto_revoke,
+                        [operation](auto &&, auto &&) { operation.Cancel(); });
+      args.SetStorageFile(co_await operation);
+    } catch (const winrt::hresult_error &) {
+      // The playback list reports an item error for an unresolved binding.
+    }
+    deferral.Complete();
+  } catch (const winrt::hresult_error &) {
+    // WinRT can cancel the binding when an item is removed.
+  }
+}
+
 inline MediaSource
 createMediaSource(const Map &source, bool &local,
                   const std::shared_ptr<AdaptiveSourceSettings> &adaptive) {
+  const auto *path = std::get_if<std::string>(&ValueOrNull(source, "filePath"));
+  local = path != nullptr;
+  if (local) {
+    winrt::Windows::Media::Core::MediaBinder binder;
+    binder.Binding([path = winrt::to_hstring(*path)](auto &&, const auto &args) {
+      BindLocalFile(args, path);
+    });
+    return MediaSource::CreateFromMediaBinder(binder);
+  }
+
   const auto *address = std::get_if<std::string>(&ValueOrNull(source, "uri"));
   if (!address)
     throw std::invalid_argument("This audio source is unavailable on Windows.");
   const Uri uri(winrt::to_hstring(EncodeSpacesInUri(*address)));
-  local = uri.SchemeName() == L"file";
-  if (!local && uri.SchemeName() != L"http" && uri.SchemeName() != L"https") {
+  if (uri.SchemeName() != L"http" && uri.SchemeName() != L"https") {
     throw std::invalid_argument("Unsupported Windows media URL scheme.");
   }
   const auto *headers = std::get_if<Map>(&ValueOrNull(source, "headers"));
-  if (adaptive && !local) {
+  if (adaptive) {
     RequestHeaders request_headers;
     if (headers) {
       for (const auto &[key, value] : *headers) {
@@ -135,7 +166,7 @@ createMediaSource(const Map &source, bool &local,
     }
     return CreateAdaptiveSource(uri, std::move(request_headers), adaptive);
   }
-  if (!local && headers && !headers->empty()) {
+  if (headers && !headers->empty()) {
     throw std::invalid_argument(
         "Windows request headers require the Dart HTTP proxy.");
   }

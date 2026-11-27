@@ -11,7 +11,10 @@ void main() {
   late AudioPlayerPlatform player;
   late List<MethodCall> calls;
 
-  final a = ProgressiveAudioSourceMessage(id: 'a', uri: 'file:///C:/a.wav');
+  final a = ProgressiveAudioSourceMessage(
+    id: 'a',
+    uri: 'file:///C:/musaic%20%C3%A1udio/track%20%231%2520.wav',
+  );
   final clip = ClippingAudioSourceMessage(
     id: 'clip',
     child: ProgressiveAudioSourceMessage(id: 'b', uri: 'file:///C:/b.wav'),
@@ -82,6 +85,8 @@ void main() {
     expect(arguments(0)['initialPosition'], 2000000);
     expect(arguments(0)['shuffleOrder'], [2, 1, 4, 3, 0]);
     final items = arguments(0)['items'] as List<Object?>;
+    final local = items[0] as Map<Object?, Object?>;
+    expect(local['filePath'], r'C:\musaic áudio\track #1%20.wav');
     final clipped = items[1] as Map<Object?, Object?>;
     expect(clipped['start'], 2520000000);
     expect(clipped['end'], 2580000000);

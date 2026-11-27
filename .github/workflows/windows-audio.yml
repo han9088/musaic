@@ -63,19 +63,64 @@ jobs:
             }
           }
 
-      - name: Check Windows audio services
+      - name: Set up Windows audio output
+        id: audio
         if: ${{ !cancelled() && steps.flutter.outcome == 'success' }}
         run: |
           if (-not (Test-Path "$env:SystemRoot\System32\mfplat.dll")) {
             Install-WindowsFeature -Name Server-Media-Foundation
           }
           Get-Service -Name AudioEndpointBuilder, Audiosrv | ForEach-Object {
-            if ($_.Status -ne 'Running') { Start-Service -Name $_.Name -ErrorAction Continue }
+            if ($_.Status -ne 'Running') { Start-Service -Name $_.Name }
           }
           Get-Service -Name AudioEndpointBuilder, Audiosrv
-          Get-CimInstance Win32_SoundDevice | Select-Object Name, Status
+
+          function Get-RenderDevices {
+            Get-PnpDevice -Class AudioEndpoint -PresentOnly -ErrorAction SilentlyContinue |
+              Where-Object { $_.Status -eq 'OK' -and $_.InstanceId -like 'SWD\MMDEVAPI\{0.0.0.*' }
+          }
+          function Get-VerifiedArchive($url, $file, $sha256) {
+            curl.exe --fail --location --retry 3 --silent --show-error $url -o $file
+            if ($LASTEXITCODE -ne 0) { throw "Download failed for $url." }
+            if ((Get-FileHash -Algorithm SHA256 $file).Hash -ne $sha256) {
+              throw "Checksum mismatch for $url."
+            }
+          }
+
+          $devices = @(Get-RenderDevices)
+          if ($devices.Count -eq 0) {
+            # The hosted image has audio services but no audio hardware.
+            $driverZip = Join-Path $env:RUNNER_TEMP 'vb-cable.zip'
+            $driverDir = Join-Path $env:RUNNER_TEMP 'vb-cable'
+            Get-VerifiedArchive 'https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack46.zip' $driverZip `
+              'bc44e8974191a5a2427d6c979e2dab08dbb09925f3f435dfa2f0ba3e45b6eb90'
+            Expand-Archive -LiteralPath $driverZip -DestinationPath $driverDir
+            $signature = Get-AuthenticodeSignature (Join-Path $driverDir 'vbaudio_cable64_win10.cat')
+            if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*CN=Microsoft Windows Hardware Compatibility Publisher*') {
+              throw "VB-CABLE driver catalog has an unexpected signature: $($signature.Status)."
+            }
+
+            $wdk = Join-Path $env:RUNNER_TEMP 'wdk.nupkg'
+            Get-VerifiedArchive 'https://api.nuget.org/v3-flatcontainer/microsoft.windows.wdk.x64/10.0.26100.6584/microsoft.windows.wdk.x64.10.0.26100.6584.nupkg' $wdk `
+              'c393d03dfb640b5c92f546b32f6770ef68cd3aaf691956e7d66d8e2c28a1b55e'
+            & 7z e $wdk 'devgen.exe' -r -bd -y "-o$driverDir"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & (Join-Path $driverDir 'devgen.exe') /add /bus ROOT /hardwareid VBAudioVACWDM
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            pnputil.exe /add-driver (Join-Path $driverDir 'vbMmeCable64_win10.inf') /install
+            if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }
+
+            $deadline = [DateTime]::UtcNow.AddSeconds(30)
+            do {
+              $devices = @(Get-RenderDevices)
+              if ($devices.Count -gt 0) { break }
+              Start-Sleep -Seconds 1
+            } while ([DateTime]::UtcNow -lt $deadline)
+          }
+          if ($devices.Count -eq 0) { throw 'No active Windows playback endpoint was found.' }
+          $devices | Select-Object FriendlyName, Status, InstanceId
 
       - name: Run native musaic_audio integration tests
-        if: ${{ !cancelled() && steps.flutter.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.audio.outcome == 'success' }}
         working-directory: packages/musaic_audio/packages/musaic_audio/example
         run: flutter test integration_test/windows_playback_test.dart -d windows --reporter expanded
