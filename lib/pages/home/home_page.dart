@@ -196,26 +196,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         viewportSize,
         _transform.value,
       );
-      // Audius covers load independently as the incoming tiles mount.
-      // Waiting for every remote cover can leave the old canvas on screen.
+      // The Audius picker prewarms remote covers before it dismisses.
       if (source != _HomeMusicSource.audius) {
         if (_artworkMode.enabled) {
-          final scale = _transform.value.getColumn(0).length;
-          final preparationSnapshot = AlbumGridSnapshot.capture(
-            viewportSize,
-            _transform.value,
-            overscan:
-                PortraitTilt.overscan(viewportSize) + albumGridExtent * scale,
-          );
-          final requests = await _buildXeroxRequests(
-            target,
-            preparationSnapshot.cells,
-            useLayout: false,
-            isActive: () => mounted,
-          );
           sourceXeroxLeases.addAll(
-            await _artworkMode.scheduler.prepare(
-              requests,
+            await _prepareSourceXerox(
+              target,
+              viewportSize,
               isActive: () => mounted,
             ),
           );
@@ -282,6 +269,76 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _sourceTransition.switching.value = false;
       }
     }
+  }
+
+  Future<void> _prepareAudiusArtwork(List<ProviderAlbum> albums) async {
+    final viewport = _portraitSize;
+    if (!mounted || viewport == null || _landscape) return;
+
+    final target = mapProviderAlbums(albums);
+    var waiting = true;
+    bool isActive() => mounted && waiting;
+
+    Future<void> prepare() async {
+      if (_artworkMode.enabled) {
+        final leases = await _prepareSourceXerox(
+          target,
+          viewport,
+          isActive: isActive,
+          allowFailures: true,
+        );
+        for (final lease in leases) {
+          lease.release();
+        }
+        return;
+      }
+
+      final cells = AlbumGridSnapshot.capture(viewport, _transform.value).cells;
+      final center = viewport.center(Offset.zero);
+      cells.sort(
+        (a, b) => (a.rect.center - center).distanceSquared.compareTo(
+          (b.rect.center - center).distanceSquared,
+        ),
+      );
+      await _warmOriginalArtwork(
+        albums: target,
+        cells: cells,
+        isActive: isActive,
+      );
+    }
+
+    try {
+      await prepare().timeout(const Duration(seconds: 2), onTimeout: () {});
+    } catch (_) {
+      // The catalog is usable even when some covers cannot be prepared.
+    } finally {
+      waiting = false;
+    }
+  }
+
+  Future<List<XeroxRasterLease>> _prepareSourceXerox(
+    List<Map<String, dynamic>> albums,
+    Size viewport, {
+    required bool Function() isActive,
+    bool allowFailures = false,
+  }) async {
+    final scale = _transform.value.getColumn(0).length;
+    final snapshot = AlbumGridSnapshot.capture(
+      viewport,
+      _transform.value,
+      overscan: PortraitTilt.overscan(viewport) + albumGridExtent * scale,
+    );
+    final requests = await _buildXeroxRequests(
+      albums,
+      snapshot.cells,
+      useLayout: false,
+      isActive: isActive,
+    );
+    return _artworkMode.scheduler.prepare(
+      requests,
+      isActive: isActive,
+      allowFailures: allowFailures,
+    );
   }
 
   /// 协调动画进度与状态过渡，用于页面状态组织与业务流程协调。
@@ -856,6 +913,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           layoutSwitch: layoutSwitch,
           sourceSwitching: _sourceTransition.switching,
           onSourceSelection: _selectMusicSource,
+          prepareAudiusArtwork: _prepareAudiusArtwork,
           language: widget.language,
           manualRotation: _manualRotation,
           screensaverDelay: _screensaverDelay,

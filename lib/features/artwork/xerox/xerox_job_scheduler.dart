@@ -51,7 +51,10 @@ class XeroxJobScheduler {
           }
           leases.add(lease);
         } catch (error, stack) {
-          if (request.priority == XeroxRasterPriority.overscan) continue;
+          if (allowFailures ||
+              request.priority == XeroxRasterPriority.overscan) {
+            continue;
+          }
           failures.add(error);
           FlutterError.reportError(
             FlutterErrorDetails(
@@ -72,7 +75,7 @@ class XeroxJobScheduler {
       if (cancelled || (isActive != null && !isActive())) {
         throw StateError('Xerox preparation was cancelled.');
       }
-      if (failures.isNotEmpty && !allowFailures) {
+      if (failures.isNotEmpty) {
         throw StateError(
           'Unable to rasterize ${failures.length} visible artwork item(s).',
         );

@@ -498,6 +498,8 @@ void main() {
         createAudius: () => creations++ == 0 ? failed : ready,
       );
       final switching = ValueNotifier(false);
+      final artworkReady = Completer<void>();
+      final preparedAlbums = <ProviderAlbum>[];
       addTearDown(sources.dispose);
       addTearDown(switching.dispose);
       var transitions = 0;
@@ -510,6 +512,10 @@ void main() {
             body: MusicSourcePicker(
               sources: sources,
               sourceSwitching: switching,
+              prepareAudiusArtwork: (albums) {
+                preparedAlbums.addAll(albums);
+                return artworkReady.future;
+              },
               onSourceSelection: (activate) async {
                 transitions++;
                 await activate();
@@ -568,8 +574,21 @@ void main() {
         findsOneWidget,
       );
       expect(transitions, 0);
+      expect(preparedAlbums, isEmpty);
 
       await tester.tap(row);
+      await tester.pump();
+      expect(preparedAlbums, [_Audius.sampleAlbum]);
+      expect(transitions, 0);
+      expect(sources.audiusSelected, isFalse);
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      artworkReady.complete();
       await tester.pumpAndSettle();
       expect(tester.widget<ListTile>(row).selected, isTrue);
       expect(transitions, 1);

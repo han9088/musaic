@@ -31,6 +31,7 @@ import '../../services/app_icon_service.dart';
 import '../../services/app_updates.dart';
 import '../../services/music/apple_music_provider.dart';
 import '../../services/music/audius_music_provider.dart';
+import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
 import '../../storage/settings/developer_options_preference.dart';
@@ -58,6 +59,7 @@ class HomeSheet extends StatefulWidget {
     this.layoutSwitch,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.prepareAudiusArtwork,
     this.language,
     this.manualRotation,
     this.screensaverDelay,
@@ -84,6 +86,7 @@ class HomeSheet extends StatefulWidget {
   final ({Widget button, bool visible})? layoutSwitch;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final Future<void> Function(List<ProviderAlbum>)? prepareAudiusArtwork;
   final AppLanguagePreference? language;
   final ManualRotationPreference? manualRotation;
   final ScreensaverDelayPreference? screensaverDelay;
@@ -312,6 +315,7 @@ class _HomeSheetState extends State<HomeSheet> {
         MusicSourcePicker(
           sources: widget.sources!,
           sourceSwitching: widget.sourceSwitching,
+          prepareAudiusArtwork: widget.prepareAudiusArtwork,
           onSourceSelection: desktop
               ? _selectSource
               : (select) async {

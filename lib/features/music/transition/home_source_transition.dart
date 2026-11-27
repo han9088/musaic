@@ -34,8 +34,8 @@ class HomeSourceTransition {
   SourceTransitionPhase? phase;
   Completer<void>? _completer;
   void Function(List<Map<String, dynamic>>)? _onHandoff;
-  double exitDurationMs = 0;
-  double sourceDurationMs = 0;
+  double _exitDurationMs = 0;
+  double _enterDurationMs = 0;
   bool preparing = false;
 
   /// 控制流程的开始、暂停、取消或结束，用于音乐源、媒体库、播放及切换流程。
@@ -50,12 +50,13 @@ class HomeSourceTransition {
     _onHandoff = onHandoff;
     exitMotions = exit.tiles;
     enterMotions = enter.tiles;
-    exitDurationMs = exit.durationMs;
-    sourceDurationMs = (exit.durationMs + sourceHandoffMs + enter.durationMs)
-        .ceilToDouble();
+    _exitDurationMs = exit.durationMs;
+    _enterDurationMs = enter.durationMs;
     this.targetAlbums = targetAlbums;
     _completer = Completer<void>();
-    timeline.duration = Duration(milliseconds: sourceDurationMs.ceil());
+    timeline.duration = Duration(
+      milliseconds: (_exitDurationMs + sourceHandoffMs).ceil(),
+    );
     phase = SourceTransitionPhase.exit;
     _notifyChanged();
     _onMotionChanged();
@@ -65,24 +66,33 @@ class HomeSourceTransition {
 
   /// 执行当前模块中的advance操作，用于音乐源、媒体库、播放及切换流程。
   void _advance() {
-    final current = phase;
-    if (!_isMounted() || current == null) return;
-    final elapsed = timeline.value * sourceDurationMs;
-    if (current == SourceTransitionPhase.exit && elapsed >= exitDurationMs) {
+    if (_isMounted() &&
+        phase == SourceTransitionPhase.exit &&
+        _elapsedMs >= _exitDurationMs) {
       phase = SourceTransitionPhase.handoff;
-      _notifyChanged();
-    }
-    if (phase == SourceTransitionPhase.handoff &&
-        elapsed >= exitDurationMs + sourceHandoffMs) {
-      _onHandoff!(targetAlbums!);
-      phase = SourceTransitionPhase.enter;
       _notifyChanged();
     }
   }
 
+  double get _elapsedMs => timeline.value * timeline.duration!.inMilliseconds;
+
   /// 处理对应事件并协调后续状态变化，用于音乐源、媒体库、播放及切换流程。
   void _handleStatus(AnimationStatus status) {
     if (status != AnimationStatus.completed || !_isMounted()) return;
+    if (phase != SourceTransitionPhase.enter) {
+      _onHandoff!(targetAlbums!);
+      phase = SourceTransitionPhase.enter;
+      timeline.reset();
+      timeline.duration = Duration(milliseconds: _enterDurationMs.ceil());
+      _notifyChanged();
+      // Mount the incoming tiles before the entrance clock starts.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isMounted() && phase == SourceTransitionPhase.enter) {
+          timeline.forward();
+        }
+      });
+      return;
+    }
     phase = null;
     targetAlbums = null;
     exitMotions = const {};
@@ -122,16 +132,15 @@ class HomeSourceTransition {
           : (context) {
               final zoom = scale();
               final window = viewport(context);
-              final elapsed = timeline.value * sourceDurationMs;
               return current == SourceTransitionPhase.enter
                   ? motion.enterTransform(
-                      elapsedMs: elapsed - exitDurationMs - sourceHandoffMs,
+                      elapsedMs: _elapsedMs,
                       viewport: window,
                       scale: zoom,
                       tileSize: tileSize,
                     )
                   : motion.exitTransform(
-                      elapsedMs: elapsed,
+                      elapsedMs: _elapsedMs,
                       viewport: window,
                       scale: zoom,
                       tileSize: tileSize,

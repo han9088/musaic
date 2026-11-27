@@ -331,6 +331,7 @@ final class MusicSourceController {
 
   /// Load a bounded page before dismissing the picker and switching the canvas.
   Future<void> selectAudius({
+    Future<void> Function(List<ProviderAlbum>)? prepareArtwork,
     Future<void> Function(Future<void> Function())? transition,
   }) async {
     if (_disposed || busy.value || audiusSelected) return;
@@ -357,6 +358,11 @@ final class MusicSourceController {
         problem.value = MusicSourceProblem.audiusEmpty;
         return;
       }
+      final trending = List<ProviderAlbum>.unmodifiable(albums.values.take(24));
+      if (prepareArtwork != null) {
+        await prepareArtwork(trending);
+        if (_disposed) return;
+      }
 
       Future<void> activate() async {
         if (_disposed || _pendingAudius != next) return;
@@ -371,9 +377,7 @@ final class MusicSourceController {
           localSelected.value = false;
           _systemAlbums = const [];
           mock2Selected.value = false;
-          _audiusTrending = List<ProviderAlbum>.unmodifiable(
-            albums.values.take(24),
-          );
+          _audiusTrending = trending;
           catalog.value = _audiusTrending;
         });
         await _disposeProvider(old);

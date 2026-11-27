@@ -21,11 +21,13 @@ class MusicSourcePicker extends StatelessWidget {
     required this.sources,
     this.sourceSwitching,
     this.onSourceSelection,
+    this.prepareAudiusArtwork,
   });
 
   final MusicSourceController sources;
   final ValueListenable<bool>? sourceSwitching;
   final Future<void> Function(Future<void> Function())? onSourceSelection;
+  final Future<void> Function(List<ProviderAlbum>)? prepareAudiusArtwork;
 
   Future<void> _select(Future<void> Function() selection) =>
       onSourceSelection?.call(selection) ?? selection();
@@ -145,7 +147,10 @@ class MusicSourcePicker extends StatelessWidget {
                   : null,
               onTap: selectionBlocked || audiusSelected
                   ? null
-                  : () => sources.selectAudius(transition: _select),
+                  : () => sources.selectAudius(
+                      prepareArtwork: prepareAudiusArtwork,
+                      transition: _select,
+                    ),
             ),
             SettingsSectionHeading(l10n.musicSourceDemoGroup),
             ListTile(
