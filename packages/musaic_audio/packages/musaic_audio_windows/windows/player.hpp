@@ -885,7 +885,8 @@ private:
   void setShuffleOrder() {
     if (!mediaPlaybackList)
       return;
-    mediaPlaybackList.ShuffleEnabled(shuffle_);
+    if (mediaPlaybackList.ShuffleEnabled() != shuffle_)
+      mediaPlaybackList.ShuffleEnabled(shuffle_);
     if (shuffle_ && !order_.empty()) {
       std::vector<MediaPlaybackItem> items;
       for (const auto index : order_)
@@ -946,6 +947,12 @@ private:
     }
     const auto next_index = std::min(
         active.value_or(0) - removed_before_current, entries.size() - 1);
+    const bool preserve_position = anchor && active == index_ && !target_ &&
+                                   !reported_seek_ && !failed_ &&
+                                   state_ != State::kCompleted && ReadyToSeek();
+    if (preserve_position)
+      ReadTimeline();
+    const auto previous_position = position_;
     try {
       const auto items = mediaPlaybackList.Items();
       for (uint32_t i = items.Size(); i > 0; --i) {
@@ -961,7 +968,8 @@ private:
       Map reload = args;
       reload[Value("initialIndex")] = Value(static_cast<int64_t>(
           anchor.value_or(static_cast<uint32_t>(next_index))));
-      reload[Value("initialPosition")] = Value(anchor ? position_ : int64_t{0});
+      reload[Value("initialPosition")] =
+          Value(anchor ? previous_position : int64_t{0});
       auto pending = std::move(load_result_);
       CloseMedia();
       entries_.clear();
@@ -977,6 +985,20 @@ private:
 
     if (anchor) {
       index_ = anchor;
+      if (preserve_position && previous_position > 0) {
+        const bool current_ready = CurrentIndex() == anchor && ReadyToSeek();
+        if (current_ready)
+          ReadTimeline();
+        // Removing or inserting items before the current item can reset its
+        // native timeline even when the item itself stays in the list.
+        if (!current_ready || position_ < previous_position) {
+          Map seek{{Value("index"), Value(static_cast<int64_t>(*anchor))},
+                   {Value("position"), Value(previous_position)}};
+          Result ignored;
+          Seek(seek, ignored);
+          return;
+        }
+      }
       Refresh(true);
       if (state_ == State::kCompleted || failed_)
         broadcastPlaybackEvent();

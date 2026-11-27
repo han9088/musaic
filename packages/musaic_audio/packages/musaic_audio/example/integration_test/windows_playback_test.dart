@@ -41,6 +41,7 @@ void main() {
     final play = player.play().then((_) => playEnded = true);
     await Future<void>.delayed(const Duration(milliseconds: 150));
     expect(playEnded, isFalse);
+    expect(player.position, greaterThanOrEqualTo(start));
     await player.moveAudioSource(0, 2);
     await player.currentIndexStream
         .firstWhere((index) => index == 0)
@@ -49,7 +50,13 @@ void main() {
     expect(player.position, greaterThanOrEqualTo(start));
     await player.pause();
     await play.timeout(timeout);
+  }, skip: !Platform.isWindows);
 
+  testWidgets('Windows clips, seeks, and recovers after a load error',
+      (tester) async {
+    final player = AudioPlayer(handleAudioSessionActivation: false);
+    addTearDown(player.dispose);
+    final source = AudioSource.asset('audio/nature.mp3');
     await player.setAudioSource(source).timeout(timeout);
     final clip = await player
         .setClip(
@@ -66,6 +73,8 @@ void main() {
     expect(player.playing, isTrue);
 
     await player.pause();
+    final directory = await Directory.systemTemp.createTemp('musaic áudio ');
+    addTearDown(() => directory.delete(recursive: true));
     await expectLater(
       player.setFilePath('${directory.path}\\missing.mp3').timeout(timeout),
       throwsA(isA<PlayerException>()),
