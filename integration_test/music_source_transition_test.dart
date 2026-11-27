@@ -9,12 +9,22 @@ import 'package:musaic/pages/home/home_sheet.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('switches the grid from Mock to Mock 2', (tester) async {
+  testWidgets('switches the grid back to the demo source', (tester) async {
     await tester.pumpWidget(const MusaicApp());
 
     final mock = find.byKey(const ValueKey('music-source-mock'));
     final mock2 = find.byKey(const ValueKey('music-source-mock2'));
     final capsule = find.byType(NowPlayingCapsule);
+    final settledSource = find.byWidgetPredicate(
+      (widget) =>
+          widget is HomeSheet && widget.sourceSwitching?.value == false,
+      description: 'settled music source',
+    );
+    final secondDemoArtwork = find.byWidgetPredicate(
+      (widget) =>
+          widget is Image &&
+          widget.semanticLabel?.startsWith('Mock 2 · ') == true,
+    );
     Future<void> waitFor(Finder target) async {
       final elapsed = Stopwatch()..start();
       while (target.evaluate().isEmpty &&
@@ -25,13 +35,7 @@ void main() {
     }
 
     Future<void> openMusicSources() async {
-      await waitFor(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is HomeSheet && widget.sourceSwitching?.value == false,
-          description: 'settled music source',
-        ),
-      );
+      await waitFor(settledSource);
       await waitFor(capsule.hitTestable());
       final l10n = AppLocalizations.of(tester.element(capsule));
       final source = find.widgetWithText(ListTile, l10n.musicSource);
@@ -40,23 +44,36 @@ void main() {
       expect(mock, findsNothing);
       expect(mock2, findsNothing);
       await tester.tap(source);
-      await waitFor(mock2.hitTestable());
+      await waitFor(mock.hitTestable());
+      expect(mock2, findsNothing);
     }
 
+    await waitFor(settledSource);
+    final home = tester.widget<HomeSheet>(find.byType(HomeSheet));
+    final sources = home.sources!;
+    // 第二套演示仅作为内部转场夹具，用户界面不再提供入口。
+    final prepareSecondDemo = home.onSourceSelection!(sources.selectMock2);
+    await waitFor(secondDemoArtwork);
+    await waitFor(settledSource);
+    await prepareSecondDemo;
+
     await openMusicSources();
-    expect(tester.widget<ListTile>(mock).selected, isTrue);
-    await tester.tap(mock2);
+    expect(tester.widget<ListTile>(mock).selected, isFalse);
+    await tester.tap(mock);
 
     await waitFor(
       find.byWidgetPredicate(
         (widget) =>
             widget is Image &&
-            widget.semanticLabel?.startsWith('Mock 2 · ') == true,
+            widget.semanticLabel?.startsWith('Mock 2 · ') == false,
       ),
     );
+    await waitFor(settledSource);
+    expect(secondDemoArtwork, findsNothing);
+    expect(sources.mock2Selected.value, isFalse);
     await openMusicSources();
-    expect(tester.widget<ListTile>(mock2).selected, isTrue);
-    expect(tester.widget<ListTile>(mock).selected, isFalse);
+    expect(tester.widget<ListTile>(mock).selected, isTrue);
+    expect(mock2, findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

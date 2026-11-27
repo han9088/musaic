@@ -1697,7 +1697,7 @@ void main() {
     }),
   );
 
-  testWidgets('settings open directly and keep demo choices in Music source', (
+  testWidgets('settings open directly and keep the demo last in Music source', (
     tester,
   ) async {
     // Drain font notifications queued while the test tree is torn down.
@@ -1779,8 +1779,11 @@ void main() {
     await tester.tap(find.text('Music source'));
     await tester.pumpAndSettle();
     final page = find.byType(SettingsPage);
+    final local = find.byKey(const ValueKey('music-source-local'));
+    expect(mock2, findsNothing);
+    expect(find.text('Demo collection'), findsOneWidget);
     final demoTitle = find.descendant(
-      of: find.descendant(of: mock2, matching: find.byType(Text)),
+      of: find.descendant(of: mock, matching: find.byType(Text)),
       matching: find.byType(RichText),
     );
     expect(tester.widget<RichText>(demoTitle).text.style?.fontSize, 16);
@@ -1789,15 +1792,19 @@ void main() {
       mock,
       find.descendant(of: mock, matching: find.byType(Text)),
     );
-    expect(dotIn(mock2), findsNothing);
     final demoHeading = find.descendant(of: page, matching: find.text('Demo'));
     final demoIcon = find.descendant(
-      of: mock2,
-      matching: find.byIcon(PhosphorIcons.squaresFour),
+      of: mock,
+      matching: find.byIcon(PhosphorIcons.headphones),
     );
+    expect(demoIcon, findsOneWidget);
     expect(tester.widget<Text>(demoHeading).style?.fontSize, 13);
-    expect(tester.getTopLeft(mock2).dx, tester.getTopLeft(page).dx);
+    expect(tester.getTopLeft(mock).dx, tester.getTopLeft(page).dx);
     expect(tester.getTopLeft(demoHeading).dx, tester.getTopLeft(demoIcon).dx);
+    expect(
+      tester.getTopLeft(demoHeading).dy,
+      greaterThan(tester.getBottomLeft(local).dy),
+    );
     expect(find.text('On this device'), findsOneWidget);
     expect(find.text('Local music'), findsOneWidget);
     expect(find.text('Apple Music'), findsOneWidget);
@@ -1866,9 +1873,16 @@ void main() {
     expect(mock2, findsNothing);
     await tester.tap(find.text('Music source'));
     await tester.pumpAndSettle();
-    await tester.tap(mock2);
+    sources.localSelected.value = true;
+    sources.catalog.value = const [];
     await tester.pumpAndSettle();
-    expect(sources.mock2Selected.value, isTrue);
+    expect(tester.widget<ListTile>(mock).selected, isFalse);
+    await tester.ensureVisible(mock);
+    await tester.tap(mock);
+    await tester.pumpAndSettle();
+    expect(sources.catalog.value, isNull);
+    expect(sources.localSelected.value, isFalse);
+    expect(sources.mock2Selected.value, isFalse);
     expect(find.byType(SettingsSheet), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
   });

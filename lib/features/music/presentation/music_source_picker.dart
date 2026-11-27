@@ -68,9 +68,7 @@ class MusicSourcePicker extends StatelessWidget {
             (folderState == DirectoryScanState.failed
                 ? MusicSourceProblem.scanFailed
                 : null);
-        final mock2Selected = sources.mock2Selected.value;
-        final firstDemoSelected = albums == null && !mock2Selected;
-        final secondDemoSelected = albums == null && mock2Selected;
+        final demoSelected = albums == null && !sources.mock2Selected.value;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -151,34 +149,6 @@ class MusicSourcePicker extends StatelessWidget {
                       prepareArtwork: prepareAudiusArtwork,
                       transition: _select,
                     ),
-            ),
-            SettingsSectionHeading(l10n.musicSourceDemoGroup),
-            ListTile(
-              key: const ValueKey('music-source-mock'),
-              selected: firstDemoSelected,
-              leading: const Icon(PhosphorIcons.squaresFour),
-              title: AppSelectionTitle(
-                selected: firstDemoSelected,
-                child: Text(l10n.musicSourceMock),
-              ),
-              onTap: selectionBlocked
-                  ? null
-                  : () => _select(sources.selectMock),
-            ),
-            ListTile(
-              key: const ValueKey('music-source-mock2'),
-              selected: secondDemoSelected,
-              leading: const Icon(
-                PhosphorIcons.squaresFour,
-                color: Colors.white70,
-              ),
-              title: AppSelectionTitle(
-                selected: secondDemoSelected,
-                child: Text(l10n.musicSourceMock2),
-              ),
-              onTap: selectionBlocked
-                  ? null
-                  : () => _select(sources.selectMock2),
             ),
             if (showLocal) ...[
               SettingsSectionHeading(l10n.musicSourceDeviceGroup),
@@ -304,6 +274,19 @@ class MusicSourcePicker extends StatelessWidget {
                   }, style: const TextStyle(color: Colors.white70)),
                 ),
               ),
+            SettingsSectionHeading(l10n.musicSourceDemoGroup),
+            ListTile(
+              key: const ValueKey('music-source-mock'),
+              selected: demoSelected,
+              leading: const Icon(PhosphorIcons.headphones),
+              title: AppSelectionTitle(
+                selected: demoSelected,
+                child: Text(l10n.musicSourceMock),
+              ),
+              onTap: selectionBlocked
+                  ? null
+                  : () => _select(sources.selectMock),
+            ),
           ],
         );
       }

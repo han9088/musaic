@@ -513,10 +513,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get musicSourceDeviceGroup => 'On this device';
 
   @override
-  String get musicSourceMock => 'Demo collection 1';
-
-  @override
-  String get musicSourceMock2 => 'Demo collection 2';
+  String get musicSourceMock => 'Demo collection';
 
   @override
   String get musicSourceLocal => 'Local music';
