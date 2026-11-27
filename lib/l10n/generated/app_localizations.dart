@@ -368,7 +368,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsPro.
   ///
   /// In zh, this message translates to:
-  /// **'Pro'**
+  /// **'Musaic Pro'**
   String get settingsPro;
 
   /// No description provided for @proAnnualPlan.

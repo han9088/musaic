@@ -55,6 +55,7 @@ class _DesktopSettingsSplitViewState extends State<_DesktopSettingsSplitView>
     IconData icon,
     String title, {
     bool selected = false,
+    Color? iconColor,
     required VoidCallback onTap,
   }) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: _rowInset),
@@ -68,7 +69,7 @@ class _DesktopSettingsSplitViewState extends State<_DesktopSettingsSplitView>
       leading: Icon(
         icon,
         size: _iconSize,
-        color: selected ? AppColors.settingsAccent : null,
+        color: iconColor ?? (selected ? AppColors.settingsAccent : null),
       ),
       title: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis),
       selected: selected,
@@ -100,6 +101,9 @@ class _DesktopSettingsSplitViewState extends State<_DesktopSettingsSplitView>
                     icon,
                     title,
                     selected: sidebar == section,
+                    iconColor: section == SettingsSection.pro
+                        ? _proIconColor
+                        : null,
                     onTap: () => _selectSection(section),
                   ),
                   support: SettingsSupportSection(

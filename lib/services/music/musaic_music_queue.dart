@@ -12,9 +12,15 @@ typedef _Track = ({int index, MusicQueueSource source});
 
 /// Owns the native playlist and the grants for the files it can still read.
 final class MusaicMusicQueue {
-  MusaicMusicQueue(this._open);
+  MusaicMusicQueue(
+    this._open, {
+    Future<MusicQueueSource> Function(MusicReference)? prepare,
+    this._cachedUri,
+  }) : _prepare = prepare ?? _open;
 
   final Future<MusicQueueSource> Function(MusicReference) _open;
+  final Future<MusicQueueSource> Function(MusicReference) _prepare;
+  final Future<Uri?> Function(MusicReference)? _cachedUri;
   final _events = StreamController<MusicPlayback>.broadcast();
   final _subscriptions = <StreamSubscription<dynamic>>[];
   AudioPlayer? _player;
@@ -176,7 +182,7 @@ final class MusaicMusicQueue {
   ) async {
     MusicQueueSource? pending;
     try {
-      pending = await _open(item);
+      pending = await _prepare(item);
       if (_disposed || generation != _generation) return;
       await _run(() async {
         final player = _player!;
@@ -293,9 +299,7 @@ final class MusaicMusicQueue {
         _state.status != MusicPlaybackStatus.completed) {
       final nativeIndex = _tracks.indexWhere((track) => track.index == index);
       if (nativeIndex >= 0) {
-        final player = _player!;
-        await player.seek(Duration.zero, index: nativeIndex);
-        await _playNative(player);
+        await _seekToTrack(nativeIndex);
         return;
       }
     }
@@ -448,11 +452,41 @@ final class MusaicMusicQueue {
     if (nativeIndex < 0) {
       await _load(index);
     } else {
-      final player = _player!;
-      await player.seek(Duration.zero, index: nativeIndex);
-      await _playNative(player);
+      await _seekToTrack(nativeIndex);
     }
   });
+
+  Future<void> _seekToTrack(int nativeIndex) async {
+    final player = _player!;
+    final track = _tracks[nativeIndex];
+    // A previous remote item may have been dropped from the native buffer.
+    // Replace it with its completed download before seeking back to it.
+    final cached = track.index < _index
+        ? await _cachedUri?.call(_items[track.index])
+        : null;
+    if (cached != null && cached != track.source.uri) {
+      try {
+        _trimming = true;
+        try {
+          await player.insertAudioSource(nativeIndex, AudioSource.uri(cached));
+          _tracks.insert(nativeIndex, (
+            index: track.index,
+            source: (uri: cached, close: null),
+          ));
+          await player.removeAudioSourceAt(nativeIndex + 1);
+          _tracks.removeAt(nativeIndex + 1);
+          await _closeSource(track.source);
+        } finally {
+          _trimming = false;
+        }
+      } catch (_) {
+        await _load(track.index);
+        return;
+      }
+    }
+    await player.seek(Duration.zero, index: nativeIndex);
+    await _playNative(player);
+  }
 
   Future<void> _unload({bool releaseFocus = false}) async {
     final tracks = _tracks;

@@ -17,6 +17,8 @@ import 'settings_support_section.dart';
 
 part 'desktop_settings_split_view.dart';
 
+const _proIconColor = Color.fromARGB(255, 195, 153, 68);
+
 enum SettingsSection {
   pro,
   musicSource,
@@ -60,7 +62,10 @@ class SettingsSheet extends StatelessWidget {
   Widget _section(IconData icon, String title, SettingsSection section) =>
       Builder(
         builder: (origin) => ListTile(
-          leading: Icon(icon),
+          leading: Icon(
+            icon,
+            color: section == SettingsSection.pro ? _proIconColor : null,
+          ),
           title: Text(title),
           trailing: const Icon(
             PhosphorIcons.caretUp,

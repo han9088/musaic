@@ -154,7 +154,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
-  String get settingsPro => 'Pro';
+  String get settingsPro => 'Musaic Pro';
 
   @override
   String get proAnnualPlan => 'Annual subscription';

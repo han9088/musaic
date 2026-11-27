@@ -147,7 +147,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
-  String get settingsPro => 'Pro';
+  String get settingsPro => 'Musaic Pro';
 
   @override
   String get proAnnualPlan => '年度订阅';

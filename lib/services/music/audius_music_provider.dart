@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:audius_sdk/audius_sdk.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../audio/musaic_audio_platform.dart';
 import 'music_provider.dart';
@@ -15,6 +16,13 @@ final class AudiusMusicProvider implements MusicProvider {
        _usesNativeQueue = createPlayer == null && usesMusaicAudio;
 
   static const providerId = 'audius';
+  static final _audioCache = CacheManager(
+    Config(
+      'musaic_audius_audio_v1',
+      stalePeriod: const Duration(days: 3),
+      maxNrOfCacheObjects: 24,
+    ),
+  );
   static const _available = (
     supported: true,
     reason: 'available',
@@ -25,7 +33,12 @@ final class AudiusMusicProvider implements MusicProvider {
   final AudioPlayer Function() _createPlayer;
   final bool _usesNativeQueue;
   late final MusaicMusicQueue? _nativeQueue = _usesNativeQueue
-      ? MusaicMusicQueue(_openNativeSource)
+      ? MusaicMusicQueue(
+          _openNativeSource,
+          prepare: (item) =>
+              _openNativeSource(item, cacheWait: const Duration(seconds: 4)),
+          cachedUri: _cachedAudioUri,
+        )
       : null;
   final _summaries = <String, ProviderAlbum>{};
   final _details = <MusicReference, Future<ProviderAlbum>>{};
@@ -346,9 +359,34 @@ final class AudiusMusicProvider implements MusicProvider {
   Stream<MusicPlayback> get playback =>
       _nativeQueue?.playback ?? _events.stream;
 
-  Future<MusicQueueSource> _openNativeSource(MusicReference reference) async {
+  Future<Uri?> _cachedAudioUri(MusicReference reference) async {
+    try {
+      final hit = await _audioCache.getFileFromCache(reference.id);
+      return hit?.file.uri;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<MusicQueueSource> _openNativeSource(
+    MusicReference reference, {
+    Duration cacheWait = const Duration(milliseconds: 750),
+  }) async {
+    final cached = await _cachedAudioUri(reference);
+    if (cached != null) return (uri: cached, close: null);
+    _ensureOpen();
     final stream = _sdk.tracks.getTrackStream(trackId: reference.id);
     final uri = await _sdk.tracks.resolveTrackStream(stream);
+    _ensureOpen();
+    try {
+      // After the deadline, let the native player stream while the cache fills.
+      final file = await _audioCache
+          .getSingleFile(uri.toString(), key: reference.id)
+          .timeout(cacheWait);
+      return (uri: file.uri, close: null);
+    } catch (_) {
+      // A slow or unavailable disk cache must not prevent streaming.
+    }
     return (uri: uri, close: null);
   }
 

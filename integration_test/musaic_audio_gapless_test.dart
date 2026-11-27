@@ -156,12 +156,62 @@ void main() {
       expect(closed, ['a', 'b']);
     });
   });
+
+  testWidgets('a previous track switches to its cached file in the queue', (
+    tester,
+  ) async {
+    await tester.runAsync(() async {
+      final folder = await Directory.systemTemp.createTemp(
+        'musaic-audio-cache',
+      );
+      addTearDown(() => folder.delete(recursive: true));
+      final original = await File('${folder.path}/original.wav')
+          .writeAsBytes(_tone(220));
+      final cached = await File('${folder.path}/cached.wav')
+          .writeAsBytes(_tone(220, seconds: 4));
+      final items = <MusicReference>[
+        for (final id in ['a', 'b'])
+          (
+            provider: 'test',
+            kind: MusicKind.song,
+            id: id,
+            source: MusicSource.catalog,
+            storefront: null,
+          ),
+      ];
+      var firstOpens = 0;
+      final queue = MusaicMusicQueue((item) async {
+        if (item == items[0]) firstOpens++;
+        return (uri: original.uri, close: null);
+      }, cachedUri: (item) async => item == items[0] ? cached.uri : null);
+      addTearDown(queue.dispose);
+      Future<void> playing(int index, int seconds) async {
+        await queue.playback
+            .firstWhere(
+              (value) =>
+                  value.currentItem == items[index] &&
+                  value.status == MusicPlaybackStatus.playing &&
+                  value.duration == Duration(seconds: seconds),
+            )
+            .timeout(const Duration(seconds: 12));
+      }
+
+      await queue.play(items, 0);
+      await playing(0, 2);
+      await playing(1, 2);
+      await queue.previous();
+      await playing(0, 4);
+      expect(firstOpens, 1);
+      await queue.next();
+      await playing(1, 2);
+    });
+  });
 }
 
-Uint8List _tone(int frequency) {
+Uint8List _tone(int frequency, {int seconds = 2}) {
   const rate = 22050;
-  const samples = rate * 2;
-  const dataLength = samples * 2;
+  final samples = rate * seconds;
+  final dataLength = samples * 2;
   final bytes = ByteData(44 + dataLength);
   bytes.setUint32(0, 0x52494646); // RIFF
   bytes.setUint32(4, 36 + dataLength, Endian.little);

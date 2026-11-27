@@ -61,6 +61,16 @@ void main() {
             .join(', '),
       );
       await playing(1, const Duration(milliseconds: 500));
+      final previousStart = events.length;
+      final elapsed = Stopwatch()..start();
+      await provider.previous();
+      await playing(0, const Duration(milliseconds: 100));
+      final previous = events.skip(previousStart);
+      expect(
+        previous.any((event) => event.status == MusicPlaybackStatus.loading),
+        isFalse,
+      );
+      expect(elapsed.elapsed, lessThan(const Duration(seconds: 1)));
     });
   }, skip: !const bool.fromEnvironment('MUSAIC_TEST_AUDIUS_LIVE'));
 }
