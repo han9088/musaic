@@ -1,0 +1,81 @@
+name: Windows x64 build and audio integration
+
+on:
+  push:
+    branches:
+      - codex/windows-audio-ci
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_SUPPRESS_ANALYTICS: 'true'
+
+jobs:
+  validate:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Windows x64 Flutter SDK
+        id: flutter
+        run: |
+          if ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'X64') {
+            throw 'This job requires a Windows x64 runner.'
+          }
+
+          $version = ([regex]::Match((Get-Content -Raw mise.toml), '(?m)^flutter\s*=\s*"([^"]+)"\r?$')).Groups[1].Value
+          if (-not $version) { throw 'Flutter version is missing from mise.toml.' }
+
+          $releases = Invoke-RestMethod 'https://storage.googleapis.com/flutter_infra_release/releases/releases_windows.json'
+          $release = $releases.releases | Where-Object {
+            $_.version -eq $version -and $_.channel -eq 'stable' -and
+            ($_.dart_sdk_arch -eq 'x64' -or -not $_.dart_sdk_arch)
+          } | Select-Object -First 1
+          if (-not $release.sha256) { throw "Windows x64 Flutter $version was not found." }
+
+          $archive = Join-Path $env:RUNNER_TEMP 'flutter-windows-x64.zip'
+          curl.exe --fail --location --retry 3 --silent --show-error "$($releases.base_url)/$($release.archive)" -o $archive
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((Get-FileHash -Algorithm SHA256 $archive).Hash -ne $release.sha256) {
+            throw 'Flutter SDK checksum mismatch.'
+          }
+          & 7z x -bd -y $archive "-o$env:RUNNER_TEMP"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          (Join-Path $env:RUNNER_TEMP 'flutter\bin') >> $env:GITHUB_PATH
+
+      - name: Build the musaic_audio example Windows x64 release
+        id: build
+        working-directory: packages/musaic_audio/packages/musaic_audio/example
+        run: |
+          flutter build windows --release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $release = 'build/windows/x64/runner/Release'
+          foreach ($file in @('musaic_audio_example.exe', 'musaic_audio_windows_plugin.dll')) {
+            if (-not (Test-Path (Join-Path $release $file))) {
+              throw "Windows x64 release output is missing $file."
+            }
+          }
+
+      - name: Check Windows audio services
+        if: ${{ !cancelled() && steps.flutter.outcome == 'success' }}
+        run: |
+          if (-not (Test-Path "$env:SystemRoot\System32\mfplat.dll")) {
+            Install-WindowsFeature -Name Server-Media-Foundation
+          }
+          Get-Service -Name AudioEndpointBuilder, Audiosrv | ForEach-Object {
+            if ($_.Status -ne 'Running') { Start-Service -Name $_.Name -ErrorAction Continue }
+          }
+          Get-Service -Name AudioEndpointBuilder, Audiosrv
+          Get-CimInstance Win32_SoundDevice | Select-Object Name, Status
+
+      - name: Run native musaic_audio integration tests
+        if: ${{ !cancelled() && steps.flutter.outcome == 'success' }}
+        working-directory: packages/musaic_audio/packages/musaic_audio/example
+        run: flutter test integration_test/windows_playback_test.dart -d windows --reporter expanded

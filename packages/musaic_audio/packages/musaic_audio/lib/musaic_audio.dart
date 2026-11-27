@@ -15,6 +15,8 @@ import 'package:rxdart/rxdart.dart';
 import 'package:synchronized/synchronized.dart';
 import 'package:uuid/uuid.dart';
 
+import 'src/windows_http_audio.dart';
+
 const _uuid = Uuid();
 
 MusaicAudioPlatform? _pluginPlatformCache;
@@ -271,6 +273,11 @@ class AudioPlayer {
     if (_audioLoadConfiguration?.darwinLoadControl != null) {
       _automaticallyWaitsToMinimizeStalling = _audioLoadConfiguration!
           .darwinLoadControl!.automaticallyWaitsToMinimizeStalling;
+      if (_isWindows()) {
+        _preferredPeakBitRate =
+            _audioLoadConfiguration.darwinLoadControl?.preferredPeakBitRate ??
+                0;
+      }
     }
     _playbackEventPipe = _playbackEventSubject.addStream(
         playerEventStream.map((event) => event.playbackEvent).distinct());
@@ -528,6 +535,26 @@ class AudioPlayer {
   /// The latest ICY metadata received through the audio source, or `null` if no
   /// metadata is available.
   IcyMetadata? get icyMetadata => playbackEvent.icyMetadata;
+
+  UriAudioSource? _icyProxySourceAt(int? index) {
+    if (index == null || index < 0 || index >= sequence.length) return null;
+    final source = sequence[index];
+    if (source is ClippingAudioSource) return source.child;
+    return source is UriAudioSource ? source : null;
+  }
+
+  void _updateProxyIcyMetadata(UriAudioSource source, IcyMetadata metadata) {
+    if (!_active ||
+        _disposed ||
+        playbackEvent.processingState == ProcessingState.idle ||
+        !identical(_icyProxySourceAt(currentIndex), source) ||
+        playbackEvent.icyMetadata == metadata) {
+      return;
+    }
+    _playerEventSubject.add(playerEvent.copyWith(
+      playbackEvent: playbackEvent.copyWith(icyMetadata: metadata),
+    ));
+  }
 
   /// A stream of ICY metadata received through the audio source.
   Stream<IcyMetadata?> get icyMetadataStream =>
@@ -1185,6 +1212,9 @@ class AudioPlayer {
   /// Android only).
   Future<void> setSkipSilenceEnabled(bool enabled) async {
     if (_disposed) return;
+    if (enabled && _isWindows()) {
+      throw UnsupportedError('Skipping silence is unavailable on Windows.');
+    }
     final previouslyEnabled = skipSilenceEnabled;
     if (enabled == previouslyEnabled) return;
     _skipSilenceEnabledSubject.add(enabled);
@@ -1216,6 +1246,9 @@ class AudioPlayer {
   /// Sets the factor by which pitch will be shifted.
   Future<void> setPitch(final double pitch) async {
     if (_disposed) return;
+    if (pitch != 1.0 && _isWindows()) {
+      throw UnsupportedError('Independent pitch is unavailable on Windows.');
+    }
     _playerEventSubject.add(playerEvent.copyWith(
       playbackEvent: playbackEvent.copyWith(
         updatePosition: position,
@@ -1282,7 +1315,8 @@ class AudioPlayer {
                 enabled: canUseNetworkResourcesForLiveStreamingWhilePaused));
   }
 
-  /// Sets preferredPeakBitRate on iOS/macOS, defaults to true.
+  /// Sets the preferred peak bitrate in bits per second on iOS, macOS and
+  /// Windows adaptive streams. A value of zero uses the platform default.
   Future<void> setPreferredPeakBitRate(
       final double preferredPeakBitRate) async {
     if (_disposed) return;
@@ -1423,7 +1457,7 @@ class AudioPlayer {
         s._dispose();
       }
       _audioSources.clear();
-      _proxy.stop();
+      await _proxy.stop();
       await _playerDataSubscription?.cancel();
       await _playbackEventSubscription?.cancel();
       await _androidAudioAttributesSubscription?.cancel();
@@ -1562,7 +1596,8 @@ class AudioPlayer {
           }
         }
         if (_platformLoading &&
-            message.processingState != ProcessingStateMessage.idle) {
+            (message.processingState != ProcessingStateMessage.idle ||
+                (_isWindows() && message.errorCode != null))) {
           _platformLoading = false;
         }
         final newPlaybackEvent = PlaybackEvent(
@@ -1576,7 +1611,7 @@ class AudioPlayer {
           bufferedPosition: message.bufferedPosition,
           duration: duration,
           icyMetadata: message.icyMetadata == null
-              ? null
+              ? (_isWindows() ? _icyProxySourceAt(index)?._proxyIcyMetadata : null)
               : IcyMetadata._fromMessage(message.icyMetadata!),
           currentIndex: index,
           androidAudioSessionId: message.androidAudioSessionId,
@@ -1697,6 +1732,14 @@ class AudioPlayer {
           await platform.setAutomaticallyWaitsToMinimizeStalling(
               SetAutomaticallyWaitsToMinimizeStallingRequest(
                   enabled: automaticallyWaitsToMinimizeStalling));
+          if (checkInterruption()) return inactiveResult(platform);
+        }
+        if (_isWindows() &&
+            preferredPeakBitRate !=
+                (_audioLoadConfiguration?.darwinLoadControl?.preferredPeakBitRate ??
+                    0.0)) {
+          await platform.setPreferredPeakBitRate(
+              SetPreferredPeakBitRateRequest(bitRate: preferredPeakBitRate));
           if (checkInterruption()) return inactiveResult(platform);
         }
         await platform.setVolume(SetVolumeRequest(volume: volume));
@@ -2463,6 +2506,7 @@ class AndroidExtractorOptions {
 class _ProxyHttpServer {
   late HttpServer _server;
   bool _running = false;
+  Future<void>? _starting;
 
   /// Maps request keys to [_ProxyHandler]s.
   final Map<String, _ProxyHandler> _handlerMap = {};
@@ -2492,6 +2536,39 @@ class _ProxyHttpServer {
     );
   }
 
+  Uri addWindowsProgressiveSource(UriAudioSource source) {
+    final uri = source.uri;
+    final player = source._player!;
+    final registration = ++source._proxyRegistration;
+    final proxy = uri.replace(
+      scheme: 'http',
+      host: InternetAddress.loopbackIPv4.address,
+      port: port,
+      pathSegments: ['audio', source._id, ...uri.pathSegments],
+      userInfo: '',
+      fragment: '',
+    );
+    final headers = {
+      ...?source.headers,
+      if (player._userAgent != null) 'User-Agent': player._userAgent!,
+    };
+    _handlerMap[_requestKey(proxy)] = (_, request) => proxyWindowsHttpAudio(
+          request,
+          uri,
+          headers: headers,
+          onMetadata: (message) {
+            if (source._proxyRegistration != registration ||
+                source._player != player) {
+              return;
+            }
+            final metadata = IcyMetadata._fromMessage(message);
+            source._proxyIcyMetadata = metadata;
+            player._updateProxyIcyMetadata(source, metadata);
+          },
+        );
+    return proxy;
+  }
+
   /// Registers a [StreamAudioSource] to be served through this proxy. This may
   /// be called only after [start] has completed.
   Uri addStreamAudioSource(StreamAudioSource source) {
@@ -2511,21 +2588,28 @@ class _ProxyHttpServer {
   String _requestKey(Uri uri) => '${uri.path}?${uri.query}';
 
   /// Starts the server if it is not already running.
-  Future<dynamic> ensureRunning() async {
+  Future<void> ensureRunning() async {
     if (_running) return;
-    return await start();
+    await (_starting ??= start().whenComplete(() => _starting = null));
   }
 
   /// Starts the server.
-  Future<dynamic> start() async {
-    _running = true;
+  Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    _running = true;
     _server.listen((request) async {
-      if (request.method == 'GET') {
+      if (request.method == 'GET' || request.method == 'HEAD') {
         final uriPath = _requestKey(request.uri);
-        final handler = _handlerMap[uriPath]!;
-        handler(this, request);
+        final handler = _handlerMap[uriPath];
+        if (handler != null) {
+          await handler(this, request);
+          return;
+        }
+        request.response.statusCode = HttpStatus.notFound;
+      } else {
+        request.response.statusCode = HttpStatus.methodNotAllowed;
       }
+      await request.response.close();
     }, onDone: () {
       _running = false;
     }, onError: (Object e, StackTrace st) {
@@ -2534,10 +2618,16 @@ class _ProxyHttpServer {
   }
 
   /// Stops the server
-  Future<dynamic> stop() async {
+  Future<void> stop() async {
+    try {
+      await _starting;
+    } on SocketException {
+      return;
+    }
     if (!_running) return;
     _running = false;
-    return await _server.close();
+    _handlerMap.clear();
+    await _server.close(force: true);
   }
 }
 
@@ -2722,6 +2812,8 @@ abstract class UriAudioSource extends IndexedAudioSource {
   final Uri uri;
   final Map<String, String>? headers;
   Uri? _overrideUri;
+  IcyMetadata? _proxyIcyMetadata;
+  int _proxyRegistration = 0;
 
   UriAudioSource(this.uri, {this.headers, dynamic tag, Duration? duration})
       : super(tag: tag, duration: duration);
@@ -2732,7 +2824,8 @@ abstract class UriAudioSource extends IndexedAudioSource {
   Uri get _effectiveUri => _overrideUri ?? uri;
 
   Map<String, String>? get _mergedHeaders =>
-      headers == null && _userAgent == null
+      (_isWindows() && _overrideUri != null) ||
+              (headers == null && _userAgent == null)
           ? null
           : {
               if (headers != null)
@@ -2743,8 +2836,22 @@ abstract class UriAudioSource extends IndexedAudioSource {
   @override
   Future<void> _onLoad() async {
     await super._onLoad();
+    final windows = _isWindows();
+    if (windows) {
+      _overrideUri = null;
+      _proxyIcyMetadata = null;
+      _proxyRegistration++;
+    }
     if (uri.scheme == 'asset') {
       _overrideUri = await _loadAsset(uri.pathSegments.join('/'));
+    } else if (windows) {
+      // HLS and DASH use WinRT's scoped HTTP client.
+      if (this is ProgressiveAudioSource &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          _player!._useProxyForRequestHeaders) {
+        await _player!._proxy.ensureRunning();
+        _overrideUri = _player!._proxy.addWindowsProgressiveSource(this);
+      }
     } else if (uri.scheme != 'file' &&
         !kIsWeb &&
         _player!._useProxyForRequestHeaders &&
@@ -3286,7 +3393,13 @@ class LoopingAudioSource extends AudioSource {
       List.generate(count, (i) => child).expand((s) => s.sequence).toList();
 
   @override
-  List<int> get shuffleIndices => List.generate(count, (i) => i);
+  List<int> get shuffleIndices {
+    final childOrder = child.shuffleIndices;
+    return [
+      for (var repeat = 0; repeat < count; repeat++)
+        for (final index in childOrder) repeat * childOrder.length + index,
+    ];
+  }
 
   @override
   AudioSourceMessage _toMessage() => LoopingAudioSourceMessage(
@@ -3743,7 +3856,7 @@ class _StreamingByteRangeRequest {
 }
 
 /// The type of functions that can handle HTTP requests sent to the proxy.
-typedef _ProxyHandler = void Function(
+typedef _ProxyHandler = Future<void> Function(
     _ProxyHttpServer server, HttpRequest request);
 
 /// A proxy handler for serving audio from a [StreamAudioSource].
@@ -3791,6 +3904,12 @@ _ProxyHandler _proxyHandlerForSource(StreamAudioSource source) {
       request.response.statusCode = 200;
     }
 
+    if (request.method == 'HEAD') {
+      await stream.listen(null).cancel();
+      await request.response.close();
+      return;
+    }
+
     final completer = Completer<void>();
     final subscription = stream.listen(request.response.add,
         onError: (e, st) {}, onDone: completer.complete);
@@ -3817,6 +3936,7 @@ _ProxyHandler _proxyHandlerForUri(
   Uri? redirectedUri;
   Future<void> handler(_ProxyHttpServer server, HttpRequest request) async {
     final client = _createHttpClient(userAgent: userAgent);
+    final head = request.method == 'HEAD';
     // Try to make normal request
     String? host;
     try {
@@ -3825,8 +3945,8 @@ _ProxyHandler _proxyHandlerForUri(
           .forEach((name, value) => requestHeaders[name] = value.join(', '));
       // write supplied headers last (to ensure supplied headers aren't overwritten)
       headers?.forEach((name, value) => requestHeaders[name] = value);
-      final originRequest =
-          await _getUrl(client, redirectedUri ?? uri, headers: requestHeaders);
+      final originRequest = await _getUrl(client, redirectedUri ?? uri,
+          headers: requestHeaders, method: request.method);
       host = originRequest.headers.value(HttpHeaders.hostHeader);
       final originResponse = await originRequest.close();
       if (originResponse.redirects.isNotEmpty) {
@@ -3841,6 +3961,12 @@ _ProxyHandler _proxyHandlerForUri(
         request.response.headers.set(name, filteredValue);
       });
       request.response.statusCode = originResponse.statusCode;
+
+      if (head) {
+        await originResponse.drain<void>();
+        await request.response.close();
+        return;
+      }
 
       // Send response
       if (headers != null && request.uri.path.toLowerCase().endsWith('.m3u8') ||
@@ -3887,6 +4013,11 @@ _ProxyHandler _proxyHandlerForUri(
       await request.response.flush();
       await request.response.close();
     } on HttpException {
+      if (head) {
+        request.response.statusCode = HttpStatus.badGateway;
+        await request.response.close();
+        return;
+      }
       // We likely are dealing with a streaming protocol
       if (uri.scheme == 'http') {
         // Try parsing HTTP 0.9 response
@@ -3925,6 +4056,8 @@ _ProxyHandler _proxyHandlerForUri(
         await socket.flush();
         await done.future;
       }
+    } finally {
+      if (head) client.close(force: true);
     }
   }
 
@@ -4555,6 +4688,7 @@ class AndroidEqualizer extends AudioEffect with AndroidAudioEffect {
 
 bool _isAndroid() => !kIsWeb && Platform.isAndroid;
 bool _isDarwin() => !kIsWeb && (Platform.isIOS || Platform.isMacOS);
+bool _isWindows() => !kIsWeb && Platform.isWindows;
 bool _isUnitTest() => !kIsWeb && Platform.environment['FLUTTER_TEST'] == 'true';
 
 /// Backwards compatible extensions on rxdart's ValueStream
@@ -4588,8 +4722,10 @@ enum PositionDiscontinuityReason {
 }
 
 Future<HttpClientRequest> _getUrl(HttpClient client, Uri uri,
-    {Map<String, String>? headers}) async {
-  final request = await client.getUrl(uri);
+    {Map<String, String>? headers, String method = 'GET'}) async {
+  final request = method == 'GET'
+      ? await client.getUrl(uri)
+      : await client.openUrl(method, uri);
   if (headers != null) {
     final host = request.headers.value(HttpHeaders.hostHeader);
     request.headers.clear();

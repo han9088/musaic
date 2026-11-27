@@ -1,0 +1,28 @@
+name: musaic_audio_windows
+description: Windows playback implementation of musaic_audio using WinRT MediaPlayer.
+version: 0.1.0
+publish_to: none
+homepage: https://github.com/bdlukaa/just_audio_windows/tree/master/just_audio_windows
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=3.27.0"
+
+dependencies:
+  musaic_audio_platform_interface:
+    path: ../musaic_audio_platform_interface
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+flutter:
+  plugin:
+    implements: musaic_audio
+    platforms:
+      windows:
+        pluginClass: MusaicAudioWindowsPluginCApi
+        dartPluginClass: MusaicAudioWindows

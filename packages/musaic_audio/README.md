@@ -1,6 +1,6 @@
 # musaic_audio
 
-`musaic_audio` is a Flutter audio player for Android, iOS, macOS and web. It is a fork of [just_audio](https://github.com/ryanheise/just_audio) by Ryan Heise and the project contributors, distributed under the upstream [MIT license](packages/musaic_audio/LICENSE). This guide adapts the [just_audio 0.10.6 usage documentation](https://pub.dev/packages/just_audio/versions/0.10.6) for the Musaic package names.
+`musaic_audio` is a Flutter audio player for Android, iOS, macOS, Windows and web. It is a fork of [just_audio](https://github.com/ryanheise/just_audio) by Ryan Heise and the project contributors, distributed under the upstream [MIT license](packages/musaic_audio/LICENSE). This guide adapts the [just_audio 0.10.6 usage documentation](https://pub.dev/packages/just_audio/versions/0.10.6) for the Musaic package names.
 
 [Platform Support](#platform-support) · [Upstream API Documentation](https://pub.dev/documentation/just_audio/0.10.6/just_audio/just_audio-library.html) · [Upstream Tutorials](#upstream-tutorials) · [Background Audio](packages/musaic_audio_background/README.md)
 
@@ -180,7 +180,7 @@ try {
   // iOS/macOS: maps to NSError.code
   // Android: maps to ExoPlayerException.type
   // Web: maps to MediaError.code
-  // Linux/Windows: maps to PlayerErrorCode.index
+  // Windows: native media error code or HRESULT
   print("Error code: ${e.code}");
   // iOS/macOS: maps to NSError.localizedDescription
   // Android: maps to ExoPlaybackException.getMessage()
@@ -308,9 +308,17 @@ If you wish to connect to non-HTTPS URLs, or if you use a feature that depends o
 
 The macOS player relies on server headers (e.g. `Content-Type`, `Content-Length` and [byte range requests](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/CreatingVideoforSafarioniPhone/CreatingVideoforSafarioniPhone.html#//apple_ref/doc/uid/TP40006514-SW6)) to know how to decode the file and where applicable to report its duration. In the case of files, macOS relies on the file extension.
 
-### Windows and Linux
+### Windows
 
-[`musaic_audio_desktop`](packages/musaic_audio_desktop/) reserves a plugin entry point for Windows and Linux. Desktop playback is pending.
+[`musaic_audio_windows`](packages/musaic_audio_windows/) is included automatically. It forks [just_audio_windows](https://github.com/bdlukaa/just_audio_windows/tree/master/just_audio_windows) and uses WinRT `MediaPlayer` and `MediaPlaybackList`.
+
+Windows Media Foundation handles codecs, supported HLS/DASH profiles and gapless transitions between compatible playlist items. The default Dart loopback proxy forwards progressive HTTP headers, serves byte ranges for `StreamAudioSource` and exposes ICY station metadata and track titles for HTTP radio streams. Progressive URLs played with `useProxyForRequestHeaders: false` use the native decoder directly.
+
+Windows opens HLS and DASH through WinRT. Custom adaptive-stream headers are scoped to the manifest origin, including same-origin redirects and segments. `AudioPlayer.setPreferredPeakBitRate` sets the adaptive bitrate cap in bits per second. Passing zero restores the system default.
+
+Windows manages startup buffering, prefetch and live network activity while paused. AirPlay and the remaining Darwin buffering controls apply on Apple platforms. Independent pitch, silence skipping, equalizer, volume boost and phone-call interruption events are unavailable on Windows.
+
+Linux playback is pending.
 
 ## Troubleshooting
 
@@ -358,42 +366,44 @@ Other common audio capabilities are optionally provided by separate plugins:
 
 ## Platform support
 
-| Feature                        | Android | iOS | macOS | Web |
-| ------------------------------ | :-----: | :-: | :---: | :-: |
-| read from URL                  | ✅      | ✅  | ✅    | ✅  |
-| read from file                 | ✅      | ✅  | ✅    | ✅  |
-| read from asset                | ✅      | ✅  | ✅    | ✅  |
-| read from byte stream          | ✅      | ✅  | ✅    | ✅  |
-| request headers                | ✅      | ✅  | ✅    | *   |
-| DASH                           | ✅      |     |       |     |
-| HLS                            | ✅      | ✅  | ✅    |     |
-| ICY metadata                   | ✅      | ✅  | ✅    |     |
-| buffer status/position         | ✅      | ✅  | ✅    | ✅  |
-| play/pause/seek                | ✅      | ✅  | ✅    | ✅  |
-| set volume/speed               | ✅      | ✅  | ✅    | ✅  |
-| clip audio                     | ✅      | ✅  | ✅    | ✅  |
-| playlists                      | ✅      | ✅  | ✅    | ✅  |
-| looping/shuffling              | ✅      | ✅  | ✅    | ✅  |
-| gapless playback               | ✅      | ✅  | ✅    |     |
-| report player errors           | ✅      | ✅  | ✅    | ✅  |
-| handle phonecall interruptions | ✅      | ✅  |       |     |
-| buffering/loading options      | ✅      | ✅  | ✅    |     |
-| set pitch                      | ✅      |     |       |     |
-| skip silence                   | ✅      |     |       |     |
-| equalizer                      | ✅      |     |       |     |
-| volume boost                   | ✅      |     |       |     |
+| Feature                        | Android | iOS | macOS | Web | Windows |
+| ------------------------------ | :-----: | :-: | :---: | :-: | :-----: |
+| read from URL                  | ✅      | ✅  | ✅    | ✅  | ✅       |
+| read from file                 | ✅      | ✅  | ✅    | ✅  | ✅       |
+| read from asset                | ✅      | ✅  | ✅    | ✅  | ✅       |
+| read from byte stream          | ✅      | ✅  | ✅    | ✅  | ✅       |
+| request headers                | ✅      | ✅  | ✅    | *   | ✅*      |
+| DASH                           | ✅      |     |       |     | ✅       |
+| HLS                            | ✅      | ✅  | ✅    |     | ✅       |
+| ICY metadata                   | ✅      | ✅  | ✅    |     | ✅       |
+| buffer status/position         | ✅      | ✅  | ✅    | ✅  | ✅       |
+| play/pause/seek                | ✅      | ✅  | ✅    | ✅  | ✅       |
+| set volume/speed               | ✅      | ✅  | ✅    | ✅  | ✅       |
+| clip audio                     | ✅      | ✅  | ✅    | ✅  | ✅       |
+| playlists                      | ✅      | ✅  | ✅    | ✅  | ✅       |
+| looping/shuffling              | ✅      | ✅  | ✅    | ✅  | ✅       |
+| gapless playback               | ✅      | ✅  | ✅    |     | ✅       |
+| report player errors           | ✅      | ✅  | ✅    | ✅  | ✅       |
+| handle phonecall interruptions | ✅      | ✅  |       |     |         |
+| buffering/loading options      | ✅      | ✅  | ✅    |     | Peak bitrate |
+| set pitch                      | ✅      |     |       |     |         |
+| skip silence                   | ✅      |     |       |     |         |
+| equalizer                      | ✅      |     |       |     |         |
+| volume boost                   | ✅      |     |       |     |         |
 
-(*): While request headers cannot be set directly on Web, cookies can be used to send information in the [Cookie header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie). See also `AudioPlayer.setWebCrossOrigin` to allow sending cookies when loading audio files from the same origin or a different origin.
+Windows (*) uses the default Dart HTTP proxy for progressive audio and WinRT for adaptive audio.
+
+Web (*): While request headers cannot be set directly on Web, cookies can be used to send information in the [Cookie header](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cookie). See also `AudioPlayer.setWebCrossOrigin` to allow sending cookies when loading audio files from the same origin or a different origin.
 
 
 ## Experimental features
 
-| Feature                                                                            | Android   | iOS     | macOS   | Web     |
-| -------                                                                            | :-------: | :-----: | :-----: | :-----: |
-| Simultaneous downloading+caching                                                   | ✅        | ✅      | ✅      |         |
-| Waveform visualizer (See [#97](https://github.com/ryanheise/just_audio/issues/97)) | ✅        | ✅      |         |         |
-| FFT visualizer (See [#97](https://github.com/ryanheise/just_audio/issues/97))      | ✅        | ✅      | ✅      |         |
-| Background                                                                         | ✅        | ✅      | ✅      | ✅      |
+| Feature                                                                            | Android   | iOS     | macOS   | Web     | Windows |
+| -------                                                                            | :-------: | :-----: | :-----: | :-----: | :-----: |
+| Simultaneous downloading+caching                                                   | ✅        | ✅      | ✅      |         |         |
+| Waveform visualizer (See [#97](https://github.com/ryanheise/just_audio/issues/97)) | ✅        | ✅      |         |         |         |
+| FFT visualizer (See [#97](https://github.com/ryanheise/just_audio/issues/97))      | ✅        | ✅      | ✅      |         |         |
+| Background                                                                         | ✅        | ✅      | ✅      | ✅      |         |
 
 ## The state model
 

@@ -810,6 +810,13 @@ packages:
       relative: true
     source: path
     version: "0.4.16"
+  musaic_audio_windows:
+    dependency: transitive
+    description:
+      path: "packages/musaic_audio/packages/musaic_audio_windows"
+      relative: true
+    source: path
+    version: "0.1.0"
   musaic_query:
     dependency: "direct main"
     description:

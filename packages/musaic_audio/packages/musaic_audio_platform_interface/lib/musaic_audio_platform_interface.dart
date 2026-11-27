@@ -146,8 +146,8 @@ abstract class AudioPlayerPlatform {
         "setCanUseNetworkResourcesForLiveStreamingWhilePaused() has not been implemented.");
   }
 
-  /// On iOS and macOS, sets the preferredPeakBitRate option, and does nothing
-  /// on other platforms.
+  /// Sets the preferred peak bitrate for iOS, macOS and Windows adaptive
+  /// streams. A value of zero leaves bitrate selection to the platform.
   Future<SetPreferredPeakBitRateResponse> setPreferredPeakBitRate(
       SetPreferredPeakBitRateRequest request) {
     throw UnimplementedError(
