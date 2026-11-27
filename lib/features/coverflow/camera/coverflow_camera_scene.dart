@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../services/audio/musaic_sound.dart';
 import '../../../services/coverflow_photo_library.dart';
 import '../../../services/diagnostics/diagnostic_log.dart';
 import 'coverflow_photo.dart';
@@ -47,7 +47,7 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
   bool _opening = false;
   bool _saving = false;
   int _generation = 0;
-  Future<AudioPlayer?>? _shutter;
+  Future<MusaicSound?>? _shutter;
 
   bool get _resumed =>
       WidgetsBinding.instance.lifecycleState == null ||
@@ -200,24 +200,10 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
     }
   }
 
-  Future<AudioPlayer?> _prepareShutter() async {
-    final player = AudioPlayer()..positionUpdater = null;
+  Future<MusaicSound?> _prepareShutter() async {
+    final player = MusaicSound();
     try {
-      await player.setAudioContext(
-        AudioContext(
-          android: const AudioContextAndroid(
-            audioFocus: AndroidAudioFocus.none,
-            usageType: AndroidUsageType.assistanceSonification,
-          ),
-        ),
-      );
-      await player.setReleaseMode(ReleaseMode.stop);
-      final sound = await rootBundle.load('assets/sounds/camera_shutter.wav');
-      await player.setSource(
-        BytesSource(
-          sound.buffer.asUint8List(sound.offsetInBytes, sound.lengthInBytes),
-        ),
-      );
+      await player.prepare('assets/sounds/camera_shutter.wav');
       return player;
     } catch (error) {
       debugPrint('Cover Flow shutter sound unavailable: $error');
@@ -230,13 +216,13 @@ class _CoverFlowCameraSceneState extends State<CoverFlowCameraScene>
     final player = await _shutter;
     if (!mounted || !_resumed || _camera == null) return;
     try {
-      await player?.resume();
+      await player?.start();
     } catch (error) {
       debugPrint('Cover Flow shutter sound: $error');
     }
   }
 
-  Future<void> _disposeShutter(AudioPlayer? player) async {
+  Future<void> _disposeShutter(MusaicSound? player) async {
     try {
       await player?.dispose();
     } catch (error) {

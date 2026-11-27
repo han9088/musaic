@@ -2,47 +2,46 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musaic/app/app.dart';
-import 'package:musaic/pages/home/home_sheet.dart';
+import 'package:musaic/features/music/playback/now_playing_capsule.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('switches the grid from Mock to Mock 2', (tester) async {
     await tester.pumpWidget(const MusaicApp());
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
 
-    final homeSheet = find.byType(HomeSheet);
-    final size = tester.getSize(homeSheet);
-    await tester.tapAt(Offset(size.width / 2, size.height - 32));
-    await tester.pump(const Duration(milliseconds: 450));
-    await tester.tap(find.byKey(const ValueKey('music-source-mock')));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 2));
-    await tester.tap(find.byKey(const ValueKey('music-source-mock2')));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 2));
+    final mock = find.byKey(const ValueKey('music-source-mock'));
+    final mock2 = find.byKey(const ValueKey('music-source-mock2'));
+    final capsule = find.byType(NowPlayingCapsule);
+    Future<void> waitFor(Finder target) async {
+      final elapsed = Stopwatch()..start();
+      while (target.evaluate().isEmpty &&
+          elapsed.elapsed < const Duration(seconds: 10)) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(target, findsWidgets);
+    }
 
-    expect(
-      tester
-          .widget<ListTile>(find.byKey(const ValueKey('music-source-mock2')))
-          .selected,
-      isTrue,
-    );
-    expect(
-      tester
-          .widget<ListTile>(find.byKey(const ValueKey('music-source-mock')))
-          .selected,
-      isFalse,
-    );
-    expect(
+    Future<void> openMusicSources() async {
+      await waitFor(capsule.hitTestable());
+      await tester.drag(capsule, const Offset(0, -140));
+      await waitFor(mock2.hitTestable());
+    }
+
+    await openMusicSources();
+    expect(tester.widget<ListTile>(mock).selected, isTrue);
+    await tester.tap(mock2);
+
+    await waitFor(
       find.byWidgetPredicate(
         (widget) =>
             widget is Image &&
             widget.semanticLabel?.startsWith('Mock 2 · ') == true,
       ),
-      findsWidgets,
     );
+    await openMusicSources();
+    expect(tester.widget<ListTile>(mock2).selected, isTrue);
+    expect(tester.widget<ListTile>(mock).selected, isFalse);
     expect(tester.takeException(), isNull);
   });
 }

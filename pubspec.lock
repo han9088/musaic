@@ -83,6 +83,14 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.13.1"
+  audio_session:
+    dependency: "direct main"
+    description:
+      name: audio_session
+      sha256: f9e7711a0e24ca8b40f5d7ac374c3c6e55016f3157912badd18199cdbbca5c4d
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "0.2.4"
   audioplayers:
     dependency: "direct main"
     description:
@@ -781,6 +789,27 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.1.0"
+  musaic_audio:
+    dependency: "direct main"
+    description:
+      path: "packages/musaic_audio/packages/musaic_audio"
+      relative: true
+    source: path
+    version: "0.10.6"
+  musaic_audio_platform_interface:
+    dependency: transitive
+    description:
+      path: "packages/musaic_audio/packages/musaic_audio_platform_interface"
+      relative: true
+    source: path
+    version: "4.6.0"
+  musaic_audio_web:
+    dependency: transitive
+    description:
+      path: "packages/musaic_audio/packages/musaic_audio_web"
+      relative: true
+    source: path
+    version: "0.4.16"
   musaic_query:
     dependency: "direct main"
     description:

@@ -5,12 +5,14 @@
 import FlutterMacOS
 import Foundation
 
+import audio_session
 import audioplayers_darwin
 import device_info_plus
 import file_picker_darwin
 import flutter_email_sender_method_channel
 import gal
 import in_app_review
+import musaic_audio
 import musaic_query_macos
 import package_info_plus
 import share_plus
@@ -20,12 +22,14 @@ import url_launcher_macos
 import wakelock_plus
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  AudioSessionPlugin.register(with: registry.registrar(forPlugin: "AudioSessionPlugin"))
   AudioplayersDarwinPlugin.register(with: registry.registrar(forPlugin: "AudioplayersDarwinPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FlutterEmailSenderPlugin.register(with: registry.registrar(forPlugin: "FlutterEmailSenderPlugin"))
   GalPlugin.register(with: registry.registrar(forPlugin: "GalPlugin"))
   InAppReviewPlugin.register(with: registry.registrar(forPlugin: "InAppReviewPlugin"))
+  MusaicAudioPlugin.register(with: registry.registrar(forPlugin: "MusaicAudioPlugin"))
   MusaicQueryMacosPlugin.register(with: registry.registrar(forPlugin: "MusaicQueryMacosPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   SharePlusMacosPlugin.register(with: registry.registrar(forPlugin: "SharePlusMacosPlugin"))

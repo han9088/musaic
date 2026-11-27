@@ -37,6 +37,9 @@ dependencies:
   tray_manager: ^0.9.1
   pulsar_haptics: 0.1.1
   audioplayers: 6.8.1
+  audio_session: ^0.2.2
+  musaic_audio:
+    path: packages/musaic_audio/packages/musaic_audio
   sensors_plus: 7.1.1
   dynamic_app_icon_flutter_plus: 2.2.1
   sqflite: ^2.4.6

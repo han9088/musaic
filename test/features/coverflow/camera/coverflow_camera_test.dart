@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
@@ -140,6 +141,7 @@ final class _Gallery extends GalPlatform {
 }
 
 void main() {
+  const audioChannel = MethodChannel('com.deskbtm.musaic.audio.methods');
   late CameraPlatform previousCamera;
   late GalPlatform previousGallery;
   late _Camera camera;
@@ -150,14 +152,21 @@ void main() {
     previousGallery = GalPlatform.instance;
     CameraPlatform.instance = camera = _Camera();
     GalPlatform.instance = gallery = _Gallery();
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_Gallery.channel, gallery.handle);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(_Gallery.channel, gallery.handle);
+    messenger.setMockMethodCallHandler(audioChannel, (call) async {
+      if (call.method == 'disposeAllPlayers') return <String, Object?>{};
+      throw MissingPluginException();
+    });
   });
   tearDown(() {
     CameraPlatform.instance = previousCamera;
     GalPlatform.instance = previousGallery;
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(_Gallery.channel, null);
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(_Gallery.channel, null);
+    messenger.setMockMethodCallHandler(audioChannel, null);
   });
 
   Future<void> mount(WidgetTester tester) async {
@@ -242,36 +251,49 @@ void main() {
     tester,
   ) async {
     final messenger = tester.binding.defaultBinaryMessenger;
-    const player = MethodChannel('xyz.luan/audioplayers');
-    const global = MethodChannel('xyz.luan/audioplayers.global');
-    const globalEvents = MethodChannel('xyz.luan/audioplayers.global/events');
-    var shutterPlays = 0;
-    messenger.setMockMethodCallHandler(global, (_) async => null);
-    messenger.setMockMethodCallHandler(globalEvents, (_) async => null);
-    messenger.setMockMethodCallHandler(player, (call) async {
-      final id = (call.arguments as Map)['playerId'];
-      final events = MethodChannel('xyz.luan/audioplayers/events/$id');
-      if (call.method == 'create') {
-        messenger.setMockMethodCallHandler(events, (_) async => null);
-        addTearDown(() => messenger.setMockMethodCallHandler(events, null));
-      } else if (call.method == 'setSourceBytes') {
-        await messenger.handlePlatformMessage(
-          events.name,
-          const StandardMethodCodec().encodeSuccessEnvelope({
-            'event': 'audio.onPrepared',
-            'value': true,
-          }),
-          (_) {},
-        );
-      } else if (call.method == 'resume') {
-        shutterPlays++;
-      }
-      return null;
-    });
+    const pathProvider = MethodChannel('plugins.flutter.io/path_provider');
+    final cache = Directory.systemTemp.createTempSync('musaic-shutter-test');
     addTearDown(() {
-      for (final channel in [player, global, globalEvents]) {
-        messenger.setMockMethodCallHandler(channel, null);
-      }
+      messenger.setMockMethodCallHandler(pathProvider, null);
+      cache.deleteSync(recursive: true);
+    });
+    messenger.setMockMethodCallHandler(pathProvider, (_) async => cache.path);
+    var shutterPlays = 0;
+    var shutterLoaded = false;
+    messenger.setMockMethodCallHandler(audioChannel, (call) async {
+      if (call.method != 'init') return <String, Object?>{};
+      final id = (call.arguments as Map)['id'];
+      final player = MethodChannel('com.deskbtm.musaic.audio.methods.$id');
+      final events = MethodChannel('com.deskbtm.musaic.audio.events.$id');
+      final data = MethodChannel('com.deskbtm.musaic.audio.data.$id');
+      messenger.setMockMethodCallHandler(events, (_) async => null);
+      messenger.setMockMethodCallHandler(data, (_) async => null);
+      messenger.setMockMethodCallHandler(player, (call) async {
+        if (call.method == 'load') {
+          await messenger.handlePlatformMessage(
+            events.name,
+            const StandardMethodCodec().encodeSuccessEnvelope({
+              'processingState': 3,
+              'updateTime': DateTime.now().millisecondsSinceEpoch,
+              'updatePosition': 0,
+              'bufferedPosition': 65000,
+              'duration': 65000,
+              'currentIndex': 0,
+            }),
+            (_) {},
+          );
+          shutterLoaded = true;
+          return {'duration': 65000};
+        }
+        if (call.method == 'play') shutterPlays++;
+        return <String, Object?>{};
+      });
+      addTearDown(() {
+        for (final channel in [player, events, data]) {
+          messenger.setMockMethodCallHandler(channel, null);
+        }
+      });
+      return null;
     });
     await mount(tester);
     final blue = _image(
@@ -282,13 +304,25 @@ void main() {
     camera.photo = (await tester.runAsync(() => _png(blue)))!;
     blue.dispose();
     await tester.longPress(find.text('Album'));
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 100 && !shutterLoaded; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump();
+    }
+    expect(shutterLoaded, isTrue);
     expect(shutterPlays, 0);
 
     Future<void> openCapture() async {
+      final expectedPlays = shutterPlays + 1;
       await tester.tapAt(const Offset(5, 60));
       final thumbnail = find.byType(CoverFlowPhotoPreview);
-      for (var i = 0; i < 100 && thumbnail.evaluate().isEmpty; i++) {
+      for (
+        var i = 0;
+        i < 100 &&
+            (thumbnail.evaluate().isEmpty || shutterPlays < expectedPlays);
+        i++
+      ) {
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 10)),
         );

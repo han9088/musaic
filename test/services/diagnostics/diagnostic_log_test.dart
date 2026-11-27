@@ -207,6 +207,24 @@ void main() {
     ]);
   });
 
+  test('records numeric native codes without source details', () async {
+    final log = DiagnosticLog();
+    log.record(
+      DiagnosticEvent.playbackPlayerFailed,
+      error: StateError('Failed to open content://private/song'),
+      nativeErrorCode: 0,
+    );
+    log.record(
+      DiagnosticEvent.playbackPlayerFailed,
+      error: StateError('Cannot read /private/Music/track.wav'),
+      nativeErrorCode: -11800,
+    );
+    expect(await log.recentEvents(), [
+      endsWith('playbackPlayerFailed error=platform platformCode=0'),
+      endsWith('playbackPlayerFailed error=platform platformCode=-11800'),
+    ]);
+  });
+
   test(
     'retains the Flutter subsystem and source frame without app frames',
     () async {

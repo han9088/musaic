@@ -5,15 +5,30 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'audio/musaic_audio_platform.dart';
+import 'audio/musaic_sound.dart';
+
 /// 封装或定义专辑刻度音音效相关类型与行为，负责应用级服务、平台适配与辅助能力。
 class AlbumTickSound {
   AudioPool? _pool;
+  final _sounds = <MusaicSound>[];
+  final _available = <MusaicSound>[];
   final _stops = <StopFunction>{};
   Future<StopFunction>? _starting;
+  bool _disposed = false;
 
   /// 准备并调度后续任务，用于应用级服务、平台适配与辅助能力。
   Future<void> prepare() async {
+    if (_disposed) return;
     try {
+      if (usesMusaicAudio) {
+        _sounds.addAll(List.generate(3, (_) => MusaicSound()));
+        for (final sound in _sounds) {
+          await sound.prepare('assets/sounds/ios_wheel_tick.m4a');
+        }
+        if (!_disposed) _available.addAll(_sounds);
+        return;
+      }
       _pool = await AudioPool.create(
         source: AssetSource('sounds/ios_wheel_tick.m4a'),
         minPlayers: 3,
@@ -37,8 +52,9 @@ class AlbumTickSound {
   /// 执行当前模块中的播放操作，用于应用级服务、平台适配与辅助能力。
   Future<void> play(double volume) async {
     final pool = _pool;
-    if (pool == null || _starting != null || _stops.length >= 3) return;
-    _starting = pool.start(volume: volume);
+    if (_disposed || _starting != null || _stops.length >= 3) return;
+    if (pool == null && _available.isEmpty) return;
+    _starting = pool?.start(volume: volume) ?? _startNative(volume);
     try {
       final stop = await _starting!;
       _stops.add(stop);
@@ -55,6 +71,23 @@ class AlbumTickSound {
     } finally {
       _starting = null;
     }
+  }
+
+  Future<StopFunction> _startNative(double volume) async {
+    final sound = _available.removeLast();
+    try {
+      await sound.start(volume: volume);
+    } catch (_) {
+      if (!_disposed) _available.add(sound);
+      rethrow;
+    }
+    return () async {
+      try {
+        await sound.pause();
+      } finally {
+        if (!_disposed) _available.add(sound);
+      }
+    };
   }
 
   /// 控制流程的开始、暂停、取消或结束，用于应用级服务、平台适配与辅助能力。
@@ -77,11 +110,17 @@ class AlbumTickSound {
 
   /// 释放控制器、订阅、动画及其他持有资源，用于应用级服务、平台适配与辅助能力。
   Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
     final pool = _pool;
     _pool = null;
     await stop();
+    _available.clear();
     try {
-      await pool?.dispose();
+      await Future.wait([
+        if (pool != null) pool.dispose(),
+        for (final sound in _sounds) sound.dispose(),
+      ]);
     } catch (error) {
       debugPrint('Album tick sound release failed: $error');
     }

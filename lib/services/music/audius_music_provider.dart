@@ -3,13 +3,16 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:audius_sdk/audius_sdk.dart';
 
+import '../audio/musaic_audio_platform.dart';
 import 'music_provider.dart';
+import 'musaic_music_queue.dart';
 
 final class AudiusMusicProvider implements MusicProvider {
   AudiusMusicProvider({
     required this._sdk,
     AudioPlayer Function()? createPlayer,
-  }) : _createPlayer = createPlayer ?? AudioPlayer.new;
+  }) : _createPlayer = createPlayer ?? AudioPlayer.new,
+       _usesNativeQueue = createPlayer == null && usesMusaicAudio;
 
   static const providerId = 'audius';
   static const _available = (
@@ -20,6 +23,10 @@ final class AudiusMusicProvider implements MusicProvider {
 
   final AudiusSdk _sdk;
   final AudioPlayer Function() _createPlayer;
+  final bool _usesNativeQueue;
+  late final MusaicMusicQueue? _nativeQueue = _usesNativeQueue
+      ? MusaicMusicQueue(_openNativeSource)
+      : null;
   final _summaries = <String, ProviderAlbum>{};
   final _details = <MusicReference, Future<ProviderAlbum>>{};
   final _events = StreamController<MusicPlayback>.broadcast();
@@ -251,7 +258,14 @@ final class AudiusMusicProvider implements MusicProvider {
   }
 
   @override
-  Stream<MusicPlayback> get playback => _events.stream;
+  Stream<MusicPlayback> get playback =>
+      _nativeQueue?.playback ?? _events.stream;
+
+  Future<MusicQueueSource> _openNativeSource(MusicReference reference) async {
+    final stream = _sdk.tracks.getTrackStream(trackId: reference.id);
+    final uri = await _sdk.tracks.resolveTrackStream(stream);
+    return (uri: uri, close: null);
+  }
 
   void _emit({
     MusicPlaybackStatus? status,
@@ -280,7 +294,11 @@ final class AudiusMusicProvider implements MusicProvider {
     if (_disposed) throw StateError('Audius provider is disposed.');
   }
 
-  Future<void> _command(Future<void> Function() action) {
+  Future<void> _command(
+    Future<void> Function() action, {
+    bool interrupt = false,
+  }) {
+    if (interrupt) _nativeQueue?.interruptLoad();
     final task = _pending.then((_) async {
       _ensureOpen();
       final cancelled = _cancelCommand = Completer<void>();
@@ -410,14 +428,19 @@ final class AudiusMusicProvider implements MusicProvider {
         }
       }
       _ensureOpen();
+      if (_nativeQueue case final player?) {
+        await player.play(queue, index);
+        return;
+      }
       _queue = queue;
       _index = index;
       await _start();
-    });
+    }, interrupt: true);
   }
 
   @override
   Future<void> resume() => _command(() async {
+    if (_nativeQueue case final player?) return player.resume();
     if (_queue.isEmpty) throw StateError('No Audius playback queue.');
     if (_state.status == MusicPlaybackStatus.error ||
         _state.status == MusicPlaybackStatus.completed) {
@@ -430,13 +453,15 @@ final class AudiusMusicProvider implements MusicProvider {
 
   @override
   Future<void> pause() => _command(() async {
+    if (_nativeQueue case final player?) return player.pause();
     if (_state.status != MusicPlaybackStatus.playing) return;
     await _player!.pause();
     _emit(status: MusicPlaybackStatus.paused);
-  });
+  }, interrupt: true);
 
   @override
   Future<void> seek(Duration position) => _command(() async {
+    if (_nativeQueue case final player?) return player.seek(position);
     if (position.isNegative) throw ArgumentError.value(position, 'position');
     if (_state.status != MusicPlaybackStatus.playing &&
         _state.status != MusicPlaybackStatus.paused) {
@@ -452,23 +477,26 @@ final class AudiusMusicProvider implements MusicProvider {
 
   @override
   Future<void> next() => _command(() async {
+    if (_nativeQueue case final player?) return player.next();
     if (_index + 1 >= _queue.length) return;
     _index++;
     await _start();
-  });
+  }, interrupt: _nativeQueue?.hasNext ?? false);
 
   @override
   Future<void> previous() => _command(() async {
+    if (_nativeQueue case final player?) return player.previous();
     if (_index == 0) return;
     _index--;
     await _start();
-  });
+  }, interrupt: _nativeQueue?.hasPrevious ?? false);
 
   @override
   Future<void> dispose() => _disposing ??= _dispose();
 
   Future<void> _dispose() async {
     _disposed = true;
+    _nativeQueue?.interruptLoad();
     _sdk.close();
     _cancelCommand?.complete();
     await _pending;
@@ -478,6 +506,7 @@ final class AudiusMusicProvider implements MusicProvider {
     _details.clear();
     _summaries.clear();
     try {
+      await _nativeQueue?.dispose();
       await _player?.dispose();
     } finally {
       unawaited(_events.close());

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -288,6 +289,8 @@ void main() {
   test(
     'system and folder tracks share the player and release folder access',
     () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
       const playerChannel = MethodChannel('xyz.luan/audioplayers');
@@ -460,6 +463,8 @@ void main() {
     test(
       '$action interrupts an unresolved content open without late resume',
       () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
         final messenger =
             TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
         const playerChannel = MethodChannel('xyz.luan/audioplayers');

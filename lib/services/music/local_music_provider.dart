@@ -5,11 +5,13 @@ import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:musaic_query/musaic_query.dart';
 
+import '../audio/musaic_audio_platform.dart';
 import '../diagnostics/diagnostic_log.dart';
 import 'directory_catalog.dart';
 import 'directory_music_library.dart';
 import 'local_music_library.dart';
 import 'music_provider.dart';
+import 'musaic_music_queue.dart';
 
 /// 封装或定义本地音乐提供器相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class LocalMusicProvider implements MusicProvider {
@@ -31,6 +33,9 @@ final class LocalMusicProvider implements MusicProvider {
   bool get systemLibraryEnabled => _systemLibrary != null;
   Future<void>? _scan;
   bool _loaded = false;
+  late final MusaicMusicQueue? _nativeQueue = usesMusaicAudio
+      ? MusaicMusicQueue(_openNativeSource)
+      : null;
   AudioPlayer? _player;
   final _subscriptions = <StreamSubscription<dynamic>>[];
   final _events = StreamController<MusicPlayback>.broadcast();
@@ -239,18 +244,20 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   /// 执行当前模块中的播放操作，用于音乐源、媒体库、播放及切换流程。
-  Stream<MusicPlayback> get playback => Stream.multi((controller) {
-    if (_disposed) {
-      controller.closeSync();
-      return;
-    }
-    final subscription = _events.stream.listen(
-      controller.addSync,
-      onDone: controller.closeSync,
-    );
-    controller.addSync(_state);
-    controller.onCancel = subscription.cancel;
-  }, isBroadcast: true);
+  Stream<MusicPlayback> get playback =>
+      _nativeQueue?.playback ??
+      Stream.multi((controller) {
+        if (_disposed) {
+          controller.closeSync();
+          return;
+        }
+        final subscription = _events.stream.listen(
+          controller.addSync,
+          onDone: controller.closeSync,
+        );
+        controller.addSync(_state);
+        controller.onCancel = subscription.cancel;
+      }, isBroadcast: true);
 
   void _emit({
     MusicPlaybackStatus? status,
@@ -281,6 +288,10 @@ final class LocalMusicProvider implements MusicProvider {
 
   /// 判断当前状态是否满足指定条件，用于音乐源、媒体库、播放及切换流程。
   Future<void> _cancelLoading() async {
+    if (_nativeQueue case final queue?) {
+      queue.interruptLoad();
+      return;
+    }
     final cancelled = _loadingCancelled;
     if (cancelled == null || cancelled.isCompleted) return;
     cancelled.complete();
@@ -299,12 +310,24 @@ final class LocalMusicProvider implements MusicProvider {
       try {
         await action();
       } catch (error) {
-        _emit(status: MusicPlaybackStatus.error, error: error);
+        if (_nativeQueue case final queue?) {
+          queue.reportError(error);
+        } else {
+          _emit(status: MusicPlaybackStatus.error, error: error);
+        }
         rethrow;
       }
     });
     _pending = task.then<void>((_) {}, onError: (Object _) {});
     return task;
+  }
+
+  Future<MusicQueueSource> _openNativeSource(MusicReference reference) async {
+    final grant = reference.provider == directoryMusicProviderId
+        ? await _directories!.openPlayback(reference)
+        : await _library.openPlayback(reference);
+    if (grant != null) return (uri: grant.uri, close: grant.close);
+    return (uri: Uri.parse(_library.source(reference)), close: null);
   }
 
   AudioPlayer _getPlayer() {
@@ -486,6 +509,10 @@ final class LocalMusicProvider implements MusicProvider {
         songs.addAll(_resolve(item));
       }
       if (songs.isEmpty) throw ArgumentError('Empty local queue');
+      if (_nativeQueue case final queue?) {
+        await queue.play(songs, first);
+        return;
+      }
       _seekOnStart = null;
       _queue = songs;
       _index = first;
@@ -495,6 +522,7 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   Future<void> resume() => _command(() async {
+    if (_nativeQueue case final queue?) return queue.resume();
     if (_queue.isEmpty) throw StateError('No local playback queue');
     if (_needsSource ||
         _state.status == MusicPlaybackStatus.completed ||
@@ -508,6 +536,7 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   Future<void> pause() => _command(() async {
+    if (_nativeQueue case final queue?) return queue.pause();
     if (_player case final player?) {
       await player.pause();
       if (_needsSource) await _releaseScopedAudio(player);
@@ -517,6 +546,7 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   Future<void> seek(Duration position) => _command(() async {
+    if (_nativeQueue case final queue?) return queue.seek(position);
     if (position.isNegative) throw ArgumentError.value(position, 'position');
     if (_queue.isEmpty) throw StateError('No local playback queue');
     if (_needsSource) {
@@ -529,21 +559,23 @@ final class LocalMusicProvider implements MusicProvider {
 
   @override
   Future<void> next() => _command(() async {
+    if (_nativeQueue case final queue?) return queue.next();
     if (_index + 1 < _queue.length) {
       _index++;
       _seekOnStart = null;
       await _start();
     }
-  }, interrupt: _index + 1 < _queue.length);
+  }, interrupt: _nativeQueue?.hasNext ?? (_index + 1 < _queue.length));
 
   @override
   Future<void> previous() => _command(() async {
+    if (_nativeQueue case final queue?) return queue.previous();
     if (_index > 0) {
       _index--;
       _seekOnStart = null;
       await _start();
     }
-  }, interrupt: _index > 0);
+  }, interrupt: _nativeQueue?.hasPrevious ?? (_index > 0));
 
   @override
   Future<void> dispose() => _disposing ??= _dispose();
@@ -571,6 +603,7 @@ final class LocalMusicProvider implements MusicProvider {
       await subscription.cancel();
     }
     try {
+      await _nativeQueue?.dispose();
       await _player?.dispose();
     } finally {
       try {

@@ -212,12 +212,13 @@ class DiagnosticLog {
     Duration? duration,
     DiagnosticOperation? operation,
     Object? error,
+    int? nativeErrorCode,
     StackTrace? stack,
     String? frameworkLibrary,
   }) {
     final group = error == null
         ? null
-        : _classifyError(error, operation, frameworkLibrary);
+        : _classifyError(error, operation, frameworkLibrary, nativeErrorCode);
     if (group != null && !_sampleError(event, group)) return false;
     final now = DateTime.timestamp();
     var message = event.name;
@@ -282,28 +283,34 @@ class DiagnosticLog {
     Object error,
     DiagnosticOperation? operation,
     String? frameworkLibrary,
+    int? nativeErrorCode,
   ) {
-    final kind = switch (error) {
-      DioException(:final type) => type.name,
-      MissingPluginException() => 'missingPlugin',
-      PlatformException() => 'platform',
-      FlutterError() => 'flutter',
-      AssertionError() => 'assertion',
-      StateError() => 'state',
-      RangeError() => 'range',
-      ArgumentError() => 'argument',
-      FormatException() => 'format',
-      TimeoutException() => 'timeout',
-      UnsupportedError() => 'unsupported',
-      TypeError() => 'type',
-      _ => 'other',
-    };
-    final platformCode = switch (error) {
-      PlatformException(code: 'Unexpected AndroidAudioError') =>
-        'UnexpectedAndroidAudioError',
-      PlatformException(:final code) when _platformCodes.contains(code) => code,
-      _ => null,
-    };
+    final kind = nativeErrorCode != null
+        ? 'platform'
+        : switch (error) {
+            DioException(:final type) => type.name,
+            MissingPluginException() => 'missingPlugin',
+            PlatformException() => 'platform',
+            FlutterError() => 'flutter',
+            AssertionError() => 'assertion',
+            StateError() => 'state',
+            RangeError() => 'range',
+            ArgumentError() => 'argument',
+            FormatException() => 'format',
+            TimeoutException() => 'timeout',
+            UnsupportedError() => 'unsupported',
+            TypeError() => 'type',
+            _ => 'other',
+          };
+    final platformCode =
+        nativeErrorCode?.toString() ??
+        switch (error) {
+          PlatformException(code: 'Unexpected AndroidAudioError') =>
+            'UnexpectedAndroidAudioError',
+          PlatformException(:final code) when _platformCodes.contains(code) =>
+            code,
+          _ => null,
+        };
     return (
       operation: operation,
       kind: kind,
