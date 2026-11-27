@@ -7,6 +7,7 @@ Flutter app for Android, iOS, macOS, Windows, Linux, and Web with the applicatio
 ```sh
 mise install
 mise exec -- flutter pub get
+mise exec -- dart run build_runner build
 mise exec -- flutter run
 ```
 
@@ -21,14 +22,15 @@ prefill the recipient in the native mail composer.
 ## Audius music source
 
 Choose Audius in Settings → Music source to browse trending public albums.
-Supply an API key at launch or build time with
-`--dart-define=AUDIUS_API_KEY=<public-api-key>`. The SDK can also request
-the public catalog without a key.
+Set `AUDIUS_API_KEY` in the project-root `.env` and run
+`mise exec -- dart run build_runner build` before building the app. Envied
+generates the configuration used by both account login and the public catalog.
+The public catalog can also load without a key.
 
 The Audius tab appears in Settings while Audius is selected. Its optional account
 connection runs on Android, iOS, and macOS. In Audius Developer Apps, register
-`com.deskbtm.musaic.audius://oauth/callback` and pass that app's public API key
-using `AUDIUS_API_KEY` or `--dart-define-from-file=.env` if it is set there.
+`com.deskbtm.musaic.audius://oauth/callback` for the developer app whose public
+API key is in `.env`.
 My Audius displays favorite tracks, favorite albums, and
 public playlists. Choose the favorite-albums canvas explicitly to replace the
 trending catalog. The first favorite or unfavorite prompts for write access.

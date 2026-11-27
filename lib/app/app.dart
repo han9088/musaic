@@ -10,6 +10,7 @@ import 'package:flutter/material.dart' as flutter_material;
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:musaic_query/musaic_query.dart';
 
+import '../config/env.dart';
 import '../storage/music/audius_secure_session_store.dart';
 import '../storage/music/music_index.dart';
 import '../storage/music/custom_artwork_store.dart';
@@ -68,7 +69,7 @@ class _MusaicAppState extends State<MusaicApp> {
   late final AppLifecycleListener _lifecycle;
 
   static AudiusAccount? _createAudiusAccount() {
-    const clientId = String.fromEnvironment('AUDIUS_API_KEY');
+    final clientId = Env.audiusApiKey;
     if (clientId.isEmpty || kIsWeb) return null;
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:

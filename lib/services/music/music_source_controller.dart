@@ -6,6 +6,7 @@ import 'package:audius_sdk/audius_sdk.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+import '../../config/env.dart';
 import '../../storage/music/music_index.dart';
 import '../diagnostics/diagnostic_log.dart';
 import 'audius_account.dart';
@@ -36,9 +37,8 @@ final class MusicSourceController {
     audiusAccount?.addListener(_accountChanged);
   }
 
-  static MusicProvider _defaultAudius() => AudiusMusicProvider(
-    sdk: AudiusSdk(apiKey: const String.fromEnvironment('AUDIUS_API_KEY')),
-  );
+  static MusicProvider _defaultAudius() =>
+      AudiusMusicProvider(sdk: AudiusSdk(apiKey: Env.audiusApiKey));
 
   final MusicProvider Function()? _createLocal;
   final MusicProvider Function() _createAudius;

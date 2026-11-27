@@ -67,6 +67,30 @@ class AlbumGridSnapshot {
   final List<({int row, int column, Rect rect})> cells;
   final int focus;
 
+  /// Picks distinct covers in the top-to-bottom entrance order.
+  List<({int row, int column, Rect rect})> leadingArtworkCells({
+    required int albumCount,
+    required int limit,
+  }) {
+    if (albumCount == 0 || limit <= 0) return const [];
+    final centerX = viewport.width / 2;
+    final ordered = cells.toList()
+      ..sort((a, b) {
+        final row = a.row.compareTo(b.row);
+        if (row != 0) return row;
+        return (a.rect.center.dx - centerX).abs().compareTo(
+          (b.rect.center.dx - centerX).abs(),
+        );
+      });
+    final seen = <int>{};
+    return ordered
+        .where(
+          (cell) => seen.add(gridAlbumIndex(cell.row, cell.column, albumCount)),
+        )
+        .take(limit)
+        .toList(growable: false);
+  }
+
   /// 执行当前模块中的rectfor操作，用于专辑墙无限画布的布局、视口与交互状态。
   Rect rectFor(int index, Size size, EdgeInsets padding) {
     final rect = cells[index].rect;

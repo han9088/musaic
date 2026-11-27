@@ -276,14 +276,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (!mounted || viewport == null || _landscape) return;
 
     final target = mapProviderAlbums(albums);
+    final cells = AlbumGridSnapshot.capture(
+      viewport,
+      _transform.value,
+    ).leadingArtworkCells(albumCount: target.length, limit: 4);
     var waiting = true;
     bool isActive() => mounted && waiting;
 
     Future<void> prepare() async {
       if (_artworkMode.enabled) {
-        final leases = await _prepareSourceXerox(
+        final requests = await _buildXeroxRequests(
           target,
-          viewport,
+          cells,
+          useLayout: false,
+          isActive: isActive,
+        );
+        final leases = await _artworkMode.scheduler.prepare(
+          requests,
           isActive: isActive,
           allowFailures: true,
         );
@@ -293,13 +302,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         return;
       }
 
-      final cells = AlbumGridSnapshot.capture(viewport, _transform.value).cells;
-      final center = viewport.center(Offset.zero);
-      cells.sort(
-        (a, b) => (a.rect.center - center).distanceSquared.compareTo(
-          (b.rect.center - center).distanceSquared,
-        ),
-      );
       await _warmOriginalArtwork(
         albums: target,
         cells: cells,
@@ -308,7 +310,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     }
 
     try {
-      await prepare().timeout(const Duration(seconds: 2), onTimeout: () {});
+      await prepare().timeout(
+        const Duration(milliseconds: 500),
+        onTimeout: () {},
+      );
     } catch (_) {
       // The catalog is usable even when some covers cannot be prepared.
     } finally {
@@ -320,7 +325,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     List<Map<String, dynamic>> albums,
     Size viewport, {
     required bool Function() isActive,
-    bool allowFailures = false,
   }) async {
     final scale = _transform.value.getColumn(0).length;
     final snapshot = AlbumGridSnapshot.capture(
@@ -334,11 +338,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       useLayout: false,
       isActive: isActive,
     );
-    return _artworkMode.scheduler.prepare(
-      requests,
-      isActive: isActive,
-      allowFailures: allowFailures,
-    );
+    return _artworkMode.scheduler.prepare(requests, isActive: isActive);
   }
 
   /// 协调动画进度与状态过渡，用于页面状态组织与业务流程协调。
