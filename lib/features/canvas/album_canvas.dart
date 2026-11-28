@@ -256,7 +256,7 @@ class _RenderAlbumCanvas extends RenderStack {
       final covered =
           motion != null &&
           paintedTiles < tileCount &&
-          motion.owns((
+          motion.hidesStaticCover((
             (data.offset.dy / albumGridExtent).round(),
             (data.offset.dx / albumGridExtent).round(),
           ));

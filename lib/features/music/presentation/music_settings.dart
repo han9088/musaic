@@ -5,9 +5,25 @@ import 'package:material_ui/material_ui.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../storage/settings/animated_covers_preference.dart';
 import '../../../storage/settings/screensaver_delay_preference.dart';
 import '../../../ui/theme/app_theme.dart';
 import '../../../ui/widgets/horizontal_selection_wheel.dart';
+
+class AnimatedCoversSetting extends StatelessWidget {
+  const AnimatedCoversSetting({super.key, required this.preference});
+
+  final AnimatedCoversPreference preference;
+
+  @override
+  Widget build(BuildContext context) => SignalBuilder(
+    builder: (context) => SwitchListTile(
+      title: Text(AppLocalizations.of(context).settingsAnimatedCovers),
+      value: preference.enabled.value,
+      onChanged: preference.setEnabled,
+    ),
+  );
+}
 
 class MusicSettings extends StatelessWidget {
   const MusicSettings({super.key, required this.screensaverDelay});

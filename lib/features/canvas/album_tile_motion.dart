@@ -34,8 +34,8 @@ class AlbumTileMotion extends ChangeNotifier {
 
   static const _duration = Duration(milliseconds: 1800);
   static const _motionCurve = Cubic(.4, 0, .2, 1);
-  static const _attemptIntervalMinMs = 1200;
-  static const _attemptIntervalMaxMs = 1700;
+  static const _attemptIntervalMinMs = 1500;
+  static const _attemptIntervalMaxMs = 2000;
   static const _overlapChance = .50;
   static const _thirdEffectChance = .02;
   static const _maxLayoutAttempts = 4;
@@ -166,7 +166,7 @@ class AlbumTileMotion extends ChangeNotifier {
     final margin = switch (effect) {
       _Effect.flip => .11,
       _Effect.swap => .36,
-      _Effect.folder => .14,
+      _Effect.folder => .25,
     };
     return albumGridRect(cell).inflate(albumGridExtent * margin);
   }
@@ -264,31 +264,73 @@ class AlbumTileMotion extends ChangeNotifier {
     bool Function(_Album) ready,
   ) {
     if (pool.length < AlbumFolderReveal.panelCount) return null;
-    for (final cell in cells.take(_maxLayoutAttempts)) {
+    final available = cells.toSet();
+    final withHorizontalNeighbor = cells.where(
+      (cell) =>
+          available.contains((cell.$1, cell.$2 - 1)) ||
+          available.contains((cell.$1, cell.$2 + 1)),
+    );
+    for (final cell in withHorizontalNeighbor.take(_maxLayoutAttempts)) {
       final front = albumAt(cell);
       if (!ready(front)) continue;
-      final albums = [front];
-      final usedFamilies = {familyOf(front)};
       final adjacentFamilies = {
         for (final neighbor in _neighbors(cell)) familyOf(albumAt(neighbor)),
       };
-      while (albums.length < AlbumFolderReveal.panelCount) {
-        final next = _pickCover(pool, ready, (album) {
-          if (albums.any((used) => !_different(used, album))) return null;
-          final family = familyOf(album);
-          if (family == null) return 2;
-          return (usedFamilies.contains(family) ? 3 : 0) +
-              (adjacentFamilies.contains(family) ? 1 : 0);
-        });
-        if (next == null) break;
-        albums.add(next);
-        usedFamilies.add(familyOf(next));
-      }
-      if (albums.length == AlbumFolderReveal.panelCount) {
-        return (cells: [cell], albums: albums);
+      final direction = _random.nextBool() ? 1 : -1;
+      for (final column in [cell.$2 + direction, cell.$2 - direction]) {
+        final target = (cell.$1, column);
+        if (!available.contains(target)) continue;
+        final albums = _folderCovers(
+          front,
+          target,
+          adjacentFamilies,
+          pool,
+          ready,
+        );
+        if (albums != null) return (cells: [cell, target], albums: albums);
       }
     }
     return null;
+  }
+
+  List<_Album>? _folderCovers(
+    _Album front,
+    AlbumGridCell target,
+    Set<AlbumColorFamily?> adjacentFamilies,
+    List<_Album> pool,
+    bool Function(_Album) ready,
+  ) {
+    final previous = albumAt(target);
+    final landingNeighbors = _neighbors(target).map(albumAt).toList();
+    final frontFamily = familyOf(front);
+    final landingFamilies = landingNeighbors.map(familyOf).toList();
+    final extracted = _pickCover(pool, ready, (album) {
+      if (!_different(album, previous) ||
+          landingNeighbors.any((neighbor) => !_different(neighbor, album))) {
+        return null;
+      }
+      final family = familyOf(album);
+      if (family == null) return 2;
+      return landingFamilies.where((neighbor) => family == neighbor).length +
+          (family == frontFamily ? 1 : 0);
+    });
+    if (extracted == null) return null;
+
+    final albums = [front, extracted];
+    final usedFamilies = {frontFamily, familyOf(extracted)};
+    while (albums.length < AlbumFolderReveal.panelCount) {
+      final next = _pickCover(pool, ready, (album) {
+        if (albums.any((used) => !_different(used, album))) return null;
+        final family = familyOf(album);
+        if (family == null) return 2;
+        return (usedFamilies.contains(family) ? 3 : 0) +
+            (adjacentFamilies.contains(family) ? 1 : 0);
+      });
+      if (next == null) return null;
+      albums.add(next);
+      usedFamilies.add(familyOf(next));
+    }
+    return albums;
   }
 
   ({List<AlbumGridCell> cells, List<_Album> albums})? _planFlip(
@@ -382,12 +424,21 @@ class AlbumTileMotion extends ChangeNotifier {
       if (folder != null) {
         if (_folderHold != null) continue;
         final age = folder.age;
+        final wasPlaced = folder.hasTransferred;
+        folder.advance(age);
+        if (!wasPlaced && folder.hasTransferred) {
+          // 内页到达才更新相邻格的真实专辑，源格始终保留原封面。
+          commit(
+            run.cells.last,
+            run.albums[AlbumFolderReveal.extractedCoverIndex],
+          );
+          changed.add(run.cells.last);
+        }
         if (age < AlbumFolderReveal.duration) {
-          run.progress = AlbumFolderReveal.opennessAt(age);
-          if (age >= AlbumFolderReveal.openEnd &&
-              age < AlbumFolderReveal.closeStart) {
-            // 停留时只保留一张静止画面，定时唤醒同一个 Ticker 合拢。
-            _folderHold = Timer(AlbumFolderReveal.closeStart - age, () {
+          final holdUntil = AlbumFolderReveal.holdUntil(age);
+          if (holdUntil != null) {
+            // 静止时停帧，到下一段抽取或合拢再唤醒。
+            _folderHold = Timer(holdUntil - age, () {
               _folderHold = null;
               _syncTicker();
             });
@@ -453,7 +504,8 @@ class AlbumTileMotion extends ChangeNotifier {
 
   bool get isActive => _runs.isNotEmpty;
 
-  bool owns(AlbumGridCell cell) => _owned.contains(cell);
+  bool hidesStaticCover(AlbumGridCell cell) =>
+      _owned.contains(cell) && _runs[_Effect.folder]?.cells.last != cell;
 
   void paintBehind(Canvas canvas, Offset offset) {
     final swap = _runs[_Effect.swap];
@@ -470,7 +522,7 @@ class AlbumTileMotion extends ChangeNotifier {
       folder.folder!.paint(
         canvas,
         albumGridRect(folder.cells.first).shift(offset),
-        folder.progress,
+        albumGridRect(folder.cells.last).shift(offset),
         folder.covers,
       );
     }

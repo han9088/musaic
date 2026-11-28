@@ -416,6 +416,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsMusic => 'Music';
 
   @override
+  String get settingsAnimatedCovers => 'Animated Covers';
+
+  @override
   String get settingsScreensaverEnabled => 'Enable screensaver';
 
   @override

@@ -34,6 +34,7 @@ import '../../services/music/audius_music_provider.dart';
 import '../../services/music/music_models.dart';
 import '../../services/music/music_source_controller.dart';
 import '../../storage/settings/app_language_preference.dart';
+import '../../storage/settings/animated_covers_preference.dart';
 import '../../storage/settings/developer_options_preference.dart';
 import '../../storage/settings/manual_rotation_preference.dart';
 import '../../storage/settings/screensaver_delay_preference.dart';
@@ -63,6 +64,7 @@ class HomeSheet extends StatefulWidget {
     this.language,
     this.manualRotation,
     this.screensaverDelay,
+    this.animatedCovers,
     this.xeroxEnabled,
     this.onXeroxChanged,
     this.xeroxPalettePicker,
@@ -90,6 +92,7 @@ class HomeSheet extends StatefulWidget {
   final AppLanguagePreference? language;
   final ManualRotationPreference? manualRotation;
   final ScreensaverDelayPreference? screensaverDelay;
+  final AnimatedCoversPreference? animatedCovers;
   final ValueListenable<bool>? xeroxEnabled;
   final FutureOr<void> Function(bool enabled)? onXeroxChanged;
   final Widget? xeroxPalettePicker;
@@ -332,6 +335,8 @@ class _HomeSheetState extends State<HomeSheet> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (widget.animatedCovers case final preference?)
+              AnimatedCoversSetting(preference: preference),
             if (widget.screensaverDelay case final delay?)
               MusicSettings(screensaverDelay: delay),
             if ((

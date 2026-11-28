@@ -184,7 +184,7 @@ class _RenderAlbumSprites extends RenderProxyBox {
     for (var row = range.top; row < range.bottom; row++) {
       for (var column = range.left; column < range.right; column++) {
         if ((row, column) == _view.hidden ||
-            (motion != null && motion.owns((row, column)))) {
+            (motion != null && motion.hidesStaticCover((row, column)))) {
           continue;
         }
         atlas.add(

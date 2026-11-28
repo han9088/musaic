@@ -825,6 +825,12 @@ abstract class AppLocalizations {
   /// **'音乐'**
   String get settingsMusic;
 
+  /// No description provided for @settingsAnimatedCovers.
+  ///
+  /// In zh, this message translates to:
+  /// **'动态封面'**
+  String get settingsAnimatedCovers;
+
   /// No description provided for @settingsScreensaverEnabled.
   ///
   /// In zh, this message translates to:

@@ -395,6 +395,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsMusic => '音乐';
 
   @override
+  String get settingsAnimatedCovers => '动态封面';
+
+  @override
   String get settingsScreensaverEnabled => '开启熄屏显示';
 
   @override

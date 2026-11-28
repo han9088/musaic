@@ -23,6 +23,7 @@ import '../../features/canvas/canvas_drift.dart';
 import '../../features/canvas/home_album_layout_state.dart';
 import '../../features/canvas/canvas_interaction_state.dart';
 import '../../features/canvas/album_canvas_viewport.dart';
+import '../../storage/settings/animated_covers_preference.dart';
 import '../../features/canvas/portrait_tilt.dart';
 import '../../features/artwork/pipeline/artwork_prefetch_scheduler.dart';
 import '../../features/artwork/pipeline/artwork_pipeline.dart';
@@ -79,6 +80,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   DesktopShortcuts? _desktopShortcuts;
   final _manualRotation = ManualRotationPreference();
   final _screensaverDelay = ScreensaverDelayPreference();
+  final _animatedCovers = AnimatedCoversPreference();
   late final VoidCallback _stopManualRotationListener;
   late final _sources = widget.sources ?? MusicSourceController();
   late final VoidCallback _stopSourceListener;
@@ -698,6 +700,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     });
     unawaited(_manualRotation.restore());
     unawaited(_screensaverDelay.restore());
+    unawaited(_animatedCovers.restore());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       unawaited(_haptics.prepare());
@@ -838,6 +841,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _stopManualRotationListener();
     _manualRotation.dispose();
     _screensaverDelay.dispose();
+    _animatedCovers.dispose();
     _playback.dispose();
     _colorOrganization.dispose();
     _albumColors.dispose();
@@ -933,6 +937,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           language: widget.language,
           manualRotation: _manualRotation,
           screensaverDelay: _screensaverDelay,
+          animatedCovers: _animatedCovers,
           xeroxEnabled: _artworkMode.enabledListenable,
           onXeroxChanged: _setXeroxMode,
           colorIndex: _albumColors,
@@ -1090,6 +1095,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       interaction: _interaction,
       playback: _playback,
       xerox: _artworkMode.enabled,
+      tileMotionEnabled: _animatedCovers.enabled.value,
       interactionBlocked:
           _sourceTransition.preparing ||
           _sourceTransition.phase != null ||

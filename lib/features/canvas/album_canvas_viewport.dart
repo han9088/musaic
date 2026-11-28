@@ -49,6 +49,7 @@ class AlbumCanvasViewport extends StatefulWidget {
     required this.animateSourceTile,
     this.onArtworkAccent,
     this.artworkFamilyOf,
+    this.tileMotionEnabled = false,
   });
 
   static bool useWidgetGridForBenchmark = false;
@@ -60,6 +61,7 @@ class AlbumCanvasViewport extends StatefulWidget {
   final AlbumPlayback playback;
   final bool xerox;
   final bool interactionBlocked;
+  final bool tileMotionEnabled;
   final ValueChanged<Size> onViewportSizeChanged;
   final void Function(int row, int column) onTileSelected;
   final Widget Function(int row, int column, Widget child) animateSourceTile;
@@ -271,7 +273,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
 
   bool get _motionAllowed {
     final interaction = widget.interaction;
-    return widget.artworkFamilyOf != null &&
+    return widget.tileMotionEnabled &&
+        widget.artworkFamilyOf != null &&
         widget.albums.isNotEmpty &&
         _appResumed &&
         _routeVisible &&
