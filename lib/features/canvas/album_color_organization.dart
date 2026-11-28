@@ -13,6 +13,25 @@ class AlbumColorOrganization {
   final _debounce = ColorSelectionDebounce();
   bool enabled = false;
   AlbumColorFamily? family;
+  List<Map<String, dynamic>>? _lastCatalog;
+  List<AlbumColorFamily>? _lastFamilies;
+  AlbumColorFamily? _lastFilter;
+  List<Map<String, dynamic>> _organized = const [];
+
+  List<Map<String, dynamic>> organize(List<Map<String, dynamic>> albums) {
+    if (!enabled) return const [];
+    final families = _index.availableFamilies;
+    if (!identical(_lastCatalog, albums) ||
+        !identical(_lastFamilies, families) ||
+        _lastFilter != family) {
+      _lastCatalog = albums;
+      _lastFamilies = families;
+      _lastFilter = family;
+      final next = _index.organize(albums, family);
+      if (!listEquals(_organized, next)) _organized = next;
+    }
+    return _organized;
+  }
 
   ValueListenable<bool> get enabledSelection => _enabled;
   ValueListenable<AlbumColorFamily?> get familySelection => _family;
@@ -46,6 +65,12 @@ class AlbumColorOrganization {
         enabled != nextEnabled || (nextEnabled && previousFamily != nextFamily);
     enabled = nextEnabled;
     family = nextFamily;
+    if (!nextEnabled) {
+      _lastCatalog = null;
+      _lastFamilies = null;
+      _lastFilter = null;
+      _organized = const [];
+    }
     if (changed) onApplied();
   }
 

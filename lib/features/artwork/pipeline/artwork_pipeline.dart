@@ -67,6 +67,16 @@ class _DisplayedArtwork {
   int references = 0;
 }
 
+typedef _DisplayKey = (
+  String,
+  ArtworkIdentity?,
+  ArtworkVersion?,
+  DirectoryMusicLibrary?,
+  int,
+  int?,
+  int?,
+);
+
 /// Artwork 的唯一资源协调入口。
 ///
 /// Source Resolver 负责得到原图资源；LOD Manager 负责选档；缓存请求和后台处理
@@ -97,19 +107,43 @@ class ArtworkPipeline {
   final XeroxRasterCache _rasterCache;
   final XeroxBackgroundProcessor _backgroundProcessor;
   final Map<String, Future<ArtworkResource?>> _resolving = {};
-  final _displayed =
-      <
-        (
-          String,
-          ArtworkIdentity?,
-          ArtworkVersion?,
-          DirectoryMusicLibrary?,
-          int,
-          int?,
-          int?,
-        ),
-        _DisplayedArtwork
-      >{};
+  final _displayed = <_DisplayKey, _DisplayedArtwork>{};
+
+  _DisplayKey _displayKey(
+    ArtworkRequest request,
+    DirectoryMusicLibrary? directories,
+    int directoryRevision,
+  ) => (
+    request.source,
+    request.identity,
+    request.version,
+    directories,
+    directoryRevision,
+    request.sourceResolution,
+    customArtworkRevision(request),
+  );
+
+  /// Borrows an already resolved display resource without requesting artwork.
+  ({ArtworkResource resource, VoidCallback release})? tryBorrowDisplayed(
+    ArtworkRequest request, {
+    required DirectoryMusicLibrary? directories,
+    required int directoryRevision,
+  }) {
+    final key = _displayKey(request, directories, directoryRevision);
+    final entry = _displayed[key];
+    final resource = entry?.resource;
+    if (entry == null || resource == null) return null;
+    return (resource: resource, release: _retainDisplayed(key, entry));
+  }
+
+  VoidCallback _retainDisplayed(_DisplayKey key, _DisplayedArtwork entry) {
+    entry.references++;
+    return () {
+      if (--entry.references == 0 && identical(_displayed[key], entry)) {
+        _displayed.remove(key);
+      }
+    };
+  }
 
   /// Share the resolved source across layouts with different decode sizes.
   ArtworkResourceLease acquireForDisplay(
@@ -117,15 +151,7 @@ class ArtworkPipeline {
     required DirectoryMusicLibrary? directories,
     required int directoryRevision,
   }) {
-    final key = (
-      request.source,
-      request.identity,
-      request.version,
-      directories,
-      directoryRevision,
-      request.sourceResolution,
-      customArtworkRevision(request),
-    );
+    final key = _displayKey(request, directories, directoryRevision);
     // Repeated canvas tiles share a confirmed absence until the last tile leaves.
     final reuseMissing = request.source.startsWith('media-store:');
     var entry = _displayed[key];
@@ -139,19 +165,13 @@ class ArtworkPipeline {
       _displayed[key] = entry;
     }
     final displayed = entry;
-    displayed.references++;
     return ArtworkResourceLease._(
       !displayed.completed ||
               displayed.failed ||
               displayed.pending is SynchronousFuture<ArtworkResource?>
           ? displayed.pending
           : SynchronousFuture(displayed.resource),
-      release: () {
-        if (--displayed.references == 0 &&
-            identical(_displayed[key], displayed)) {
-          _displayed.remove(key);
-        }
-      },
+      release: _retainDisplayed(key, displayed),
       isMissing:
           reuseMissing &&
           displayed.completed &&

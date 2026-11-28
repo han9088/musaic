@@ -9,9 +9,10 @@ class CanvasDrift {
   CanvasDrift({math.Random? random})
     : velocity = Offset.fromDirection(
         (random ?? math.Random()).nextDouble() * math.pi * 2,
-        12,
+        idleSpeed,
       );
 
+  static const idleSpeed = 12.0;
   Offset velocity;
   Duration? lastTick;
 
@@ -29,11 +30,12 @@ class CanvasDrift {
     final speed = velocity.distance;
     const decay = 2.2;
     final attenuation = math.exp(-decay * dt);
-    final distance = 12 * dt + (speed - 12) * (1 - attenuation) / decay;
+    final distance =
+        idleSpeed * dt + (speed - idleSpeed) * (1 - attenuation) / decay;
     final displacement = Offset.fromDirection(velocity.direction, distance);
     velocity = Offset.fromDirection(
       velocity.direction,
-      12 + (speed - 12) * attenuation,
+      idleSpeed + (speed - idleSpeed) * attenuation,
     );
     final matrix = transform.value.clone();
     matrix.setEntry(0, 3, matrix.entry(0, 3) + displacement.dx);

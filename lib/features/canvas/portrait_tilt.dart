@@ -64,6 +64,7 @@ class PortraitTilt extends StatefulWidget {
     required this.child,
     this.events,
     this.paused = false,
+    this.onProjection,
   });
 
   // 先额外绘制视口周边的专辑，再执行倾斜投影；只在屏幕边界进行裁剪。
@@ -99,6 +100,7 @@ class PortraitTilt extends StatefulWidget {
   final Widget child;
   final Stream<AccelerometerEvent>? events;
   final bool paused;
+  final ValueChanged<Matrix4?>? onProjection;
 
   @override
   State<PortraitTilt> createState() => _PortraitTiltState();
@@ -359,12 +361,29 @@ class _PortraitTiltState extends State<PortraitTilt>
               : Duration.zero,
           curve: Curves.easeOutCubic,
           child: _TiltHitArea(child: RepaintBoundary(child: widget.child)),
-          builder: (context, angle, child) => Transform(
-            key: const ValueKey('portrait-sensor-plane'),
-            alignment: Alignment.center,
-            transform: PortraitTilt.projection(angle, constraints.biggest),
-            child: child,
-          ),
+          builder: (context, angle, child) {
+            final projection = PortraitTilt.projection(
+              angle,
+              constraints.biggest,
+            );
+            final onProjection = widget.onProjection;
+            if (onProjection != null) {
+              final center = constraints.biggest.center(Offset.zero);
+              onProjection(
+                angle == Offset.zero
+                    ? null
+                    : (Matrix4.translationValues(center.dx, center.dy, 0)
+                        ..multiply(projection)
+                        ..translateByDouble(-center.dx, -center.dy, 0, 1)),
+              );
+            }
+            return Transform(
+              key: const ValueKey('portrait-sensor-plane'),
+              alignment: Alignment.center,
+              transform: projection,
+              child: child,
+            );
+          },
         ),
       ),
     );

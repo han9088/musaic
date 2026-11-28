@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
 import 'album_grid_snapshot.dart';
+import 'album_tile_motion.dart';
 import 'portrait_tilt.dart';
 
 class AlbumCanvas extends Stack {
@@ -18,7 +19,9 @@ class AlbumCanvas extends Stack {
     required Iterable<Widget> tiles,
     List<Widget> selectedTiles = const [],
     this.hiddenTileOffset,
-  }) : hasSelected = selectedTiles.isNotEmpty,
+    this.tileMotion,
+  }) : tileCount = tiles.length,
+       hasSelected = selectedTiles.isNotEmpty,
        super(
          clipBehavior: Clip.none,
          children: [
@@ -32,6 +35,8 @@ class AlbumCanvas extends Stack {
   final TransformationController transform;
   final bool isTransitioning;
   final bool hasSelected;
+  final int tileCount;
+  final AlbumTileMotion? tileMotion;
   final Offset? hiddenTileOffset;
   final Object Function(int row, int column) albumAt;
 
@@ -43,6 +48,8 @@ class AlbumCanvas extends Stack {
     isTransitioning: isTransitioning,
     albumAt: albumAt,
     hasSelected: hasSelected,
+    tileCount: tileCount,
+    motion: tileMotion,
     hiddenTileOffset: hiddenTileOffset,
   );
 
@@ -55,6 +62,8 @@ class AlbumCanvas extends Stack {
       ..isTransitioning = isTransitioning
       ..albumAt = albumAt
       ..hasSelected = hasSelected
+      ..tileCount = tileCount
+      ..motion = tileMotion
       ..hiddenTileOffset = hiddenTileOffset
       .._semanticCoverage = null
       ..markNeedsPaint()
@@ -70,15 +79,39 @@ class _RenderAlbumCanvas extends RenderStack {
     required this.isTransitioning,
     required this.albumAt,
     required this.hasSelected,
+    required this.tileCount,
     required this.hiddenTileOffset,
-  }) : super(clipBehavior: Clip.none);
+    required AlbumTileMotion? motion,
+  }) : _motion = motion,
+       super(clipBehavior: Clip.none);
 
   Offset tiltPadding;
   TransformationController transform;
   bool isTransitioning;
   Object Function(int row, int column) albumAt;
   bool hasSelected;
+  int tileCount;
   Offset? hiddenTileOffset;
+  AlbumTileMotion? _motion;
+
+  set motion(AlbumTileMotion? value) {
+    if (identical(value, _motion)) return;
+    if (attached) _motion?.removeListener(markNeedsPaint);
+    _motion = value;
+    if (attached) _motion?.addListener(markNeedsPaint);
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _motion?.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _motion?.removeListener(markNeedsPaint);
+    super.detach();
+  }
 
   bool get _groupRepeatedAlbums =>
       !isTransitioning && !hasSelected && hiddenTileOffset == null;
@@ -211,18 +244,33 @@ class _RenderAlbumCanvas extends RenderStack {
     final paintViewport = hasSelected
         ? viewport.inflate(albumGridExtent * 0.08)
         : viewport;
+    final motion = _motion?.isActive == true ? _motion : null;
+    // 先画下沉封面，再画静态格位，上浮和单张翻转位于静态格位之上。
+    motion?.paintBehind(context.canvas, offset);
     // Keep the guard-ring covers mounted without recording paint for them.
     var tile = childAfter(firstChild!);
+    var paintedTiles = 0;
     while (tile != null) {
       final data = tile.parentData! as StackParentData;
+      if (paintedTiles == tileCount) motion?.paintAbove(context.canvas, offset);
+      final covered =
+          motion != null &&
+          paintedTiles < tileCount &&
+          motion.owns((
+            (data.offset.dy / albumGridExtent).round(),
+            (data.offset.dx / albumGridExtent).round(),
+          ));
       // Both the grid tile and its lifted copy share this offset.
-      if (data.offset != hiddenTileOffset &&
+      if (!covered &&
+          data.offset != hiddenTileOffset &&
           (isTransitioning ||
               paintViewport.overlaps(data.offset & tile.size))) {
         context.paintChild(tile, offset + data.offset);
       }
+      paintedTiles++;
       tile = data.nextSibling;
     }
+    if (paintedTiles == tileCount) motion?.paintAbove(context.canvas, offset);
   }
 
   @override

@@ -96,7 +96,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final AlbumColorOrganization _colorOrganization = AlbumColorOrganization(
     _albumColors,
     onApplied: () => setState(() {
-      _albumLayout.gridAlbums.clear();
+      _albumLayout.resetGrid();
       _albumLayout.selectedAlbum = null;
     }),
   );
@@ -1078,9 +1078,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       );
     }
-    final organizedAlbums = _colorOrganization.enabled
-        ? _albumColors.organize(albums, _colorOrganization.family)
-        : const <Map<String, dynamic>>[];
+    final organizedAlbums = _colorOrganization.organize(albums);
+    final familyFilter = organizedAlbums.isEmpty
+        ? null
+        : _colorOrganization.family;
     _albumLayout.colorOrganized = organizedAlbums.isNotEmpty;
     return AlbumCanvasViewport(
       albums: organizedAlbums.isEmpty ? albums : organizedAlbums,
@@ -1100,6 +1101,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _interaction.pauseForSelection();
       }),
       animateSourceTile: _animateCanvasTile,
+      artworkFamilyOf: (album) {
+        final family = _albumColors.familyOf(album);
+        return familyFilter == null || familyFilter == family ? family : null;
+      },
       onArtworkAccent: (album, accent) => _albumColors.register(album, accent),
     );
   }

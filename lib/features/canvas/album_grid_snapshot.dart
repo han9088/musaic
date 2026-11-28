@@ -5,6 +5,15 @@ import 'package:material_ui/material_ui.dart';
 const albumGridExtent = 100.0;
 const albumCanvasArtworkResolution = 256;
 
+typedef AlbumGridCell = (int row, int column);
+
+Rect albumGridRect(AlbumGridCell cell) => Rect.fromLTWH(
+  cell.$2 * albumGridExtent,
+  cell.$1 * albumGridExtent,
+  albumGridExtent,
+  albumGridExtent,
+);
+
 /// 执行当前模块中的网格专辑索引操作，用于专辑墙无限画布的布局、视口与交互状态。
 int gridAlbumIndex(int row, int column, int count) =>
     ((row * 73856093) ^ (column * 19349663)) % count;
@@ -24,13 +33,74 @@ class AlbumGridSnapshot {
       viewport.width + overscan * 2,
       viewport.height + overscan * 2,
     );
-    final scene = MatrixUtils.transformRect(
-      Matrix4.inverted(transform),
-      bounds,
-    );
     final cells = <({int row, int column, Rect rect})>[];
     var focus = 0;
     var nearest = double.infinity;
+    for (final (cell, rect) in _projectedCells(bounds, transform)) {
+      if (!rect.overlaps(bounds)) continue;
+      final distance =
+          (rect.center - viewport.center(Offset.zero)).distanceSquared;
+      if (distance < nearest) {
+        nearest = distance;
+        focus = cells.length;
+      }
+      cells.add((row: cell.$1, column: cell.$2, rect: rect));
+    }
+    return AlbumGridSnapshot._(viewport, cells, focus);
+  }
+
+  static Iterable<AlbumGridCell> fullyVisibleCells(
+    Rect bounds,
+    Matrix4 transform,
+  ) sync* {
+    for (final (cell, rect) in _projectedCells(bounds, transform)) {
+      if (_fullyContains(bounds, rect)) yield cell;
+    }
+  }
+
+  static Iterable<AlbumGridCell> intersectingCells(
+    Rect bounds,
+    Matrix4 transform,
+  ) sync* {
+    for (final (cell, rect) in _projectedCells(bounds, transform)) {
+      if (rect.isFinite && rect.overlaps(bounds)) yield cell;
+    }
+  }
+
+  static bool isFullyVisible(
+    AlbumGridCell cell,
+    Rect bounds,
+    Matrix4 transform,
+  ) => _fullyContains(
+    bounds,
+    MatrixUtils.transformRect(transform, albumGridRect(cell)),
+  );
+
+  static bool _fullyContains(Rect bounds, Rect rect) =>
+      rect.isFinite &&
+      !rect.isEmpty &&
+      rect.left >= bounds.left &&
+      rect.right <= bounds.right &&
+      rect.top >= bounds.top &&
+      rect.bottom <= bounds.bottom;
+
+  static Iterable<(AlbumGridCell, Rect)> _projectedCells(
+    Rect bounds,
+    Matrix4 transform,
+  ) sync* {
+    // Flatten the projection to the artwork plane before inverting it.
+    final plane = transform.clone()
+      ..setEntry(2, 0, 0)
+      ..setEntry(2, 1, 0)
+      ..setEntry(2, 2, 1)
+      ..setEntry(2, 3, 0)
+      ..setEntry(0, 2, 0)
+      ..setEntry(1, 2, 0)
+      ..setEntry(3, 2, 0);
+    final inverse = Matrix4.tryInvert(plane);
+    if (inverse == null) return;
+    final scene = MatrixUtils.transformRect(inverse, bounds);
+    if (!scene.isFinite) return;
     for (
       var row = (scene.top / albumGridExtent).floor();
       row <= (scene.bottom / albumGridExtent).ceil();
@@ -41,26 +111,10 @@ class AlbumGridSnapshot {
         column <= (scene.right / albumGridExtent).ceil();
         column++
       ) {
-        final rect = MatrixUtils.transformRect(
-          transform,
-          Rect.fromLTWH(
-            column * albumGridExtent,
-            row * albumGridExtent,
-            albumGridExtent,
-            albumGridExtent,
-          ),
-        );
-        if (!rect.overlaps(bounds)) continue;
-        final distance =
-            (rect.center - viewport.center(Offset.zero)).distanceSquared;
-        if (distance < nearest) {
-          nearest = distance;
-          focus = cells.length;
-        }
-        cells.add((row: row, column: column, rect: rect));
+        final cell = (row, column);
+        yield (cell, MatrixUtils.transformRect(transform, albumGridRect(cell)));
       }
     }
-    return AlbumGridSnapshot._(viewport, cells, focus);
   }
 
   final Size viewport;

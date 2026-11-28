@@ -6,13 +6,17 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, listEquals;
 import 'package:material_ui/material_ui.dart';
 
+import '../../services/music/directory_music_library.dart';
+import '../../ui/bottom_sheet/bottom_sheet.dart';
 import '../artwork/artwork_renderer.dart';
 import '../artwork/model/artwork_identity.dart';
 import '../artwork/model/artwork_request.dart';
+import '../artwork/presentation/album_color_family.dart';
 import '../artwork/presentation/artwork_placeholder.dart';
 import '../artwork/presentation/custom_artwork_menu.dart';
 import '../artwork/presentation/custom_artwork_scope.dart';
 import '../artwork/presentation/directory_artwork.dart';
+import '../artwork/presentation/xerox_palette.dart';
 import '../music/catalog/album_catalog_mapper.dart';
 import '../music/catalog/album_track_list.dart';
 import '../music/playback/album_playback.dart';
@@ -21,6 +25,9 @@ import 'album_canvas.dart';
 import 'album_sprite_canvas.dart';
 import 'album_cover_popup.dart';
 import 'album_grid_snapshot.dart';
+import 'album_tile_motion.dart';
+import 'album_tile_motion_artwork.dart';
+import 'canvas_drift.dart';
 import 'canvas_interaction_state.dart';
 import 'home_album_layout_state.dart';
 import 'portrait_tilt.dart';
@@ -41,6 +48,7 @@ class AlbumCanvasViewport extends StatefulWidget {
     required this.onTileSelected,
     required this.animateSourceTile,
     this.onArtworkAccent,
+    this.artworkFamilyOf,
   });
 
   static bool useWidgetGridForBenchmark = false;
@@ -57,6 +65,7 @@ class AlbumCanvasViewport extends StatefulWidget {
   final Widget Function(int row, int column, Widget child) animateSourceTile;
   final void Function(Map<String, dynamic> album, Color accent)?
   onArtworkAccent;
+  final AlbumColorFamily? Function(Map<String, dynamic>)? artworkFamilyOf;
 
   @override
   State<AlbumCanvasViewport> createState() => _AlbumCanvasViewportState();
@@ -70,6 +79,34 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   List<Object?>? _atlasInput;
   final _atlasGeneration = ValueNotifier(0);
   bool _atlasRequested = false;
+  CanvasArtworkAtlas? _motionAtlas;
+  Matrix4? _tiltProjection;
+  Size _motionViewport = Size.zero;
+  bool _routeVisible = false;
+  bool _appResumed = true;
+  BottomSheetSheetStore? _sheets;
+  ({DirectoryMusicLibrary? library, int revision})? _motionDirectory;
+  ImageConfiguration? _motionImageConfig;
+  XeroxPalette? _motionPalette;
+  int _motionGridGeneration = -1;
+  bool _motionColorOrganized = false;
+  late final _tileMotion = AlbumTileMotion(
+    vsync: this,
+    albumAt: (cell) => widget.layout.albumAt(cell.$1, cell.$2, widget.albums),
+    albumKey: _albumKey,
+    familyOf: (album) => widget.artworkFamilyOf?.call(album),
+    isProtected: (cell) =>
+        cell == widget.layout.selectedAlbum ||
+        (_lifts.isNotEmpty &&
+            _lifts.containsKey(
+              _albumKey(widget.layout.albumAt(cell.$1, cell.$2, widget.albums)),
+            )),
+    borrowCover: _borrowMotionCover,
+    isCurrent: () =>
+        _motionAllowed && _motionGridGeneration == widget.layout.gridGeneration,
+    commit: (cell, album) =>
+        widget.layout.setMotionAlbum(cell, album, widget.albums),
+  );
 
   final _lifts =
       <Object, ({AnimationController controller, Animation<double> scale})>{};
@@ -136,29 +173,93 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
   @override
   void initState() {
     super.initState();
+    _motionGridGeneration = widget.layout.gridGeneration;
+    _motionColorOrganized = widget.layout.colorOrganized;
+    _appResumed = switch (WidgetsBinding.instance.lifecycleState) {
+      null || AppLifecycleState.resumed => true,
+      _ => false,
+    };
     WidgetsBinding.instance.addObserver(this);
+    widget.transform.addListener(_syncTileMotion);
+    customArtworkMenuVisible.addListener(_syncTileMotion);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    CustomArtworkScope.watch(context);
+    _tileMotion.pause();
     _syncAtlas();
     _syncLift();
+    final sheets = BottomSheetScope.maybeOf(context)?.sheetStore;
+    if (sheets != _sheets) {
+      _sheets?.removeListener(_syncTileMotion);
+      _sheets = sheets;
+      sheets?.addListener(_syncTileMotion);
+    }
+    _routeVisible =
+        ModalRoute.isCurrentOf(context) != false &&
+        TickerMode.of(context) &&
+        !MediaQuery.disableAnimationsOf(context);
+    final directory = DirectoryArtworkScope.watch(context);
+    final config = createLocalImageConfiguration(context);
+    final palette = widget.xerox ? XeroxPaletteScope.of(context) : null;
+    _motionDirectory = directory;
+    _motionImageConfig = config;
+    _motionPalette = palette;
+    _syncTileMotion();
   }
 
   @override
   void didUpdateWidget(covariant AlbumCanvasViewport oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.transform != widget.transform) {
+      oldWidget.transform.removeListener(_syncTileMotion);
+      widget.transform.addListener(_syncTileMotion);
+      _tileMotion.pause();
+    }
+    final layout = widget.layout;
+    if (!identical(oldWidget.albums, widget.albums) ||
+        _motionColorOrganized != layout.colorOrganized) {
+      layout.clearMotionAlbums();
+      _tileMotion.pause();
+    }
+    if (_motionGridGeneration != layout.gridGeneration ||
+        oldWidget.layout != layout ||
+        oldWidget.xerox != widget.xerox) {
+      _motionGridGeneration = layout.gridGeneration;
+      _tileMotion.pause();
+    }
+    _motionColorOrganized = layout.colorOrganized;
+    _motionPalette = widget.xerox ? XeroxPaletteScope.of(context) : null;
     _syncAtlas();
+    final previousLift = _liftedAlbum;
     _syncLift();
+    if (_liftedAlbum != null && _liftedAlbum != previousLift) {
+      _tileMotion.pause();
+    }
+    _syncTileMotion();
   }
 
   @override
-  void didHaveMemoryPressure() => setState(_discardAtlas);
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _appResumed = state == AppLifecycleState.resumed;
+    _syncTileMotion();
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    _tileMotion.pause();
+    setState(_discardAtlas);
+  }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    customArtworkMenuVisible.removeListener(_syncTileMotion);
+    widget.transform.removeListener(_syncTileMotion);
+    _sheets?.removeListener(_syncTileMotion);
+    _tileMotion.dispose();
     _discardAtlas();
     _atlasGeneration.dispose();
     for (final lift in _lifts.values) {
@@ -166,6 +267,56 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     }
     _lifts.clear();
     super.dispose();
+  }
+
+  bool get _motionAllowed {
+    final interaction = widget.interaction;
+    return widget.artworkFamilyOf != null &&
+        widget.albums.isNotEmpty &&
+        _appResumed &&
+        _routeVisible &&
+        _sheets?.snapshot.isPresented != true &&
+        !widget.interactionBlocked &&
+        _popupCell == null &&
+        !customArtworkMenuVisible.value &&
+        !interaction.touching &&
+        interaction.pressedPointers.isEmpty &&
+        interaction.drift.velocity.distance <= CanvasDrift.idleSpeed * 2;
+  }
+
+  void _syncTileMotion() {
+    if (!_motionAllowed) {
+      _tileMotion.pause();
+      return;
+    }
+    final projection = _tiltProjection;
+    final transform = widget.transform.value;
+    _tileMotion.updateViewport(
+      _motionViewport,
+      projection == null
+          ? transform
+          : (projection.clone()..multiply(transform)),
+    );
+  }
+
+  AlbumTileMotionCover? _borrowMotionCover(Map<String, dynamic> album) {
+    final atlas = _motionAtlas;
+    if (atlas != null) return AlbumTileMotionCover.fromAtlas(atlas, album);
+    final config = _motionImageConfig;
+    final directory = _motionDirectory;
+    if (config == null || directory == null) return null;
+    return AlbumTileMotionCover.borrow(
+      request: ArtworkRequest(
+        source: album['asset'] as String,
+        identity: _artworkIdentityFor(album),
+        fixedResolution: albumCanvasArtworkResolution,
+      ),
+      directories: directory.library,
+      directoryRevision: directory.revision,
+      configuration: config,
+      xerox: widget.xerox,
+      filter: _motionPalette?.filter,
+    );
   }
 
   void _discardAtlas() {
@@ -288,8 +439,12 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
     final interaction = widget.interaction;
     interaction.setAlbumPopupOpen(true);
     setState(() => _popupCell = (row, col));
+    _syncTileMotion();
     void restoreSource() {
-      if (mounted && _popupCell != null) setState(() => _popupCell = null);
+      if (mounted && _popupCell != null) {
+        setState(() => _popupCell = null);
+        _syncTileMotion();
+      }
     }
 
     try {
@@ -429,6 +584,11 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
         atlas != null && widget.layout.gridAlbums.values.every(atlas.contains)
         ? atlas
         : null;
+    if (!identical(batch, _motionAtlas)) {
+      _tileMotion.pause();
+      _motionAtlas = batch;
+      _syncTileMotion();
+    }
     final hiddenOffset = popup == null
         ? null
         : Offset(popup.$2 * albumGridExtent, popup.$1 * albumGridExtent);
@@ -436,15 +596,28 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
       valueListenable: customArtworkMenuVisible,
       builder: (_, menuVisible, canvas) => TickerMode(
         enabled: !menuVisible,
-        child: PortraitTilt(paused: menuVisible, child: canvas!),
+        child: PortraitTilt(
+          paused: menuVisible,
+          onProjection: (projection) {
+            _tiltProjection = projection;
+            _syncTileMotion();
+          },
+          child: canvas!,
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           widget.onViewportSizeChanged(constraints.biggest);
+          if (_motionViewport != constraints.biggest) {
+            _tileMotion.pause();
+            _motionViewport = constraints.biggest;
+            _syncTileMotion();
+          }
           final tiltPadding = PortraitTilt.viewportPadding(constraints.biggest);
           var tiles = const <Widget>[];
           ({int left, int right, int top, int bottom})? previousBounds;
           (int, int)? previousSelection;
+          Set<AlbumGridCell>? previousCommit;
           Widget? previousCanvas;
           AlbumSpriteCanvas buildSprites({
             Set<(int, int)>? liftedCells,
@@ -464,17 +637,22 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                     as String,
             onTileSelected: widget.onTileSelected,
             longPressAt: _longPressAt,
+            tileMotion: _tileMotion,
             child: overlay,
           );
           void finishPointer(PointerEvent event) {
             interaction.pointerUp(event.pointer);
+            _syncTileMotion();
             if (_readyAtlas != null && interaction.pressedPointers.isEmpty) {
               scheduleMicrotask(_publishReadyAtlas);
             }
           }
 
           return Listener(
-            onPointerDown: (event) => interaction.pointerDown(event.pointer),
+            onPointerDown: (event) {
+              interaction.pointerDown(event.pointer);
+              _syncTileMotion();
+            },
             onPointerUp: finishPointer,
             onPointerCancel: finishPointer,
             child: IgnorePointer(
@@ -486,9 +664,15 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                 // Use the smallest allowed coefficient to make the viewer's
                 // fling zero-duration. CanvasDrift owns motion after release.
                 interactionEndFrictionCoefficient: double.minPositive,
-                onInteractionStart: (_) => interaction.interactionStart(),
+                onInteractionStart: (_) {
+                  interaction.interactionStart();
+                  _syncTileMotion();
+                },
                 onInteractionUpdate: interaction.interactionUpdate,
-                onInteractionEnd: interaction.interactionEnd,
+                onInteractionEnd: (details) {
+                  interaction.interactionEnd(details);
+                  _syncTileMotion();
+                },
                 minScale: 0.4,
                 maxScale: 2.5,
                 boundaryMargin: const EdgeInsets.all(double.infinity),
@@ -496,7 +680,10 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                 child: batch != null && _lifts.isEmpty
                     ? buildSprites()
                     : ListenableBuilder(
-                        listenable: transform,
+                        listenable: Listenable.merge([
+                          transform,
+                          _tileMotion.commits,
+                        ]),
                         builder: (_, _) {
                           final matrix = transform.value;
                           final tileSize =
@@ -529,11 +716,17 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                             bottom: bottom,
                           );
                           final selected = widget.layout.selectedAlbum;
+                          final commit = _tileMotion.commits.value;
+                          final changed = identical(previousCommit, commit)
+                              ? const <AlbumGridCell>{}
+                              : commit;
                           if (bounds == previousBounds &&
-                              selected == previousSelection) {
+                              selected == previousSelection &&
+                              changed.isEmpty) {
                             return previousCanvas!;
                           }
-                          if (batch == null && bounds != previous) {
+                          if (batch == null &&
+                              (bounds != previous || changed.isNotEmpty)) {
                             // The previous window is stored in row-major order.
                             final previousTiles = tiles;
                             final previousWidth = previous == null
@@ -546,7 +739,8 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                                   column <= right;
                                   column++
                                 )
-                                  if (previous != null &&
+                                  if (!changed.contains((row, column)) &&
+                                      previous != null &&
                                       row >= previous.top &&
                                       row <= previous.bottom &&
                                       column >= previous.left &&
@@ -561,6 +755,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                           }
                           previousBounds = bounds;
                           previousSelection = selected;
+                          previousCommit = commit;
                           final liftedCells = <(int, int)>{};
                           final returningTiles = <Widget>[];
                           final selectedTiles = <Widget>[];
@@ -605,6 +800,7 @@ class _AlbumCanvasViewportState extends State<AlbumCanvasViewport>
                               widget.albums,
                             ),
                             hiddenTileOffset: hiddenOffset,
+                            tileMotion: batch == null ? _tileMotion : null,
                             tiles: tiles,
                             selectedTiles: [
                               ...returningTiles,

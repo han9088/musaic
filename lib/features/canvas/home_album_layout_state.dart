@@ -9,6 +9,9 @@ class HomeAlbumLayoutState {
   AlbumGridSnapshot? snapshot;
   List<Map<String, dynamic>>? flowAlbums;
   final gridAlbums = <(int, int), Map<String, dynamic>>{};
+  final _motionAlbums = <(int, int), Map<String, dynamic>>{};
+  int _gridGeneration = 0;
+  int get gridGeneration => _gridGeneration;
   double flowPosition = 0;
   double flowTilt = 0;
   int gridOffset = 0;
@@ -20,11 +23,37 @@ class HomeAlbumLayoutState {
     int row,
     int column,
     List<Map<String, dynamic>> albums,
+  ) => _motionAlbums[(row, column)] ?? baseAlbumAt(row, column, albums);
+
+  Map<String, dynamic> baseAlbumAt(
+    int row,
+    int column,
+    List<Map<String, dynamic>> albums,
   ) =>
       gridAlbums[(row, column)] ??
       albums[colorOrganized
           ? _rowMajorIndex(row, column, albums.length)
           : gridAlbumIndex(row, column, albums.length)];
+
+  void setMotionAlbum(
+    (int, int) cell,
+    Map<String, dynamic> album,
+    List<Map<String, dynamic>> albums,
+  ) {
+    if (identical(album, baseAlbumAt(cell.$1, cell.$2, albums))) {
+      _motionAlbums.remove(cell);
+    } else {
+      _motionAlbums[cell] = album;
+    }
+  }
+
+  void resetGrid() {
+    gridAlbums.clear();
+    clearMotionAlbums();
+    _gridGeneration++;
+  }
+
+  void clearMotionAlbums() => _motionAlbums.clear();
 
   static int _rowMajorIndex(int row, int column, int count) {
     const columns = 8;
@@ -35,7 +64,7 @@ class HomeAlbumLayoutState {
   /// 移除、清理或重置相关状态与资源，用于专辑墙无限画布的布局、视口与交互状态。
   void clear() {
     flowAlbums = null;
-    gridAlbums.clear();
+    resetGrid();
     snapshot = null;
     selectedAlbum = null;
     flowPosition = 0;
@@ -79,7 +108,7 @@ class HomeAlbumLayoutState {
     snapshot ??= AlbumGridSnapshot.capture(viewport, transform);
     final captured = snapshot!;
     gridOffset = flowPosition.round() - captured.focus;
-    gridAlbums.clear();
+    resetGrid();
     selectedAlbum = null;
     for (var i = 0; i < captured.cells.length; i++) {
       final cell = captured.cells[i];

@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 
 import 'album_artwork_atlas.dart';
 import 'album_grid_snapshot.dart';
+import 'album_tile_motion.dart';
 import 'portrait_tilt.dart';
 
 typedef _Cell = (int row, int column);
@@ -27,6 +28,7 @@ class AlbumSpriteCanvas extends SingleChildRenderObjectWidget {
     this.selected,
     this.hidden,
     this.liftedCells,
+    this.tileMotion,
   });
 
   final Size viewport;
@@ -42,6 +44,7 @@ class AlbumSpriteCanvas extends SingleChildRenderObjectWidget {
   final (int, int)? hidden;
   // Non-null when the child is a viewport-sized overlay in scene coordinates.
   final Set<(int, int)>? liftedCells;
+  final AlbumTileMotion? tileMotion;
 
   @override
   RenderObject createRenderObject(BuildContext context) =>
@@ -69,7 +72,10 @@ class _RenderAlbumSprites extends RenderProxyBox {
 
   void update(AlbumSpriteCanvas view, TextDirection direction) {
     final old = _view;
+    final motionChanged = !identical(old.tileMotion, view.tileMotion);
+    if (attached && motionChanged) _unlistenMotion(old.tileMotion);
     _view = view;
+    if (attached && motionChanged) _listenMotion(view.tileMotion);
     _direction = direction;
     if (old.viewport != view.viewport ||
         (old.liftedCells == null) != (view.liftedCells == null)) {
@@ -79,6 +85,27 @@ class _RenderAlbumSprites extends RenderProxyBox {
     _semanticCoverage = null;
     markNeedsPaint();
     markNeedsSemanticsUpdate();
+  }
+
+  void _listenMotion(AlbumTileMotion? motion) {
+    motion?.addListener(markNeedsPaint);
+    motion?.commits.addListener(_motionCommitted);
+  }
+
+  void _unlistenMotion(AlbumTileMotion? motion) {
+    motion?.removeListener(markNeedsPaint);
+    motion?.commits.removeListener(_motionCommitted);
+  }
+
+  void _motionCommitted() {
+    _semanticCoverage = null;
+    markNeedsSemanticsUpdate();
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _listenMotion(_view.tileMotion);
   }
 
   @override
@@ -147,6 +174,8 @@ class _RenderAlbumSprites extends RenderProxyBox {
 
     final atlas = _view.atlas;
     final canvas = context.canvas;
+    final motion = _view.tileMotion?.isActive == true ? _view.tileMotion : null;
+    motion?.paintBehind(canvas, offset);
     // Keep atlas vertices near the origin even after a long pan.
     final origin = _offset((range.top, range.left));
     canvas.save();
@@ -154,7 +183,10 @@ class _RenderAlbumSprites extends RenderProxyBox {
     atlas.begin();
     for (var row = range.top; row < range.bottom; row++) {
       for (var column = range.left; column < range.right; column++) {
-        if ((row, column) == _view.hidden) continue;
+        if ((row, column) == _view.hidden ||
+            (motion != null && motion.owns((row, column)))) {
+          continue;
+        }
         atlas.add(
           _view.albumAt(row, column),
           _offset((row - range.top, column - range.left)),
@@ -163,6 +195,7 @@ class _RenderAlbumSprites extends RenderProxyBox {
     }
     atlas.draw(canvas);
     canvas.restore();
+    motion?.paintAbove(canvas, offset);
 
     if (child != null &&
         (_view.liftedCells != null || _view.selected != _view.hidden)) {
@@ -231,6 +264,7 @@ class _RenderAlbumSprites extends RenderProxyBox {
 
   @override
   void detach() {
+    _unlistenMotion(_view.tileMotion);
     for (final pointer in _gestures.keys.toList()) {
       _disposeGesture(pointer);
     }
