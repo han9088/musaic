@@ -8,14 +8,26 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 
+import '../../services/music/music_models.dart';
 import 'music_index_snapshot.dart';
 
 export 'music_index_snapshot.dart';
 
-enum MusicIndexSource { none, directories, audius }
+enum MusicIndexSource {
+  none,
+  demo2,
+  directories,
+  systemLibrary,
+  systemAndDirectories,
+  audius,
+}
 
 /// 封装或定义音乐索引相关类型与行为，负责音乐源、媒体库、播放及切换流程。
 final class MusicIndex {
+  static const _selectedSourceKey = 'directoriesSelected';
+  static const audiusCatalogLimit = 24;
+  static const _audiusCatalogKey = 'audiusTrendingCatalog';
+
   MusicIndex(this.database);
   final Database database;
 
@@ -234,30 +246,101 @@ final class MusicIndex {
     return entries.firstOrNull;
   }
 
-  Future<void> setSelected(bool selected) => _writeSource(selected ? '1' : '0');
+  Future<void> setSelected(bool selected) =>
+      _writeSetting(_selectedSourceKey, selected ? '1' : '0');
 
-  Future<void> setAudiusSelected() => _writeSource('audius');
+  Future<void> setAudiusSelected() =>
+      _writeSetting(_selectedSourceKey, 'audius');
 
-  Future<void> _writeSource(String value) async {
+  Future<void> setDemo2Selected() => _writeSetting(_selectedSourceKey, 'demo2');
+
+  Future<void> setSystemLibrarySelected({required bool includesDirectories}) =>
+      _writeSetting(
+        _selectedSourceKey,
+        includesDirectories ? 'systemAndDirectories' : 'systemLibrary',
+      );
+
+  Future<void> _writeSetting(String key, String value) async {
     await database.insert('settings', {
-      'key': 'directoriesSelected',
+      'key': key,
       'value': value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  Future<String?> _readSetting(String key) async =>
+      (await database.query(
+            'settings',
+            where: 'key = ?',
+            whereArgs: [key],
+          )).firstOrNull?['value']
+          as String?;
+
   Future<MusicIndexSource> selectedSource() async =>
-      switch ((await database.query(
-        'settings',
-        where: 'key = ?',
-        whereArgs: ['directoriesSelected'],
-      )).firstOrNull?['value']) {
+      switch (await _readSetting(_selectedSourceKey)) {
         '1' => MusicIndexSource.directories,
+        'demo2' => MusicIndexSource.demo2,
+        'systemLibrary' => MusicIndexSource.systemLibrary,
+        'systemAndDirectories' => MusicIndexSource.systemAndDirectories,
         'audius' => MusicIndexSource.audius,
         _ => MusicIndexSource.none,
       };
 
-  Future<bool> isSelected() async =>
-      await selectedSource() == MusicIndexSource.directories;
+  Future<void> saveAudiusCatalog(List<ProviderAlbum> albums) => _writeSetting(
+    _audiusCatalogKey,
+    jsonEncode([
+      for (final album in albums.take(audiusCatalogLimit))
+        {
+          'id': album.reference.id,
+          'title': album.title,
+          'artist': album.artist,
+          'artworkUrl': album.artworkUrl,
+          'trackCount': album.trackCount,
+        },
+    ]),
+  );
+
+  Future<List<ProviderAlbum>> readAudiusCatalog() async {
+    final value = await _readSetting(_audiusCatalogKey);
+    if (value == null) return const [];
+    try {
+      final entries = jsonDecode(value);
+      if (entries is! List) return const [];
+      return List.unmodifiable(<ProviderAlbum>[
+        for (final entry in entries.take(audiusCatalogLimit))
+          if (entry
+              case {
+                'id': final String id,
+                'title': final String title,
+                'artist': final String? artist,
+                'artworkUrl': final String? artworkUrl,
+                'trackCount': final int? trackCount,
+              }
+              when id.isNotEmpty)
+            (
+              reference: (
+                provider: MusicIndexSource.audius.name,
+                id: id,
+                kind: MusicKind.album,
+                source: MusicSource.catalog,
+                storefront: null,
+              ),
+              title: title,
+              artist: artist,
+              artworkUrl: artworkUrl,
+              trackCount: trackCount,
+              tracks: null,
+            ),
+      ]);
+    } on FormatException {
+      return const [];
+    }
+  }
+
+  Future<bool> isSelected() async => switch (await selectedSource()) {
+    MusicIndexSource.directories ||
+    MusicIndexSource.systemAndDirectories => true,
+    _ => false,
+  };
 
   /// 执行当前模块中的summaries操作，用于音乐源、媒体库、播放及切换流程。
   Future<List<AudioFolderSummary>> summaries({

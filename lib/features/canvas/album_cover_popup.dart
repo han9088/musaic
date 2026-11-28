@@ -21,7 +21,8 @@ Future<void> showAlbumCoverPopup({
       .getInheritedWidgetOfExactType<XeroxPaletteScope>()
       ?.notifier;
 
-  final route = RawDialogRoute<void>(
+  late final _AlbumCoverRoute route;
+  route = _AlbumCoverRoute(
     barrierLabel: MaterialLocalizations.of(source).modalBarrierDismissLabel,
     barrierColor: const Color(0x99000000),
     transitionDuration: MediaQuery.disableAnimationsOf(source)
@@ -29,10 +30,10 @@ Future<void> showAlbumCoverPopup({
         : RectFlipTransition.duration,
     // The cover's transform is the complete transition. Skip the route fade.
     transitionBuilder: (_, _, _, child) => child,
-    pageBuilder: (context, animation, _) {
+    pageBuilder: (context, _, _) {
       final content = _AlbumCoverPopup(
         origin: origin,
-        animation: animation,
+        route: route,
         front: ColoredBox(color: Colors.black, child: artwork),
         back: trackList,
         onCoverLongPress: onCoverLongPress,
@@ -56,20 +57,45 @@ Future<void> showAlbumCoverPopup({
   diagnosticLog.record(DiagnosticEvent.albumPopupClosed);
 }
 
+class _AlbumCoverRoute extends RawDialogRoute<void> {
+  _AlbumCoverRoute({
+    required super.barrierLabel,
+    required super.barrierColor,
+    required super.transitionDuration,
+    required super.transitionBuilder,
+    required super.pageBuilder,
+  });
+
+  bool Function()? shouldSlowClose;
+
+  @override
+  Duration get reverseTransitionDuration => shouldSlowClose?.call() == true
+      ? transitionDuration * 2
+      : transitionDuration;
+
+  @override
+  bool didPop(void result) {
+    controller?.reverseDuration = reverseTransitionDuration;
+    return super.didPop(null);
+  }
+}
+
 class _AlbumCoverPopup extends StatefulWidget {
   const _AlbumCoverPopup({
     required this.origin,
-    required this.animation,
+    required this.route,
     required this.front,
     required this.back,
     required this.onCoverLongPress,
   });
 
   final Rect origin;
-  final Animation<double> animation;
+  final _AlbumCoverRoute route;
   final Widget front;
   final Widget? back;
   final GestureLongPressStartCallback? onCoverLongPress;
+
+  Animation<double> get animation => route.animation!;
 
   @override
   State<_AlbumCoverPopup> createState() => _AlbumCoverPopupState();
@@ -87,17 +113,21 @@ class _AlbumCoverPopupState extends State<_AlbumCoverPopup>
   @override
   void initState() {
     super.initState();
+    widget.route.shouldSlowClose = _isFrontFacing;
     widget.animation.addStatusListener(_routeStatusChanged);
   }
 
+  bool _isFrontFacing() => widget.back != null && _faceAt(_turn.value).isOdd;
+
   void _routeStatusChanged(AnimationStatus status) {
     if (status != AnimationStatus.reverse) return;
-    _closingFromFront = widget.back != null && _faceAt(_turn.value).isOdd;
+    _closingFromFront = _isFrontFacing();
     _turn.stop();
   }
 
   @override
   void dispose() {
+    widget.route.shouldSlowClose = null;
     widget.animation.removeStatusListener(_routeStatusChanged);
     _turn.dispose();
     super.dispose();

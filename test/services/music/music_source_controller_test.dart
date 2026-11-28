@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:audius_sdk/audius_sdk.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:musaic/features/canvas/album_canvas_viewport.dart';
 import 'package:musaic/features/music/presentation/music_source_picker.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
+import 'package:musaic/pages/home/home_page.dart';
+import 'package:musaic/services/mock_album_cache.dart';
 import 'package:musaic/services/music/directory_music_library.dart';
 import 'package:musaic/services/music/music_provider.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
@@ -82,6 +85,9 @@ class _Audius extends Fake implements MusicProvider {
   int initialized = 0;
   bool disposed = false;
   Completer<void>? gate;
+
+  @override
+  Stream<MusicPlayback> get playback => const Stream.empty();
 
   @override
   String get id => 'audius';
@@ -301,6 +307,18 @@ void main() {
       unorderedEquals([root.id, saved.id]),
     );
     expect(await index.isSelected(), isTrue);
+    expect(await index.selectedSource(), MusicIndexSource.systemAndDirectories);
+    final restoredProvider = _Local(items: local.items)
+      ..access = MusicAccess.authorized;
+    final restored = MusicSourceController(
+      restoreOnStartup: true,
+      createLocal: () => restoredProvider,
+    );
+    addTearDown(restored.dispose);
+    await restored.attachDirectories(library);
+    expect(restored.startup.value, MusicSourceStartup.ready);
+    expect(restored.catalog.value, hasLength(3));
+    expect(restoredProvider.requests, 0);
   });
 
   test('default mock never creates or requests the local provider', () async {
@@ -468,7 +486,7 @@ void main() {
         createAudius: () => _Audius(items: [_Audius.sampleAlbum]),
       );
       final restored = MusicSourceController(
-        createAudius: () => _Audius(items: [_Audius.sampleAlbum]),
+        createAudius: () => _Audius(error: TimeoutException('offline')),
       );
       addTearDown(library.dispose);
       addTearDown(first.dispose);
@@ -477,13 +495,107 @@ void main() {
       await first.attachDirectories(library);
       await first.selectAudius();
       expect(await index.selectedSource(), MusicIndexSource.audius);
+      expect(await index.readAudiusCatalog(), [_Audius.sampleAlbum]);
       await first.dispose();
 
       await restored.attachDirectories(library);
+      await Future<void>.delayed(Duration.zero);
       expect(restored.audiusSelected, isTrue);
       expect(restored.catalog.value, [_Audius.sampleAlbum]);
+      expect(restored.problem.value, isNull);
       await restored.selectMock();
       expect(await index.selectedSource(), MusicIndexSource.none);
+      await restored.selectMock2();
+      final nextLaunch = MusicSourceController(restoreOnStartup: true);
+      addTearDown(nextLaunch.dispose);
+      await nextLaunch.attachDirectories(library);
+      expect(nextLaunch.startup.value, MusicSourceStartup.ready);
+      expect(nextLaunch.mock2Selected.value, isTrue);
+    },
+  );
+
+  testWidgets(
+    'cold Audius startup shows the saved canvas before network refresh',
+    (tester) async {
+      final ProviderAlbum fresh = (
+        reference: _Audius.sampleAlbum.reference,
+        title: 'Refreshed album',
+        artist: null,
+        artworkUrl: null,
+        trackCount: 2,
+        tracks: null,
+      );
+      final network = Completer<void>();
+      final audius = _Audius(items: [fresh])..gate = network;
+      final sources = MusicSourceController(
+        restoreOnStartup: true,
+        createAudius: () => audius,
+      );
+      addTearDown(sources.dispose);
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: HomePage(albumCache: MockAlbumCache(), sources: sources),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      final canvas = find.byType(AlbumCanvasViewport);
+      expect(canvas, findsNothing);
+
+      sqfliteFfiInit();
+      late MusicIndex index;
+      await tester.runAsync(() async {
+        index = await MusicIndex.open(
+          factory: databaseFactoryFfi,
+          path: inMemoryDatabasePath,
+        );
+        final library = DirectoryMusicLibrary(
+          index: index,
+          directories: AudioDirectories(FakeDirectories()),
+        );
+        addTearDown(library.dispose);
+        await index.setAudiusSelected();
+        await index.saveAudiusCatalog([_Audius.sampleAlbum]);
+        await sources.attachDirectories(library);
+      });
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester.widget<AlbumCanvasViewport>(canvas).albums.single['title'],
+        'Album',
+      );
+      expect(network.isCompleted, isFalse);
+      expect(sources.provider, same(audius));
+
+      await tester.runAsync(() async {
+        final refreshed = Completer<void>();
+        final stop = sources.catalog.subscribe((albums) {
+          if (albums?.single == fresh) refreshed.complete();
+        });
+        try {
+          network.complete();
+          await refreshed.future;
+          expect(await index.readAudiusCatalog(), [fresh]);
+        } finally {
+          stop();
+        }
+      });
+      await tester.pump();
+      await tester.pump();
+      expect(
+        tester.widget<AlbumCanvasViewport>(canvas).albums.single['title'],
+        'Refreshed album',
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 

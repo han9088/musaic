@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:phosphoricons_flutter/phosphoricons_flutter.dart';
 import 'package:material_ui/material_ui.dart';
@@ -12,6 +13,11 @@ import 'package:musaic/features/music/playback/screensaver/now_playing_screensav
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
     addTearDown(tester.pump);
+    const directories = MethodChannel('com.deskbtm.muasic.query/directories');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(directories, (_) async => false);
+    addTearDown(() => messenger.setMockMethodCallHandler(directories, null));
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
     tester.view.viewPadding = const FakeViewPadding(top: 62, bottom: 34);
@@ -21,6 +27,7 @@ void main() {
     await app.main();
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
 
     final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
     final context = tester.element(find.byType(Scaffold));

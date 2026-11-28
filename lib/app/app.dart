@@ -53,6 +53,7 @@ class _MusaicAppState extends State<MusaicApp> {
   late final _sources = MusicSourceController(
     systemLibraryEnabled: defaultTargetPlatform != TargetPlatform.windows,
     audiusAccount: _audiusAccount,
+    restoreOnStartup: !kIsWeb,
   );
   final _indiebase = IndiebaseRuntime.fromEnvironment();
   late final _language = AppLanguagePreference(widget.initialLanguage);
@@ -114,15 +115,17 @@ class _MusaicAppState extends State<MusaicApp> {
         index: index,
         directories: directories,
       );
-      _directories = library;
-      await library.loadCached();
-      if (!mounted) return;
-      setState(() {});
+      setState(() => _directories = library);
       await _sources.attachDirectories(library);
+      if (!mounted) return;
+      _sources.finishStartupCheck();
+      await library.loadCached();
       if (mounted) diagnosticLog.record(DiagnosticEvent.musicRestoreCompleted);
     } catch (error) {
       diagnosticLog.record(DiagnosticEvent.musicRestoreFailed, error: error);
       if (mounted) _sources.problem.value = MusicSourceProblem.scanFailed;
+    } finally {
+      if (mounted) _sources.finishStartupCheck();
     }
   }
 
@@ -149,9 +152,9 @@ class _MusaicAppState extends State<MusaicApp> {
         unawaited(diagnosticLog.flush());
       },
     );
+    unawaited(_restoreMusic());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      unawaited(_restoreMusic());
       unawaited(
         _customArtwork?.load().catchError((Object error) {
           debugPrint('Could not load custom cover index: ${error.runtimeType}');

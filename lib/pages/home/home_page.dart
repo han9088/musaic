@@ -82,6 +82,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late final VoidCallback _stopManualRotationListener;
   late final _sources = widget.sources ?? MusicSourceController();
   late final VoidCallback _stopSourceListener;
+  late final VoidCallback _stopStartupListener;
   late final AnimationController _layout;
   late final Animation<double> _layoutProgress;
   late final HomeSourceTransition _sourceTransition;
@@ -680,9 +681,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       if (_sourceTransition.switching.value) return;
       unawaited(_applyCatalog(albums));
     });
-    if (initialCatalog == null) {
-      unawaited(_loadInitialCatalog(_renderedSource));
-    }
+    _stopStartupListener = _sources.startup.subscribe((startup) {
+      if (mounted &&
+          startup == MusicSourceStartup.ready &&
+          _catalog == null &&
+          _sources.catalog.value == null) {
+        unawaited(_loadInitialCatalog(_currentSource));
+      }
+    });
     _stopManualRotationListener = _manualRotation.enabled.subscribe((enabled) {
       if (enabled || _manualLayout == null) return;
       setState(() {
@@ -828,6 +834,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     DesktopWallpaper.clearHandlers();
     unawaited(_haptics.dispose());
     _stopSourceListener();
+    _stopStartupListener();
     _stopManualRotationListener();
     _manualRotation.dispose();
     _screensaverDelay.dispose();
@@ -863,10 +870,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Future<void> _loadInitialCatalog(_HomeMusicSource source) async {
     bool isCurrent() =>
-        mounted && _catalog == null && _renderedSource == source;
+        mounted &&
+        _catalog == null &&
+        _sources.catalog.value == null &&
+        _currentSource == source &&
+        _sources.startup.value == MusicSourceStartup.ready;
     try {
       final albums = await _mockCatalogFor(source);
-      if (isCurrent()) setState(() => _catalog = albums);
+      if (isCurrent()) {
+        setState(() {
+          _catalog = albums;
+          _renderedSource = source;
+        });
+      }
     } catch (_) {
       if (isCurrent()) setState(() => _catalogLoadFailed = true);
     }
@@ -879,7 +895,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       backgroundColor: const Color(0xff000000),
       body: XeroxPaletteScope(
         notifier: _artworkMode.palette,
-        child: Builder(
+        child: SignalBuilder(
           builder: (context) {
             final content = _buildAlbums();
             if (kIsWeb || platform != TargetPlatform.android) return content;
@@ -967,11 +983,45 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   /// 创建并组装所需对象或界面结构，用于页面状态组织与业务流程协调。
   Widget _buildAlbums() {
+    final startup = _sources.startup.value;
     final target = _sourceTransition.phase == SourceTransitionPhase.enter
         ? _sourceTransition.targetAlbums
         : null;
     final albums = target ?? _catalog;
     if (albums != null) return _buildAlbumContent(albums);
+    if (startup == MusicSourceStartup.loadingAudius ||
+        startup == MusicSourceStartup.loadingLocal) {
+      final l10n = AppLocalizations.of(context);
+      final audius = startup == MusicSourceStartup.loadingAudius;
+      final message = switch (_sources.problem.value) {
+        MusicSourceProblem.audiusEmpty => l10n.audiusEmpty,
+        MusicSourceProblem.audiusRateLimited => l10n.audiusRateLimited,
+        MusicSourceProblem.audiusUnavailable => l10n.audiusUnavailable,
+        MusicSourceProblem.denied => l10n.musicSourceDenied,
+        MusicSourceProblem.restricted => l10n.musicSourceRestricted,
+        MusicSourceProblem.unavailable => l10n.musicSourceUnavailable,
+        MusicSourceProblem.scanFailed => l10n.musicSourceScanFailed,
+        _ => null,
+      };
+      if (message != null) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(message, textAlign: TextAlign.center),
+              TextButton(
+                onPressed: () => unawaited(
+                  audius
+                      ? _sources.selectAudius(restoreSavedSelection: true)
+                      : _sources.selectLocal(),
+                ),
+                child: Text(l10n.retry),
+              ),
+            ],
+          ),
+        );
+      }
+    }
     if (_catalogLoadFailed) {
       return Center(
         child: Text(AppLocalizations.of(context).albumCoversLoadFailed),

@@ -184,7 +184,8 @@ void main() {
       var previousScale = 1.0;
       await tester.tapAt(const Offset(10, 10));
       await tester.pump();
-      for (var frame = 0; frame < 14; frame++) {
+      final frameCount = faces.first ? 28 : 14;
+      for (var frame = 0; frame < frameCount; frame++) {
         await tester.pump(const Duration(milliseconds: 32));
         if (faces.first) {
           final box = tester.renderObject<RenderBox>(popup);
@@ -205,6 +206,7 @@ void main() {
           previousScale = scale;
         }
         final frontVisible = find.byKey(front).evaluate().isNotEmpty;
+        if (faces.first && frame == 7) expect(frontVisible, isTrue);
         if (frontVisible != faces.last) faces.add(frontVisible);
       }
       await tester.pumpAndSettle();
