@@ -29,12 +29,14 @@ class RectFlipTransition extends StatelessWidget {
     required Rect rect,
     required double turnProgress,
     Axis axis = Axis.horizontal,
+    double? perspectiveStrength,
   }) {
     final offset = rect.center - layout.center;
     // Swap faces at edge-on so the artwork reads upright on either side.
     final angle =
         -math.pi * (turnProgress < 0.5 ? turnProgress : turnProgress - 1);
-    final perspective = Matrix4.identity()..setEntry(3, 2, 0.7 / layout.width);
+    final perspective = Matrix4.identity()
+      ..setEntry(3, 2, (perspectiveStrength ?? 0.7) / layout.width);
     switch (axis) {
       case Axis.horizontal:
         perspective.rotateY(angle);

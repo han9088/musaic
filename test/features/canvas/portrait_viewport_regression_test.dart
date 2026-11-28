@@ -18,9 +18,11 @@ import 'package:musaic/features/music/catalog/album_track_list.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
 import 'package:musaic/features/music/playback/album_playback.dart';
 import 'package:musaic/features/music/playback/now_playing_capsule.dart';
+import 'package:musaic/features/music/playback/screensaver/now_playing_screensaver.dart';
 import 'package:musaic/l10n/generated/app_localizations.dart';
 import 'package:musaic/pages/home/home_page.dart';
 import 'package:musaic/pages/home/home_sheet.dart';
+import 'package:musaic/services/diagnostics/diagnostic_log.dart';
 import 'package:musaic/services/mock_album_cache.dart';
 import 'package:musaic/services/music/music_source_controller.dart';
 import 'package:musaic/storage/music/custom_artwork_store.dart';
@@ -577,10 +579,12 @@ void main() {
         await tester.pump();
         expect(sheet.isPresented, isTrue);
         await holdAt(60);
+        final listensUnderSheet = listens;
         sheet.dismiss();
         await holdAt(60);
         await tester.pump(const Duration(milliseconds: 200));
         expect(sheet.isPresented, isFalse);
+        expect(listens, listensUnderSheet);
       } else {
         tester
             .widget<HomeSheet>(find.byType(HomeSheet))
@@ -588,14 +592,20 @@ void main() {
             .setEnabled(true);
         await tester.pump(const Duration(milliseconds: 200));
         final switchButton = find.byKey(const ValueKey('layout-switch'));
+        bool screensaverEnabled() => tester
+            .widget<NowPlayingScreensaver>(find.byType(NowPlayingScreensaver))
+            .enabled;
+        expect(screensaverEnabled(), isTrue);
         await tester.tap(switchButton);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 550));
         expect(find.byType(AlbumCoverFlow), findsOneWidget);
+        expect(screensaverEnabled(), isFalse);
         expect(events.hasListener, isFalse);
         await tester.tap(switchButton);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 550));
+        expect(screensaverEnabled(), isTrue);
         await holdAt(0);
         await holdAt(60);
       }
@@ -626,6 +636,175 @@ void main() {
       expect(pitch(), 0, reason: 'the first fresh pose becomes neutral');
       await holdAt(0);
       expect(pitch(), greaterThan(0.1));
+      await tester.pumpWidget(const SizedBox.shrink());
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  }
+
+  for (final (showSheet, interruption) in [
+    (true, 'error'),
+    (false, 'silence'),
+    (false, 'invalid readings'),
+  ]) {
+    final overlay = showSheet ? 'Sheet' : 'album popup';
+    testWidgets('tilt recovers from $interruption under the $overlay', (
+      tester,
+    ) async {
+      diagnosticLog.talker.cleanHistory();
+      addTearDown(diagnosticLog.talker.cleanHistory);
+      var listens = 0;
+      int? stalledSubscription;
+      final events = StreamController<AccelerometerEvent>.broadcast(
+        onListen: () => listens++,
+      );
+      final originalSensors = SensorsPlatform.instance;
+      SensorsPlatform.instance = _ControlledSensors(events.stream);
+      addTearDown(() {
+        SensorsPlatform.instance = originalSensors;
+        unawaited(events.close());
+      });
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: AppBottomSheetHost(
+            child: HomePage(albumCache: _FixedAlbumCache()),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      Future<void> holdAt(double degrees) async {
+        final angle = degrees * math.pi / 180;
+        for (var i = 0; i < 24; i++) {
+          if (listens != stalledSubscription) {
+            events.add(
+              AccelerometerEvent(
+                0,
+                9.81 * math.cos(angle),
+                9.81 * math.sin(angle),
+                DateTime(2026),
+              ),
+            );
+          }
+          await tester.pump(const Duration(milliseconds: 32));
+        }
+        await tester.pump(const Duration(milliseconds: 160));
+      }
+
+      double pitch() => tester
+          .widget<Transform>(
+            find.byKey(const ValueKey('portrait-sensor-plane')),
+          )
+          .transform
+          .entry(2, 1)
+          .abs();
+
+      await holdAt(0);
+      final sheet = DeskBottomSheet.of(tester.element(find.byType(HomePage)));
+      final popup = find.byKey(const ValueKey('album-cover-popup'));
+      if (showSheet) {
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byType(NowPlayingCapsule)),
+        );
+        await gesture.moveBy(const Offset(0, -25));
+        await gesture.moveBy(const Offset(0, -125));
+        await gesture.up();
+      } else {
+        const tap = Offset(150, 250);
+        final transform = tester
+            .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+            .transformationController!;
+        final scene = transform.toScene(tap);
+        final cell = (
+          (scene.dy / albumGridExtent).floor(),
+          (scene.dx / albumGridExtent).floor(),
+        );
+        final cover = find.byKey(ValueKey(('selected-cover', cell)));
+        await tester.tapAt(tap);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.tapAt(tester.getTopLeft(cover) + const Offset(12, 12));
+      }
+      await tester.pump();
+      await holdAt(0);
+      if (showSheet) {
+        expect(sheet.isPresented, isTrue);
+      } else {
+        expect(popup, findsOneWidget);
+      }
+      await holdAt(45);
+      expect(pitch(), greaterThan(0.1));
+
+      if (interruption == 'error') {
+        events.addError(StateError('temporary sensor interruption'));
+        await tester.pump();
+      }
+      for (var i = 0; i < 80; i++) {
+        if (interruption == 'invalid readings') {
+          events.add(AccelerometerEvent(0, 0, 0, DateTime(2026)));
+        }
+        await tester.pump(const Duration(milliseconds: 32));
+      }
+      final listensBeforeReturn = listens;
+      stalledSubscription = listensBeforeReturn;
+      if (showSheet) {
+        sheet.dismiss();
+      } else {
+        await tester.tapAt(const Offset(16, 20));
+      }
+      await tester.pump();
+      for (
+        var i = 0;
+        i < 60 && (sheet.isPresented || popup.evaluate().isNotEmpty);
+        i++
+      ) {
+        await tester.pump(const Duration(milliseconds: 32));
+      }
+      expect(sheet.isPresented, isFalse);
+      expect(popup, findsNothing);
+
+      await holdAt(45);
+      expect(pitch(), closeTo(0, 0.001));
+      await holdAt(0);
+      expect(pitch(), greaterThan(0.1));
+      expect(listens, greaterThan(listensBeforeReturn));
+      await holdAt(45);
+      expect(pitch(), closeTo(0, 0.001));
+      final log = (await diagnosticLog.recentEvents()).join('\n');
+      final issue = switch (interruption) {
+        'error' => 'canvasTiltStreamFailed error=state',
+        'silence' => 'canvasTiltSamplesSilent',
+        _ => 'canvasTiltSamplesInvalid',
+      };
+      expect(
+        log,
+        stringContainsInOrder([
+          'canvasTiltSubscribed',
+          'canvasTiltSamplesReady',
+          showSheet ? 'canvasTiltSheetOpened' : 'canvasTiltRouteCovered',
+          issue,
+          if (interruption == 'silence') 'canvasTiltWatchdogRetry',
+          showSheet ? 'canvasTiltSheetClosed' : 'canvasTiltRouteRevealed',
+          'canvasTiltReturnRetry',
+          'canvasTiltSubscribed',
+          'canvasTiltSamplesReady',
+          'canvasTiltMotionAfterReturn',
+        ]),
+      );
+      if (!showSheet) {
+        expect(
+          log,
+          stringContainsInOrder(['albumPopupOpened', 'albumPopupClosed']),
+        );
+      }
+      if (interruption == 'invalid readings') {
+        expect(issue.allMatches(log), hasLength(1));
+      }
+      expect(log, isNot(contains('temporary sensor interruption')));
       await tester.pumpWidget(const SizedBox.shrink());
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   }

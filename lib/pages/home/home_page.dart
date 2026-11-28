@@ -955,7 +955,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return SignalBuilder(
       builder: (context) => NowPlayingScreensaver(
         playback: _playback,
-        enabled: !_desktopWallpaperEnabled && _screensaverDelay.enabled.value,
+        enabled:
+            !_landscape &&
+            !_desktopWallpaperEnabled &&
+            _screensaverDelay.enabled.value,
         idleDelay: Duration(seconds: _screensaverDelay.seconds.value),
         child: content,
       ),

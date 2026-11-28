@@ -8,6 +8,9 @@ import 'package:flutter/rendering.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
+import '../../services/diagnostics/diagnostic_log.dart';
+import '../../ui/bottom_sheet/bottom_sheet.dart';
+
 /// 封装或定义纵向倾斜动效相关类型与行为，负责专辑墙无限画布的布局、视口与交互状态。
 class PortraitTiltMotion {
   static const maxAngle = 12 * math.pi / 180;
@@ -112,11 +115,18 @@ class _PortraitTiltState extends State<PortraitTilt>
   Timer? _sampleWatchdog;
   bool _receivedEvent = false;
   bool _receivedUsableSample = false;
+  bool _hasUsableSamples = false;
   bool _canReconnect = true;
   Offset _target = Offset.zero;
   bool _resumed = true;
   bool _enabled = false;
   bool _unavailable = false;
+  bool _routeCurrent = true;
+  bool _covered = false;
+  bool _sheetPresented = false;
+  bool _waitingForMotionAfterReturn = false;
+  BottomSheetSheetStore? _sheets;
+  DiagnosticEvent? _lastSampleIssue;
   int _generation = 0;
 
   @override
@@ -134,6 +144,45 @@ class _PortraitTiltState extends State<PortraitTilt>
     _enabled =
         !MediaQuery.disableAnimationsOf(context) &&
         MediaQuery.orientationOf(context) == Orientation.portrait;
+    _routeCurrent = ModalRoute.isCurrentOf(context) != false;
+    final sheets = BottomSheetScope.maybeOf(context)?.sheetStore;
+    if (sheets != _sheets) {
+      _sheets?.removeListener(_syncCoverage);
+      _sheets = sheets;
+      _sheets?.addListener(_syncCoverage);
+    }
+    _syncCoverage();
+    _syncSensor();
+  }
+
+  void _syncCoverage() {
+    final sheetPresented = _sheets?.snapshot.isPresented == true;
+    final covered = !_routeCurrent || sheetPresented;
+    final revealed = _covered && !covered;
+    if (covered != _covered &&
+        _enabled &&
+        _resumed &&
+        (_subscription != null || _unavailable)) {
+      _waitingForMotionAfterReturn = revealed;
+      diagnosticLog.record(switch ((
+        covered,
+        covered ? sheetPresented : _sheetPresented,
+      )) {
+        (true, true) => DiagnosticEvent.canvasTiltSheetOpened,
+        (false, true) => DiagnosticEvent.canvasTiltSheetClosed,
+        (true, false) => DiagnosticEvent.canvasTiltRouteCovered,
+        (false, false) => DiagnosticEvent.canvasTiltRouteRevealed,
+      });
+    }
+    _sheetPresented = sheetPresented;
+    _covered = covered;
+    if (!revealed || !_enabled || !_resumed) return;
+    if (_hasUsableSamples) return;
+    // A return to the canvas can recover a failed stream or a spent retry.
+    diagnosticLog.record(DiagnosticEvent.canvasTiltReturnRetry);
+    _unavailable = false;
+    _canReconnect = true;
+    _stop();
     _syncSensor();
   }
 
@@ -151,7 +200,10 @@ class _PortraitTiltState extends State<PortraitTilt>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final resumed = state == AppLifecycleState.resumed;
-    if (resumed && !_resumed) _canReconnect = true;
+    if (resumed && !_resumed) {
+      _unavailable = false;
+      _canReconnect = true;
+    }
     _resumed = resumed;
     _syncSensor();
   }
@@ -168,8 +220,15 @@ class _PortraitTiltState extends State<PortraitTilt>
     }
     if (_subscription != null || _unavailable) return;
     final generation = ++_generation;
-    void sensorUnavailable() {
+    void sensorUnavailable([Object? error, StackTrace? stack]) {
       if (!mounted || generation != _generation) return;
+      diagnosticLog.record(
+        error == null
+            ? DiagnosticEvent.canvasTiltStreamEnded
+            : DiagnosticEvent.canvasTiltStreamFailed,
+        error: error,
+        stack: stack,
+      );
       _unavailable = true;
       _stop();
     }
@@ -186,19 +245,26 @@ class _PortraitTiltState extends State<PortraitTilt>
         _watchSamples();
         final next = _motion.update(event.x, event.y, event.z);
         if (next == null) return;
+        if (!_hasUsableSamples) {
+          diagnosticLog.record(DiagnosticEvent.canvasTiltSamplesReady);
+        }
+        _lastSampleIssue = null;
         _receivedUsableSample = true;
+        _hasUsableSamples = true;
         _canReconnect = true;
         if (!widget.paused) _updateTarget(next);
       },
-      onError: (Object error) => sensorUnavailable(),
+      onError: (Object error, StackTrace stack) =>
+          sensorUnavailable(error, stack),
       onDone: sensorUnavailable,
     );
+    diagnosticLog.record(DiagnosticEvent.canvasTiltSubscribed);
     _watchSamples();
   }
 
   void _updateTarget(Offset next) {
     if (next.distance <= _steadyAngle) {
-      if (_target != Offset.zero) setState(() => _target = Offset.zero);
+      if (_target != Offset.zero) _setTarget(Offset.zero);
       return;
     }
 
@@ -206,7 +272,15 @@ class _PortraitTiltState extends State<PortraitTilt>
     final delta = next - _target;
     final distance = delta.distance;
     if (distance <= _steadyAngle + 0.0002) return;
-    setState(() => _target = next - delta * (_steadyAngle / distance));
+    _setTarget(next - delta * (_steadyAngle / distance));
+  }
+
+  void _setTarget(Offset target) {
+    if (_waitingForMotionAfterReturn && !_covered) {
+      _waitingForMotionAfterReturn = false;
+      diagnosticLog.record(DiagnosticEvent.canvasTiltMotionAfterReturn);
+    }
+    setState(() => _target = target);
   }
 
   void _watchSamples() {
@@ -216,9 +290,18 @@ class _PortraitTiltState extends State<PortraitTilt>
       _receivedEvent = false;
       _receivedUsableSample = false;
       if (receivedUsableSample) return;
+      _hasUsableSamples = false;
+      final issue = receivedEvent
+          ? DiagnosticEvent.canvasTiltSamplesInvalid
+          : DiagnosticEvent.canvasTiltSamplesSilent;
+      if (_lastSampleIssue != issue) {
+        _lastSampleIssue = issue;
+        diagnosticLog.record(issue);
+      }
 
       // Reopen a silent native stream once, then wait for data before retrying.
       if (!receivedEvent && _canReconnect && widget.events == null) {
+        diagnosticLog.record(DiagnosticEvent.canvasTiltWatchdogRetry);
         _canReconnect = false;
         _stop();
         _syncSensor();
@@ -246,6 +329,8 @@ class _PortraitTiltState extends State<PortraitTilt>
     _sampleWatchdog = null;
     _receivedEvent = false;
     _receivedUsableSample = false;
+    _hasUsableSamples = false;
+    _lastSampleIssue = null;
     final subscription = _subscription;
     _subscription = null;
     if (subscription != null) unawaited(subscription.cancel());
@@ -255,6 +340,7 @@ class _PortraitTiltState extends State<PortraitTilt>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _sheets?.removeListener(_syncCoverage);
     _generation++;
     _sampleWatchdog?.cancel();
     final subscription = _subscription;

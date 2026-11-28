@@ -7,6 +7,7 @@ import 'package:musaic/features/canvas/album_canvas.dart';
 import 'package:musaic/features/canvas/album_grid_snapshot.dart';
 import 'package:musaic/features/canvas/portrait_tilt.dart';
 import 'package:musaic/features/music/playback/album_play_button.dart';
+import 'package:musaic/features/music/playback/screensaver/now_playing_screensaver.dart';
 
 void main() {
   testWidgets('Musaic starts with its own app title', (tester) async {
@@ -30,6 +31,12 @@ void main() {
         .transformationController!;
     expect(controller.value.entry(0, 0), 1);
     expect(controller.value.entry(1, 1), 1);
+    expect(
+      tester
+          .widget<NowPlayingScreensaver>(find.byType(NowPlayingScreensaver))
+          .enabled,
+      isTrue,
+    );
     final popup = find.byKey(const ValueKey('album-cover-popup'));
     AlbumCanvas canvas() =>
         tester.widget<AlbumCanvas>(find.byType(AlbumCanvas));
@@ -253,6 +260,12 @@ void main() {
         .widget<AlbumCoverFlow>(find.byType(AlbumCoverFlow))
         .initialPosition
         .round();
+    expect(
+      tester
+          .widget<NowPlayingScreensaver>(find.byType(NowPlayingScreensaver))
+          .enabled,
+      isFalse,
+    );
     final active = tester.getRect(find.byKey(ValueKey('cover-$center')));
     final next = tester.getRect(find.byKey(ValueKey('cover-${center + 1}')));
     final further = tester.getRect(find.byKey(ValueKey('cover-${center + 2}')));
